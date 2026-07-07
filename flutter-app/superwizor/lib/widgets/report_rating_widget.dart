@@ -304,11 +304,104 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
   final Set<String> _selected = {};
   final _notesController = TextEditingController();
   static const _notesMaxLen = 4000;
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _notesController.addListener(_onNotesChanged);
+  }
+
+  void _onNotesChanged() {
+    setState(() {});
+  }
 
   @override
   void dispose() {
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
     super.dispose();
+  }
+
+  void _insertText(String prefix, [String suffix = '']) {
+    final text = _notesController.text;
+    final selection = _notesController.selection;
+
+    int start = selection.start;
+    int end = selection.end;
+
+    // If no active selection, default to end of text
+    if (start < 0 || end < 0) {
+      start = text.length;
+      end = text.length;
+    }
+
+    final selectedText = text.substring(start, end);
+    final replacement = prefix + selectedText + suffix;
+
+    final newText = text.replaceRange(start, end, replacement);
+    _notesController.text = newText;
+
+    // Position cursor after the inserted text
+    final newCursorPos = start + prefix.length + selectedText.length + suffix.length;
+    _notesController.selection = TextSelection.collapsed(offset: newCursorPos);
+  }
+
+  Widget _buildToolbar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.format_bold, size: 18, color: EuphireColors.mist),
+            tooltip: 'Pogrubienie',
+            onPressed: () => _insertText('**', '**'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.format_italic, size: 18, color: EuphireColors.mist),
+            tooltip: 'Kursywa',
+            onPressed: () => _insertText('*', '*'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.format_list_bulleted, size: 18, color: EuphireColors.mist),
+            tooltip: 'Lista punktowana',
+            onPressed: () {
+              final text = _notesController.text;
+              final start = _notesController.selection.start;
+              final needsNewline = start > 0 && text[start - 1] != '\n';
+              _insertText(needsNewline ? '\n- ' : '- ');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.format_list_numbered, size: 18, color: EuphireColors.mist),
+            tooltip: 'Lista numerowana',
+            onPressed: () {
+              final text = _notesController.text;
+              final start = _notesController.selection.start;
+              final needsNewline = start > 0 && text[start - 1] != '\n';
+              _insertText(needsNewline ? '\n1. ' : '1. ');
+            },
+          ),
+          const Spacer(),
+          if (_notesController.text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined, size: 18, color: EuphireColors.magma),
+              tooltip: 'Wyczyść tekst',
+              onPressed: () {
+                setState(() {
+                  _notesController.clear();
+                });
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -317,12 +410,16 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
     final theme = Theme.of(context);
     final mediaInsets = MediaQuery.of(context).viewInsets;
 
-    final container = Container(
+    final container = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
       // Cap to ~90% of screen so the sheet can't push above the
       // status bar when the keyboard is open.
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.9,
-        maxWidth: widget.isDialog ? 550 : double.infinity,
+        maxWidth: widget.isDialog
+            ? (_isExpanded ? 850 : 550)
+            : double.infinity,
       ),
       decoration: BoxDecoration(
         color: EuphireColors.evergreen,
@@ -445,41 +542,70 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
                   }).toList(),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  t.report_rating_notes_label,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(color: EuphireColors.frostWhite),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      t.report_rating_notes_label,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(color: EuphireColors.frostWhite),
+                    ),
+                    if (widget.isDialog)
+                      IconButton(
+                        icon: Icon(
+                          _isExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+                          color: EuphireColors.ember,
+                          size: 20,
+                        ),
+                        tooltip: _isExpanded ? 'Zmniejsz edytor' : 'Powiększ edytor',
+                        onPressed: () {
+                          setState(() {
+                            _isExpanded = !_isExpanded;
+                          });
+                        },
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _notesController,
-                  maxLength: _notesMaxLen,
-                  minLines: 3,
-                  maxLines: 6,
-                  style: theme.textTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: t.report_rating_notes_hint,
-                    hintStyle:
-                        theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildToolbar(),
+                      TextField(
+                        controller: _notesController,
+                        maxLength: _notesMaxLen,
+                        minLines: widget.isDialog && _isExpanded ? 10 : 3,
+                        maxLines: widget.isDialog && _isExpanded ? 15 : 6,
+                        style: theme.textTheme.bodyMedium,
+                        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                        decoration: InputDecoration(
+                          hintText: t.report_rating_notes_hint,
+                          hintStyle: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(12),
+                        ),
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: EuphireColors.ember,
-                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${_notesController.text.length}/$_notesMaxLen',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: EuphireColors.mist,
+                      fontSize: 11,
                     ),
                   ),
                 ),
