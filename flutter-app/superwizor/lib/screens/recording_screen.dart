@@ -1391,6 +1391,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                   _ControlPanel(
                                     state: _recState,
                                     onStart: _start,
+                                    onPause: _service.pause,
+                                    onResume: _onResumeTap,
                                     onStop: _onStopPressed,
                                   ),
                                   const SizedBox(height: 16),
@@ -1546,11 +1548,15 @@ class _InterruptionBanner extends StatelessWidget {
 class _ControlPanel extends StatelessWidget {
   final RecordingState state;
   final Future<void> Function() onStart;
+  final Future<void> Function() onPause;
+  final Future<void> Function() onResume;
   final Future<void> Function() onStop;
 
   const _ControlPanel({
     required this.state,
     required this.onStart,
+    required this.onPause,
+    required this.onResume,
     required this.onStop,
   });
 
@@ -1569,10 +1575,19 @@ class _ControlPanel extends StatelessWidget {
         ],
       );
     }
-    // Pause removed per UX: recording runs until auto-pause or explicit stop.
+    // Yellow (ember) pause/resume button restored alongside Stop.
+    // Manual pause/resume; interruption-resume stays on _InterruptionBanner.
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
+        _CircleButton(
+          icon: state == RecordingState.recording
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+          color: EuphireColors.ember,
+          onPressed: state == RecordingState.recording ? onPause : onResume,
+          isPrimary: true,
+        ),
         _CircleButton(
           icon: Icons.stop_rounded,
           color: EuphireColors.magma,
