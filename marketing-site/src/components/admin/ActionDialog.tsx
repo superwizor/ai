@@ -79,7 +79,7 @@ export function ActionDialog({
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-glass border border-glass-border/60 bg-evergreen px-6 py-6 shadow-[var(--shadow-large)]">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-glass border border-glass-border/60 bg-evergreen px-6 py-6 shadow-[var(--shadow-large)]">
         <h2 className="font-display text-frost text-xl font-semibold tracking-[var(--tracking-display)]">
           {title}
         </h2>

@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 
-import { identityClient } from "@/lib/connect/clients";
+import { identityClient, billingClient } from "@/lib/connect/clients";
 import {
   AddressSchema,
   AdminListUsersRequestSchema,
@@ -30,6 +30,11 @@ import {
   UserRole,
   type User,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import {
+  GetSubscriptionRequestSchema,
+  AdminResetTokensRequestSchema,
+  type Subscription,
+} from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
 import { TableSkeleton } from "./TableSkeleton";
 import {
@@ -382,6 +387,76 @@ function UserEditDialog({
     billingAddress: addressFromProto(null) as AddressDraft,
   });
 
+  // ── Token management state ──────────────────────────────────────
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [tokenLoadState, setTokenLoadState] = useState<"idle" | "loading" | "ready" | "error" | "no-sub">("idle");
+  const [newTokensUsed, setNewTokensUsed] = useState("");
+  const [newTokensLimit, setNewTokensLimit] = useState("");
+  const [tokenResetBusy, setTokenResetBusy] = useState(false);
+  const [tokenResetMsg, setTokenResetMsg] = useState<{ ok?: string; err?: string } | null>(null);
+
+  // Fetch subscription for the user's org on mount.
+  useEffect(() => {
+    if (!user.organizationId) {
+      setTokenLoadState("idle");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setTokenLoadState("loading");
+      try {
+        const sub = await billingClient.getSubscription(
+          create(GetSubscriptionRequestSchema, { organizationId: user.organizationId }),
+        );
+        if (!cancelled) {
+          setSubscription(sub);
+          setTokenLoadState("ready");
+        }
+      } catch {
+        if (!cancelled) setTokenLoadState("no-sub");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user.organizationId]);
+
+  const handleResetTokens = async () => {
+    if (!user.organizationId) return;
+    const used = newTokensUsed.trim() === "" ? -1 : Number.parseInt(newTokensUsed, 10);
+    const limit = newTokensLimit.trim() === "" ? -1 : Number.parseInt(newTokensLimit, 10);
+    if (newTokensUsed.trim() !== "" && (Number.isNaN(used) || used < 0)) {
+      setTokenResetMsg({ err: t("tokenInvalidUsed") });
+      return;
+    }
+    if (newTokensLimit.trim() !== "" && (Number.isNaN(limit) || limit <= 0)) {
+      setTokenResetMsg({ err: t("tokenInvalidLimit") });
+      return;
+    }
+    if (used === -1 && limit === -1) {
+      setTokenResetMsg({ err: t("tokenNoChange") });
+      return;
+    }
+    setTokenResetBusy(true);
+    setTokenResetMsg(null);
+    try {
+      const fresh = await billingClient.adminResetTokens(
+        create(AdminResetTokensRequestSchema, {
+          organizationId: user.organizationId,
+          tokensUsed: used,
+          tokensLimit: limit,
+          reason: `Admin reset tokens for ${user.email || user.firstName} via user edit`,
+        }),
+      );
+      setSubscription(fresh);
+      setNewTokensUsed("");
+      setNewTokensLimit("");
+      setTokenResetMsg({ ok: t("tokenResetSuccess") });
+    } catch (e) {
+      setTokenResetMsg({ err: translateError(e, tErrors) });
+    } finally {
+      setTokenResetBusy(false);
+    }
+  };
+
   const onConfirm = async (reason: string): Promise<ActionResult> => {
     const req: Record<string, unknown> = { userId: user.id, reason };
     if (draft.firstName !== user.firstName) req.firstName = draft.firstName;
@@ -418,6 +493,18 @@ function UserEditDialog({
       return { error: translateError(e, tErrors) };
     }
   };
+
+  // Token usage progress percentage (clamped 0–100).
+  const tokenPct = subscription
+    ? Math.min(
+        100,
+        Math.round(
+          ((subscription.tokensUsedThisPeriod) /
+            Math.max(1, subscription.tokensPerPeriod)) *
+            100,
+        ),
+      )
+    : 0;
 
   return (
     <ActionDialog
@@ -589,6 +676,118 @@ function UserEditDialog({
         <p className="font-mono text-[10px] text-mist/60 -mt-2">
           {t("billingAddressHint")}
         </p>
+
+        {/* ── Token management section ─────────────────────────── */}
+        {user.organizationId ? (
+          <div className="rounded-card border border-ember/30 bg-ember/5 p-4 mt-1">
+            <h3 className="font-display text-frost text-sm font-semibold tracking-[var(--tracking-display)] mb-3">
+              {t("tokenManagement")}
+            </h3>
+
+            {tokenLoadState === "loading" && (
+              <p className="font-serif text-mist text-xs animate-pulse">
+                {t("tokensLoading")}
+              </p>
+            )}
+
+            {tokenLoadState === "no-sub" && (
+              <p className="font-serif text-mist/70 text-xs">
+                {t("tokensNoSub")}
+              </p>
+            )}
+
+            {tokenLoadState === "ready" && subscription && (
+              <>
+                {/* Current usage display */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="text-center">
+                    <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                      {t("tokensUsed")}
+                    </p>
+                    <p className="font-display text-frost text-lg font-semibold">
+                      {subscription.tokensUsedThisPeriod}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                      {t("tokensLimit")}
+                    </p>
+                    <p className="font-display text-frost text-lg font-semibold">
+                      {subscription.tokensPerPeriod}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                      {t("tokensRemaining")}
+                    </p>
+                    <p className="font-display text-ember text-lg font-semibold">
+                      {subscription.tokensRemaining}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-2 rounded-full bg-obsidian/60 mb-4 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${tokenPct}%`,
+                      backgroundColor:
+                        tokenPct > 90
+                          ? "var(--color-magma)"
+                          : tokenPct > 60
+                            ? "var(--color-ember)"
+                            : "var(--color-frost)",
+                    }}
+                  />
+                </div>
+
+                {/* Reset inputs */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <SimpleInput
+                    id="u-tokens-used"
+                    label={t("newTokensUsed")}
+                    value={newTokensUsed}
+                    onChange={setNewTokensUsed}
+                  />
+                  <SimpleInput
+                    id="u-tokens-limit"
+                    label={t("newTokensLimit")}
+                    value={newTokensLimit}
+                    onChange={setNewTokensLimit}
+                  />
+                </div>
+                <p className="font-mono text-[10px] text-mist/60 mb-3">
+                  {t("tokenResetHint")}
+                </p>
+
+                {tokenResetMsg?.ok && (
+                  <p className="mb-2 rounded-button border border-frost/30 bg-frost/10 px-3 py-2 font-serif text-xs text-frost">
+                    {tokenResetMsg.ok}
+                  </p>
+                )}
+                {tokenResetMsg?.err && (
+                  <p className="mb-2 rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost">
+                    {tokenResetMsg.err}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleResetTokens}
+                  disabled={tokenResetBusy}
+                  className="w-full rounded-button bg-ember/80 text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-xs px-4 py-2 hover:bg-ember transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {tokenResetBusy ? "…" : t("tokenResetBtn")}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <p className="font-mono text-[10px] text-mist/50 mt-1">
+            {t("tokensNoOrg")}
+          </p>
+        )}
       </div>
     </ActionDialog>
   );
