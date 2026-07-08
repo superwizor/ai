@@ -203,6 +203,14 @@
   "session_failed_header": "Nie udało się przygotować raportu.",
   "session_failed_body": "Coś poszło nie tak po stronie analizy. Spróbujemy ponownie automatycznie. Jeśli problem się utrzymuje, skontaktuj się z pomocą techniczną.",
   "session_failed_primary": "Skontaktuj się z pomocą.",
+  "session_failed_subscription_title": "Subskrypcja nieaktywna",
+  "@session_failed_subscription_title": {
+    "description": "Failure-view title shown when the report was blocked by an inactive subscription (backend FailedPrecondition SUBSCRIPTION_INACTIVE)."
+  },
+  "session_failed_subscription_body": "Nie mogliśmy przygotować raportu, ponieważ Twoja subskrypcja jest nieaktywna. Odnów subskrypcję, aby wznowić analizę nagranych sesji.",
+  "@session_failed_subscription_body": {
+    "description": "Failure-view body for an inactive subscription; tells the user to renew."
+  },
   "session_status_title": "Bezpieczna analiza w toku.",
   "session_status_subtitle": "Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.",
   "session_status_success": "Gotowe!",

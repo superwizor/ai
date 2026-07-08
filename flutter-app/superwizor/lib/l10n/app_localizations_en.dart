@@ -578,6 +578,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get session_failed_primary => 'Contact support.';
 
   @override
+  String get session_failed_subscription_title => 'Subscription inactive';
+
+  @override
+  String get session_failed_subscription_body =>
+      'We couldn\'t prepare the report because your subscription is inactive. Renew your subscription to resume analysis of your recorded sessions.';
+
+  @override
   String get session_status_title => 'Secure analysis in progress.';
 
   @override

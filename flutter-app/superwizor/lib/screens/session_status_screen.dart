@@ -52,9 +52,12 @@ import '../widgets/euphire_action_sheet.dart';
 import 'home_screen.dart';
 import 'transcript_screen.dart';
 
-/// Error classification for the failure view — 3 buckets cover
-/// all possible errors without per-error copy.
-enum _ErrorBucket { upload, processing, unknown }
+/// Error classification for the failure view. Most errors collapse into
+/// three generic buckets (upload / processing / unknown); `subscription`
+/// is the one actionable special case — the server rejected the pipeline
+/// with FailedPrecondition SUBSCRIPTION_INACTIVE, which the user can fix
+/// themselves by renewing, so it gets its own copy + CTA.
+enum _ErrorBucket { upload, processing, subscription, unknown }
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
   /// The server-side session UUID. Optional — when launched via
@@ -1011,6 +1014,17 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
 
   _ErrorBucket _classifyError() {
+    // Subscription gate (billing FailedPrecondition SUBSCRIPTION_INACTIVE)
+    // takes priority over every other bucket — it's the one error the user
+    // can resolve themselves, and it can arrive with a resolvedSessionId
+    // (report-time rejection) so it must be checked before the processing
+    // fallthrough below. Match the raw gRPC desc from either error source.
+    final combinedErr =
+        '${_lastRow?.lastError ?? ''} ${_failureReason ?? ''}'.toUpperCase();
+    if (combinedErr.contains('SUBSCRIPTION_INACTIVE') ||
+        combinedErr.contains('SUBSCRIPTION INACTIVE')) {
+      return _ErrorBucket.subscription;
+    }
     // Server-side failure (Firestore-driven or poll-driven) → processing.
     if (_resolvedSessionId != null) {
       return _ErrorBucket.processing;
@@ -1066,6 +1080,11 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           '${t.sessionStatus_upload_stopped_net_err}'
               '${t.sessionStatus_upload_stopped_safe}'
               '${t.sessionStatus_upload_stopped_resume}',
+        ),
+      _ErrorBucket.subscription => (
+          Icons.workspace_premium_rounded,
+          t.session_failed_subscription_title,
+          t.session_failed_subscription_body,
         ),
       _ErrorBucket.processing => (
           Icons.sync_problem_rounded,

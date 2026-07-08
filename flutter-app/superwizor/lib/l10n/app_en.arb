@@ -203,6 +203,8 @@
   "session_failed_header": "Failed to prepare report.",
   "session_failed_body": "Something went wrong during analysis. We will retry automatically. If the problem persists, contact technical support.",
   "session_failed_primary": "Contact support.",
+  "session_failed_subscription_title": "Subscription inactive",
+  "session_failed_subscription_body": "We couldn't prepare the report because your subscription is inactive. Renew your subscription to resume analysis of your recorded sessions.",
   "session_status_title": "Secure analysis in progress.",
   "session_status_subtitle": "We are preparing your reports and transcriptions. This may take up to 15 minutes. You can come back shortly.",
   "session_status_success": "Done!",

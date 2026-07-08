@@ -583,6 +583,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get session_failed_primary => 'Skontaktuj się z pomocą.';
 
   @override
+  String get session_failed_subscription_title => 'Subskrypcja nieaktywna';
+
+  @override
+  String get session_failed_subscription_body =>
+      'Nie mogliśmy przygotować raportu, ponieważ Twoja subskrypcja jest nieaktywna. Odnów subskrypcję, aby wznowić analizę nagranych sesji.';
+
+  @override
   String get session_status_title => 'Bezpieczna analiza w toku.';
 
   @override

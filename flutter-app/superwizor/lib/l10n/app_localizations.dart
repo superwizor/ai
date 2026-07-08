@@ -1124,6 +1124,18 @@ abstract class AppLocalizations {
   /// **'Skontaktuj się z pomocą.'**
   String get session_failed_primary;
 
+  /// Failure-view title shown when the report was blocked by an inactive subscription (backend FailedPrecondition SUBSCRIPTION_INACTIVE).
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja nieaktywna'**
+  String get session_failed_subscription_title;
+
+  /// Failure-view body for an inactive subscription; tells the user to renew.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie mogliśmy przygotować raportu, ponieważ Twoja subskrypcja jest nieaktywna. Odnów subskrypcję, aby wznowić analizę nagranych sesji.'**
+  String get session_failed_subscription_body;
+
   /// No description provided for @session_status_title.
   ///
   /// In pl, this message translates to:
