@@ -22,6 +22,7 @@ class GlassTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final int? maxLength;
 
   const GlassTextField({
     super.key,
@@ -35,6 +36,7 @@ class GlassTextField extends StatelessWidget {
     this.focusNode,
     this.onChanged,
     this.onSubmitted,
+    this.maxLength,
   });
 
   @override
@@ -47,6 +49,7 @@ class GlassTextField extends StatelessWidget {
       focusNode: focusNode,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
+      maxLength: maxLength,
       style: const TextStyle(
         fontFamily: 'Montserrat',
         fontSize: 15,

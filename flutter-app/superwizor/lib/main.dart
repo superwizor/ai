@@ -2,6 +2,7 @@ import 'analytics/analytics_collector.dart';
 import 'providers/current_user_provider.dart';
 import 'providers/patient_notes_provider.dart';
 import 'providers/locale_provider.dart';
+import 'providers/connectivity_provider.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -128,6 +129,9 @@ void main() async {
   // inbox — works foreground on iOS AND web, where FCM does not. Follows
   // the signed-in user via authStateChanges; harmless before login.
   InboxRefreshListener(container).start();
+
+  // Listen to connectivity restoration and refresh patient data
+  setupConnectivityListener(container);
 
   runApp(UncontrolledProviderScope(
     container: container,

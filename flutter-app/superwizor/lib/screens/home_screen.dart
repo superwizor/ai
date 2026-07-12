@@ -11,6 +11,7 @@ import '../providers/sort_filter_provider.dart';
 import '../widgets/debug_test_overlay.dart';
 import '../widgets/sort_filter_sheet.dart';
 import '../widgets/client_invite_sheet.dart';
+import '../widgets/offline_banner.dart';
 
 
 import '../models/session.dart';
@@ -172,6 +173,9 @@ class HomeScreen extends ConsumerWidget {
 
                             // ── Sugestia AI (feat/report-customization §6) ──
                             const PreferenceSuggestionBanner(),
+
+                            // ── Offline Banner (Zero State) ─────────────────
+                            const OfflineBanner(),
 
                             // ── Quota warning (Phase 3 §16.3) ───────────────
                             const QuotaWarningBanner(),
@@ -913,6 +917,25 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final isMainLabel = label == t.home_section_active || label == t.home_section_active_filtered;
+    
+    if (isMainLabel && count == 0) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+        child: Text(
+          'AKTYWNE KARTOTEKI: 0',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+            color: EuphireColors.mist.withValues(alpha: 0.5),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
       child: Row(

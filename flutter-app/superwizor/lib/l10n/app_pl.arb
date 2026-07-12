@@ -95,7 +95,7 @@
   "editPatient_save_primary": "Zapisz zmiany",
   "editPatient_erase_destructive": "Usuń kartotekę bezpowrotnie",
   "editPatient_erase_confirm_header": "Całkowite usunięcie kartoteki",
-  "editPatient_erase_confirm_body": "To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.",
+  "editPatient_erase_confirm_body": "Zgodnie z wymogami RODO, trwale usuniemy tę kartotekę klienta wraz ze wszystkimi sesjami i transkrypcjami. Tej operacji nie można cofnąć.",
   "addSession_title": "Nowa sesja.",
   "addSession_subtitle": "Wybierz nurt dla tej sesji:",
   "home_title": "Twoi klienci.",
@@ -452,7 +452,7 @@
   "suggestion_banner_dismiss": "Nie teraz",
   "suggestion_banner_applied_toast": "Zmieniono, kolejne raporty uwzględnią to ustawienie.",
   "suggestion_banner_apply_error": "Nie udało się zmienić ustawienia.",
-  "billing_quota_warning_short": "{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}",
+  "billing_quota_warning_short": "{n, plural, =1{Została Ci 1 sesja w pakiecie.} few{Zostały Ci {n} sesje w pakiecie.} many{Zostało Ci {n} sesji w pakiecie.} other{Zostało Ci {n} sesji w pakiecie.}}",
   "@billing_quota_warning_short": {
     "description": "Krótka warning banner, pozostałe tokeny w bieżącym okresie",
     "placeholders": {
@@ -461,8 +461,8 @@
       }
     }
   },
-  "billing_quota_critical_short": "Został Ci ostatni token.",
-  "billing_quota_exhausted_short": "Pula tokenów wyczerpana.",
+  "billing_quota_critical_short": "Została Ci ostatnia sesja w pakiecie.",
+  "billing_quota_exhausted_short": "Pakiet sesji wyczerpany.",
   "billing_quota_exhausted_subtitle": "Nowe sesje zapiszą się lokalnie do dnia odnowienia.",
   "billing_period_end_label": "Pula odnawia się {date}.",
   "@billing_period_end_label": {
@@ -474,7 +474,7 @@
   },
   "billing_expand_plan_cta": "Rozszerz plan",
   "billing_dismiss_cta": "Rozumiem, kontynuuj",
-  "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
+  "billing_exhausted_dialog_title": "Pakiet sesji wyczerpany",
   "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać, audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
   "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
   "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
@@ -485,7 +485,7 @@
       }
     }
   },
-  "billing_pending_session_subtitle": "Audio zapisane lokalnie · Czeka na tokeny",
+  "billing_pending_session_subtitle": "Audio zapisane lokalnie · Oczekuje na dostępny pakiet",
   "billing_pending_session_card_meta": "Sesja z {date}, {time} ({duration} min)",
   "@billing_pending_session_card_meta": {
     "placeholders": {
@@ -502,7 +502,7 @@
   },
   "billing_resume_processing": "Wznów przetwarzanie",
   "billing_delete_local_audio": "Usuń",
-  "billing_tokens_available_required": "Tokeny dostępne: {available} / Wymagane: {required}",
+  "billing_tokens_available_required": "Sesje w pakiecie: {available} / Wymagane: {required}",
   "@billing_tokens_available_required": {
     "placeholders": {
       "available": {
@@ -517,7 +517,7 @@
   "billing_delete_confirm_body": "Audio zostanie trwale usunięte z tego urządzenia. Tej operacji nie można cofnąć.",
   "billing_delete_confirm_action": "Usuń trwale",
   "billing_reservation_expired_title": "Przetwarzanie nie powiodło się",
-  "billing_reservation_expired_body": "Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.",
+  "billing_reservation_expired_body": "Rezerwacja sesji wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.",
   "billing_retry_cta": "Spróbuj ponownie",
   "billing_past_due_title": "Problem z płatnością",
   "billing_past_due_body": "Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.",
@@ -568,8 +568,8 @@
   "subscription_no_data_title": "Brak danych o subskrypcji",
   "subscription_no_data_body": "Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.",
   "subscription_refresh_cta": "Odśwież",
-  "stepper_step1_quota_blocked": "Pula tokenów wyczerpana. Odnów plan, aby wznowić.",
-  "quota_blocked_queue_label": "Pula tokenów wyczerpana",
+  "stepper_step1_quota_blocked": "Pakiet sesji wyczerpany. Odnów plan, aby wznowić.",
+  "quota_blocked_queue_label": "Pakiet sesji wyczerpany",
   "upload_resend": "Wyślij ponownie",
   "upload_cancel_processing": "Usuń",
   "cancel_session_confirm_title": "Anulować przetwarzanie?",
@@ -1080,7 +1080,7 @@
   "sort_filter_last_activity": "Ostatnia aktywność",
   "sort_filter_last_activity_desc": "Klienci, z którymi ostatnio pracowałeś",
   "sort_filter_long_unseen": "Dawno niewidziani",
-  "sort_filter_no_sessions_longest_desc": "Klienci bez sesji od najdłuższego czasu",
+  "sort_filter_no_sessions_longest_desc": "Klienci z najdłuższą przerwą",
   "sort_filter_alphabetical": "Alfabetycznie",
   "sort_filter_alphabetical_desc": "Nazwy kartotek od A do Z",
   "sort_filter_longest_processes": "Najdłuższe procesy",
@@ -1352,7 +1352,10 @@
   "invite_client_status_inactive": "Konto klienta jest dezaktywowane.",
   "invite_client_email_taken": "Ten e-mail jest już powiązany z innym kontem.",
   "invite_client_email_missing": "Podaj poprawny e-mail klienta.",
+  "invite_client_self_email": "Nie możesz zaprosić samego siebie.",
   "invite_client_error": "Nie udało się wysłać zaproszenia. Spróbuj ponownie.",
+  "offline_banner_title": "Brak połączenia",
+  "offline_banner_desc": "Jesteś w trybie offline. Aplikacja działa, ale synchronizacja nastąpi po odzyskaniu połączenia.",
   "share_with_client": "Udostępnij w panelu klienta",
   "unshare_with_client": "Cofnij udostępnienie",
   "share_with_client_desc": "Klient zobaczy tę pozycję w swoim panelu",

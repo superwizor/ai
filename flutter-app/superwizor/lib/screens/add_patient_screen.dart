@@ -369,6 +369,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                         ? t.addPatient_duplicate_header
                         : null,
                     autofocus: true,
+                    maxLength: 50,
                     focusNode: _firstNameFocus,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) => _lastNameFocus.requestFocus(),
@@ -380,6 +381,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                     controller: _lastNameController,
                     label: t.addPatient_last_name_label,
                     errorText: _duplicateError ? '' : null,
+                    maxLength: 50,
                     focusNode: _lastNameFocus,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) {

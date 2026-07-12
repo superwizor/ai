@@ -424,6 +424,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               height: 1.2,
                             ),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         Text(

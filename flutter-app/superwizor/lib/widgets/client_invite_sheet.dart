@@ -13,6 +13,7 @@ import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/services_provider.dart';
 import '../theme/euphire_theme.dart';
 
 /// Live invite status for a kartoteka. autoDispose so re-opening the
@@ -74,6 +75,14 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
       setState(() => _error = l.invite_client_email_missing);
       return;
     }
+
+    final currentUserEmail = ref.read(firebaseAuthProvider).currentUser?.email;
+    if (currentUserEmail != null &&
+        email.toLowerCase() == currentUserEmail.toLowerCase()) {
+      setState(() => _error = l.invite_client_self_email);
+      return;
+    }
+
     setState(() {
       _sending = true;
       _error = null;

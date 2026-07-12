@@ -53,7 +53,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     cycle: "MONTHLY",
     priceGross: 149.0,           // brutto
     priceIntroGross: 99.0,
-    couponCode: "ROWNOWAGA20",
+    couponCode: "ROWNOWAGA",
     currencyCode: "PLN",
     tokensPerPeriod: 30,
     licensesLimit: 1,
@@ -66,6 +66,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     cycle: "ANNUAL",
     priceGross: 1490.0,          // brutto
     priceIntroGross: 990.0,
+    couponCode: "ROWNOWAGA_ROK",
     currencyCode: "PLN",
     tokensPerPeriod: 360,
     licensesLimit: 1,
@@ -78,7 +79,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     cycle: "MONTHLY",
     priceGross: 299.0,           // brutto
     priceIntroGross: 199.0,
-    couponCode: "ROZKWIT30",
+    couponCode: "ROZKWIT",
     currencyCode: "PLN",
     tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,
@@ -91,6 +92,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     cycle: "ANNUAL",
     priceGross: 2990.0,          // brutto
     priceIntroGross: 1990.0,
+    couponCode: "ROZKWIT_ROK",
     currencyCode: "PLN",
     tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,
