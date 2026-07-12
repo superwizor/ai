@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "Superwizor AI - Model Danych i Data Flow"
+description: "Poniżej znajduje się oficjalny model relacyjny (ERD) oraz definicje struktur bazodanowych w aplikacji Superwizor AI. Baza danych docelowa to Cloud SQL Postgr..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_02_data_model.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # Superwizor AI - Model Danych i Data Flow
 
 Poniżej znajduje się oficjalny model relacyjny (ERD) oraz definicje struktur bazodanowych w aplikacji Superwizor AI. Baza danych docelowa to Cloud SQL PostgreSQL 16.

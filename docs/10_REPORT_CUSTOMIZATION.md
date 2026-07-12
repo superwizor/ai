@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "10_REPORT_CUSTOMIZATION"
+description: "---"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/10_REPORT_CUSTOMIZATION.md
+tags: []
+timestamp: 2026-05-18T11:40:11+02:00
+---
+
 # 10_REPORT_CUSTOMIZATION
 
 > Dokument projektowy — personalizacja raportów per terapeuta + system

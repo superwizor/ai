@@ -80,10 +80,11 @@ class MainActivity : FlutterFragmentActivity() {
                     val status = call.argument<String>("status") ?: "recording"
                     ActiveSessionWidgetProvider.elapsedSeconds =
                         call.argument<Int>("elapsedSeconds") ?: 0
-                    ActiveSessionWidgetProvider.isPaused = status == "paused"
+                    ActiveSessionWidgetProvider.isPaused = status == "paused" || status == "interrupted"
                     ActiveSessionWidgetProvider.statusText = when (status) {
                         "recording" -> "Sesja w toku"
                         "paused" -> "Pauza"
+                        "interrupted" -> "Wstrzymane (połączenie)"
                         "uploading" -> "Wgrywanie nagrania..."
                         "analyzing" -> "Analizowanie sesji..."
                         "reportReady" -> "Nowy raport czeka w kartotece"

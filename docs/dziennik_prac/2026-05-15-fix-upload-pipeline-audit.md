@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Sesja: Fix Upload Pipeline + Audyt Architektoniczny + Lokalizacja UX"
+description: "Data: 2026-05-15 Cel sesji: Naprawa krytycznego buga PathNotFoundException przy wysyłce nagrań do analizy AI + głęboki audyt architektoniczny pipeline'u nagr..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-15-fix-upload-pipeline-audit.md
+tags: [dziennik-prac, upload, pipeline]
+timestamp: 2026-05-15T22:46:26+02:00
+---
+
 # Sesja: Fix Upload Pipeline + Audyt Architektoniczny + Lokalizacja UX
 
 **Data:** 2026-05-15

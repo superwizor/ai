@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Zmiany EUPHIRE – 2026-05-13: UI Ekranu Pacjentów & Wybór Języka"
+description: "2. Wybór języka raportu AI (addpatientmodal.dart & patientprovider.dart): - Dodano pole do definiowania języka (pl-PL, en-US, de-DE, es-ES) podczas tworzenia..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-13-ui-polishing-patients-screen.md
+tags: [dziennik-prac]
+timestamp: 2026-05-13T17:35:02+02:00
+---
+
 # Zmiany EUPHIRE – 2026-05-13: UI Ekranu Pacjentów & Wybór Języka
 
 ## Zadania zrealizowane

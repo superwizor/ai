@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do budowania i wysylania aplikacji do Google Play (Android)
+exec "$(dirname "$0")/10_wyslij_googleplay.sh" "$@"

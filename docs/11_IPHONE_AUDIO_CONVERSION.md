@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "11 — iPhone audio conversion: M4A → FLAC pipeline"
+description: "Status: implemented (2026-05-20) on feat/iphone-audio-upload. Pending: manual iOS-device smoke test + staging deploy + E2E run."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/11_IPHONE_AUDIO_CONVERSION.md
+tags: [pipeline]
+timestamp: 2026-05-20T16:19:38+02:00
+---
+
 # 11 — iPhone audio conversion: M4A → FLAC pipeline
 
 **Status:** implemented (2026-05-20) on `feat/iphone-audio-upload`.

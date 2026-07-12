@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "️ SuperWizor AI — Data Model v4.3"
+description: "Version: 4.3 (English, Stripe-ready, pgvector RAG, HiTOP closed ontology, Report Feedback domain, Invoicing extracted to external system) Database: PostgreSQ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/03_DATA_MODEL.md
+tags: []
+timestamp: 2026-05-27T14:25:11+02:00
+---
+
 # 🗄️ SuperWizor AI — Data Model v4.3
 
 **Version:** 4.3 (English, Stripe-ready, pgvector RAG, HiTOP closed ontology, Report Feedback domain, **Invoicing extracted to external system**) **Database:** PostgreSQL 16 \+ pgvector 0.7+ on Cloud SQL (`europe-central2`) **Language:** Go 1.23 (sqlc-compatible structs) **Status:** Single source of truth for the relational model. Replaces the ER diagram from `01_Architektura` (Konstytucja v3.0, section 5).

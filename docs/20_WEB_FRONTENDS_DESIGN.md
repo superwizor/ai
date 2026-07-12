@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "20. Web frontends — design, structure, configuration, security"
+description: "┌─────────────────────────────────────────────────────────────────────┐ │ Browser │ │ ┌───────────────────────────┐ ┌───────────────────────────┐ │ │ │ super..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/20_WEB_FRONTENDS_DESIGN.md
+tags: [security]
+timestamp: 2026-05-29T15:10:20+02:00
+---
+
 # 20. Web frontends — design, structure, configuration, security
 
 > Status: living document, last revised 2026-05-29.

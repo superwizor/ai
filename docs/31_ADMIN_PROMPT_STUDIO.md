@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "31 — Admin Prompt Studio (edit modality prompts to fine-tune reports)"
+description: "Status: DESIGNED (2026-06-10) — not implemented Surfaces: marketing-site /admin/prompts (new screen) + clinical-svc (3 new admin RPCs + 1 migration) Pipeline..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/31_ADMIN_PROMPT_STUDIO.md
+tags: []
+timestamp: 2026-06-10T20:40:20+02:00
+---
+
 # 31 — Admin Prompt Studio (edit modality prompts to fine-tune reports)
 
 **Status:** DESIGNED (2026-06-10) — not implemented

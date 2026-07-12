@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "30. Pokrycie Testowe E2E — Audyt i Wyniki"
+description: "Dokument opisuje pełną strategię testów E2E oraz wyniki audytu przeprowadzonego w ramach sesji „Łączymy klocki\"."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/30_E2E_TEST_COVERAGE.md
+tags: []
+timestamp: 2026-06-09T00:28:09+02:00
+---
+
 # 30. Pokrycie Testowe E2E — Audyt i Wyniki
 
 Dokument opisuje pełną strategię testów E2E oraz wyniki audytu przeprowadzonego w ramach sesji „Łączymy klocki".

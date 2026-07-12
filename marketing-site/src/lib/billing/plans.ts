@@ -1,15 +1,15 @@
 // Public plan catalog for the marketing pricing page.
 //
-// PRICING DECISION (2026-06-08, Maciek+Marcin):
+// PRICING DECISION (2026-07-12, Maciek+Marcin — LIVE):
 //   Trial:      5 sessions / 30 days, free, no card
-//   Równowaga:  179 zł BRUTTO /mo, 30 sessions. Coupon ROWNOWAGA20 = -20% = ~143 zł
+//   Równowaga:  149 zł BRUTTO /mo, 30 sessions. Coupon ROWNOWAGA20 = -20% = ~119 zł
 //   Rozkwit:    299 zł BRUTTO /mo, 90 sessions. Coupon ROZKWIT30  = -30% = ~209 zł
 //   Prices are BRUTTO (incl. 23% VAT). Stripe Tax handles the split.
 //
 // Source of truth: superwizor-backend/migrations/000029_billing_phase3_seed_plans.up.sql
 // Drift check: when you bump prices here, bump the migration in the same PR.
 
-export type PlanTier = "TRIAL" | "SOLO" | "PRO" | "CLINIC";
+export type PlanTier = "TRIAL" | "SOLO" | "PRO";
 export type BillingCycle = "MONTHLY" | "ANNUAL";
 
 export type PlanRow = {
@@ -25,9 +25,9 @@ export type PlanRow = {
   tokensPerPeriod: number;
   licensesLimit: number;
   hasB2BDashboard: boolean;
-  /** Stripe Price ID (sandbox). null = no self-serve checkout. */
+  /** Stripe Price ID (live). null = no self-serve checkout. */
   stripePriceId: string | null;
-  /** Stripe Payment Link URL (sandbox). null = no self-serve checkout. */
+  /** Stripe Payment Link URL. null = no self-serve checkout. */
   stripePaymentLink: string | null;
 };
 
@@ -58,7 +58,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 30,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TgAk2E5jzWcAIgeQ572wpkE",  // Równowaga monthly 179 PLN brutto
+    stripePriceId: "price_1TsUvXEA7Lw46kANXxzZZwTs",  // Równowaga monthly 149 PLN brutto (LIVE)
     stripePaymentLink: null,  // Stripe Checkout via backend
   },
   {
@@ -70,7 +70,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 360,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TgAlxE5jzWcAIgedH5FM8No",  // Równowaga annual 1790 PLN brutto
+    stripePriceId: "price_1TsUvlEA7Lw46kANGuLjnoeD",  // Równowaga annual 1490 PLN brutto (LIVE)
     stripePaymentLink: null,
   },
   {
@@ -83,7 +83,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TgAnSE5jzWcAIgeshZ6TqG8",  // Rozkwit monthly 299 PLN brutto
+    stripePriceId: "price_1TsUwUEA7Lw46kANHgjOrNRy",  // Rozkwit monthly 299 PLN brutto (LIVE)
     stripePaymentLink: null,
   },
   {
@@ -95,31 +95,10 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TgAqVE5jzWcAIgeOh1veVjP",  // Rozkwit annual 2990 PLN brutto
+    stripePriceId: "price_1TsUwkEA7Lw46kAN76gYZGIQ",  // Rozkwit annual 2990 PLN brutto (LIVE)
     stripePaymentLink: null,
   },
-  {
-    tier: "CLINIC",
-    cycle: "MONTHLY",
-    priceGross: 999.0,
-    currencyCode: "PLN",
-    tokensPerPeriod: 150,
-    licensesLimit: 5,
-    hasB2BDashboard: true,
-    stripePriceId: null,
-    stripePaymentLink: null,
-  },
-  {
-    tier: "CLINIC",
-    cycle: "ANNUAL",
-    priceGross: 9990.0,
-    currencyCode: "PLN",
-    tokensPerPeriod: 1800,
-    licensesLimit: 5,
-    hasB2BDashboard: true,
-    stripePriceId: null,
-    stripePaymentLink: null,
-  },
+  // CLINIC tier removed (2026-07-12) — not in Marcin's pricing.
 ];
 
 export async function getPlanCatalog(): Promise<ReadonlyArray<PlanRow>> {

@@ -392,6 +392,20 @@ class RecordingService {
         _foldSegment();
         _hadInterruption = true;
         _setState(RecordingState.interrupted);
+        return;
+      }
+      // If the native recorder is neither recording nor paused, it has
+      // stopped entirely (OS kill, plugin crash). Dart still thinks we're
+      // recording → zombie timer. Mark as error so the UI reacts.
+      final recording = await _recorder.isRecording();
+      if (!recording) {
+        debugPrint('[recording] reconcile: native stopped while Dart thought '
+            'recording — marking error (zombie timer)');
+        _foldSegment();
+        _ticker?.cancel();
+        _ticker = null;
+        unawaited(RecordingForegroundService.stop());
+        _setState(RecordingState.error);
       }
     } catch (e) {
       debugPrint('[recording] reconcile failed: $e');

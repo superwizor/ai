@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "11. Runbook — \"Wystąpił nieznany błąd\" on browser → backend calls (public Cloud Run invoker drift)"
+description: "Audience: any agent (or human) touching the web-app (marketing-site/), billing-svc, or staging/prod Terraform. Severity when it happens: every browser→backen..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/11_web_deploy_invoker_drift.md
+tags: [agents]
+timestamp: 2026-06-05T19:46:28+02:00
+---
+
 # 11. Runbook — "Wystąpił nieznany błąd" on browser → backend calls (public Cloud Run invoker drift)
 
 **Audience:** any agent (or human) touching the web-app (`marketing-site/`),

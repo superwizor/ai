@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "Dostęp do Projektu: Superwizor AI"
+description: "Wszystkie kluczowe konta oraz infrastruktura opierają się na dedykowanym adresie e-mail: E-mail głównego konta (Admin): kontakt@superwizor.ai Domena główna: ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_00_project_access_links.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # Dostęp do Projektu: Superwizor AI
 
 Wszystkie kluczowe konta oraz infrastruktura opierają się na dedykowanym adresie e-mail:

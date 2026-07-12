@@ -49,7 +49,7 @@ class LiveActivityManager {
                                     details: nil))
                 return
             }
-            let isPaused = status == "paused"
+            let isPaused = status == "paused" || status == "interrupted"
             let statusText = localizedStatus(status)
             let phase = processingPhase(status)
             update(statusText: statusText, isPaused: isPaused, elapsedSeconds: elapsed, processingPhase: phase)
@@ -173,6 +173,7 @@ class LiveActivityManager {
         switch status {
         case "recording": return "Sesja w toku"
         case "paused":    return "Pauza"
+        case "interrupted": return "Wstrzymane (połączenie)"
         case "uploading": return "Przesyłamy nagranie…"
         case "analyzing": return "Pracujemy nad raportem"
         case "reportReady": return "Nowy raport czeka w kartotece"

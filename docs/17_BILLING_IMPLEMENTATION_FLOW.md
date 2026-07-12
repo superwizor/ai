@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "17. Billing — End-to-End Implementation Flow"
+description: "Version: 2.0 (2026-05-27, post Phase C refactor) Status: Current live behavior on staging. Snapshot of the deployed billing pipeline. Related: 16BILLINGSERVI..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/17_BILLING_IMPLEMENTATION_FLOW.md
+tags: [billing]
+timestamp: 2026-06-04T23:32:52+02:00
+---
+
 # 17. Billing — End-to-End Implementation Flow
 
 **Version:** 2.0 (2026-05-27, post Phase C refactor)

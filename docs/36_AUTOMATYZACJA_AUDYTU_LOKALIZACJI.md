@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "36. Automatyzacja Audytu Lokalizacji i Zapobieganie Hardkodowaniu"
+description: "Niniejszy dokument opisuje metodyki, narzędzia oraz dobre praktyki wypracowane w celu automatycznego wykrywania, klasyfikacji i eliminowania zahardkodowanych..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/36_AUTOMATYZACJA_AUDYTU_LOKALIZACJI.md
+tags: []
+timestamp: 2026-06-25T01:29:00+02:00
+---
+
 # 36. Automatyzacja Audytu Lokalizacji i Zapobieganie Hardkodowaniu
 
 Niniejszy dokument opisuje metodyki, narzędzia oraz dobre praktyki wypracowane w celu automatycznego wykrywania, klasyfikacji i eliminowania zahardkodowanych tekstów interfejsu użytkownika (UI) w aplikacji Flutter (Superwizor AI). Dokument orientuje również przyszłe agenty kodujące (LLM) w zakresie bezbłędnej lokalizacji kodu.

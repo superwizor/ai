@@ -104,8 +104,8 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     nurtEn: "integrative approach",
   },
   {
-    quote: "99 zł miesięcznie za 30 sesji to kwota zupełnie bezbolesna, chętnie zapłacę nawet przy sporadycznym użyciu.",
-    quoteEn: "99 PLN per month for 30 sessions is completely painless, I would gladly pay even for occasional use.",
+    quote: "149 zł miesięcznie za 30 sesji to kwota zupełnie bezbolesna, chętnie zapłacę nawet przy sporadycznym użyciu.",
+    quoteEn: "149 PLN per month for 30 sessions is completely painless, I would gladly pay even for occasional use.",
     author: "Marta",
     role: "psychoterapeutka",
     roleEn: "psychotherapist",

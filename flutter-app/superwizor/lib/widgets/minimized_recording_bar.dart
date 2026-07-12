@@ -178,7 +178,9 @@ class _MinimizedRecordingBarWrapperState
                           Text(
                             _state == RecordingState.paused
                                 ? t.minimized_recording_paused
-                                : t.minimized_recording_active,
+                                : _state == RecordingState.interrupted
+                                    ? t.minimized_recording_interrupted
+                                    : t.minimized_recording_active,
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 11,

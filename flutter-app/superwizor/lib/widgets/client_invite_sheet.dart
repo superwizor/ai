@@ -248,11 +248,20 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
                 color: EuphireColors.frostWhite,
               ),
               decoration: InputDecoration(
+                isDense: true,
                 labelText: l.invite_client_email_label,
                 labelStyle: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 14,
                   color: EuphireColors.mist.withValues(alpha: 0.7),
+                  height: 1.1,
+                ),
+                floatingLabelStyle: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: EuphireColors.ember.withValues(alpha: 0.9),
+                  height: 1.1,
                 ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.08),
@@ -274,6 +283,10 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
                     color: EuphireColors.ember,
                     width: 1.5,
                   ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
             ),

@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Sesja: Settings UI Polish — Labirynt Premium Standards"
+description: "Data: 2026-05-13 Cel sesji: Finalizacja refaktoru ekranu Ustawień (MenuScreen) do standardu Labirynt Premium — kompletny design system z białymi togglemi, pi..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-13-settings-ui-polish-labirynt.md
+tags: [dziennik-prac]
+timestamp: 2026-05-13T15:24:48+02:00
+---
+
 # Sesja: Settings UI Polish — Labirynt Premium Standards
 
 **Data:** 2026-05-13

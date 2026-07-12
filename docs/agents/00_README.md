@@ -1,3 +1,12 @@
+---
+type: Guide Index
+title: "Agent Context — SuperWizor AI"
+description: "Purpose: focused per-area context files for coding agents iterating on this codebase. Each file is designed to fit a single agent's context window and be eno..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/00_README.md
+tags: [agents]
+timestamp: 2026-06-05T21:15:46+02:00
+---
+
 # Agent Context — SuperWizor AI
 
 **Purpose:** focused per-area context files for coding agents iterating on this codebase. Each file is designed to fit a single agent's context window and be enough to make safe changes in that area without re-reading the full architecture docs.

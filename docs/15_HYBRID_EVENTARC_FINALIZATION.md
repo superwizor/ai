@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "15 — Hybrid event-driven ingestion finalization (Option F)"
+description: "Status: ✅ shipped 2026-05-25 on feat/refactor-stt-architecture. Backend + Flutter + terraform + e2e all landed in the same change. CompleteAudioUpload and Co..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/15_HYBRID_EVENTARC_FINALIZATION.md
+tags: [ingestion]
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # 15 — Hybrid event-driven ingestion finalization (Option F)
 
 **Status:** ✅ **shipped 2026-05-25** on

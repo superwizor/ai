@@ -506,7 +506,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               );
             case RecordingState.interrupted:
               la.update(
-                status: LiveActivityStatus.paused,
+                status: LiveActivityStatus.interrupted,
                 elapsedSeconds: elapsed,
               );
             default:
@@ -660,6 +660,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         final dur = _service.currentDuration.inSeconds;
         await _service.cancel();
         await _deleteManifest();
+        // Dismiss native widget — mirrors _discardAndPop().
+        if (ref.read(appSettingsProvider).liveActivitiesEnabled ||
+            Platform.isAndroid) {
+          ref.read(liveActivityServiceProvider).stop();
+        }
         ref
             .read(analyticsCollectorProvider)
             .track(

@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "21 — Session Status Propagation & Failure Semantics"
+description: "Status: Implemented + deployed on feat/session-status-propagation (2026-05-30/31). Faza-4 full consolidation landed (2026-05-31): all four former per-topic n..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/21_SESSION_STATUS_PROPAGATION_AND_FAILURE_SEMANTICS.md
+tags: []
+timestamp: 2026-05-31T11:57:30+02:00
+---
+
 # 21 — Session Status Propagation & Failure Semantics
 
 **Status:** Implemented + deployed on `feat/session-status-propagation`

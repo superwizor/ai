@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "05_UI_UX_DESIGN_SYSTEM.md - EUPHIRE DESIGN SYSTEM & QUALITY GUARD"
+description: "WERSJA: 2.0ClinicalCrisis STATUS: DOKUMENT WYKONAWCZY (UI/UX & CODE QUALITY). Każdy wygenerowany komponent UI oraz kod backendowy/frontendowy MUSI bezwzględn..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_05_ui_ux_design_system.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # 05_UI_UX_DESIGN_SYSTEM.md - EUPHIRE DESIGN SYSTEM & QUALITY GUARD
 
 **WERSJA:** 2.0_Clinical_Crisis

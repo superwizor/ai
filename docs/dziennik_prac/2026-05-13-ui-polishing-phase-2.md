@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Zmiany EUPHIRE – 2026-05-13: Wyczesane UI Faza 2 z 3 (Stabilne)"
+description: "3. Naprawa Overflow Nazwy Użytkownika (menuscreen.dart): - Zabezpieczono ekran Ustawień (MenuScreen) przed błędami \"Right Overflowed\" przy długim imieniu uży..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-13-ui-polishing-phase-2.md
+tags: [dziennik-prac]
+timestamp: 2026-05-13T18:13:23+02:00
+---
+
 # Zmiany EUPHIRE – 2026-05-13: Wyczesane UI Faza 2 z 3 (Stabilne)
 
 ## Zadania zrealizowane

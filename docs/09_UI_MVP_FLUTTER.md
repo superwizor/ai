@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "Faza UI — Superwizor AI Flutter MVP"
+description: "---"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/09_UI_MVP_FLUTTER.md
+tags: []
+timestamp: 2026-05-10T23:14:54+02:00
+---
+
 # 📱 Faza UI — Superwizor AI Flutter MVP
 
 > **Cel:** Doprowadzić aplikację Flutter do stanu MVP zdolnego przeprowadzić terapeutę przez pełny flow: login → setup → nagranie sesji → upload → live status → transkrypcja + raport. Backend (Fazy 0-3) jest gotowy i wystawia gRPC + Firestore mirror.

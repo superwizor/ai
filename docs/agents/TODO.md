@@ -1,3 +1,12 @@
+---
+type: Project Backlog
+title: "Backend TODO"
+description: "Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, where the bug actually is, and how big the fix is. Keep entries terse. Promot..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/TODO.md
+tags: [agents]
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # Backend TODO
 
 Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, where the bug actually is, and how big the fix is. Keep entries terse. Promote to a real ticket / branch when someone picks it up; remove from this file when shipped.

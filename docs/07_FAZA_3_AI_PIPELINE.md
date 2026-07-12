@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "07_FAZA_3_AI_PIPELINE"
+description: "Ten dokument opisuje szczegółowy, techniczny plan dla Fazy 2.5 → 3: \"Deployment i Uruchomienie Potoku AI (Cloud Functions) oraz poprawki stabilności i bezpie..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/07_FAZA_3_AI_PIPELINE.md
+tags: [pipeline]
+timestamp: 2026-05-19T16:14:12+02:00
+---
+
 # 07_FAZA_3_AI_PIPELINE
 
 Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Deployment i Uruchomienie Potoku AI (Cloud Functions) oraz poprawki stabilności i bezpieczeństwa".

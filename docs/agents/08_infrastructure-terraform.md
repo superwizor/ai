@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "Infrastructure / Terraform"
+description: "Provision and own the GCP topology: VPC, Cloud SQL, KMS, Pub/Sub, Cloud Storage, Cloud Functions Gen2 (workers), service accounts and IAM, Workload Identity ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/08_infrastructure-terraform.md
+tags: [agents, terraform]
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # Infrastructure / Terraform
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

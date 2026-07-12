@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "Design: Telemetry Pipeline & Analytics Architecture"
+description: "Status: approved & implemented. Replaces: Single-database (PostgreSQL only) analytics design."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/26_TELEMETRY_PIPELINE_AND_ANALYTICS_DESIGN.md
+tags: [pipeline]
+timestamp: 2026-06-07T03:19:20+02:00
+---
+
 # Design: Telemetry Pipeline & Analytics Architecture
 
 **Status:** approved & implemented.

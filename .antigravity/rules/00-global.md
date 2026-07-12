@@ -41,6 +41,16 @@ You are working on **SuperWizor AI**, a clinical session co-pilot for psychother
 - **`pkg/cryptobox`** for envelope encryption — never call KMS directly.
 - **`defer func() { _ = tx.Rollback(ctx) }()`** — `errcheck` blocks the bare `defer tx.Rollback(ctx)`.
 
+## Documentation Conventions (OKF)
+
+Any new or modified markdown document (`*.md`) in the `docs/` directory (or its subdirectories like `docs/agents/`) must conform to the **Open Knowledge Format (OKF) v0.1** specification by including a YAML frontmatter block at the top with:
+- `type`: Document classification (e.g. `Backend Service Specification`, `Global Context`, `Compliance Specification`, `Developer Worklog`, `Technical Design`, `Runbook`, `System Documentation`).
+- `title`: Plain-text title matching the main heading (omitting markdown symbols or leading emojis).
+- `description`: 1-2 sentence summary of the document (max 160 chars).
+- `resource`: Direct local file URI (e.g. `file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/...`).
+- `tags`: List of lowercase, alphanumeric tags.
+- `timestamp`: ISO-8601 creation/modification timestamp (use git commit time if available).
+
 ## When making changes
 
 - **Don't break the contract.** Changing a `.proto` field number, removing a gRPC method, or renaming a DB column requires coordinated client/migration updates.

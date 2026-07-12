@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "Plan: test every editable field's round-trip to the backend"
+description: "Two recent bugs were the same shape: an editable value saved server-side but the client read-back mapping dropped it, so the field reverted on re-open."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/23_EDIT_FIELD_MAPPING_TEST_PLAN.md
+tags: []
+timestamp: 2026-06-02T15:17:46+02:00
+---
+
 # Plan: test every editable field's round-trip to the backend
 
 ## Why

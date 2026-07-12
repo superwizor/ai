@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "clinical-svc"
+description: "The core of the product. Owns patient files, sessions, modalities, therapist reports (read-only from client), and the speaker-label rebuild flow. Most Flutte..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/02_clinical-svc.md
+tags: [svc, agents, clinical]
+timestamp: 2026-05-22T11:41:26+02:00
+---
+
 # clinical-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

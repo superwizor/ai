@@ -1,3 +1,12 @@
+---
+type: Global Context
+title: "Global Context — SuperWizor AI"
+description: "A clinical session co-pilot for psychotherapists in Poland. A therapist records a session in the Flutter mobile app; audio is transcribed (Chirp 3), an LLM (..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/00_GLOBAL_CONTEXT.md
+tags: [agents]
+timestamp: 2026-05-27T14:25:11+02:00
+---
+
 # Global Context — SuperWizor AI
 
 > Read this **before** any per-area file. Everything below is project-wide invariant and applies to every service, the Flutter app, the infrastructure, and CI.

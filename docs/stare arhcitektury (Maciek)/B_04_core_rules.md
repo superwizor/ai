@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "Superwizor AI - Konstytucja Projektu i Kodeks Inżynieryjny (Core Rules)"
+description: "WERSJA: 3.0 STATUS: DOKUMENT NADRZĘDNY. Żadna linijka kodu, zmiana architektoniczna czy prompt AI nie może stać w sprzeczności z tym plikiem."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_04_core_rules.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # Superwizor AI - Konstytucja Projektu i Kodeks Inżynieryjny (Core Rules)
 
 **WERSJA:** 3.0

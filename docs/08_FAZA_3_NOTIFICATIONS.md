@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "Faza 3 — Notifications & Mobile Sync (Tygodnie 8-10)"
+description: "---"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/08_FAZA_3_NOTIFICATIONS.md
+tags: []
+timestamp: 2026-05-08T10:07:36+02:00
+---
+
 # 🔔 Faza 3 — Notifications & Mobile Sync (Tygodnie 8-10)
 
 > **Cel:** Doprowadzić `notification-svc` z dzisiejszego stubu (`go.mod` + 28-bajtowy `main.go`) do działającego serwisu, który (a) odbiera Pub/Sub eventy z pipeline'u AI, (b) wysyła FCM push do terapeuty, (c) lustruje status sesji do Firestore tak, by aplikacja Flutter dostawała live update bez pollowania.

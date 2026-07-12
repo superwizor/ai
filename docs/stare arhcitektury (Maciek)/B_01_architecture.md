@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "Superwizor AI - Architektura Techniczna i Decyzje"
+description: "(Dokument wygenerowany przez AI na podstawie wytycznych użytkownika)."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_01_architecture.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # Superwizor AI - Architektura Techniczna i Decyzje
 Wersja: 1.0 Stos: Google Cloud Platform + Go 1.23 + Cloud Run + PostgreSQL 16 + pgvector Region: europe-central2 (Warszawa)
 Powiązane dokumenty: 01_Architektura (Konstytucja Projektu v3.0)

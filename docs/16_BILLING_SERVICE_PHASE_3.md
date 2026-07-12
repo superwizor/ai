@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "16. Billing Service (Faza 3) — Pełny Design"
+description: "Wersja: 1.0 (2026-05-25); częściowo zastąpiona przez Phase C refactor (2026-05-27) Status: Canonical design dla rdzenia (DB schema, gRPC contract, quota arit..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/16_BILLING_SERVICE_PHASE_3.md
+tags: [service, billing]
+timestamp: 2026-05-27T14:25:11+02:00
+---
+
 # 16. Billing Service (Faza 3) — Pełny Design
 
 **Wersja:** 1.0 (2026-05-25); częściowo zastąpiona przez Phase C refactor (2026-05-27)

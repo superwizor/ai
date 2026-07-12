@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "Design: Resumable audio upload (client ↔ GCS)"
+description: "Status: proposed. Replaces the single-shot PUT upload with a GCS resumable upload so large recordings survive flaky networks and the object is finalized exac..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/25_RESUMABLE_UPLOAD_DESIGN.md
+tags: [upload]
+timestamp: 2026-06-04T13:26:56+02:00
+---
+
 # Design: Resumable audio upload (client ↔ GCS)
 
 Status: proposed. Replaces the single-shot PUT upload with a GCS **resumable

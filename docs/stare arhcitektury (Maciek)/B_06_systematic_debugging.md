@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "06_SYSTEMATIC_DEBUGGING.md"
+description: "WERSJA: 1.0Superwizor STATUS: DOKUMENT PROCESOWY (DEBUGOWANIE)"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_06_systematic_debugging.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # 06_SYSTEMATIC_DEBUGGING.md
 
 **WERSJA:** 1.0_Superwizor

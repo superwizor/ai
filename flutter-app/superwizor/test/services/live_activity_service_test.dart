@@ -165,4 +165,75 @@ void main() {
       elapsedSeconds: 0,
     );
   });
+
+  // ── Regression: interrupted status must be distinct from paused ──
+  // Bug: the `interrupted` enum value didn't exist; OS interruptions
+  // were sent as `paused`, making native widgets show "Pauza" instead
+  // of "Wstrzymane (połączenie)".
+
+  test('update sends interrupted status (distinct from paused)', () async {
+    await service.update(
+      status: LiveActivityStatus.interrupted,
+      elapsedSeconds: 180,
+    );
+
+    expect(log, hasLength(1));
+    expect(log.first.method, 'update');
+    expect(log.first.arguments, {
+      'status': 'interrupted',
+      'elapsedSeconds': 180,
+    });
+  });
+
+  test('interrupted and paused send different status strings', () async {
+    await service.update(
+      status: LiveActivityStatus.paused,
+      elapsedSeconds: 100,
+    );
+    await service.update(
+      status: LiveActivityStatus.interrupted,
+      elapsedSeconds: 100,
+    );
+
+    expect(log[0].arguments['status'], 'paused');
+    expect(log[1].arguments['status'], 'interrupted');
+    expect(log[0].arguments['status'] != log[1].arguments['status'], isTrue,
+        reason: 'Interrupted must be distinct from paused for native widget text');
+  });
+
+  test('full lifecycle including interrupted: start → recording → interrupted → recording → stop',
+      () async {
+    await service.start(patientAlias: 'A.N.', elapsedSeconds: 0);
+    await service.update(
+      status: LiveActivityStatus.recording,
+      elapsedSeconds: 60,
+    );
+    await service.update(
+      status: LiveActivityStatus.interrupted,
+      elapsedSeconds: 60,
+    );
+    await service.update(
+      status: LiveActivityStatus.recording,
+      elapsedSeconds: 120,
+    );
+    await service.update(
+      status: LiveActivityStatus.uploading,
+      elapsedSeconds: 300,
+    );
+    await service.showReportReady(sessionId: 'session-xyz');
+    await service.stop();
+
+    expect(log.map((c) => c.method).toList(), [
+      'start',
+      'update',
+      'update',  // interrupted
+      'update',  // recording resumed
+      'update',  // uploading
+      'reportReady',
+      'stop',
+    ]);
+
+    // Verify the interrupted update sent the right status string.
+    expect(log[2].arguments['status'], 'interrupted');
+  });
 }

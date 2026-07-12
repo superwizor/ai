@@ -1,3 +1,12 @@
+---
+type: Compliance Specification
+title: "Rejestr Czynności Przetwarzania Danych Osobowych (RCP)"
+description: "art. 30 RODO — Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/compliance/02_REJESTR_CZYNNOSCI_PRZETWARZANIA.md
+tags: [compliance]
+timestamp: 2026-06-24T18:11:41+02:00
+---
+
 # Rejestr Czynności Przetwarzania Danych Osobowych (RCP)
 
 **art. 30 RODO — Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679**

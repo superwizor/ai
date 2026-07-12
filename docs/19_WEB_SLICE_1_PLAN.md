@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "Slice 1 — Web App backend foundation: detailed plan"
+description: "Branch: feat/web-app (at 3e820b4) Parent doc: docs/18WEBAPPDESIGN.md v0.2 (R1–R9) Goal: When this slice closes, the backend exposes everything the Next.js ma..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/19_WEB_SLICE_1_PLAN.md
+tags: []
+timestamp: 2026-05-27T22:15:06+02:00
+---
+
 # Slice 1 — Web App backend foundation: detailed plan
 
 **Branch:** `feat/web-app` (at `3e820b4`)

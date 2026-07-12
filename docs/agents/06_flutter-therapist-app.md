@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "Flutter Therapist App"
+description: "Mobile (iOS/Android) and web app for therapists. Records sessions, lists patients/sessions, displays AI-generated reports. Read-only on AI reports (P4 + P5 i..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/06_flutter-therapist-app.md
+tags: [agents]
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # Flutter Therapist App
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

@@ -87,15 +87,25 @@ class HomeScreen extends ConsumerWidget {
                 ),
 
                 Expanded(
-                  child: SingleChildScrollView(
-                    // Web/desktop: cap the content to a centered reading column
-                    // so it doesn't stretch full-width. Self-gating — on phones
-                    // (width < 760) it's a no-op, so the native app is unchanged.
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 760),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  child: RefreshIndicator(
+                    color: EuphireColors.ember,
+                    backgroundColor: EuphireColors.nocturne,
+                    onRefresh: () async {
+                      ref.invalidate(patientsProvider);
+                      try {
+                        await ref.read(patientsProvider.future);
+                      } catch (_) {}
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      // Web/desktop: cap the content to a centered reading column
+                      // so it doesn't stretch full-width. Self-gating — on phones
+                      // (width < 760) it's a no-op, so the native app is unchanged.
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 760),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // ── Greeting: Witaj, [Name] ──────────────────────
                             Padding(
@@ -222,7 +232,8 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
             ),
           ),
         ],
@@ -1982,18 +1993,21 @@ class _GlassField extends StatelessWidget {
         color: EuphireColors.frostWhite,
       ),
       decoration: InputDecoration(
+        isDense: true,
         labelText: label,
         labelStyle: TextStyle(
           fontFamily: 'Montserrat',
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: EuphireColors.mist.withValues(alpha: 0.7),
+          height: 1.1,
         ),
         floatingLabelStyle: TextStyle(
           fontFamily: 'Montserrat',
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: EuphireColors.ember.withValues(alpha: 0.9),
+          height: 1.1,
         ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),

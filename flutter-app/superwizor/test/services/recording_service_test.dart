@@ -80,6 +80,9 @@ class _FakeRecorder extends Fake implements AudioRecorder {
   Future<bool> isPaused() async => nativePaused;
 
   @override
+  Future<bool> isRecording() async => lastPath != null && !nativePaused && stopCalls == 0;
+
+  @override
   Future<Amplitude> getAmplitude() async =>
       Amplitude(current: -20, max: -10);
 
@@ -285,5 +288,53 @@ void main() {
     await service.start('s2');
     expect(service.state, RecordingState.recording);
     expect(service.activeSessionId, 's2');
+  });
+
+  // ── Regression: zombie timer when native recorder dies silently ──
+  // Bug: reconcileWithNative only checked isPaused(), missing the case
+  // where the native recorder stopped entirely (OS kill, plugin crash).
+  // Dart kept showing the timer while nothing was recording.
+
+  test('reconcileWithNative detects dead recorder (not paused, not recording) → error',
+      () async {
+    await service.start('s1');
+    await pump(40);
+
+    // Simulate: native recorder died silently — not paused, not recording.
+    // This happens when the OS kills the recorder or the plugin crashes
+    // without delivering a RecordState.stop event.
+    recorder.nativePaused = false;
+    // Force stopCalls > 0 so isRecording() returns false.
+    recorder.stopCalls = 1;
+
+    await service.reconcileWithNative();
+
+    expect(service.state, RecordingState.error,
+        reason: 'Dead recorder must trigger error, not stay as recording');
+  });
+
+  test('reconcileWithNative does nothing when native recorder is alive',
+      () async {
+    await service.start('s1');
+    await pump(40);
+
+    // Native is alive and recording — reconcile must not change state.
+    recorder.nativePaused = false;
+
+    await service.reconcileWithNative();
+
+    expect(service.state, RecordingState.recording,
+        reason: 'Healthy recorder must stay in recording state');
+  });
+
+  test('cancel() transitions to idle and cleans up', () async {
+    await service.start('s1');
+    await pump(40);
+
+    await service.cancel();
+
+    expect(service.state, RecordingState.idle);
+    expect(service.activeSessionId, isNull);
+    expect(service.activeFilePath, isNull);
   });
 }

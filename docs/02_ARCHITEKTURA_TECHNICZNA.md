@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "️ SUPERWIZOR AI — DOKUMENT ARCHITEKTURY TECHNICZNEJ"
+description: "Wersja: 1.0 Stos: Google Cloud Platform \\+ Go 1.23 \\+ Cloud Run \\+ PostgreSQL 16 \\+ pgvector Region: europe-central2 (Warszawa) — bez wyjątków Powiązane doku..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/02_ARCHITEKTURA_TECHNICZNA.md
+tags: []
+timestamp: 2026-04-30T01:03:55+02:00
+---
+
 # 🏛️ SUPERWIZOR AI — DOKUMENT ARCHITEKTURY TECHNICZNEJ
 
 **Wersja:** 1.0 **Stos:** Google Cloud Platform \+ Go 1.23 \+ Cloud Run \+ PostgreSQL 16 \+ pgvector **Region:** `europe-central2` (Warszawa) — bez wyjątków **Powiązane dokumenty:** `01_Architektura` (Konstytucja Projektu v3.0)

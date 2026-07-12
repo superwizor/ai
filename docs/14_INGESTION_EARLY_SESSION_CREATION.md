@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "14 — Ingestion: early session creation (Option E)"
+description: "Status: issue, not started (2026-05-24). Tracked here. Branch will be feat/ingestion-early-session when picked up."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/14_INGESTION_EARLY_SESSION_CREATION.md
+tags: [ingestion]
+timestamp: 2026-05-24T22:18:03+02:00
+---
+
 # 14 — Ingestion: early session creation (Option E)
 
 **Status:** issue, not started (2026-05-24). Tracked here. Branch

@@ -1,10 +1,10 @@
 ---
-name: kronikarz
-description: Kronikarz projektu — generuje wpis dokumentujący postępy z bieżącej sesji AI (Dziennik Prac). Uruchamiaj pod koniec każdej sesji pracy, aby zapisać kontekst, decyzje architektoniczne i zaktualizować status projektu. Automatyzuje proces tworzenia commitów.
-disable-model-invocation: true
-argument-hint: "[opcjonalny opis sesji]"
-model: claude-3-5-sonnet-20241022
-allowed-tools: Bash(*), Read, Grep, Glob, Edit, Write
+type: System Documentation
+title: "Kronikarz — Agent Dokumentujący (Dziennik Prac)"
+description: "Kronikarz projektu — generuje wpis dokumentujący postępy z bieżącej sesji AI (Dziennik Prac). Uruchamiaj pod koniec każdej sesji pracy, aby zapisać kontekst, decyzje architektoniczne i zaktualizować status projektu. Automatyzuje proces tworzenia commitów."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/kronikarz/SKILL.md
+tags: [kronikarz]
+timestamp: 2026-04-28T18:33:14+02:00
 ---
 
 # Kronikarz — Agent Dokumentujący (Dziennik Prac)

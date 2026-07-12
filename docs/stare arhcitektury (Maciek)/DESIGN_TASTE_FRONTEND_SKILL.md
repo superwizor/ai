@@ -1,6 +1,10 @@
 ---
-name: design-taste-frontend
-description: Senior UI/UX Engineer. Architect digital interfaces overriding default LLM biases. Enforces metric-based rules, strict component architecture, CSS hardware acceleration, and balanced design engineering.
+type: Legacy Architecture
+title: "High-Agency Frontend Skill"
+description: "Senior UI/UX Engineer. Architect digital interfaces overriding default LLM biases. Enforces metric-based rules, strict component architecture, CSS hardware acceleration, and balanced design engineering."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/DESIGN_TASTE_FRONTEND_SKILL.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-06-04T20:37:56+02:00
 ---
 
 # High-Agency Frontend Skill

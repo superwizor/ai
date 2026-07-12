@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Sesja: Waveform Indicator — Dynamic Range + Smooth Pause Transitions"
+description: "Data: 2026-05-16 Cel sesji: Przebudowa wizualizacji audio (waveform) w ekranie nagrywania — poprawa czułości na mowę, eliminacja \"kwadratowego\" efektu, płynn..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-16-waveform-dynamic-range-polish.md
+tags: [dziennik-prac]
+timestamp: 2026-05-16T12:13:02+02:00
+---
+
 # Sesja: Waveform Indicator — Dynamic Range + Smooth Pause Transitions
 
 **Data:** 2026-05-16

@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "28. CRM Relationship Hub — Panel Marcina"
+description: "Dokument opisuje implementację panelu CRM wbudowanego w Admin Dashboard, zaprojektowanego specjalnie pod styl pracy Marcina — relationship buildera, który st..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/28_CRM_RELATIONSHIP_HUB.md
+tags: []
+timestamp: 2026-06-10T20:10:47+02:00
+---
+
 # 28. CRM Relationship Hub — Panel Marcina
 
 Dokument opisuje implementację panelu CRM wbudowanego w Admin Dashboard, zaprojektowanego specjalnie pod styl pracy Marcina — relationship buildera, który stawia na osobisty kontakt 1:1 z terapeutami.

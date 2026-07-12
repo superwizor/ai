@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "billing-svc"
+description: "Quota gateway for the platform. Owns the per-organization token-bucket model (tokensperperiod, tokensused, tokensreserved), the two-phase debit (ReserveCredi..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/03_billing-svc.md
+tags: [svc, billing, agents]
+timestamp: 2026-05-29T15:03:30+02:00
+---
+
 # billing-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

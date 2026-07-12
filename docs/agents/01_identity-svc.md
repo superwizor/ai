@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "identity-svc"
+description: "Validate Firebase ID tokens, manage users/organizations CRUD, and answer permission questions (\"can therapist X read patient file Y?\") for every other backen..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/01_identity-svc.md
+tags: [identity, agents, svc]
+timestamp: 2026-06-30T16:31:47+02:00
+---
+
 # identity-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

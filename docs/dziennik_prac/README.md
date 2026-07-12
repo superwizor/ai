@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Dziennik Prac — Superwizor AI"
+description: "Ten folder zawiera chronologiczny zapis prac wykonanych podczas sesji Pair-Programmingu z AI. Każdy plik dokumentuje kontekst, cele, zmienione pliki, oraz de..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/README.md
+tags: [dziennik-prac]
+timestamp: 2026-06-07T03:19:20+02:00
+---
+
 # Dziennik Prac — Superwizor AI
 
 Ten folder zawiera chronologiczny zapis prac wykonanych podczas sesji Pair-Programmingu z AI. Każdy plik dokumentuje kontekst, cele, zmienione pliki, oraz decyzje architektoniczne i medyczne podjęte w ramach danej sesji.

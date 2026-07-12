@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "27. Integracja ze Stripe — Status Wdrożenia i Prace Przyszłe"
+description: "Dokument podsumowuje wykonane prace nad integracją płatności Stripe w systemie SuperWizor AI (środowisko Staging/Sandbox) oraz definiuje mapę drogową (roadma..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/27_STRIPE_INTEGRATION_AND_FUTURE_WORK.md
+tags: [stripe]
+timestamp: 2026-06-07T03:19:20+02:00
+---
+
 # 27. Integracja ze Stripe — Status Wdrożenia i Prace Przyszłe
 
 Dokument podsumowuje wykonane prace nad integracją płatności Stripe w systemie SuperWizor AI (środowisko Staging/Sandbox) oraz definiuje mapę drogową (roadmap) kolejnych kroków przed wejściem na produkcję.

@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "DevOps / CI/CD"
+description: "The pipeline that takes a git push to main and turns it into a deployed staging environment. Single GitHub Actions workflow, one job, builds 7 Docker images ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/07_devops-cicd.md
+tags: [agents, devops]
+timestamp: 2026-05-19T16:12:12+02:00
+---
+
 # DevOps / CI/CD
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

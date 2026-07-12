@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 enum LiveActivityStatus {
   recording,
   paused,
+  interrupted,
   uploading,
   analyzing,
   reportReady,

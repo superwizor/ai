@@ -1,3 +1,12 @@
+---
+type: Compliance Specification
+title: "Wewnętrzna Polityka Zarządzania Danymi Osobowymi"
+description: "Euphire sp. z o.o. — SuperWizor AI"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/compliance/04_WEWNETRZNA_POLITYKA_ZARZADZANIA_DANYMI.md
+tags: [compliance]
+timestamp: 2026-06-24T18:11:41+02:00
+---
+
 # Wewnętrzna Polityka Zarządzania Danymi Osobowymi
 
 **Euphire sp. z o.o. — SuperWizor AI**

@@ -1,3 +1,12 @@
+---
+type: Compliance Specification
+title: "Polityka Retencji Danych Osobowych — SuperWizor AI"
+description: "Wersja: 1.0 Data wejścia w życie: Odpowiedzialny: Euphire sp. z o.o., ul. Odrzańska 10a/48, Kraków Kontakt: kontakt@superwizor.ai Status: DRAFT — do weryfika..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/compliance/01_POLITYKA_RETENCJI_DANYCH.md
+tags: [compliance]
+timestamp: 2026-06-24T18:11:41+02:00
+---
+
 # Polityka Retencji Danych Osobowych — SuperWizor AI
 
 **Wersja:** 1.0  

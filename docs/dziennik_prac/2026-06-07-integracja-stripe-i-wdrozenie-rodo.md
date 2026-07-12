@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Sesja: Integracja Stripe, Uruchomienie Analityki i Zgodność RODO (Faza P0)"
+description: "Data: 2026-06-07 Cel sesji: Dokończenie integracji systemu płatności Stripe (Sandbox), wdrożenie logiki przejścia między subskrypcjami (dezaktywacja starych)..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-06-07-integracja-stripe-i-wdrozenie-rodo.md
+tags: [rodo, dziennik-prac, stripe]
+timestamp: 2026-06-07T03:19:20+02:00
+---
+
 # Sesja: Integracja Stripe, Uruchomienie Analityki i Zgodność RODO (Faza P0)
 
 **Data:** 2026-06-07  

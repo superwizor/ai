@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "notification-svc"
+description: "Two responsibilities under one Go module:"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/10_notification-svc.md
+tags: [svc, agents, notification]
+timestamp: 2026-05-23T00:20:30+02:00
+---
+
 # notification-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

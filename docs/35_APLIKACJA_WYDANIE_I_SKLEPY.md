@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "35. Wydanie aplikacji w sklepach (App Store & Google Play)"
+description: "Dokument zawiera kompletną konfigurację, teksty marketingowe, dane konta testowego oraz procedury związane z wydaniem aplikacji SuperWizor AI w sklepach mobi..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/35_APLIKACJA_WYDANIE_I_SKLEPY.md
+tags: []
+timestamp: 2026-06-26T18:05:07+02:00
+---
+
 # 35. Wydanie aplikacji w sklepach (App Store & Google Play)
 
 Dokument zawiera kompletną konfigurację, teksty marketingowe, dane konta testowego oraz procedury związane z wydaniem aplikacji SuperWizor AI w sklepach mobilnych.
@@ -302,6 +311,37 @@ Przeprowadzono pełny audyt zgodności z wymaganiami Google Play:
 | Target SDK | ✅ | `targetSdk = 35` w `build.gradle.kts` |
 | App Check / Play Integrity | ⏳ | Nie aktywowane — czeka na rejestrację platformy (ADR w AGENTS.md) |
 | ProGuard / R8 | ✅ | Brak `minifyEnabled`, brak konfliktów refleksji |
+
+---
+
+### 2.12 Automatyzacja wydań z terminala (Google Play API)
+
+Zaimplementowano w pełni zautomatyzowaną wysyłkę paczek `.aab` bezpośrednio na ścieżkę **testów wewnętrznych (internal)** za pomocą autorskiego skryptu Go, który rozmawia bezpośrednio z Google Play Developer API.
+
+#### Uruchamianie
+Wszystko jest zintegrowane w postaci wygodnego skrótu terminalowego:
+```bash
+./KOMENDY/10
+```
+Skrypt ten automatycznie uruchamia `flutter build appbundle --release`, pobiera poświadczenia sesji i wywołuje skrypt pomocniczy w katalogu backendu:
+```bash
+cd superwizor-backend && go run scripts/upload_to_play.go -token $(gcloud auth application-default print-access-token --scopes=https://www.googleapis.com/auth/androidpublisher)
+```
+
+#### Architektura uwierzytelniania (Bezpieczeństwo i Zero Trust)
+Z uwagi na restrykcyjną politykę bezpieczeństwa Google Cloud (zakaz pobierania statycznych kluczy JSON dla kont serwisowych - `constraints/iam.disableServiceAccountKeyCreation`), mechanizm uwierzytelniania opiera się na **podszywaniu się pod konto serwisowe (Service Account Impersonation)** przy użyciu poświadczeń aktywnych w `gcloud` (ADC):
+
+1. **Konto serwisowe:** W GCP utworzono konto `google-play-deployer@superwizor-ai-25ecd.iam.gserviceaccount.com`.
+2. **Uprawnienia w Google Play Console:** Konto to zostało dodane jako użytkownik w konsoli Google Play (**Users and permissions**) z pełnym dostępem do aplikacji `ai.superwizor.superwizor` i rolą **Release manager** (Kierownik wydań).
+3. **Uprawnienia IAM:** Użytkownik deweloperski `kontakt@superwizor.ai` otrzymał rolę `Service Account Token Creator` na projekcie GCP, co pozwala mu na bezpieczne generowanie tokenów w imieniu tego konta serwisowego.
+4. **Konfiguracja lokalna (jednorazowa):**
+   ```bash
+   # Zalogowanie z dostępem do API Google Play:
+   gcloud auth application-default login --scopes=https://www.googleapis.com/auth/androidpublisher,https://www.googleapis.com/auth/cloud-platform
+   
+   # Włączenie podszywania pod konto serwisowe:
+   gcloud config set auth/impersonate_service_account google-play-deployer@superwizor-ai-25ecd.iam.gserviceaccount.com
+   ```
 
 ---
 

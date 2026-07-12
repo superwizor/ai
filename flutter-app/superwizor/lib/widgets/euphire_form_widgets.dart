@@ -54,6 +54,7 @@ class GlassTextField extends StatelessWidget {
         color: EuphireColors.frostWhite,
       ),
       decoration: InputDecoration(
+        isDense: true,
         hintText: hint ?? label,
         hintStyle: TextStyle(
           fontFamily: 'Montserrat',
@@ -67,12 +68,14 @@ class GlassTextField extends StatelessWidget {
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: EuphireColors.mist.withValues(alpha: 0.7),
+          height: 1.1,
         ),
         floatingLabelStyle: TextStyle(
           fontFamily: 'Montserrat',
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: EuphireColors.ember.withValues(alpha: 0.9),
+          height: 1.1,
         ),
         errorText: errorText,
         filled: true,

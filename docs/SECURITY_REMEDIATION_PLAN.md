@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "Security Remediation & Service-Auth Architecture Plan"
+description: "Original: 2026-06-13 (authored on feat/web-app after a full fan-out review). Refreshed: 2026-07-05 — re-verified every finding against the current main by a ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/SECURITY_REMEDIATION_PLAN.md
+tags: [service, security]
+timestamp: 2026-07-05T16:49:53+02:00
+---
+
 # Security Remediation & Service-Auth Architecture Plan
 
 **Original:** 2026-06-13 (authored on `feat/web-app` after a full fan-out review).

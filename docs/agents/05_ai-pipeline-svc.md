@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "ai-pipeline-svc"
+description: "The most critical service. Five workloads under one Go module: 1. stt-worker aka stt-submit (Cloud Functions Gen2) — Pub/Sub-triggered. Submits Chirp 3 Batch..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/05_ai-pipeline-svc.md
+tags: [svc, agents, pipeline]
+timestamp: 2026-06-10T20:20:14+02:00
+---
+
 # ai-pipeline-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

@@ -173,6 +173,8 @@ jobs:
       - name: Build site
         working-directory: marketing-site
         run: pnpm build
+        env:
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_live_51TREGXEA7Lw46kANncQ52Z2vxfDEBYTJf5cU7x6ItJBxENQxuGZwpDe12RHh1IfXR8T6d8cHBJ8oc7wOxhiXxSWmz
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

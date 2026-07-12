@@ -1,3 +1,12 @@
+---
+type: Compliance Specification
+title: "Ocena Skutków dla Ochrony Danych (DPIA)"
+description: "art. 35 RODO — Data Protection Impact Assessment"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/compliance/03_DPIA_OCENA_SKUTKOW.md
+tags: [compliance]
+timestamp: 2026-06-24T18:11:41+02:00
+---
+
 # Ocena Skutków dla Ochrony Danych (DPIA)
 
 **art. 35 RODO — Data Protection Impact Assessment**

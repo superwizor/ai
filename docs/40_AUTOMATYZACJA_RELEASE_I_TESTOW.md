@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "40. Automatyzacja Release i Testów"
+description: "Opis skryptów automatyzujących dystrybucję aplikacji iOS, zarządzanie kontami testerów oraz konfigurację metadanych App Store Connect. Wszystkie operacje wyk..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/40_AUTOMATYZACJA_RELEASE_I_TESTOW.md
+tags: []
+timestamp: 2026-07-07T21:57:06+02:00
+---
+
 # 40. Automatyzacja Release i Testów
 
 Opis skryptów automatyzujących dystrybucję aplikacji iOS, zarządzanie kontami testerów oraz konfigurację metadanych App Store Connect. Wszystkie operacje wykonywane z terminala, bez klikania w panelach webowych.

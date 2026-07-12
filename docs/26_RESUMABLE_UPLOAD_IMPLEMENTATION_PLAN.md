@@ -1,3 +1,12 @@
+---
+type: Technical Design
+title: "26. Implementation Plan — Resumable / Chunked Audio Upload"
+description: "Status: Draft for review. Supersedes/extends: 25RESUMABLEUPLOADDESIGN.md (the vetted design — read it first; this doc is the actionable plan reconciled with ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/26_RESUMABLE_UPLOAD_IMPLEMENTATION_PLAN.md
+tags: [upload]
+timestamp: 2026-06-10T16:41:10+02:00
+---
+
 # 26. Implementation Plan — Resumable / Chunked Audio Upload
 
 **Status:** Draft for review.

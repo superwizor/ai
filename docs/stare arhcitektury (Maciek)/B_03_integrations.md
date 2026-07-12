@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "Superwizor AI - Integracje z Oprogramowaniem Firm Trzecich (Etap 5)"
+description: "Dokument zawiera wytyczne techniczne oraz zbiór komend dla dwóch kluczowych integracji zewnętrznych w systemie Superwizor AI."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_03_integrations.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # Superwizor AI - Integracje z Oprogramowaniem Firm Trzecich (Etap 5)
 
 Dokument zawiera wytyczne techniczne oraz zbiór komend dla dwóch kluczowych integracji zewnętrznych w systemie Superwizor AI.

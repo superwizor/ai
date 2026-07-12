@@ -338,6 +338,12 @@ class EuphireTheme {
         labelStyle: TextStyle(
           fontFamily: 'Merriweather',
           color: EuphireColors.frostWhite.withValues(alpha: 0.6),
+          height: 1.1,
+        ),
+        floatingLabelStyle: TextStyle(
+          fontFamily: 'Montserrat',
+          color: EuphireColors.ember.withValues(alpha: 0.9),
+          height: 1.1,
         ),
         hintStyle: TextStyle(
           fontFamily: 'Montserrat',

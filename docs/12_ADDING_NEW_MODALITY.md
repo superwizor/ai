@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "12 — Adding a new psychotherapy modality"
+description: "Audience: anyone (engineer or prompt-engineer) who wants to add a new therapy modality — its system prompt, the database row that the llm-worker reads at run..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/12_ADDING_NEW_MODALITY.md
+tags: []
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # 12 — Adding a new psychotherapy modality
 
 **Audience:** anyone (engineer or prompt-engineer) who wants to add a new

@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "Uniwersalny / Integracyjny"
+description: "python CATEGORYPROMPTS = { \"Podsumowanie sesji\": \"Cel: Szybki, rzeczowy przegląd sesji. Struktura: 1. Główny problem/temat przewodni sesji (1-2 zdania). 2. D..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/06_Prompty%20do%20raport%C3%B3w.md
+tags: []
+timestamp: 2026-05-04T16:18:10+02:00
+---
+
 # Uniwersalny / Integracyjny
 
 ```python

@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "37 — Korekty: zgodność wzoru zgody z implementacją"
+description: "Źródło: audyt WzorZgodaSesjeTERAPEUTAv0.122026-07-02.docx ↔ kod (2026-07-03). Werdykt: dokument w większości zgodny; 4 istotne rozbieżności — 2 do poprawy w ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/37_KOREKTY_ZGODNOSC_ZGODA_VS_IMPLEMENTACJA.md
+tags: []
+timestamp: 2026-07-02T23:34:01+02:00
+---
+
 # 37 — Korekty: zgodność wzoru zgody z implementacją
 
 Źródło: audyt `Wzor_Zgoda_Sesje_TERAPEUTA_v0.12_2026-07-02.docx` ↔ kod

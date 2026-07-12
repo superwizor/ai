@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "12. Deferred — web file upload (browser \"Wgraj plik z dysku\")"
+description: "Status: Frontend done, backend NOT done → web file upload is non-functional and deferred. The native iOS/Android app is unaffected. Owner: whoever picks up w..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/12_web_file_upload_deferred.md
+tags: [upload, agents]
+timestamp: 2026-06-05T21:15:46+02:00
+---
+
 # 12. Deferred — web file upload (browser "Wgraj plik z dysku")
 
 **Status:** Frontend done, backend NOT done → **web file upload is non-functional and deferred.** The native iOS/Android app is unaffected.

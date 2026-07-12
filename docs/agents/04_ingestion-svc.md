@@ -1,3 +1,12 @@
+---
+type: Backend Service Specification
+title: "ingestion-svc"
+description: "The \"secure upload door\" + the async ingestion finalizer."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/04_ingestion-svc.md
+tags: [svc, ingestion, agents]
+timestamp: 2026-05-25T18:11:17+02:00
+---
+
 # ingestion-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.

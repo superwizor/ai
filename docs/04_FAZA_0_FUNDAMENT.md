@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "️ Faza 0 — Fundament infrastruktury (Tygodnie 1-2)"
+description: "Wersja: 1.0 Status: Implementation guide. Zgodne z architekturą 02ARCHITEKTURATECHNICZNA.md i modelem danych 03DATAMODEL.md v4.3. Owner: DevOps / Tech Lead C..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/04_FAZA_0_FUNDAMENT.md
+tags: []
+timestamp: 2026-04-29T22:35:17+02:00
+---
+
 # 🏗️ Faza 0 — Fundament infrastruktury (Tygodnie 1-2)
 
 **Wersja:** 1.0 

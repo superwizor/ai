@@ -66,9 +66,9 @@ class CacheManager {
   // session lists change after each new session, session details are
   // immutable after report generation but reports themselves can be
   // re-rated.
-  static const _patientsSoftTtl = Duration(hours: 24);
+  static const _patientsSoftTtl = Duration.zero;
   static const _patientsHardTtl = Duration(days: 30);
-  static const _sessionsSoftTtl = Duration(hours: 1);
+  static const _sessionsSoftTtl = Duration(seconds: 10);
   static const _sessionsHardTtl = Duration(days: 30);
   static const _sessionDetailsSoftTtl = Duration(hours: 1);
   static const _sessionDetailsHardTtl = Duration(days: 30);

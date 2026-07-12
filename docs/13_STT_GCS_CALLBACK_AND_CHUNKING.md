@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "13 — STT pipeline: GCS callback + server-side chunking"
+description: "Status: design (2026-05-22). No code yet. Branch will be feat/stt-gcs-callback."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md
+tags: [pipeline]
+timestamp: 2026-05-22T15:40:14+02:00
+---
+
 # 13 — STT pipeline: GCS callback + server-side chunking
 
 **Status:** design (2026-05-22). No code yet. Branch will be

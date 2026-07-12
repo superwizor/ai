@@ -1,3 +1,12 @@
+---
+type: Compliance Specification
+title: "️ Raport z Audytu Prawnego Dokumentacji RODO (Compliance)"
+description: "Audytowany system: SuperWizor AI Data audytu: 24 Czerwca 2026 Audytor: Antigravity (AI w roli eksperta ds. ochrony danych i IT Law)"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/compliance/05_AUDYT_I_WYTYCZNE_DEWELOPERSKIE.md
+tags: [compliance, rodo]
+timestamp: 2026-06-24T18:24:10+02:00
+---
+
 # ⚖️ Raport z Audytu Prawnego Dokumentacji RODO (Compliance)
 
 **Audytowany system:** SuperWizor AI  

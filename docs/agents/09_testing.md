@@ -1,3 +1,12 @@
+---
+type: Agent Context
+title: "Testing — End-to-End Scenarios"
+description: "Verify the system works as a whole, not just per-service. E2E tests exercise the real flow: Flutter-style gRPC call → service → DB → Pub/Sub → worker → DB → ..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/agents/09_testing.md
+tags: [testing, agents]
+timestamp: 2026-05-21T21:29:03+02:00
+---
+
 # Testing — End-to-End Scenarios
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.
@@ -16,10 +25,10 @@ Verify the system works as a **whole**, not just per-service. E2E tests exercise
 | **E2E (full pipeline)** | Audio upload → transcript → report end-to-end | **NOT YET** — to be built |
 | **Manual UI** | Flutter app against staging | iOS simulator + therapist test account |
 
-## Status (2026-05-21)
+## Status (2026-07-06)
 
 - **Go unit tests** exist for: `pkg/cryptobox`, `pkg/transcription/chunker`, `pkg/i18n/speakerlabels`, `cmd/stt-worker` (parser), `identity-svc/internal/adapters/grpc` (server).
-- **Flutter unit tests — 104 tests** (added 2026-05-21 with the local-cache + offline-upload-queue work). Run via `flutter test --timeout 30s` from `flutter-app/superwizor/`. Coverage by module:
+- **Flutter unit tests — 250 tests across 27 files** (updated 2026-07-06). Run via `flutter test --reporter compact` from `flutter-app/superwizor/`. Coverage by module:
   - `test/cache/dto/` — JSON round-trip with field-count guards for every DTO (PatientDto, SessionDto, TranscriptDto, ReportDto, SessionDetailsDto)
   - `test/cache/cache_box_test.dart` — TTL gates, schema-version drop, corrupt entry self-heal, LRU index
   - `test/cache/cache_manager_test.dart` — open/close lifecycle, LRU eviction across boxes, evictPatient cascade, therapist switch
@@ -29,9 +38,107 @@ Verify the system works as a **whole**, not just per-service. E2E tests exercise
   - `test/uploads/upload_queue_test.dart` — dueNow ordering, pruneStale (7-day max age), corrupt-row skip
   - `test/uploads/upload_worker_test.dart` — every phase transition + every error classifier branch
   - `test/uploads/upload_queue_runner_test.dart` — connectivity restore, snapshot stream, retryFailed/dismiss
-  - `test/uploads/upload_state_transitions_test.dart` — end-to-end happy/sad paths through the runner + worker + Firestore-status callbacks (onUploadComplete fires exactly once per row, onAnalysisComplete on 'done'/'failed')
-- **Phase 1 smoke** works: [`tests/e2e/test_create_patient_file.sh`](../../tests/e2e/test_create_patient_file.sh), [`tests/e2e/get_test_user.sh`](../../tests/e2e/get_test_user.sh) — create user, list modalities, create patient file, list.
-- **Phase 2 E2E (audio + AI pipeline) — gap.** To verify, you currently use the Flutter app manually. This doc lays out what an automated E2E suite should look like.
+  - `test/uploads/upload_state_transitions_test.dart` — end-to-end happy/sad paths through the runner + worker + Firestore-status callbacks
+  - `test/uploads/upload_error_test.dart` — error classification exhaustive tests
+  - `test/uploads/upload_io_resumable_test.dart` — resumable upload chunking
+  - `test/services/recording_service_test.dart` — OS interruption, reconcileWithNative, pause/resume probe, hadInterruption latch, zombie timer detection
+  - `test/services/live_activity_service_test.dart` — MethodChannel bridge: start/update/stop/reportReady, status enum serialization, error swallowing
+  - `test/services/recording_foreground_service_test.dart` — Android FGS MethodChannel calls
+  - `test/services/recording_manifest_store_test.dart` — manifest persistence for recovery
+  - `test/services/recording_recovery_service_test.dart` — orphaned recording detection + re-enqueue
+  - `test/services/secure_audio_storage_isolate_test.dart` — AES-GCM encrypt→decrypt through background isolate
+  - `test/mapping/` — DTO mapping between proto and domain models
+  - `test/providers/` — Riverpod provider logic (avatar, sort/filter)
+  - `test/utils/action_plan_extractor_test.dart` — report action plan parsing
+  - `test/audio_converter_service_test.dart` — FLAC encoding pipeline
+  - `test/components_test.dart` — base component rendering
+- **Flutter widget tests — gap.** No widget tests exist today. High-complexity screens (RecordingScreen, PatientDetailsScreen) have deep provider dependency trees that make widget-test setup expensive. Feature-flag screens and simple form screens are candidates for first widget tests.
+- **Phase 1 smoke** works: `tests/e2e/test_create_patient_file.sh`, `tests/e2e/get_test_user.sh`.
+- **Phase 2 E2E (audio + AI pipeline) — gap.** Verify via Flutter app manually.
+
+## Flutter test standards
+
+### Cardinal rule: regression tests must BREAK on the old code
+
+When writing a test for a bug fix, it **must fail** if the fix is reverted. Tests that pass on both old and new code are noise, not coverage. Before committing a regression test, mentally (or literally) revert the fix and confirm the test would fail.
+
+**Anti-pattern:**
+```dart
+// ❌ BAD: this passes on both old and new code
+test('cancel transitions to idle', () async {
+  await service.cancel();
+  expect(service.state, RecordingState.idle); // always true
+});
+```
+
+**Correct pattern:**
+```dart
+// ✅ GOOD: this ONLY passes after adding isRecording() check
+test('reconcile detects dead recorder → error', () async {
+  await service.start('s1');
+  recorder.nativePaused = false;
+  recorder.stopCalls = 1; // force isRecording() → false
+  await service.reconcileWithNative();
+  expect(service.state, RecordingState.error);
+  // Old code: would stay recording (only checked isPaused)
+});
+```
+
+### Regression test comment format
+
+Every regression test must have a block comment explaining **what bug would return** if the fix is reverted:
+
+```dart
+// ── Regression: <short bug name> ──
+// Bug: <what was wrong in the old code>
+// Fix: <what the fix changed>
+// Without fix: <what this test would show>
+test('descriptive name → expected behavior', () async { ... });
+```
+
+### Mocking patterns (use what's established)
+
+| What you're testing | Mock strategy | Example file |
+|---|---|---|
+| `RecordingService` (native recorder) | `_FakeRecorder extends Fake implements AudioRecorder` | `recording_service_test.dart` |
+| `LiveActivityService` (MethodChannel) | `setMockMethodCallHandler` on `MethodChannel` | `live_activity_service_test.dart` |
+| `RecordingForegroundService` (MethodChannel) | Same + `debugOverrideSupported = true` | `recording_foreground_service_test.dart` |
+| `UploadWorker` (network I/O) | `FakeUploadIo implements UploadIo` | `upload_worker_test.dart` |
+| `CacheBox` / repos (Hive) | Real Hive with `Directory.systemTemp` | `cache_box_test.dart` |
+| `SecureAudioStorage` (AES-GCM isolate) | Real crypto with temp dir | `secure_audio_storage_isolate_test.dart` |
+
+**Key conventions:**
+- **Fake > Mock.** Use `extends Fake implements X` (from `flutter_test`), not `mockito`. Fakes are explicit, compile-checked, and don't need codegen.
+- **`pump()` helper.** Most async test files define `Future<void> pump([int ms = 20]) => Future.delayed(...)` for stream propagation. Use it instead of raw delays.
+- **Temp dirs.** Use `Directory.systemTemp.createTemp('prefix_')` in `setUp()`, delete in `tearDown()`. Never use hardcoded paths.
+- **Fire-and-forget services** (LiveActivity, FGS): test that MethodChannel calls arrive with correct method + arguments. Don't test native behavior (that's Swift/Kotlin territory).
+
+### Adding tests to existing files
+
+When fixing a bug in `FooService`:
+1. Open `test/services/foo_service_test.dart`.
+2. Add your test **at the end of `main()`**, after the last existing test.
+3. Group regression tests with a comment header: `// ── Regression: <ticket/bug> ──`.
+4. If the `_Fake*` class needs a new method override, add it to the fake — don't create a new fake.
+5. Run `flutter test test/services/foo_service_test.dart --reporter compact` to verify.
+6. Run `flutter test --reporter compact` to verify no regressions across the full suite.
+
+### What NOT to unit-test (and how to cover it instead)
+
+Some fixes live in UI code (`ConsumerState` methods) that's impossible to unit-test without a full widget-test harness. Examples:
+- `_confirmDiscardOnBack()` in `RecordingScreen` — requires mounted widget with 15+ providers.
+- Navigation flows (push/pop) with `navigatorKey`.
+- Dialog/sheet confirmations.
+
+**For these, document them as manual test scenarios:**
+```
+Manual regression check:
+1. Start recording → tap ← (back arrow) → "Skasuj bezpowrotnie" → confirm
+2. Assert: widget/Live Activity disappears immediately
+3. Assert: no orphaned session in patient file list
+```
+
+Until widget-test infrastructure exists, this is the honest coverage strategy.
 
 ## Repo paths
 
@@ -46,10 +153,16 @@ superwizor-backend/tests/e2e/             ← duplicates above (legacy)
 superwizor-backend/pkg/<pkg>/*_test.go    ← Go unit tests
 superwizor-backend/services/<svc>/internal/.../*_test.go  ← Go unit tests
 
-flutter-app/superwizor/test/              ← Flutter unit tests (104, added 2026-05-21)
+flutter-app/superwizor/test/              ← Flutter unit tests (250, updated 2026-07-06)
 ├── cache/                                ← DTOs, box, manager, eviction cascade
-├── repositories/                          ← patient / session / session-details repos
-└── uploads/                              ← queue, worker, runner, transitions
+├── mapping/                              ← proto ↔ domain DTO mapping
+├── providers/                            ← Riverpod provider logic
+├── repositories/                         ← patient / session / session-details repos
+├── services/                             ← recording, live activity, FGS, recovery, crypto
+├── uploads/                              ← queue, worker, runner, transitions, errors
+├── utils/                                ← action plan extractor
+├── audio_converter_service_test.dart     ← FLAC pipeline
+└── components_test.dart                  ← base component rendering
 
 superwizor-backend/Makefile               ← `make test` runs `go test ./...` per module
 .github/workflows/ci.yml                  ← CI runs `make test` on every push

@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "️ Faza 2 — Ingestion + AI Pipeline (Tygodnie 5-7)"
+description: "Wersja: 1.2 Status: Implementation guide. Zgodne z architekturą 02ARCHITEKTURATECHNICZNA.md, modelem danych 03DATAMODEL.md v4.3, oraz fundamentem z 04FAZA0FU..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/06_FAZA_2_INGESTION_AI.md
+tags: [ingestion, pipeline]
+timestamp: 2026-05-04T20:45:04+02:00
+---
+
 # 🎙️ Faza 2 — Ingestion + AI Pipeline (Tygodnie 5-7)
 
 **Wersja:** 1.2

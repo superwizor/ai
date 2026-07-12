@@ -50,6 +50,7 @@ String _toBackend(PatientLifecycle lifecycle) {
 
 class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
   static const _keyPrefix = 'patient_lifecycle_';
+  bool _hasReceivedBackendData = false;
 
   @override
   Map<String, PatientLifecycle> build() {
@@ -68,6 +69,7 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
           backendMap[p.id] = _fromBackend(p.lifecycleStatus);
         }
         if (backendMap.isNotEmpty) {
+          _hasReceivedBackendData = true;
           state = {...state, ...backendMap};
           _saveToPrefs();
         }
@@ -87,7 +89,12 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
       final map = (jsonDecode(raw) as Map<String, dynamic>).map(
         (k, v) => MapEntry(k, PatientLifecycle.values.byName(v as String)),
       );
-      state = map;
+      // Only set if we haven't already received backend data.
+      // This prevents the asynchronous SharedPreferences read from overwriting
+      // the authoritative backend list.
+      if (!_hasReceivedBackendData) {
+        state = map;
+      }
     } catch (_) {}
   }
 
@@ -111,6 +118,7 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
         backendMap[p.id] = _fromBackend(p.lifecycleStatus);
       }
       if (backendMap.isNotEmpty) {
+        _hasReceivedBackendData = true;
         state = {...state, ...backendMap};
         _saveToPrefs(); // Sync local cache with backend truth
       }
@@ -124,6 +132,7 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
     final mapped = lifecycleMap.map(
       (id, status) => MapEntry(id, _fromBackend(status)),
     );
+    _hasReceivedBackendData = true;
     state = {...state, ...mapped};
     _saveToPrefs();
   }

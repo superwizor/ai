@@ -1,3 +1,12 @@
+---
+type: Legacy Architecture
+title: "09_TRAUMA_INFORMED_WRITING.md"
+description: "WERSJA: 1.0Superwizor STATUS: DOKUMENT KONTROLI TREŚCI I ARB (UX WRITING)"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/stare%20arhcitektury%20%28Maciek%29/B_09_trauma_informed_writing.md
+tags: [stare-arhcitektury--maciek-]
+timestamp: 2026-05-30T14:32:36+02:00
+---
+
 # 09_TRAUMA_INFORMED_WRITING.md
 
 **WERSJA:** 1.0_Superwizor

@@ -44,6 +44,16 @@ A clinical session co-pilot for psychotherapists. Therapist records a session in
 - **ADR-IMPL-002** — neutral speaker labels via `pkg/i18n/speakerlabels`; never "Therapist"/"Patient" in code or DB.
 - **App Check Enforcement Safety** — NEVER click "Enforce" (Wymuszaj) on Firebase Authentication or other APIs in the Firebase Console until the iOS app is registered with DeviceCheck/App Attest, and the Android app is registered with Play Integrity. Unregistered platforms will be 100% blocked immediately upon enforcement.
 
+## Documentation Conventions (OKF)
+
+Any new or modified markdown document (`*.md`) in the `docs/` directory (or its subdirectories like `docs/agents/`) must conform to the **Open Knowledge Format (OKF) v0.1** specification by including a YAML frontmatter block at the top with:
+- `type`: Document classification (e.g. `Backend Service Specification`, `Global Context`, `Compliance Specification`, `Developer Worklog`, `Technical Design`, `Runbook`, `System Documentation`).
+- `title`: Plain-text title matching the main heading (omitting markdown symbols or leading emojis).
+- `description`: 1-2 sentence summary of the document (max 160 chars).
+- `resource`: Direct local file URI (e.g. `file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/...`).
+- `tags`: List of lowercase, alphanumeric tags.
+- `timestamp`: ISO-8601 creation/modification timestamp (use git commit time if available).
+
 ## Code conventions (compressed)
 
 - Go 1.26.2 (`go.work`), gRPC + protobuf, sqlc for DB, golang-migrate for migrations, Pub/Sub v2 (`pubsub/v2`, `client.Publisher(name)`).

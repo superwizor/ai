@@ -1,3 +1,12 @@
+---
+type: Developer Worklog
+title: "Sesja: UI MVP, Lokalizacja, Pipeline Audio i Plan HiTOP"
+description: "Data: 2026-05-11 Cel sesji: Poprawa użyteczności aplikacji w zakresie ustawień języka, dopracowanie elementów UI zgodnie z MVP (modal bottom sheets), klient-..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/dziennik_prac/2026-05-11-UI-MVP-Lokalizacja-i-HiTOP.md
+tags: [dziennik-prac, pipeline]
+timestamp: 2026-05-11T20:57:40+02:00
+---
+
 # Sesja: UI MVP, Lokalizacja, Pipeline Audio i Plan HiTOP
 
 **Data:** 2026-05-11

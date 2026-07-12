@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "2026-05-28 — cross-group chunk collision in call-1 markdown"
+description: "The Flutter iPhone client records audio, the file uploads, the user sees the \"Transcribing…\" step complete, and then the session permanently sits in GENERATI..."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/diarisation_issues/2026-05-28_cross_group_chunk_collision.md
+tags: [diarisation-issues]
+timestamp: 2026-05-28T15:48:16+02:00
+---
+
 # 2026-05-28 — cross-group chunk collision in call-1 markdown
 
 > **Status:** root cause identified, fix landed on
