@@ -208,20 +208,22 @@ class _AuthGate extends ConsumerWidget {
             ) ??
         false;
 
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (!snapshot.hasData) return const LoginScreen();
+    final authState = ref.watch(authStateProvider);
+
+    return authState.when(
+      data: (user) {
+        if (user == null) return const LoginScreen();
         if (notRegistered) return const AccountNotFoundScreen();
         if (deactivated) return DeactivatedAccountScreen(deleted: deleted);
         if (isClient) return const ClientHomeScreen();
         return const _LockGate();
       },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, st) => Scaffold(
+        body: Center(child: Text('Auth error: $e')),
+      ),
     );
   }
 }

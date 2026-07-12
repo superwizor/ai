@@ -30,7 +30,7 @@ class AppLockController extends Notifier<bool> {
   /// Re-lock once the app has been backgrounded at least this long. Short
   /// enough to protect an unattended phone, long enough to survive a quick
   /// app-switch / incoming notification.
-  static const Duration inactivityTimeout = Duration(minutes: 2);
+  static const Duration inactivityTimeout = Duration(seconds: 60);
 
   final LocalAuthentication _auth = LocalAuthentication();
   DateTime? _backgroundedAt;
