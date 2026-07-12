@@ -335,7 +335,7 @@ export function DashboardHub({ locale }: { locale: string }) {
               <p className="font-sans text-sm text-[#8FA5A0] leading-relaxed mb-6">
                 {locale === "en"
                   ? "Review sessions, read AI reports, and manage client files on your computer."
-                  : "Przeglądaj sesje, czytaj raporty kliniczne AI i zarządzaj kartotekami na komputerze."}
+                  : "Przeglądaj sesje, czytaj raporty AI z sesji i zarządzaj kartotekami na komputerze."}
               </p>
             </div>
 

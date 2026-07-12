@@ -52,6 +52,9 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   String? _error;
   bool _sent = false;
 
+  static final RegExp _emailRegex =
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +70,7 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   Future<void> _sendInvite() async {
     final l = AppLocalizations.of(context);
     final email = _emailCtrl.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
+    if (email.isEmpty || !_emailRegex.hasMatch(email)) {
       setState(() => _error = l.invite_client_email_missing);
       return;
     }
@@ -242,6 +245,9 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
               style: const TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 15,
