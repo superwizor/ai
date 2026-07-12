@@ -688,6 +688,7 @@
       }
     }
   },
+  "home_section_paused_tooltip": "Paused client records will not appear in the main active clients view.",
   "home_section_completed": "COMPLETED ({count})",
   "@home_section_completed": {
     "placeholders": {

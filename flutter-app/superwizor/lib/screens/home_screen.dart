@@ -816,6 +816,16 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                           color: const Color(0xFF60A5FA).withValues(alpha: 0.5),
                         ),
                       ),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: t.home_section_paused_tooltip,
+                        triggerMode: TooltipTriggerMode.tap,
+                        child: Icon(
+                          Icons.help_outline,
+                          size: 14,
+                          color: const Color(0xFF60A5FA).withValues(alpha: 0.5),
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -19,6 +19,13 @@ class LegalMarkdownScreen extends StatefulWidget {
 
 class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
   double _progress = 0.0;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<String> _loadDocument() async {
     final raw = await rootBundle.loadString(widget.assetPath);
@@ -79,9 +86,13 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
                         }
                         return false;
                       },
-                      child: CustomScrollView(
-                        slivers: [
-                          // ── Collapsing header with title ──
+                      child: Scrollbar(
+                        controller: _scrollController,
+                        thumbVisibility: true,
+                        child: CustomScrollView(
+                          controller: _scrollController,
+                          slivers: [
+                            // ── Collapsing header with title ──
                           SliverAppBar(
                             backgroundColor: theme.scaffoldBackgroundColor,
                             elevation: 0,
@@ -287,6 +298,7 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
                           ),
                         ],
                       ),
+                     ),
                     );
                   } else {
                     return const SizedBox.shrink();

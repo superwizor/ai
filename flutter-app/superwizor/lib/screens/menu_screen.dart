@@ -382,10 +382,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                       ),
                                     )
                                   : (photoUrl != null
-                                        ? CircleAvatar(
-                                            radius: 16,
-                                            backgroundImage: NetworkImage(
+                                        ? ClipOval(
+                                            child: Image.network(
                                               photoUrl,
+                                              width: 32,
+                                              height: 32,
+                                              fit: BoxFit.cover,
                                             ),
                                           )
                                         : Icon(

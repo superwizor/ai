@@ -695,6 +695,7 @@
       }
     }
   },
+  "home_section_paused_tooltip": "Wstrzymane kartoteki nie będą wyświetlać się w głównym widoku aktywnych pacjentów.",
   "home_section_completed": "ZAKOŃCZONE ({count})",
   "@home_section_completed": {
     "placeholders": {

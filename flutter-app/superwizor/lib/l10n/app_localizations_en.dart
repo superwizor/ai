@@ -1675,6 +1675,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get home_section_paused_tooltip =>
+      'Paused client records will not appear in the main active clients view.';
+
+  @override
   String home_section_completed(int count) {
     return 'COMPLETED ($count)';
   }
@@ -3020,8 +3024,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invite_client_email_missing => 'Enter a valid client e-mail.';
 
   @override
+  String get invite_client_self_email => 'You cannot invite yourself.';
+
+  @override
   String get invite_client_error =>
       'Failed to send the invitation. Please try again.';
+
+  @override
+  String get offline_banner_title => 'No Connection';
+
+  @override
+  String get offline_banner_desc =>
+      'You are offline. The app continues to work, but synchronization will occur once the connection is restored.';
 
   @override
   String get share_with_client => 'Share in the client panel';

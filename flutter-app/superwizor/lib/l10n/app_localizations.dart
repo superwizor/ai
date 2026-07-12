@@ -641,7 +641,7 @@ abstract class AppLocalizations {
   /// No description provided for @editPatient_erase_confirm_body.
   ///
   /// In pl, this message translates to:
-  /// **'To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.'**
+  /// **'Zgodnie z wymogami RODO, trwale usuniemy tę kartotekę klienta wraz ze wszystkimi sesjami i transkrypcjami. Tej operacji nie można cofnąć.'**
   String get editPatient_erase_confirm_body;
 
   /// No description provided for @addSession_title.
@@ -2266,19 +2266,19 @@ abstract class AppLocalizations {
   /// Krótka warning banner, pozostałe tokeny w bieżącym okresie
   ///
   /// In pl, this message translates to:
-  /// **'{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}'**
+  /// **'{n, plural, =1{Została Ci 1 sesja w pakiecie.} few{Zostały Ci {n} sesje w pakiecie.} many{Zostało Ci {n} sesji w pakiecie.} other{Zostało Ci {n} sesji w pakiecie.}}'**
   String billing_quota_warning_short(int n);
 
   /// No description provided for @billing_quota_critical_short.
   ///
   /// In pl, this message translates to:
-  /// **'Został Ci ostatni token.'**
+  /// **'Została Ci ostatnia sesja w pakiecie.'**
   String get billing_quota_critical_short;
 
   /// No description provided for @billing_quota_exhausted_short.
   ///
   /// In pl, this message translates to:
-  /// **'Pula tokenów wyczerpana.'**
+  /// **'Pakiet sesji wyczerpany.'**
   String get billing_quota_exhausted_short;
 
   /// No description provided for @billing_quota_exhausted_subtitle.
@@ -2308,7 +2308,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_exhausted_dialog_title.
   ///
   /// In pl, this message translates to:
-  /// **'Pula tokenów wyczerpana'**
+  /// **'Pakiet sesji wyczerpany'**
   String get billing_exhausted_dialog_title;
 
   /// No description provided for @billing_exhausted_dialog_body.
@@ -2332,7 +2332,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_pending_session_subtitle.
   ///
   /// In pl, this message translates to:
-  /// **'Audio zapisane lokalnie · Czeka na tokeny'**
+  /// **'Audio zapisane lokalnie · Oczekuje na dostępny pakiet'**
   String get billing_pending_session_subtitle;
 
   /// No description provided for @billing_pending_session_card_meta.
@@ -2360,7 +2360,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_tokens_available_required.
   ///
   /// In pl, this message translates to:
-  /// **'Tokeny dostępne: {available} / Wymagane: {required}'**
+  /// **'Sesje w pakiecie: {available} / Wymagane: {required}'**
   String billing_tokens_available_required(int available, int required);
 
   /// No description provided for @billing_delete_confirm_title.
@@ -2390,7 +2390,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_reservation_expired_body.
   ///
   /// In pl, this message translates to:
-  /// **'Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.'**
+  /// **'Rezerwacja sesji wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.'**
   String get billing_reservation_expired_body;
 
   /// No description provided for @billing_retry_cta.
@@ -2510,13 +2510,13 @@ abstract class AppLocalizations {
   /// No description provided for @stepper_step1_quota_blocked.
   ///
   /// In pl, this message translates to:
-  /// **'Pula tokenów wyczerpana. Odnów plan, aby wznowić.'**
+  /// **'Pakiet sesji wyczerpany. Odnów plan, aby wznowić.'**
   String get stepper_step1_quota_blocked;
 
   /// No description provided for @quota_blocked_queue_label.
   ///
   /// In pl, this message translates to:
-  /// **'Pula tokenów wyczerpana'**
+  /// **'Pakiet sesji wyczerpany'**
   String get quota_blocked_queue_label;
 
   /// No description provided for @upload_resend.
@@ -3058,6 +3058,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'WSTRZYMANE ({count})'**
   String home_section_paused(int count);
+
+  /// No description provided for @home_section_paused_tooltip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstrzymane kartoteki nie będą wyświetlać się w głównym widoku aktywnych pacjentów.'**
+  String get home_section_paused_tooltip;
 
   /// No description provided for @home_section_completed.
   ///
@@ -4430,7 +4436,7 @@ abstract class AppLocalizations {
   /// No description provided for @sort_filter_no_sessions_longest_desc.
   ///
   /// In pl, this message translates to:
-  /// **'Klienci bez sesji od najdłuższego czasu'**
+  /// **'Klienci z najdłuższą przerwą'**
   String get sort_filter_no_sessions_longest_desc;
 
   /// No description provided for @sort_filter_alphabetical.
@@ -5417,11 +5423,29 @@ abstract class AppLocalizations {
   /// **'Podaj poprawny e-mail klienta.'**
   String get invite_client_email_missing;
 
+  /// No description provided for @invite_client_self_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie możesz zaprosić samego siebie.'**
+  String get invite_client_self_email;
+
   /// No description provided for @invite_client_error.
   ///
   /// In pl, this message translates to:
   /// **'Nie udało się wysłać zaproszenia. Spróbuj ponownie.'**
   String get invite_client_error;
+
+  /// No description provided for @offline_banner_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak połączenia'**
+  String get offline_banner_title;
+
+  /// No description provided for @offline_banner_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Jesteś w trybie offline. Aplikacja działa, ale synchronizacja nastąpi po odzyskaniu połączenia.'**
+  String get offline_banner_desc;
 
   /// No description provided for @share_with_client.
   ///

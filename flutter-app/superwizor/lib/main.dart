@@ -212,7 +212,7 @@ class _AuthGate extends ConsumerWidget {
             ) ??
         false;
 
-    final authState = ref.watch(authStateProvider);
+    final authState = ref.watch(firebaseUserProvider);
 
     return authState.when(
       data: (user) {

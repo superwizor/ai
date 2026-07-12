@@ -300,7 +300,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get editPatient_erase_confirm_body =>
-      'To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.';
+      'Zgodnie z wymogami RODO, trwale usuniemy tę kartotekę klienta wraz ze wszystkimi sesjami i transkrypcjami. Tej operacji nie można cofnąć.';
 
   @override
   String get addSession_title => 'Nowa sesja.';
@@ -1210,19 +1210,20 @@ class AppLocalizationsPl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'Zostało Ci $n tokenów.',
-      many: 'Zostało Ci $n tokenów.',
-      few: 'Zostały Ci $n tokeny.',
-      one: 'Został Ci 1 token.',
+      other: 'Zostało Ci $n sesji w pakiecie.',
+      many: 'Zostało Ci $n sesji w pakiecie.',
+      few: 'Zostały Ci $n sesje w pakiecie.',
+      one: 'Została Ci 1 sesja w pakiecie.',
     );
     return '$_temp0';
   }
 
   @override
-  String get billing_quota_critical_short => 'Został Ci ostatni token.';
+  String get billing_quota_critical_short =>
+      'Została Ci ostatnia sesja w pakiecie.';
 
   @override
-  String get billing_quota_exhausted_short => 'Pula tokenów wyczerpana.';
+  String get billing_quota_exhausted_short => 'Pakiet sesji wyczerpany.';
 
   @override
   String get billing_quota_exhausted_subtitle =>
@@ -1240,7 +1241,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get billing_dismiss_cta => 'Rozumiem, kontynuuj';
 
   @override
-  String get billing_exhausted_dialog_title => 'Pula tokenów wyczerpana';
+  String get billing_exhausted_dialog_title => 'Pakiet sesji wyczerpany';
 
   @override
   String get billing_exhausted_dialog_body =>
@@ -1264,7 +1265,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get billing_pending_session_subtitle =>
-      'Audio zapisane lokalnie · Czeka na tokeny';
+      'Audio zapisane lokalnie · Oczekuje na dostępny pakiet';
 
   @override
   String billing_pending_session_card_meta(
@@ -1283,7 +1284,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String billing_tokens_available_required(int available, int required) {
-    return 'Tokeny dostępne: $available / Wymagane: $required';
+    return 'Sesje w pakiecie: $available / Wymagane: $required';
   }
 
   @override
@@ -1302,7 +1303,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get billing_reservation_expired_body =>
-      'Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.';
+      'Rezerwacja sesji wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.';
 
   @override
   String get billing_retry_cta => 'Spróbuj ponownie';
@@ -1390,10 +1391,10 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get stepper_step1_quota_blocked =>
-      'Pula tokenów wyczerpana. Odnów plan, aby wznowić.';
+      'Pakiet sesji wyczerpany. Odnów plan, aby wznowić.';
 
   @override
-  String get quota_blocked_queue_label => 'Pula tokenów wyczerpana';
+  String get quota_blocked_queue_label => 'Pakiet sesji wyczerpany';
 
   @override
   String get upload_resend => 'Wyślij ponownie';
@@ -1689,6 +1690,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String home_section_paused(int count) {
     return 'WSTRZYMANE ($count)';
   }
+
+  @override
+  String get home_section_paused_tooltip =>
+      'Wstrzymane kartoteki nie będą wyświetlać się w głównym widoku aktywnych pacjentów.';
 
   @override
   String home_section_completed(int count) {
@@ -2479,7 +2484,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get sort_filter_no_sessions_longest_desc =>
-      'Klienci bez sesji od najdłuższego czasu';
+      'Klienci z najdłuższą przerwą';
 
   @override
   String get sort_filter_alphabetical => 'Alfabetycznie';
@@ -3040,8 +3045,18 @@ class AppLocalizationsPl extends AppLocalizations {
   String get invite_client_email_missing => 'Podaj poprawny e-mail klienta.';
 
   @override
+  String get invite_client_self_email => 'Nie możesz zaprosić samego siebie.';
+
+  @override
   String get invite_client_error =>
       'Nie udało się wysłać zaproszenia. Spróbuj ponownie.';
+
+  @override
+  String get offline_banner_title => 'Brak połączenia';
+
+  @override
+  String get offline_banner_desc =>
+      'Jesteś w trybie offline. Aplikacja działa, ale synchronizacja nastąpi po odzyskaniu połączenia.';
 
   @override
   String get share_with_client => 'Udostępnij w panelu klienta';

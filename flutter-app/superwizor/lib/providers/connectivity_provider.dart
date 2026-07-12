@@ -17,7 +17,7 @@ void setupConnectivityListener(ProviderContainer container) {
         if (previousResult == ConnectivityResult.none && currentResult != ConnectivityResult.none) {
           // Internet restored -> trigger refresh
           container.invalidate(patientsProvider);
-          container.invalidate(profileProvider);
+          container.invalidate(currentUserProvider);
         }
         previousResult = currentResult;
       }
