@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../l10n/app_localizations.dart';
@@ -186,6 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email, password: pass,
       );
+      TextInput.finishAutofillContext();
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e.code));
@@ -209,6 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email, password: pass,
       );
+      TextInput.finishAutofillContext();
       final nameParts = _nameCtrl.text.trim().split(' ');
       final firstName = nameParts.isNotEmpty ? nameParts.first : '';
       final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
@@ -351,59 +354,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildLoginContent() {
     final t = AppLocalizations.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildLogo(),
-        const SizedBox(height: 28),
-        _buildTitle(t.login_title, t.login_subtitle),
-        const SizedBox(height: 36),
-        _buildSocialButtons(),
-        const SizedBox(height: 24),
-        _buildDivider(),
-        const SizedBox(height: 24),
-        _buildFloatingField(
-          controller: _emailCtrl,
-          label: t.auth_email_label,
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
-          prefixIcon: Icons.mail_outline_rounded,
-        ),
-        const SizedBox(height: 16),
-        _buildFloatingField(
-          controller: _passwordCtrl,
-          label: t.auth_password_label,
-          obscureText: _obscurePassword,
-          autofillHints: const [AutofillHints.password],
-          prefixIcon: Icons.lock_outline_rounded,
-          suffixIcon: _buildVisibilityToggle(),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: _loading ? null : _openForgotPassword,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(t.login_forgot_password, style: const TextStyle(
-              fontFamily: _kFont, fontSize: 13,
-              fontWeight: FontWeight.w500, color: _kMint,
-            )),
+    return AutofillGroup(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLogo(),
+          const SizedBox(height: 28),
+          _buildTitle(t.login_title, t.login_subtitle),
+          const SizedBox(height: 36),
+          _buildSocialButtons(),
+          const SizedBox(height: 24),
+          _buildDivider(),
+          const SizedBox(height: 24),
+          _buildFloatingField(
+            controller: _emailCtrl,
+            label: t.auth_email_label,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            prefixIcon: Icons.mail_outline_rounded,
           ),
-        ),
-        const SizedBox(height: 20),
-        if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
-        _buildCta(t.login_btn_sign_in, _loading ? null : _submitLogin),
-        const SizedBox(height: 28),
-        _buildModeSwitch(
-          '${t.auth_toggle_to_register.split('?').first}? ',
-          t.login_btn_sign_up,
-          _goToRegister,
-        ),
-      ],
+          const SizedBox(height: 16),
+          _buildFloatingField(
+            controller: _passwordCtrl,
+            label: t.auth_password_label,
+            obscureText: _obscurePassword,
+            autofillHints: const [AutofillHints.password],
+            prefixIcon: Icons.lock_outline_rounded,
+            suffixIcon: _buildVisibilityToggle(),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _loading ? null : _openForgotPassword,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(t.login_forgot_password, style: const TextStyle(
+                fontFamily: _kFont, fontSize: 13,
+                fontWeight: FontWeight.w500, color: _kMint,
+              )),
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
+          _buildCta(t.login_btn_sign_in, _loading ? null : _submitLogin),
+          const SizedBox(height: 28),
+          _buildModeSwitch(
+            '${t.auth_toggle_to_register.split('?').first}? ',
+            t.login_btn_sign_up,
+            _goToRegister,
+          ),
+        ],
+      ),
     );
   }
 
@@ -411,53 +416,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildRegisterContent() {
     final t = AppLocalizations.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildLogo(),
-        const SizedBox(height: 28),
-        _buildTitle(t.login_register_title, t.login_register_subtitle),
-        const SizedBox(height: 36),
-        _buildSocialButtons(),
-        const SizedBox(height: 24),
-        _buildDivider(),
-        const SizedBox(height: 24),
-        _buildFloatingField(
-          controller: _nameCtrl,
-          label: t.login_name_field,
-          keyboardType: TextInputType.name,
-          autofillHints: const [AutofillHints.name],
-          prefixIcon: Icons.person_outline_rounded,
-        ),
-        const SizedBox(height: 16),
-        _buildFloatingField(
-          controller: _emailCtrl,
-          label: t.auth_email_label,
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
-          prefixIcon: Icons.mail_outline_rounded,
-        ),
-        const SizedBox(height: 16),
-        _buildFloatingField(
-          controller: _passwordCtrl,
-          label: t.login_password_hint,
-          obscureText: _obscurePassword,
-          autofillHints: const [AutofillHints.newPassword],
-          prefixIcon: Icons.lock_outline_rounded,
-          suffixIcon: _buildVisibilityToggle(),
-        ),
-        const SizedBox(height: 20),
-        _buildTosCheckbox(),
-        const SizedBox(height: 20),
-        if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
-        _buildCta(t.login_btn_sign_up, _loading ? null : _submitRegister),
-        const SizedBox(height: 28),
-        _buildModeSwitch(
-          '${t.auth_toggle_to_login.split('?').first}? ',
-          t.login_btn_sign_in,
-          _goToLogin,
-        ),
-      ],
+    return AutofillGroup(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLogo(),
+          const SizedBox(height: 28),
+          _buildTitle(t.login_register_title, t.login_register_subtitle),
+          const SizedBox(height: 36),
+          _buildSocialButtons(),
+          const SizedBox(height: 24),
+          _buildDivider(),
+          const SizedBox(height: 24),
+          _buildFloatingField(
+            controller: _nameCtrl,
+            label: t.login_name_field,
+            keyboardType: TextInputType.name,
+            autofillHints: const [AutofillHints.name],
+            prefixIcon: Icons.person_outline_rounded,
+          ),
+          const SizedBox(height: 16),
+          _buildFloatingField(
+            controller: _emailCtrl,
+            label: t.auth_email_label,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            prefixIcon: Icons.mail_outline_rounded,
+          ),
+          const SizedBox(height: 16),
+          _buildFloatingField(
+            controller: _passwordCtrl,
+            label: t.login_password_hint,
+            obscureText: _obscurePassword,
+            autofillHints: const [AutofillHints.newPassword],
+            prefixIcon: Icons.lock_outline_rounded,
+            suffixIcon: _buildVisibilityToggle(),
+          ),
+          const SizedBox(height: 20),
+          _buildTosCheckbox(),
+          const SizedBox(height: 20),
+          if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
+          _buildCta(t.login_btn_sign_up, _loading ? null : _submitRegister),
+          const SizedBox(height: 28),
+          _buildModeSwitch(
+            '${t.auth_toggle_to_login.split('?').first}? ',
+            t.login_btn_sign_in,
+            _goToLogin,
+          ),
+        ],
+      ),
     );
   }
 
