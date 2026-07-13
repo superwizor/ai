@@ -92,6 +92,8 @@ function InnerContent() {
   // Password Reset Form Fields
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const newPasswordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Confetti particles
@@ -229,12 +231,15 @@ function InnerContent() {
     e.preventDefault();
     setFormError(null);
 
-    if (newPassword.length < 8) {
+    const finalNewPassword = newPasswordRef.current?.value || newPassword || "";
+    const finalConfirmPassword = confirmPasswordRef.current?.value || confirmPassword || "";
+
+    if (finalNewPassword.length < 8) {
       setFormError(t("errorPasswordTooShort"));
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (finalNewPassword !== finalConfirmPassword) {
       setFormError(t("errorPasswordsMismatch"));
       return;
     }
@@ -243,7 +248,7 @@ function InnerContent() {
     const auth = getFirebaseAuth();
 
     try {
-      await confirmPasswordReset(auth, oobCode, newPassword);
+      await confirmPasswordReset(auth, oobCode, finalNewPassword);
       setStatus("reset-success");
       try {
         playSuccessSound();
@@ -377,6 +382,7 @@ function InnerContent() {
                     {t("newPasswordLabel")}
                   </span>
                   <input
+                    ref={newPasswordRef}
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -393,6 +399,7 @@ function InnerContent() {
                     {t("confirmNewPasswordLabel")}
                   </span>
                   <input
+                    ref={confirmPasswordRef}
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

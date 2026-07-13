@@ -18,7 +18,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -85,6 +85,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -182,7 +183,8 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const onPasswordSubmit = async () => {
     setError(null);
     setInfo(null);
-    if (password.length < 8 || !/\d/.test(password)) {
+    const finalPassword = passwordRef.current?.value || password || "";
+    if (finalPassword.length < 8 || !/\d/.test(finalPassword)) {
       setError(tFields("passwordHint"));
       return;
     }
@@ -190,7 +192,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     try {
       let user;
       try {
-        user = await auth.signUpWithEmail(invitedEmail, password);
+        user = await auth.signUpWithEmail(invitedEmail, finalPassword);
       } catch (e) {
         if (
           e instanceof FirebaseError &&
@@ -394,6 +396,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
           required
         >
           <TextInput
+            ref={passwordRef}
             id="cl-password"
             type="password"
             value={password}

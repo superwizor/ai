@@ -33,7 +33,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -67,6 +67,8 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -161,8 +163,11 @@ export function LoginForm() {
     setInfo(null);
     setPhase("submitting");
 
+    const finalEmail = (emailRef.current?.value || email || "").trim().toLowerCase();
+    const finalPassword = passwordRef.current?.value || password || "";
+
     try {
-      await signInWithEmail(email.trim().toLowerCase(), password);
+      await signInWithEmail(finalEmail, finalPassword);
       await resolveAndRoute();
     } catch (e) {
       if (
@@ -346,6 +351,7 @@ export function LoginForm() {
             {t("emailLabel")}
           </span>
           <input
+            ref={emailRef}
             type="email"
             autoComplete="email"
             value={email}
@@ -361,6 +367,7 @@ export function LoginForm() {
             {t("passwordLabel")}
           </span>
           <input
+            ref={passwordRef}
             type="password"
             autoComplete="current-password"
             value={password}

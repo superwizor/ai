@@ -19,7 +19,7 @@
 
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
@@ -155,6 +155,8 @@ function ForbiddenCard({
 function AdminSignInForm() {
   const t = useTranslations("admin");
   const { signInWithEmail } = useAuth();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -164,8 +166,10 @@ function AdminSignInForm() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+    const finalEmail = (emailRef.current?.value || email || "").trim().toLowerCase();
+    const finalPassword = passwordRef.current?.value || password || "";
     try {
-      await signInWithEmail(email.trim().toLowerCase(), password);
+      await signInWithEmail(finalEmail, finalPassword);
       // AuthProvider will fire onAuthStateChanged and AdminGuard's
       // useEffect re-runs with authStatus=signed-in → GetMyProfile
       // → "allowed" or "forbidden". No manual reload.
@@ -202,6 +206,7 @@ function AdminSignInForm() {
             {t("signinEmailLabel")}
           </span>
           <input
+            ref={emailRef}
             type="email"
             autoComplete="email"
             value={email}
@@ -216,6 +221,7 @@ function AdminSignInForm() {
             {t("signinPasswordLabel")}
           </span>
           <input
+            ref={passwordRef}
             type="password"
             autoComplete="current-password"
             value={password}
