@@ -109,8 +109,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fire-and-forget verification email. Failures here aren't fatal
         // (the user can resend from settings). docs/18 §6.5 R2 — every
         // new account gets verification at signup.
-        const actionCodeSettings = continueUrl ? { url: continueUrl } : undefined;
-        void sendEmailVerification(cred.user, actionCodeSettings);
+        let actionCodeSettings = undefined;
+        if (continueUrl) {
+          try {
+            const urlObj = new URL(continueUrl);
+            const prefix = urlObj.pathname.startsWith("/en") ? "/en" : "/pl";
+            const authActionUrl = new URL(`${prefix}/auth/action`, urlObj.origin);
+            authActionUrl.searchParams.set("continueUrl", continueUrl);
+            actionCodeSettings = {
+              url: authActionUrl.toString(),
+              handleCodeInApp: true,
+            };
+          } catch (e) {
+            actionCodeSettings = { url: continueUrl };
+          }
+        }
+        sendEmailVerification(cred.user, actionCodeSettings).catch((err) => {
+          console.error("sendEmailVerification FAILED:", err);
+        });
         return cred.user;
       },
       signInWithGoogle: async () => {

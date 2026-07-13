@@ -25,6 +25,7 @@ import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities"
 
 const STORAGE_KEY = "sw_onboarding_step";
 const APP_STORE_URL = "https://apps.apple.com/app/superwizor-ai/id6774975751";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ai.superwizor.superwizor";
 type OnboardingStep = 4 | 5 | 6;
 
 const LABELS_FALLBACK: Record<string, Record<"pl" | "en", string>> = {
@@ -721,42 +722,49 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                   </div>
 
                   <h3 className="font-serif text-xl font-bold text-[#F2F0EA] mb-2">
-                    {t("Aplikacja Android (Wkrótce)", "Android App (Coming Soon)")}
+                    {t("Aplikacja Android", "Android App")}
                   </h3>
 
-                  <p className="font-sans text-xs text-[#8FA5A0] leading-relaxed mb-6">
+                  <p className="font-sans text-xs text-[#8FA5A0] leading-relaxed mb-4">
                     {t(
-                      "Wersja na system Android jest obecnie w fazie testów wewnętrznych. Zostanie opublikowana w Google Play już wkrótce.",
-                      "The Android version is currently in internal testing. It will be published on Google Play soon."
+                      "Pobierz oficjalną aplikację Superwizor AI bezpośrednio z Google Play, aby bezpiecznie nagrywać sesje terapeutyczne na swoim telefonie z systemem Android.",
+                      "Download the official Superwizor AI app directly from Google Play to securely record therapy sessions on your Android phone."
                     )}
                   </p>
 
-                  <div className="relative p-3 bg-white/5 rounded-2xl w-[150px] h-[150px] flex items-center justify-center mx-auto mb-6 border border-white/10 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#FCAE2F]/20 to-transparent opacity-35" />
-                    <div className="relative w-[126px] h-[126px] bg-white/[0.03] rounded-xl flex flex-col items-center justify-center gap-2 border border-white/5 backdrop-blur-sm">
-                      <span className="text-3xl animate-pulse">⏳</span>
-                      <span className="text-[10px] font-mono text-[#FCAE2F] font-bold uppercase tracking-wider">
-                        Coming Soon
-                      </span>
-                    </div>
+                  {/* QR Code */}
+                  <div className="p-3 bg-white rounded-2xl w-[150px] h-[150px] flex items-center justify-center mx-auto mb-1.5 shadow-lg border border-white/10">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=126x126&data=${encodeURIComponent(PLAY_STORE_URL)}`}
+                      alt="QR Code Android"
+                      className="w-[126px] h-[126px]"
+                    />
                   </div>
+                  <p className="text-[10px] text-[#8FA5A0] font-mono mb-6">
+                    {t("Zeskanuj telefonem, aby pobrać", "Scan with phone to download")}
+                  </p>
 
-                  <button
-                    disabled
-                    className="flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl bg-white/5 border border-white/5 text-white/30 text-xs font-semibold cursor-not-allowed w-full"
-                  >
-                    <svg className="w-5 h-5 text-white/30" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3 20.285V3.716c0-.525.308-.94.757-1.077L14.654 12 3.757 21.362A1.14 1.14 0 013 20.285zM15.908 13.084l2.842 2.463L5.342 2.874l10.566 10.21zM19.98 12.569c.563-.326.563-.858 0-1.184l-2.909-1.686L14.654 12l2.417 2.253 2.909-1.684zM5.342 21.126L18.75 14.56l-2.842-2.56-10.566 9.126z"/>
-                    </svg>
-                    <div className="flex flex-col text-left">
-                      <span className="text-[8px] text-white/20 font-normal uppercase tracking-wider leading-none mb-0.5">
-                        Get it on
-                      </span>
-                      <span className="text-xs font-bold leading-none">
-                        Google Play
-                      </span>
-                    </div>
-                  </button>
+                  <div className="flex flex-col gap-2.5">
+                    {/* CTA button */}
+                    <a
+                      href={PLAY_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white transition-all text-xs font-semibold cursor-pointer w-full hover:border-[#FCAE2F]/40 hover:shadow-[0_2px_12px_rgba(252,174,47,0.15)] text-center"
+                    >
+                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 20.285V3.716c0-.525.308-.94.757-1.077L14.654 12 3.757 21.362A1.14 1.14 0 013 20.285zM15.908 13.084l2.842 2.463L5.342 2.874l10.566 10.21zM19.98 12.569c.563-.326.563-.858 0-1.184l-2.909-1.686L14.654 12l2.417 2.253 2.909-1.684zM5.342 21.126L18.75 14.56l-2.842-2.56-10.566 9.126z"/>
+                      </svg>
+                      <div className="flex flex-col text-left">
+                        <span className="text-[8px] text-white/50 font-normal uppercase tracking-wider leading-none mb-0.5">
+                          Get it on
+                        </span>
+                        <span className="text-xs font-bold leading-none">
+                          Google Play
+                        </span>
+                      </div>
+                    </a>
+                  </div>
                 </>
               )}
             </motion.div>
