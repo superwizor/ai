@@ -288,6 +288,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get appLock_unlock => 'Odblokuj';
 
   @override
+  String get appLock_retry_hint =>
+      'Nie udało się odblokować. Spróbuj ponownie.';
+
+  @override
   String get appTitle => 'Superwizor AI';
 
   @override

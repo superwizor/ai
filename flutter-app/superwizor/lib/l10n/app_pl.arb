@@ -105,6 +105,7 @@
   "appLock_subtitle": "Odblokuj, aby uzyskać dostęp do kartotek",
   "appLock_title": "Aplikacja zablokowana",
   "appLock_unlock": "Odblokuj",
+  "appLock_retry_hint": "Nie udało się odblokować. Spróbuj ponownie.",
   "appTitle": "Superwizor AI",
   "@appTitle": {
     "description": "App display name"

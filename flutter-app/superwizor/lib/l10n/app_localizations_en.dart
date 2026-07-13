@@ -287,6 +287,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appLock_unlock => 'Unlock';
 
   @override
+  String get appLock_retry_hint => 'Unlock failed. Please try again.';
+
+  @override
   String get appTitle => 'Superwizor AI';
 
   @override

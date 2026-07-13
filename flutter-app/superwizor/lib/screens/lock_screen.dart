@@ -3,6 +3,13 @@
 // device passcode on appear; on success the gate rebuilds to the app. A
 // "sign out" escape hatch is always available (e.g. biometric lockout, or a
 // user who wants to switch accounts).
+//
+// Self-correcting auto-retry: on cold launch / app resume the OS window may
+// not be fully foregrounded when the first authenticate() fires. If the
+// system cancels it instantly (< 150 ms — physically impossible for a human
+// to cancel that fast), we wait 250 ms for the transition to settle and
+// retry exactly once. This gives zero visible delay on fast devices and a
+// transparent ~300 ms retry on slower ones.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -21,25 +28,76 @@ class LockScreen extends ConsumerStatefulWidget {
 
 class _LockScreenState extends ConsumerState<LockScreen> {
   bool _authenticating = false;
+  bool _hasAutoRetried = false;
+  String? _feedbackMessage;
+
+  /// Threshold below which a failure is considered an OS-level race condition
+  /// rather than a genuine user cancellation or biometric failure. Human
+  /// reaction time is ~250 ms minimum; Face ID scan takes ~300 ms; fingerprint
+  /// touch ~200 ms. A failure in under 150 ms is physically impossible from
+  /// user interaction.
+  static const int _raceCancelThresholdMs = 150;
+
+  /// Stabilisation delay before retrying after a detected race cancel.
+  static const Duration _retryDelay = Duration(milliseconds: 250);
 
   @override
   void initState() {
     super.initState();
-    // Prompt immediately on show so the user lands straight on Face ID / passcode.
+    // Prompt on show so the user lands straight on Face ID / passcode.
+    // Minimal 50 ms delay for the Flutter frame to fully render.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 50));
       if (mounted) _unlock();
     });
   }
 
   Future<void> _unlock() async {
     if (_authenticating) return;
-    setState(() => _authenticating = true);
+    setState(() {
+      _authenticating = true;
+      _feedbackMessage = null;
+    });
+
     final reason = AppLocalizations.of(context).appLock_reason;
-    await ref.read(appLockProvider.notifier).unlock(reason);
-    // On success the gate watches appLockProvider and swaps in the app; this
-    // widget is disposed. On failure we just re-enable the button.
-    if (mounted) setState(() => _authenticating = false);
+
+    // Measure how long the OS takes to respond.
+    final stopwatch = Stopwatch()..start();
+    final result = await ref.read(appLockProvider.notifier).unlock(reason);
+    stopwatch.stop();
+
+    // On success the gate watches appLockProvider and swaps in the app;
+    // this widget is disposed — no further action needed.
+    if (result == UnlockResult.success || result == UnlockResult.unsupported) {
+      return;
+    }
+
+    // Self-correcting auto-retry: if the OS cancelled the prompt faster
+    // than any human could, it was a startup/resume race condition.
+    // Retry once after a stabilisation delay.
+    if (!_hasAutoRetried &&
+        stopwatch.elapsedMilliseconds < _raceCancelThresholdMs) {
+      _hasAutoRetried = true;
+      await Future.delayed(_retryDelay);
+      if (mounted) {
+        setState(() => _authenticating = false);
+        _unlock();
+        return;
+      }
+    }
+
+    // Genuine failure — show feedback to the user.
+    if (mounted) {
+      final t = AppLocalizations.of(context);
+      setState(() {
+        _authenticating = false;
+        if (result == UnlockResult.alreadyInProgress) {
+          _feedbackMessage = null; // silent — another attempt is running
+        } else {
+          _feedbackMessage = t.appLock_retry_hint;
+        }
+      });
+    }
   }
 
   Future<void> _signOut() async {
@@ -97,6 +155,33 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         color: EuphireColors.frostWhite.withValues(alpha: 0.65),
                       ),
                     ),
+                    if (_feedbackMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: EuphireColors.ember.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: EuphireColors.ember.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          _feedbackMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                EuphireColors.frostWhite.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 36),
                     SizedBox(
                       width: double.infinity,

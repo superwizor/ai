@@ -584,6 +584,12 @@ abstract class AppLocalizations {
   /// **'Odblokuj'**
   String get appLock_unlock;
 
+  /// No description provided for @appLock_retry_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się odblokować. Spróbuj ponownie.'**
+  String get appLock_retry_hint;
+
   /// App display name
   ///
   /// In pl, this message translates to:

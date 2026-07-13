@@ -105,6 +105,7 @@
   "appLock_subtitle": "Unlock to access your records",
   "appLock_title": "App locked",
   "appLock_unlock": "Unlock",
+  "appLock_retry_hint": "Unlock failed. Please try again.",
   "appTitle": "Superwizor AI",
   "@appTitle": {
     "description": "App display name"

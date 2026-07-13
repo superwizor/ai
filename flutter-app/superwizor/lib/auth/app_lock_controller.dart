@@ -25,6 +25,25 @@ import 'package:local_auth/local_auth.dart';
 /// Whether the app-lock applies on this platform (mobile only for now).
 bool get appLockSupported => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
+/// Result of an unlock attempt — richer than a bare bool so the UI can
+/// show appropriate feedback.
+enum UnlockResult {
+  /// Biometric / passcode succeeded — app is now unlocked.
+  success,
+
+  /// User explicitly cancelled the prompt (tapped "Cancel").
+  cancelled,
+
+  /// Device has no biometric or passcode enrolled — auto-unlocked.
+  unsupported,
+
+  /// Authentication failed (wrong face, wrong fingerprint, lockout, etc.).
+  failed,
+
+  /// Another unlock attempt is already in progress.
+  alreadyInProgress,
+}
+
 /// `true` == locked (show the LockScreen), `false` == unlocked.
 class AppLockController extends Notifier<bool> {
   /// Re-lock once the app has been backgrounded at least this long. Short
@@ -35,6 +54,7 @@ class AppLockController extends Notifier<bool> {
   final LocalAuthentication _auth = LocalAuthentication();
   DateTime? _backgroundedAt;
   _LockLifecycleObserver? _observer;
+  bool _unlocking = false;
 
   @override
   bool build() {
@@ -68,15 +88,19 @@ class AppLockController extends Notifier<bool> {
   }
 
   /// Runs the platform biometric / device-passcode prompt. Unlocks on success.
-  /// Returns whether the app is now unlocked.
-  Future<bool> unlock(String localizedReason) async {
+  /// Returns a detailed [UnlockResult] so the UI can react accordingly.
+  Future<UnlockResult> unlock(String localizedReason) async {
+    // Guard against concurrent unlock attempts (e.g. widget rebuild during
+    // an active biometric dialog).
+    if (_unlocking) return UnlockResult.alreadyInProgress;
+    _unlocking = true;
     try {
       final supported = await _auth.isDeviceSupported();
       if (!supported) {
         // No biometric/passcode enrolled — nothing to gate against; don't
         // lock the user out of their own data.
         state = false;
-        return true;
+        return UnlockResult.unsupported;
       }
       final ok = await _auth.authenticate(
         localizedReason: localizedReason,
@@ -87,11 +111,14 @@ class AppLockController extends Notifier<bool> {
       if (ok) {
         _backgroundedAt = null; // K5: Prevent double-prompt if OS fires onResume late
         state = false;
+        return UnlockResult.success;
       }
-      return ok;
+      return UnlockResult.cancelled;
     } catch (_) {
       // Cancelled / no hardware / lockout — stay locked, let the user retry.
-      return false;
+      return UnlockResult.failed;
+    } finally {
+      _unlocking = false;
     }
   }
 
