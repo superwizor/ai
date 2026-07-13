@@ -18,9 +18,12 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:superwizor/widgets/screen_tracker.dart';
+import 'package:superwizor/utils/pdf_exporter.dart';
 import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -228,11 +231,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           // GetSessionDetails fetch has resolved a report we can target.
           if (_data != null && _data!.reports.isNotEmpty)
             ReportRatingWidget(reportId: _data!.reports.first.id),
-          // Send action plan to patient — replaces the old pinned bottom bar.
           IconButton(
             tooltip: t.action_plan_send_button,
             icon: const Icon(Icons.outgoing_mail),
             onPressed: _data == null ? null : _onSendActionPlan,
+          ),
+          IconButton(
+            tooltip: t.transcript_actions_export,
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: _data == null ? null : _onExportPdf,
           ),
           IconButton(
             tooltip: t.report_tooltip_copy_reports,
@@ -407,6 +414,22 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _onExportPdf() {
+    final data = _data;
+    if (data == null || data.reports.isEmpty) return;
+
+    final t = AppLocalizations.of(context);
+    final reportMarkdown = _ReportPayload.parse(data.reports.first).reportMarkdown;
+
+    PdfExporter.exportReportAsPdf(
+      title: t.transcript_pdf_title,
+      subtitle: t.transcript_pdf_meta_date(
+        DateFormat('d MMM yyyy, HH:mm').format(data.session.createdAt.toDateTime().toLocal()),
+      ),
+      markdownContent: reportMarkdown,
     );
   }
 

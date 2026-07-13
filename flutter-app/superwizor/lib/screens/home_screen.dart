@@ -214,14 +214,56 @@ class HomeScreen extends ConsumerWidget {
                                     ),
                                   );
                                 }
+                                final isNet = err.toString().toLowerCase().contains('socket') || err.toString().toLowerCase().contains('connect') || err.toString().toLowerCase().contains('host');
                                 return Padding(
                                   padding: const EdgeInsets.all(32),
                                   child: Center(
-                                    child: Text(
-                                      t.home_error_loading(err.toString()),
-                                      style: const TextStyle(
-                                        color: EuphireColors.ember,
-                                      ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isNet ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+                                          color: EuphireColors.ember,
+                                          size: 48,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          isNet ? t.pending_uploads_no_internet_title : t.home_error_loading(err.toString()),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: EuphireColors.ember,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (isNet) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            t.pending_uploads_no_internet_desc,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: EuphireColors.mist.withValues(alpha: 0.8),
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 24),
+                                        OutlinedButton.icon(
+                                          onPressed: () {
+                                            ref.invalidate(patientsProvider);
+                                            ref.invalidate(sessionsProvider);
+                                          },
+                                          icon: const Icon(Icons.refresh_rounded),
+                                          label: Text(t.recording_resume_failed_retry),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: EuphireColors.frostWhite,
+                                            side: const BorderSide(color: Colors.white24),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 );

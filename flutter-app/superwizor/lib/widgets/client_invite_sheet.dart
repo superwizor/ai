@@ -243,6 +243,8 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
               ),
             ),
             const SizedBox(height: 16),
+            _buildEmailField(l),
+            const SizedBox(height: 16),
             _sendButton(l, resend: true),
           ],
         );
@@ -250,66 +252,70 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              onChanged: (_) {
-                if (_error != null) setState(() => _error = null);
-              },
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 15,
-                color: EuphireColors.frostWhite,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                labelText: l.invite_client_email_label,
-                labelStyle: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 14,
-                  color: EuphireColors.mist.withValues(alpha: 0.7),
-                  height: 1.1,
-                ),
-                floatingLabelStyle: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: EuphireColors.ember.withValues(alpha: 0.9),
-                  height: 1.1,
-                ),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: EuphireColors.ember,
-                    width: 1.5,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-              ),
-            ),
+            _buildEmailField(l),
             const SizedBox(height: 16),
             _sendButton(l, resend: false),
           ],
         );
     }
+  }
+
+  Widget _buildEmailField(AppLocalizations l) {
+    return TextField(
+      controller: _emailCtrl,
+      keyboardType: TextInputType.emailAddress,
+      autocorrect: false,
+      onChanged: (_) {
+        if (_error != null) setState(() => _error = null);
+      },
+      style: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 15,
+        color: EuphireColors.frostWhite,
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        labelText: l.invite_client_email_label,
+        labelStyle: TextStyle(
+          fontFamily: 'Montserrat',
+          fontSize: 14,
+          color: EuphireColors.mist.withValues(alpha: 0.7),
+          height: 1.1,
+        ),
+        floatingLabelStyle: TextStyle(
+          fontFamily: 'Montserrat',
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: EuphireColors.ember.withValues(alpha: 0.9),
+          height: 1.1,
+        ),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(
+            color: EuphireColors.ember,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+      ),
+    );
   }
 
   Widget _sendButton(AppLocalizations l, {required bool resend}) {
