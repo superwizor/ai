@@ -111,18 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // new account gets verification at signup.
         let actionCodeSettings = undefined;
         if (continueUrl) {
-          try {
-            const urlObj = new URL(continueUrl);
-            const prefix = urlObj.pathname.startsWith("/en") ? "/en" : "/pl";
-            const authActionUrl = new URL(`${prefix}/auth/action`, urlObj.origin);
-            authActionUrl.searchParams.set("continueUrl", continueUrl);
-            actionCodeSettings = {
-              url: authActionUrl.toString(),
-              handleCodeInApp: true,
-            };
-          } catch (e) {
-            actionCodeSettings = { url: continueUrl };
-          }
+          actionCodeSettings = {
+            url: continueUrl,
+            handleCodeInApp: false,
+          };
         }
         sendEmailVerification(cred.user, actionCodeSettings).catch((err) => {
           console.error("sendEmailVerification FAILED:", err);

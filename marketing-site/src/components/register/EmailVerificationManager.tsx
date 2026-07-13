@@ -96,8 +96,8 @@ function Inner() {
     try {
       const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(user.email || "")}`;
       await sendEmailVerification(user, {
-        url: `${window.location.origin}${prefix}/auth/action?continueUrl=${encodeURIComponent(continueUrl)}`,
-        handleCodeInApp: true,
+        url: continueUrl,
+        handleCodeInApp: false,
       });
       setStatus("sent");
       // Revert back to idle after 10 seconds so button becomes clickable again
@@ -123,11 +123,11 @@ function Inner() {
       // 1. Update email in Firebase
       await updateEmail(user, newEmail.trim());
 
-      // 2. Send new verification email with continueUrl and handleCodeInApp
+      // 2. Send new verification email with continueUrl
       const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(newEmail.trim())}`;
       await sendEmailVerification(user, {
-        url: `${window.location.origin}${prefix}/auth/action?continueUrl=${encodeURIComponent(continueUrl)}`,
-        handleCodeInApp: true,
+        url: continueUrl,
+        handleCodeInApp: false,
       });
 
       setEditSuccess(true);
