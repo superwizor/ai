@@ -26,6 +26,32 @@ export function Footer() {
             <p className="font-sans text-xs text-mist/70 leading-relaxed max-w-[200px]">
               {t("tagline")}
             </p>
+            <div className="flex flex-row items-center gap-2.5 mt-1">
+              <a
+                href="https://apps.apple.com/app/superwizor-ai/id6774975751"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition duration-200"
+              >
+                <img
+                  src="/assets/app-store.svg"
+                  alt="Download on the App Store"
+                  className="h-10 w-auto"
+                />
+              </a>
+              <a
+                href="https://play.google.com/store/apps/details?id=ai.superwizor.superwizor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition duration-200"
+              >
+                <img
+                  src="/assets/google-play.svg"
+                  alt="Get it on Google Play"
+                  className="h-[38px] w-auto"
+                />
+              </a>
+            </div>
             <div className="mt-4 space-y-1">
               <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-mist/60">
                 {t("copyright")}
