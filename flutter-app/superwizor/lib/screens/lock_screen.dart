@@ -26,7 +26,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   void initState() {
     super.initState();
     // Prompt immediately on show so the user lands straight on Face ID / passcode.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _unlock());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) _unlock();
+    });
   }
 
   Future<void> _unlock() async {
