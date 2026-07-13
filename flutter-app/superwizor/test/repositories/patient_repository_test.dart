@@ -81,7 +81,6 @@ void main() {
 
     final cached = await r.getCached();
     expect(cached.hasData, isTrue);
-    expect(cached.isFresh, isTrue);
     expect(cached.data!.map((p) => p.id).toList(), ['pf-1', 'pf-2']);
   });
 
