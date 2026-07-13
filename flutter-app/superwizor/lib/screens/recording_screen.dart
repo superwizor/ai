@@ -899,8 +899,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           ),
         ),
       );
-      await player.play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
-    } catch (_) {
+      await player.play(AssetSource('sounds/SFX_session_end.mp3'));
+      // Dispose player after playback completes to avoid native resource leak.
+      player.onPlayerComplete.first.then((_) {
+        player.dispose();
+      }).catchError((_) {
+        player.dispose();
+      });
+    } catch (e) {
+      debugPrint('[recording] reminder bell play failed: $e');
       /* best-effort — never disrupt the recording */
     }
   }

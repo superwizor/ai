@@ -1715,7 +1715,7 @@ Future<String> _recordingIntegrityProbe(RecordingService svc) async {
 
     // Fire the reminder sound on the SAME asset/path the feature uses.
     try {
-      await player.play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
+      await player.play(AssetSource('sounds/SFX_session_end.mp3'));
     } catch (_) {
       /* asset/play failure is itself a finding */
     }
