@@ -5,7 +5,7 @@
 // - Beta: 120 sessions/mo x 2 months, secret /beta link
 // - Równowaga: 30 sessions, 179 PLN brutto
 // - Rozkwit: 90 sessions, 299 PLN brutto
-// - Promo codes: ROWNOWAGA20, ROZKWIT30, PIONIER33
+// - Promo codes: ROWNOWAGA, ROZKWIT, PIONIER33
 // - Register-first flow: create account → redirect based on plan
 // - Apple compliance: no upsells in the path
 

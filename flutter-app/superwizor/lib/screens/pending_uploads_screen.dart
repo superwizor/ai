@@ -632,7 +632,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                   Text(
                     DateFormat('HH:mm').format(upload.queuedAt.toLocal()),
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.6),
                     ),
@@ -671,7 +671,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                     Text(
                       _detailLine(upload, l),
                       style: TextStyle(
-                        fontFamily: 'RobotoMono',
+                        fontFamily: 'Montserrat',
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: EuphireColors.mist.withValues(alpha: 0.8),
@@ -705,7 +705,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                       Text(
                         '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontFamily: 'RobotoMono',
+                          fontFamily: 'Montserrat',
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                           color: EuphireColors.mist.withValues(alpha: 0.8),
@@ -724,7 +724,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                       ? _friendlyError(upload.lastError!, l).toUpperCase()
                       : '${l.pending_uploads_resending_auto_prefix}${_friendlyError(upload.lastError!, l)}'.toUpperCase(),
                   style: TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: isFailed
@@ -1141,7 +1141,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                   Text(
                     '$mb MB',
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 11,
                       color: EuphireColors.mist.withValues(alpha: 0.7),
                     ),
@@ -1150,7 +1150,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                     Text(
                       '  •  $mins min',
                       style: TextStyle(
-                        fontFamily: 'RobotoMono',
+                        fontFamily: 'Montserrat',
                         fontSize: 11,
                         color: EuphireColors.mist.withValues(alpha: 0.7),
                       ),
@@ -1161,7 +1161,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                     DateFormat('HH:mm, d MMM', Localizations.localeOf(context).languageCode)
                         .format(upload.queuedAt.toLocal()),
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 10,
                       color: EuphireColors.mist.withValues(alpha: 0.5),
                     ),

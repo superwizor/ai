@@ -189,6 +189,8 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
                 color: EuphireColors.frostWhite,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
             Text(

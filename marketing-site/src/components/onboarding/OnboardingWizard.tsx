@@ -377,7 +377,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                     {t("Nurt terapii", "Therapy modality")}
                   </label>
                   <p className="font-sans text-[11px] text-[#8FA5A0]/80 mb-3 leading-normal normal-case font-normal">
-                    {t("w której zwykle prowadzisz sesje z klientami", "in which you usually conduct sessions with clients")}
+                    {t("w którym zwykle prowadzisz sesje z klientami", "in which you usually conduct sessions with clients")}
                   </p>
                   <div className="relative group">
                     <select
@@ -446,7 +446,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 {t("Na co najbardziej czekasz?", "What do you look forward to?")}
               </h2>
               <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
-                {t("Wybierz co chcesz — można kilka.", "Pick what you like — multiple is fine.")}
+                {t("Możesz wybrać kilka opcji.", "You can select multiple options.")}
               </p>
 
               <motion.div

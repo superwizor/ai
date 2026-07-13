@@ -1673,6 +1673,8 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                     color: EuphireColors.frostWhite,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -1743,6 +1745,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                 icon: Icons.pause_circle_outline_rounded,
                 selected: currentLifecycle == PatientLifecycle.paused,
                 accentColor: const Color(0xFF60A5FA),
+                tooltipMessage: t.home_section_paused_tooltip,
                 onTap: () => ref
                     .read(patientLifecycleProvider.notifier)
                     .setLifecycle(widget.patientId, PatientLifecycle.paused),
@@ -2115,6 +2118,7 @@ class _LifecycleSegment extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color accentColor;
+  final String? tooltipMessage;
 
   const _LifecycleSegment({
     required this.label,
@@ -2122,6 +2126,7 @@ class _LifecycleSegment extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.accentColor = EuphireColors.ember,
+    this.tooltipMessage,
   });
 
   @override
@@ -2156,16 +2161,35 @@ class _LifecycleSegment extends StatelessWidget {
                     : EuphireColors.mist.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 11,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected
-                      ? accentColor
-                      : EuphireColors.mist.withValues(alpha: 0.5),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: selected
+                          ? accentColor
+                          : EuphireColors.mist.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  if (tooltipMessage != null) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: tooltipMessage,
+                      triggerMode: TooltipTriggerMode.tap,
+                      child: Icon(
+                        Icons.help_outline,
+                        size: 12,
+                        color: selected
+                            ? accentColor.withValues(alpha: 0.8)
+                            : EuphireColors.mist.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -2413,7 +2437,7 @@ class _DeletePatientConfirmSheetState
                 Text(
                   t.home_delete_confirm_word,
                   style: TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     color: EuphireColors.magma,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 4,
@@ -2426,7 +2450,7 @@ class _DeletePatientConfirmSheetState
                   textAlign: TextAlign.center,
                   autofocus: true,
                   style: const TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: EuphireColors.frostWhite,

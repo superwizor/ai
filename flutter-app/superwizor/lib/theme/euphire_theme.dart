@@ -237,7 +237,7 @@ class EuphireTheme {
 
         // ── label* = RobotoMono (technical, overlines, stamps) ──
         labelLarge: const TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'Montserrat',
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: EuphireColors.ember,
@@ -245,7 +245,7 @@ class EuphireTheme {
           letterSpacing: 1.5,
         ),
         labelMedium: TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'Montserrat',
           fontSize: 12,
           fontWeight: FontWeight.w400,
           color: EuphireColors.frostWhite.withValues(alpha: 0.54),
@@ -253,7 +253,7 @@ class EuphireTheme {
           letterSpacing: 1.0,
         ),
         labelSmall: const TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'Montserrat',
           fontSize: 10,
           fontWeight: FontWeight.w500,
           color: EuphireColors.mist,
@@ -289,7 +289,7 @@ class EuphireTheme {
           foregroundColor: EuphireColors.obsidianBlack,
           elevation: 0,
           textStyle: const TextStyle(
-            fontFamily: 'RobotoMono',
+            fontFamily: 'Montserrat',
             fontSize: 15,
             fontWeight: FontWeight.w500,
             letterSpacing: 1.0,

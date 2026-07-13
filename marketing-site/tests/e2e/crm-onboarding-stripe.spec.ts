@@ -459,7 +459,7 @@ test.describe("Stripe Checkout Config", () => {
     // ✅ mode: "subscription"
     // ✅ metadata.organization_id — links to our DB
     // ✅ subscription_data.metadata.organization_id — double-link
-    // ✅ allow_promotion_codes: true — ROWNOWAGA20, ROZKWIT30
+    // ✅ allow_promotion_codes: true — ROWNOWAGA, ROZKWIT
     // ✅ phone_number_collection: { enabled: true }
     // ✅ tax_id_collection: { enabled: true } — "Chcę fakturę VAT"
     // ✅ locale: "pl"

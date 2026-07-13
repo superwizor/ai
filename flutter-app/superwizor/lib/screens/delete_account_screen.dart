@@ -322,7 +322,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                 Text(
                   t.delete_account_confirm_word,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     color: EuphireColors.magma,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 4,
@@ -336,7 +336,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                   textAlign: TextAlign.center,
                   autofocus: true,
                   style: const TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: EuphireColors.frostWhite,
@@ -345,7 +345,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                   decoration: InputDecoration(
                     hintText: t.delete_account_sheet_hint,
                     hintStyle: TextStyle(
-                      fontFamily: 'RobotoMono', fontSize: 14,
+                      fontFamily: 'Montserrat', fontSize: 14,
                       color: EuphireColors.mist.withValues(alpha: 0.4),
                       letterSpacing: 1,
                     ),

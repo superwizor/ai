@@ -84,7 +84,10 @@ class AppLockController extends Notifier<bool> {
         persistAcrossBackgrounding: true,
         // biometricOnly:false (default) → allow the device passcode fallback.
       );
-      if (ok) state = false;
+      if (ok) {
+        _backgroundedAt = null; // K5: Prevent double-prompt if OS fires onResume late
+        state = false;
+      }
       return ok;
     } catch (_) {
       // Cancelled / no hardware / lockout — stay locked, let the user retry.

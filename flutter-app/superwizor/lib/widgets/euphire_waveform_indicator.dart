@@ -285,7 +285,7 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
                   Text(
                     widget.formattedDuration,
                     style: const TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2.0,
                       fontSize: 28,

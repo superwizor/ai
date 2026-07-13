@@ -1041,7 +1041,7 @@
       "solo": {
         "name": "Balance",
         "tagline": "For individual therapists.",
-        "couponText": "CODE: ROWNOWAGA20",
+        "couponText": "CODE: ROWNOWAGA",
         "priceIntro": "99 PLN",
         "priceBase": "regular price 149 PLN",
         "subprice": "early adopter price",
@@ -1057,7 +1057,7 @@
         "name": "Growth",
         "tagline": "For power users.",
         "badge": "Most popular",
-        "couponText": "CODE: ROZKWIT30",
+        "couponText": "CODE: ROZKWIT",
         "priceIntro": "199 PLN",
         "priceBase": "regular price 299 PLN",
         "subprice": "early adopter price",

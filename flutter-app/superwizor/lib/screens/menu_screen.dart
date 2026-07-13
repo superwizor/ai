@@ -247,7 +247,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                 child: Text(
                                   t.settings_logged_in_as(email),
                                   style: TextStyle(
-                                    fontFamily: 'RobotoMono',
+                                    fontFamily: 'Montserrat',
                                     fontSize: 11,
                                     color: EuphireColors.frostWhite.withValues(
                                       alpha: 0.45,
@@ -427,7 +427,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                         child: Text(
                                           abbr,
                                           style: const TextStyle(
-                                            fontFamily: 'RobotoMono',
+                                            fontFamily: 'Montserrat',
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                             color: EuphireColors.ember,
@@ -802,7 +802,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   ? 'Superwizor AI v$_appVersion'
                                   : 'Superwizor AI',
                               style: TextStyle(
-                                fontFamily: 'RobotoMono',
+                                fontFamily: 'Montserrat',
                                 fontSize: 11,
                                 color: EuphireColors.mist.withValues(
                                   alpha: 0.35,
@@ -863,7 +863,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'Montserrat',
           fontSize: 11,
           fontWeight: FontWeight.w500,
           color: EuphireColors.frostWhite.withValues(alpha: 0.55),
@@ -1241,7 +1241,7 @@ class _LangTile extends StatelessWidget {
                   Text(
                     sub,
                     style: const TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 11,
                       color: Colors.grey,
                     ),
@@ -1513,7 +1513,7 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
               Text(
                 widget.currentEmail,
                 style: TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 12,
                   color: EuphireColors.mist.withValues(alpha: 0.45),
                 ),
@@ -1982,7 +1982,7 @@ class _LicenseTileState extends State<_LicenseTile> {
                               ? 'e'
                               : 'i'}',
                           style: TextStyle(
-                            fontFamily: 'RobotoMono',
+                            fontFamily: 'Montserrat',
                             fontSize: 11,
                             color: EuphireColors.mist.withValues(alpha: 0.6),
                           ),
@@ -2018,7 +2018,7 @@ class _LicenseTileState extends State<_LicenseTile> {
                         child: Text(
                           p.text,
                           style: TextStyle(
-                            fontFamily: 'RobotoMono',
+                            fontFamily: 'Montserrat',
                             fontSize: 10,
                             color: EuphireColors.mist.withValues(alpha: 0.55),
                             height: 1.5,

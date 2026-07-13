@@ -108,7 +108,7 @@ class PendingQuotaSessionsWidget extends ConsumerWidget {
                     ),
                     style: TextStyle(
                       color: EuphireColors.mist,
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 11,
                       letterSpacing: 0.5,
                     ),
@@ -155,7 +155,7 @@ class _PendingRow extends ConsumerWidget {
             l.billing_pending_session_subtitle,
             style: TextStyle(
               color: EuphireColors.mist,
-              fontFamily: 'RobotoMono',
+              fontFamily: 'Montserrat',
               fontSize: 11,
               letterSpacing: 0.5,
             ),

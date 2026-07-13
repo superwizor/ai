@@ -255,7 +255,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
               Text(
                 t.addPatient_avatar_format_hint,
                 style: TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 11,
                   color: EuphireColors.mist.withValues(alpha: 0.4),
                 ),
@@ -266,7 +266,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
               Text(
                 t.avatar_customize_background_color,
                 style: TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 1.5,

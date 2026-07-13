@@ -425,7 +425,7 @@ class _BannerCardState extends State<_BannerCard>
                       child: Text(
                         '${(c.progressValue! * 100).clamp(0, 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontFamily: 'RobotoMono',
+                          fontFamily: 'Montserrat',
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color:
@@ -470,7 +470,7 @@ class _BannerCardState extends State<_BannerCard>
                                 child: Text(
                                   widget.detailsBadge,
                                   style: TextStyle(
-                                    fontFamily: 'RobotoMono',
+                                    fontFamily: 'Montserrat',
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color:

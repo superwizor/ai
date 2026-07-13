@@ -22,7 +22,6 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:superwizor/widgets/screen_tracker.dart';
 import 'package:superwizor/utils/pdf_exporter.dart';
 import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -427,7 +426,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     PdfExporter.exportReportAsPdf(
       title: t.transcript_pdf_title,
       subtitle: t.transcript_pdf_meta_date(
-        DateFormat('d MMM yyyy, HH:mm').format(data.session.createdAt.toDateTime().toLocal()),
+        DateFormat('d MMM yyyy, HH:mm').format(data.session.createdAt.toLocal()),
       ),
       markdownContent: reportMarkdown,
     );

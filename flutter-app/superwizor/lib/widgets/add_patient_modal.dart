@@ -103,9 +103,11 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
         right: 24,
         top: 12,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Drag handle ──
@@ -254,6 +256,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             const SizedBox(height: 8),
           ],
         ),
+       ),
       ),
     );
   }

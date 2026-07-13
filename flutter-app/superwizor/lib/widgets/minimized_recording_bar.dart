@@ -210,7 +210,7 @@ class _MinimizedRecordingBarWrapperState
                     Text(
                       formattedDuration,
                       style: const TextStyle(
-                        fontFamily: 'RobotoMono',
+                        fontFamily: 'Montserrat',
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: EuphireColors.ember,

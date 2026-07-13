@@ -4,7 +4,7 @@
 // - CTA buttons on LP point to #cennik (scroll anchor)
 // - Pricing section shows correct trial (5 sessions, 30 days), solo (179 PLN),
 //   pro (299 PLN, 90 sessions) info
-// - Coupon codes (ROWNOWAGA20, ROZKWIT30, PIONIER33) are visible
+// - Coupon codes (ROWNOWAGA, ROZKWIT, PIONIER33) are visible
 // - VAT note says "brutto" not "netto"
 // - Trial CTA links to /register/therapist
 // - Paid CTAs link to /register/therapist?plan=...

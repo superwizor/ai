@@ -505,7 +505,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'Montserrat',
           fontSize: 11,
           fontWeight: FontWeight.w500,
           color: EuphireColors.frostWhite.withValues(alpha: 0.55),

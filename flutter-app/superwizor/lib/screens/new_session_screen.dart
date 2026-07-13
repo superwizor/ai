@@ -229,7 +229,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
                         Text(
                           widget.autoPickFile ? t.newSession_upload_file_header : t.newSession_new_session_header,
                           style: TextStyle(
-                            fontFamily: 'RobotoMono',
+                            fontFamily: 'Montserrat',
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: EuphireColors.ember,
@@ -240,7 +240,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
                         Text(
                           dateLabel,
                           style: TextStyle(
-                            fontFamily: 'RobotoMono',
+                            fontFamily: 'Montserrat',
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                             color: EuphireColors.frostWhite
@@ -934,7 +934,7 @@ class _PrimaryButton extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
@@ -1069,7 +1069,7 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
               Text(
                 AppLocalizations.of(context).clientDetails_status_processing.toUpperCase(),
                 style: TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
                   color: EuphireColors.frostWhite.withValues(alpha: 0.4),
@@ -1134,7 +1134,7 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
               Text(
                 '$percentage%',
                 style: TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: isDone ? const Color(0xFF4CAF50) : EuphireColors.ember,
@@ -1393,7 +1393,7 @@ class _EncryptionChip extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontFamily: 'RobotoMono',
+              fontFamily: 'Montserrat',
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: EuphireColors.mist,

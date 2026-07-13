@@ -437,7 +437,7 @@ class _DebugSheet extends StatelessWidget {
                                     result,
                                     style: const TextStyle(
                                       color: Colors.white70,
-                                      fontFamily: 'RobotoMono',
+                                      fontFamily: 'Montserrat',
                                       fontSize: 12,
                                       height: 1.4,
                                     ),

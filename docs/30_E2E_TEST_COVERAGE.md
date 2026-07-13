@@ -71,7 +71,7 @@ Czas wykonania: ~4.6s
 | Test | Co sprawdza |
 |---|---|
 | Brutto prices | "brutto" (nie "netto") w sekcji cennika |
-| Coupon codes | ROWNOWAGA20, ROZKWIT30, PIONIER33 widoczne |
+| Coupon codes | ROWNOWAGA, ROZKWIT, PIONIER33 widoczne |
 | Tax ID collection | `enabled: true` |
 | Annual discount | ~17% zniżka vs monthly |
 

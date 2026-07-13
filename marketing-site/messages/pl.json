@@ -1041,7 +1041,7 @@
       "solo": {
         "name": "Równowaga",
         "tagline": "Dla terapeutów indywidualnych.",
-        "couponText": "KOD: ROWNOWAGA20",
+        "couponText": "KOD: ROWNOWAGA",
         "priceIntro": "99 zł",
         "priceBase": "cena regularna 149 zł",
         "subprice": "cena dla wczesnych użytkowników",
@@ -1057,7 +1057,7 @@
         "name": "Rozkwit",
         "tagline": "Dla intensywnie pracujących.",
         "badge": "Najczęściej wybierany",
-        "couponText": "KOD: ROZKWIT30",
+        "couponText": "KOD: ROZKWIT",
         "priceIntro": "199 zł",
         "priceBase": "cena regularna 299 zł",
         "subprice": "cena dla wczesnych użytkowników",

@@ -1267,7 +1267,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                     Text(
                                       dateLabel.toUpperCase(),
                                       style: TextStyle(
-                                        fontFamily: 'RobotoMono',
+                                        fontFamily: 'Montserrat',
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                         color: EuphireColors.frostWhite
@@ -1384,7 +1384,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                             ),
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              fontFamily: 'RobotoMono',
+                                              fontFamily: 'Montserrat',
                                               fontSize: 13,
                                               color: EuphireColors.frostWhite
                                                   .withValues(alpha: 0.6),

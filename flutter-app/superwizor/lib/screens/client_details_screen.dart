@@ -1287,7 +1287,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                       Text(
                         label,
                         style: TextStyle(
-                          fontFamily: 'RobotoMono',
+                          fontFamily: 'Montserrat',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.0,
@@ -3800,7 +3800,7 @@ class _ActiveRecordingCard extends StatelessWidget {
                 Text(
                   formattedDuration,
                   style: const TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: EuphireColors.ember,

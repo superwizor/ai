@@ -132,7 +132,7 @@ class QuotaWarningBanner extends ConsumerWidget {
                     l.billing_period_end_label(_formatDate(q.periodEnd!)),
                     style: TextStyle(
                       color: fg.withValues(alpha: 0.7),
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 11,
                       letterSpacing: 0.5,
                     ),

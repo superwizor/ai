@@ -60,6 +60,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
   String? _error;
   String _filter = 'all';
   String _search = '';
+  bool _removeFillers = false;
   Duration _playbackPosition = Duration.zero;
   StreamSubscription<Duration>? _posSub;
   late final AudioPlayer _player;
@@ -177,6 +178,22 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       if (_filter != 'all' && s.speakerTag.toString() != _filter) return false;
       if (q.isNotEmpty && !s.text.toLowerCase().contains(q)) return false;
       return true;
+    }).map((s) {
+      if (!_removeFillers) return s;
+      // Regex that matches common Polish filler words: yyy, eee, yyyy, etc.
+      final newText = s.text
+          .replaceAll(RegExp(r'\b([yY]{2,}|[eE]{2,}|mhm)\b', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      return SpeakerTurnDto(
+        speakerTag: s.speakerTag,
+        speakerLabel: s.speakerLabel,
+        startOffsetMs: s.startOffsetMs,
+        endOffsetMs: s.endOffsetMs,
+        text: newText,
+        segmentCount: s.segmentCount,
+        confidenceAvg: s.confidenceAvg,
+      );
     }).toList(growable: false);
   }
 
@@ -416,6 +433,26 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
               itemCount: filters.length,
             ),
           ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: Text(
+              t.transcript_remove_fillers,
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 13,
+                color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+              ),
+            ),
+            value: _removeFillers,
+            onChanged: (val) {
+              setState(() {
+                _removeFillers = val;
+              });
+            },
+            activeThumbColor: EuphireColors.ember,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
         ],
       ),
     );
@@ -535,7 +572,7 @@ class _SegmentTile extends StatelessWidget {
                       Text(
                         _formatRange(segment),
                         style: TextStyle(
-                          fontFamily: 'RobotoMono',
+                          fontFamily: 'Montserrat',
                           color: EuphireColors.frostWhite.withValues(alpha: 0.3),
                           fontSize: 10,
                           fontWeight: FontWeight.w500,

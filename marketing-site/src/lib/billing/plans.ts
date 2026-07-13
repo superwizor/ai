@@ -2,8 +2,8 @@
 //
 // PRICING DECISION (2026-07-12, Maciek+Marcin — LIVE):
 //   Trial:      5 sessions / 30 days, free, no card
-//   Równowaga:  149 zł BRUTTO /mo, 30 sessions. Coupon ROWNOWAGA20 = -20% = ~119 zł
-//   Rozkwit:    299 zł BRUTTO /mo, 90 sessions. Coupon ROZKWIT30  = -30% = ~209 zł
+//   Równowaga:  149 zł BRUTTO /mo, 30 sessions. Coupon ROWNOWAGA = -50 zł = 99 zł
+//   Rozkwit:    299 zł BRUTTO /mo, 90 sessions. Coupon ROZKWIT = -100 zł = 199 zł
 //   Prices are BRUTTO (incl. 23% VAT). Stripe Tax handles the split.
 //
 // Source of truth: superwizor-backend/migrations/000029_billing_phase3_seed_plans.up.sql

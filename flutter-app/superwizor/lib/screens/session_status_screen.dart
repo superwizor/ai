@@ -875,7 +875,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                   child: Text(
                     '$mb MB  •  $mins min  •  $cType  •  $time',
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 10,
                       color: EuphireColors.mist.withValues(alpha: 0.7),
                     ),
@@ -909,7 +909,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: EuphireColors.mist.withValues(alpha: 0.9),

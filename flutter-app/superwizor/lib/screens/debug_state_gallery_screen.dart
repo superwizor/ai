@@ -674,7 +674,7 @@ class _ScenarioPreviewScreen extends StatelessWidget {
             child: Text(
               scenario.phase.name,
               style: TextStyle(
-                fontFamily: 'RobotoMono',
+                fontFamily: 'Montserrat',
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 color: scenario.color,
@@ -917,7 +917,7 @@ class _ScenarioPreviewScreen extends StatelessWidget {
                   child: Text(
                     '$mb MB  •  $mins min  •  $cType  •  $time',
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 10,
                       color: EuphireColors.mist.withValues(alpha: 0.7),
                     ),
@@ -951,7 +951,7 @@ class _ScenarioPreviewScreen extends StatelessWidget {
                     '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: EuphireColors.mist.withValues(alpha: 0.9),
@@ -1132,7 +1132,7 @@ class _ScenarioPreviewScreen extends StatelessWidget {
                     child: Text(
                       'lastError: ${scenario.errorMessage}',
                       style: TextStyle(
-                        fontFamily: 'RobotoMono',
+                        fontFamily: 'Montserrat',
                         fontSize: 9,
                         color: Colors.redAccent.withValues(alpha: 0.6),
                       ),
@@ -1529,7 +1529,7 @@ class _HomeScreenPreviewWrapperState extends State<_HomeScreenPreviewWrapper> {
                                   Text(
                                     '${(_progress * 100).toStringAsFixed(0)}%',
                                     style: const TextStyle(
-                                      fontFamily: 'RobotoMono',
+                                      fontFamily: 'Montserrat',
                                       fontSize: 11,
                                       color: EuphireColors.frostWhite,
                                     ),
@@ -1803,7 +1803,7 @@ class _MockActiveAnalysisBanner extends StatelessWidget {
                       child: Text(
                         '${(progressValue! * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontFamily: 'RobotoMono',
+                          fontFamily: 'Montserrat',
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: EuphireColors.frostWhite.withValues(alpha: 0.5),
@@ -1840,7 +1840,7 @@ class _MockActiveAnalysisBanner extends StatelessWidget {
                                 child: Text(
                                   detailsBadge,
                                   style: TextStyle(
-                                    fontFamily: 'RobotoMono',
+                                    fontFamily: 'Montserrat',
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color: EuphireColors.mist.withValues(alpha: 0.7),
@@ -2506,7 +2506,7 @@ class _ClientDetailsPreviewWrapperState extends State<_ClientDetailsPreviewWrapp
             child: Text(
               widget.scenario.phase.name,
               style: TextStyle(
-                fontFamily: 'RobotoMono',
+                fontFamily: 'Montserrat',
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 color: widget.scenario.color,
@@ -2598,7 +2598,7 @@ class _MockActiveRecordingCard extends StatelessWidget {
                 Text(
                   durationString,
                   style: const TextStyle(
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: EuphireColors.ember,
@@ -3265,7 +3265,7 @@ class _MockMinimizedRecordingBar extends StatelessWidget {
                   Text(
                     durationString,
                     style: const TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily: 'Montserrat',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: EuphireColors.ember,
@@ -3735,7 +3735,7 @@ class _MinimizedRecordingPreviewWrapperState
             child: Text(
               widget.scenario.phase.name,
               style: TextStyle(
-                fontFamily: 'RobotoMono',
+                fontFamily: 'Montserrat',
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 color: widget.scenario.color,

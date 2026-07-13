@@ -40,7 +40,7 @@ Terapeuta widzi LP
     │       ├── NIP: opcjonalny (tax_id_collection)
     │       ├── Adres: wymagany (billing_address_collection)
     │       ├── VAT: automatyczny 23% (automatic_tax)
-    │       ├── Kupony: ROWNOWAGA20 / ROZKWIT30 / PIONIER33
+    │       ├── Kupony: ROWNOWAGA / ROZKWIT / PIONIER33
     │       └── Sukces → /register/therapist/success?session_id=xxx
     │
     ├─► Stripe Webhook → billing-svc:
@@ -129,9 +129,9 @@ Podwójne linkowanie zapewnia, że nawet jeśli jeden event dotrze pierwszy, dru
 
 | Kod | Zniżka | Zastosowanie |
 |---|---|---|
-| ROWNOWAGA20 | -20% | Plan Równowaga |
-| ROZKWIT30 | -30% | Plan Rozkwit |
-| PIONIER33 | -33% | Wszyscy early adopters (beta) |
+| ROWNOWAGA / ROWNOWAGA20 | -50 zł (dokładnie 99 zł) | Plan Równowaga |
+| ROZKWIT / ROZKWIT30 | -100 zł (dokładnie 199 zł) | Plan Rozkwit |
+| PIONIER33 | -33% (około 99.83 zł / 998 zł) | Wszyscy early adopters (beta) |
 
 ---
 

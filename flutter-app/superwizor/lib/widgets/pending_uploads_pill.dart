@@ -86,7 +86,7 @@ class PendingUploadsPill extends ConsumerWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'RobotoMono',
+                fontFamily: 'Montserrat',
                 fontSize: 11,
                 color: color,
                 fontWeight: FontWeight.w600,

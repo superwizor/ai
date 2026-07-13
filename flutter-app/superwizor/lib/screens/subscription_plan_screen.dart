@@ -124,7 +124,7 @@ class _PlanCard extends StatelessWidget {
           l.subscription_plan_section_header,
           style: const TextStyle(
             color: EuphireColors.mist,
-            fontFamily: 'RobotoMono',
+            fontFamily: 'Montserrat',
             fontSize: 11,
             letterSpacing: 2,
             fontWeight: FontWeight.w600,
@@ -193,7 +193,7 @@ class _PlanCard extends StatelessWidget {
                 l.subscription_sessions_used(quota.tokensUsed, quota.tokensLimit),
                 style: TextStyle(
                   color: EuphireColors.mist,
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 12,
                   letterSpacing: 0.5,
                 ),
@@ -204,7 +204,7 @@ class _PlanCard extends StatelessWidget {
                   '+ ${quota.tokensReserved} zarezerwowane',
                   style: TextStyle(
                     color: EuphireColors.ember.withValues(alpha: 0.85),
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 11,
                     letterSpacing: 0.5,
                   ),
@@ -216,7 +216,7 @@ class _PlanCard extends StatelessWidget {
                   l.subscription_period_ends(_formatDate(quota.periodEnd!)),
                   style: TextStyle(
                     color: EuphireColors.mist.withValues(alpha: 0.85),
-                    fontFamily: 'RobotoMono',
+                    fontFamily: 'Montserrat',
                     fontSize: 11,
                     letterSpacing: 0.5,
                   ),
@@ -272,7 +272,7 @@ class _NoDataCard extends StatelessWidget {
                 message!,
                 style: const TextStyle(
                   color: EuphireColors.magma,
-                  fontFamily: 'RobotoMono',
+                  fontFamily: 'Montserrat',
                   fontSize: 11,
                 ),
               ),
