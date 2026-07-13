@@ -53,7 +53,6 @@ dependencies:
   # PDF (transcript export + legal viewer)
   pdf: ^3.11.1
   printing: ^5.13.4
-  pdfx: ^2.9.2
 
   # Networking
   http: ^1.6.0
