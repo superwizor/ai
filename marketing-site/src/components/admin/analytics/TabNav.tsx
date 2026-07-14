@@ -4,14 +4,14 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 
-export type TabKey = "overview" | "costs" | "quality" | "funnel" | "ops";
+export type TabKey = "overview" | "costs" | "quality" | "funnel" | "ops" | "feedback";
 
 interface TabNavProps {
   activeTab: TabKey;
   onChange: (tab: TabKey) => void;
 }
 
-const TAB_KEYS: TabKey[] = ["overview", "costs", "quality", "funnel", "ops"];
+const TAB_KEYS: TabKey[] = ["overview", "costs", "quality", "funnel", "ops", "feedback"];
 
 export function TabNav({ activeTab, onChange }: TabNavProps) {
   const t = useTranslations("admin.analytics.tabs");

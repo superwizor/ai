@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { clinicalClient } from "@/lib/connect/clients";
 import { useNbpRate } from "@/lib/hooks/useNbpRate";
-import type { GetAdminAnalyticsResponse } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
+import type { GetAdminAnalyticsResponse, AdminReportRatingRow } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 import { chartTheme } from "@/lib/charts/theme";
 import { KpiCard } from "@/components/admin/analytics/KpiCard";
 import { ChartCard } from "@/components/admin/analytics/ChartCard";
@@ -77,6 +77,16 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Feedback tab state
+  const [feedbackRatings, setFeedbackRatings] = useState<AdminReportRatingRow[]>([]);
+  const [feedbackTotal, setFeedbackTotal] = useState(0);
+  const [feedbackPage, setFeedbackPage] = useState(0);
+  const [feedbackPageSize] = useState(25);
+  const [feedbackRatingFilter, setFeedbackRatingFilter] = useState("");
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState("");
+  const [feedbackSearch, setFeedbackSearch] = useState("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -94,6 +104,44 @@ export default function AnalyticsPage() {
   useEffect(() => {
     void fetchAnalytics();
   }, [fetchAnalytics]);
+
+  // Feedback tab data fetching
+  const fetchFeedback = useCallback(async () => {
+    setFeedbackLoading(true);
+    try {
+      const resp = await clinicalClient.adminListReportRatings({
+        pageSize: feedbackPageSize,
+        page: feedbackPage,
+        ratingFilter: feedbackRatingFilter,
+        statusFilter: feedbackStatusFilter,
+        search: feedbackSearch,
+      });
+      setFeedbackRatings(resp.ratings as AdminReportRatingRow[]);
+      setFeedbackTotal(Number(resp.totalCount));
+    } catch (err: any) {
+      console.error("Failed to load feedback:", err);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [feedbackPage, feedbackPageSize, feedbackRatingFilter, feedbackStatusFilter, feedbackSearch]);
+
+  useEffect(() => {
+    if (activeTab === "feedback") {
+      void fetchFeedback();
+    }
+  }, [activeTab, fetchFeedback]);
+
+  const handleToggleStatus = async (ratingId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "done" ? "pending" : "done";
+    try {
+      await clinicalClient.adminSetRatingReviewStatus({ ratingId, status: newStatus });
+      setFeedbackRatings((prev) =>
+        prev.map((r) => (r.id === ratingId ? { ...r, adminReviewStatus: newStatus } as AdminReportRatingRow : r))
+      );
+    } catch (err: any) {
+      console.error("Failed to toggle status:", err);
+    }
+  };
 
   if (loading) {
     return (
@@ -849,6 +897,194 @@ export default function AnalyticsPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Report Feedback Tab ── */}
+      {activeTab === "feedback" && (
+        <div className="flex flex-col gap-6">
+          {/* Feedback header */}
+          <div>
+            <h2 className="font-display text-frost text-xl font-semibold tracking-wide">
+              {t("feedback.title")}
+            </h2>
+            <p className="font-serif text-xs text-mist mt-1">
+              {t("feedback.subtitle")}
+            </p>
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <KpiCard title={t("feedback.kpiTotal")} info={t("feedback.kpiTotalInfo")} value={Number(data.kpiRatingsTotal)} />
+            <KpiCard title={t("feedback.kpiPositive")} info={t("feedback.kpiPositiveInfo")} value={Number(data.kpiRatingsPositive)} />
+            <KpiCard title={t("feedback.kpiNegative")} info={t("feedback.kpiNegativeInfo")} value={Number(data.kpiRatingsNegative)} />
+            <KpiCard title={t("feedback.kpiWithNotes")} info={t("feedback.kpiWithNotesInfo")} value={Number(data.kpiRatingsWithNotes)} />
+          </div>
+
+          {/* Charts — reuse existing satisfaction trend + issue categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title={t("chart.satisfactionTrend")} description={t("chart.satisfactionTrendDesc")} info={t("chart.satisfactionTrendInfo")} isEmpty={!hasData(data.satisfactionTrend)}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.satisfactionTrend} margin={{ left: -20, right: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorSatisfactionFb" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={chartTheme.ember} stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor={chartTheme.ember} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis dataKey="label" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis stroke={chartTheme.mist} fontSize={10} tickLine={false} domain={[0, 100]} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="satisfactionPct" name="%" stroke={chartTheme.ember} fillOpacity={1} fill="url(#colorSatisfactionFb)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title={t("chart.issueCategories")} description={t("chart.issueCategoriesDesc")} info={t("chart.issueCategoriesInfo")} isEmpty={!hasData(issueCategoriesData)}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={issueCategoriesData} layout="vertical" margin={{ left: 20, right: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis type="number" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis dataKey="category" type="category" stroke={chartTheme.mist} fontSize={10} tickLine={false} width={80} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" fill={chartTheme.magma} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3 p-4 rounded-card bg-frost/[0.02] border border-frost/10">
+            <select
+              value={feedbackRatingFilter}
+              onChange={(e) => { setFeedbackRatingFilter(e.target.value); setFeedbackPage(0); }}
+              className="bg-frost/5 border border-frost/10 text-frost text-xs font-mono rounded-button px-3 py-2 focus:outline-none focus:border-ember/40"
+            >
+              <option value="">{t("feedback.filterAll")}</option>
+              <option value="positive">{t("feedback.filterPositive")}</option>
+              <option value="negative">{t("feedback.filterNegative")}</option>
+            </select>
+
+            <select
+              value={feedbackStatusFilter}
+              onChange={(e) => { setFeedbackStatusFilter(e.target.value); setFeedbackPage(0); }}
+              className="bg-frost/5 border border-frost/10 text-frost text-xs font-mono rounded-button px-3 py-2 focus:outline-none focus:border-ember/40"
+            >
+              <option value="">{t("feedback.filterAll")}</option>
+              <option value="pending">{t("feedback.filterPending")}</option>
+              <option value="done">{t("feedback.filterDone")}</option>
+            </select>
+
+            <input
+              type="text"
+              value={feedbackSearch}
+              onChange={(e) => { setFeedbackSearch(e.target.value); setFeedbackPage(0); }}
+              placeholder={t("feedback.searchPlaceholder")}
+              className="bg-frost/5 border border-frost/10 text-frost text-xs font-mono rounded-button px-3 py-2 w-64 focus:outline-none focus:border-ember/40 placeholder:text-mist/40"
+            />
+          </div>
+
+          {/* Ratings Table */}
+          {feedbackLoading ? (
+            <div className="animate-pulse space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-14 bg-frost/5 rounded-card" />
+              ))}
+            </div>
+          ) : feedbackRatings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="text-mist text-lg font-semibold mb-2">{t("feedback.noData")}</div>
+              <div className="text-mist/60 text-sm">{t("feedback.noDataHint")}</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-card border border-frost/10">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-frost/10 text-mist/60 font-semibold font-mono uppercase tracking-wider">
+                    <th className="py-3 px-4">{t("feedback.tableTherapist")}</th>
+                    <th className="py-3 px-4">{t("feedback.tableRating")}</th>
+                    <th className="py-3 px-4">{t("feedback.tableIssues")}</th>
+                    <th className="py-3 px-4 min-w-[200px]">{t("feedback.tableNotes")}</th>
+                    <th className="py-3 px-4">{t("feedback.tableDate")}</th>
+                    <th className="py-3 px-4">{t("feedback.tableStatus")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-frost/5 text-frost">
+                  {feedbackRatings.map((r) => (
+                    <tr key={r.id} className="hover:bg-frost/[0.03] transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-medium">{r.therapistName}</div>
+                        <div className="text-mist/50 text-[10px]">{r.therapistEmail}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                          r.rating === "positive"
+                            ? "bg-aurora/10 text-aurora border border-aurora/20"
+                            : "bg-magma/10 text-magma border border-magma/20"
+                        }`}>
+                          {r.rating === "positive" ? "👍" : "👎"} {t(`feedback.${r.rating}`)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {r.issues && r.issues.length > 0 ? r.issues.map((iss) => (
+                            <span key={iss} className="px-1.5 py-0.5 rounded bg-frost/5 border border-frost/10 text-mist text-[9px] font-mono">
+                              {iss.replace(/_/g, " ")}
+                            </span>
+                          )) : <span className="text-mist/30">—</span>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="max-w-[300px] break-words text-mist/80 font-serif text-[11px] leading-relaxed">
+                          {r.notes || t("feedback.noNotes")}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-mist/60 font-mono text-[10px] whitespace-nowrap">
+                        {r.createdAt ? new Date(Number(r.createdAt.seconds) * 1000).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => handleToggleStatus(r.id, r.adminReviewStatus)}
+                          className={`px-2.5 py-1 rounded-button text-[10px] font-mono font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                            r.adminReviewStatus === "done"
+                              ? "bg-aurora/10 text-aurora border border-aurora/20 hover:bg-aurora/20"
+                              : "bg-frost/5 text-mist border border-frost/10 hover:bg-ember/10 hover:text-ember hover:border-ember/20"
+                          }`}
+                          title={r.adminReviewStatus === "done" ? t("feedback.markPending") : t("feedback.markDone")}
+                        >
+                          {r.adminReviewStatus === "done" ? t("feedback.statusDone") : t("feedback.statusPending")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {feedbackTotal > feedbackPageSize && (
+            <div className="flex items-center justify-between px-1">
+              <button
+                onClick={() => setFeedbackPage((p) => Math.max(0, p - 1))}
+                disabled={feedbackPage === 0}
+                className="px-3 py-1.5 text-xs font-mono rounded-button bg-frost/5 border border-frost/10 text-mist hover:text-frost disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                {t("feedback.prev")}
+              </button>
+              <span className="text-mist/60 font-mono text-[10px]">
+                {t("feedback.pageOf", { page: feedbackPage + 1, total: Math.ceil(feedbackTotal / feedbackPageSize) })}
+              </span>
+              <button
+                onClick={() => setFeedbackPage((p) => p + 1)}
+                disabled={(feedbackPage + 1) * feedbackPageSize >= feedbackTotal}
+                className="px-3 py-1.5 text-xs font-mono rounded-button bg-frost/5 border border-frost/10 text-mist hover:text-frost disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                {t("feedback.next")}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -54,3 +54,49 @@ WHERE therapist_id = $1
   AND action = 'dismissed'
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- ─── Admin feedback dashboard (SUPERWIZOR_ADMIN only) ──────
+
+-- name: AdminListReportRatings :many
+-- Paginated list of all ratings with therapist name/email.
+-- Filters (all AND-combined): rating type, review status, therapist search.
+-- Test accounts excluded.
+SELECT
+  rr.id, rr.report_id, rr.therapist_id,
+  rr.rating, rr.issues, rr.notes, rr.source,
+  rr.admin_review_status, rr.created_at, rr.updated_at,
+  u.first_name AS therapist_first_name,
+  u.last_name  AS therapist_last_name,
+  u.email      AS therapist_email
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND ($3::text = '' OR rr.rating = $3)
+  AND ($4::text = '' OR rr.admin_review_status = $4)
+  AND ($5::text = '' OR u.first_name ILIKE '%' || $5 || '%'
+       OR u.last_name ILIKE '%' || $5 || '%'
+       OR u.email ILIKE '%' || $5 || '%')
+ORDER BY rr.created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: AdminCountReportRatings :one
+-- Total count matching the same filters as AdminListReportRatings.
+SELECT COUNT(*)::bigint AS count
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND ($1::text = '' OR rr.rating = $1)
+  AND ($2::text = '' OR rr.admin_review_status = $2)
+  AND ($3::text = '' OR u.first_name ILIKE '%' || $3 || '%'
+       OR u.last_name ILIKE '%' || $3 || '%'
+       OR u.email ILIKE '%' || $3 || '%');
+
+-- name: AdminSetRatingReviewStatus :exec
+-- Toggles a rating's admin review status (pending ↔ done).
+UPDATE report_ratings
+SET admin_review_status = $2, updated_at = now()
+WHERE id = $1;

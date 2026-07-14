@@ -12,6 +12,142 @@ import (
 	"github.com/google/uuid"
 )
 
+const adminCountReportRatings = `-- name: AdminCountReportRatings :one
+SELECT COUNT(*)::bigint AS count
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND ($1::text = '' OR rr.rating = $1)
+  AND ($2::text = '' OR rr.admin_review_status = $2)
+  AND ($3::text = '' OR u.first_name ILIKE '%' || $3 || '%'
+       OR u.last_name ILIKE '%' || $3 || '%'
+       OR u.email ILIKE '%' || $3 || '%')
+`
+
+type AdminCountReportRatingsParams struct {
+	Column1 string `json:"column_1"`
+	Column2 string `json:"column_2"`
+	Column3 string `json:"column_3"`
+}
+
+// Total count matching the same filters as AdminListReportRatings.
+func (q *Queries) AdminCountReportRatings(ctx context.Context, arg AdminCountReportRatingsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, adminCountReportRatings, arg.Column1, arg.Column2, arg.Column3)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const adminListReportRatings = `-- name: AdminListReportRatings :many
+
+SELECT
+  rr.id, rr.report_id, rr.therapist_id,
+  rr.rating, rr.issues, rr.notes, rr.source,
+  rr.admin_review_status, rr.created_at, rr.updated_at,
+  u.first_name AS therapist_first_name,
+  u.last_name  AS therapist_last_name,
+  u.email      AS therapist_email
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND ($3::text = '' OR rr.rating = $3)
+  AND ($4::text = '' OR rr.admin_review_status = $4)
+  AND ($5::text = '' OR u.first_name ILIKE '%' || $5 || '%'
+       OR u.last_name ILIKE '%' || $5 || '%'
+       OR u.email ILIKE '%' || $5 || '%')
+ORDER BY rr.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type AdminListReportRatingsParams struct {
+	Limit   int32  `json:"limit"`
+	Offset  int32  `json:"offset"`
+	Column3 string `json:"column_3"`
+	Column4 string `json:"column_4"`
+	Column5 string `json:"column_5"`
+}
+
+type AdminListReportRatingsRow struct {
+	ID                 uuid.UUID `json:"id"`
+	ReportID           uuid.UUID `json:"report_id"`
+	TherapistID        uuid.UUID `json:"therapist_id"`
+	Rating             string    `json:"rating"`
+	Issues             []string  `json:"issues"`
+	Notes              string    `json:"notes"`
+	Source             string    `json:"source"`
+	AdminReviewStatus  string    `json:"admin_review_status"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	TherapistFirstName string    `json:"therapist_first_name"`
+	TherapistLastName  string    `json:"therapist_last_name"`
+	TherapistEmail     *string   `json:"therapist_email"`
+}
+
+// ─── Admin feedback dashboard (SUPERWIZOR_ADMIN only) ──────
+// Paginated list of all ratings with therapist name/email.
+// Filters (all AND-combined): rating type, review status, therapist search.
+// Test accounts excluded.
+func (q *Queries) AdminListReportRatings(ctx context.Context, arg AdminListReportRatingsParams) ([]AdminListReportRatingsRow, error) {
+	rows, err := q.db.Query(ctx, adminListReportRatings,
+		arg.Limit,
+		arg.Offset,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListReportRatingsRow
+	for rows.Next() {
+		var i AdminListReportRatingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReportID,
+			&i.TherapistID,
+			&i.Rating,
+			&i.Issues,
+			&i.Notes,
+			&i.Source,
+			&i.AdminReviewStatus,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.TherapistFirstName,
+			&i.TherapistLastName,
+			&i.TherapistEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminSetRatingReviewStatus = `-- name: AdminSetRatingReviewStatus :exec
+UPDATE report_ratings
+SET admin_review_status = $2, updated_at = now()
+WHERE id = $1
+`
+
+type AdminSetRatingReviewStatusParams struct {
+	ID                uuid.UUID `json:"id"`
+	AdminReviewStatus string    `json:"admin_review_status"`
+}
+
+// Toggles a rating's admin review status (pending ↔ done).
+func (q *Queries) AdminSetRatingReviewStatus(ctx context.Context, arg AdminSetRatingReviewStatusParams) error {
+	_, err := q.db.Exec(ctx, adminSetRatingReviewStatus, arg.ID, arg.AdminReviewStatus)
+	return err
+}
+
 const getLatestSuggestionDismissForDimension = `-- name: GetLatestSuggestionDismissForDimension :one
 SELECT id, dimension, from_value, to_value, trigger_count, created_at
 FROM preference_suggestions_log
@@ -55,7 +191,7 @@ func (q *Queries) GetLatestSuggestionDismissForDimension(ctx context.Context, ar
 
 const getReportRating = `-- name: GetReportRating :one
 
-SELECT id, report_id, therapist_id, rating, issues, notes, source, created_at, updated_at FROM report_ratings
+SELECT id, report_id, therapist_id, rating, issues, notes, source, created_at, updated_at, admin_review_status FROM report_ratings
 WHERE report_id = $1 AND therapist_id = $2
 `
 
@@ -81,6 +217,7 @@ func (q *Queries) GetReportRating(ctx context.Context, arg GetReportRatingParams
 		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReviewStatus,
 	)
 	return i, err
 }
@@ -178,7 +315,7 @@ ON CONFLICT (report_id, therapist_id) DO UPDATE SET
     notes      = EXCLUDED.notes,
     source     = EXCLUDED.source,
     updated_at = now()
-RETURNING id, report_id, therapist_id, rating, issues, notes, source, created_at, updated_at
+RETURNING id, report_id, therapist_id, rating, issues, notes, source, created_at, updated_at, admin_review_status
 `
 
 type UpsertReportRatingParams struct {
@@ -213,6 +350,7 @@ func (q *Queries) UpsertReportRating(ctx context.Context, arg UpsertReportRating
 		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReviewStatus,
 	)
 	return i, err
 }

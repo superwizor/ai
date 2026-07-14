@@ -113,6 +113,13 @@ service ClinicalService {
     rpc AdminListSessions(AdminListSessionsRequest) returns (AdminListSessionsResponse);
     rpc GetAdminAnalytics(GetAdminAnalyticsRequest) returns (GetAdminAnalyticsResponse);
 
+    // ─── Admin Report Feedback Dashboard — SUPERWIZOR_ADMIN only ───
+    // Paginated list of all report ratings with therapist info.
+    // Powers the "Feedback" tab in the admin analytics page.
+    rpc AdminListReportRatings(AdminListReportRatingsRequest) returns (AdminListReportRatingsResponse);
+    // Toggles a rating's admin review status (pending ↔ done).
+    rpc AdminSetRatingReviewStatus(AdminSetRatingReviewStatusRequest) returns (google.protobuf.Empty);
+
     // ─── Admin Prompt Studio (docs/31) — SUPERWIZOR_ADMIN only ───
     // Versioned editor for modalities.therapist_ai_general_prompt.
     // The live column is what llm-worker reads per report; every update
@@ -890,6 +897,12 @@ message GetAdminAnalyticsResponse {
   repeated TrendPoint session_duration_trend = 32;
 
   repeated PlatformFixedCost platform_fixed_costs = 33;
+
+  // Tab 6: Report Feedback
+  int64 kpi_ratings_total = 34;
+  int64 kpi_ratings_positive = 35;
+  int64 kpi_ratings_negative = 36;
+  int64 kpi_ratings_with_notes = 37;
 }
 
 message TrendPoint {
@@ -1230,4 +1243,39 @@ message OrgTherapistMetricsResponse {
     // Column sums over `therapists` (avg fields re-averaged).
     TherapistMetrics totals = 2;
     int32 period_days = 3;
+}
+
+// ─── Admin Report Feedback Dashboard ────────────────────────
+
+message AdminListReportRatingsRequest {
+  int32 page_size = 1;         // default 25, max 100
+  int32 page = 2;              // 0-indexed
+  string rating_filter = 3;    // "" | "positive" | "negative"
+  string status_filter = 4;    // "" | "pending" | "done"
+  string search = 5;           // therapist name/email free-text
+}
+
+message AdminReportRatingRow {
+  string id = 1;
+  string report_id = 2;
+  string therapist_id = 3;
+  string therapist_name = 4;   // first_name + " " + last_name
+  string therapist_email = 5;
+  string rating = 6;           // "positive" | "negative"
+  repeated string issues = 7;
+  string notes = 8;
+  string source = 9;
+  string admin_review_status = 10;  // "pending" | "done"
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message AdminListReportRatingsResponse {
+  repeated AdminReportRatingRow ratings = 1;
+  int64 total_count = 2;
+}
+
+message AdminSetRatingReviewStatusRequest {
+  string rating_id = 1;
+  string status = 2;           // "pending" | "done"
 }

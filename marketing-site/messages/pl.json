@@ -366,7 +366,8 @@
         "costs": "Koszty i Ekonomika",
         "quality": "Jakość AI",
         "funnel": "Lejek i Retencja",
-        "ops": "Operacje"
+        "ops": "Operacje",
+        "feedback": "Feedback raportów"
       },
       "timeRange": {
         "7d": "7 dni",
@@ -478,6 +479,42 @@
         "billingPeriod": "Okres rozliczeniowy",
         "amount": "Kwota",
         "monthly": "miesięcznie"
+      },
+      "feedback": {
+        "title": "Feedback jakości raportów",
+        "subtitle": "Analiza ocen i komentarzy od terapeutów — zliczanie 👍/👎, przeglądanie notatek, zarządzanie statusem.",
+        "kpiTotal": "Łączne oceny",
+        "kpiTotalInfo": "Ile ratingów (pozytywnych i negatywnych) terapeuci zostawili łącznie na raportach AI.",
+        "kpiPositive": "Pozytywne 👍",
+        "kpiPositiveInfo": "Ile raportów oceniono kciukiem w górę (pozytywnie). Cel: >85% wszystkich ocen.",
+        "kpiNegative": "Negatywne 👎",
+        "kpiNegativeInfo": "Ile raportów oceniono kciukiem w dół (negatywnie). Każdy negatyw warto przeanalizować.",
+        "kpiWithNotes": "Z komentarzem",
+        "kpiWithNotesInfo": "Ile ratingów zawiera notatki tekstowe (opis problemu). Te feedbacki wymagają uwagi.",
+        "tableTherapist": "Terapeuta",
+        "tableRating": "Ocena",
+        "tableIssues": "Kategorie",
+        "tableNotes": "Notatka",
+        "tableDate": "Data",
+        "tableStatus": "Status",
+        "statusPending": "Oczekuje",
+        "statusDone": "Zrobione",
+        "filterAll": "Wszystkie",
+        "filterPositive": "👍 Pozytywne",
+        "filterNegative": "👎 Negatywne",
+        "filterPending": "Oczekuje",
+        "filterDone": "Zrobione",
+        "searchPlaceholder": "Szukaj po terapeucie…",
+        "noData": "Brak feedbacku do wyświetlenia",
+        "noDataHint": "Dane pojawią się po pierwszych ocenach raportów",
+        "positive": "Pozytywna",
+        "negative": "Negatywna",
+        "noNotes": "—",
+        "prev": "Poprzednia",
+        "next": "Następna",
+        "pageOf": "Strona {page} z {total}",
+        "markDone": "Oznacz jako zrobione",
+        "markPending": "Cofnij do oczekujących"
       }
     },
     "prompts": {

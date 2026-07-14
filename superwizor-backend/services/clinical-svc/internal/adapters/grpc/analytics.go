@@ -443,6 +443,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
+	// 6. Report Feedback KPIs
+	ratingsKPIs, err := s.queries.GetRatingsKPIs(ctx)
+	if err != nil {
+		ratingsKPIs = db.GetRatingsKPIsRow{}
+	}
+
 	return &clinicalv1.GetAdminAnalyticsResponse{
 		KpiWau:                  wau,
 		KpiSessionsThisWeek:     sessionsThisWeek,
@@ -477,6 +483,10 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		KpiAvgSessionDuration:   avgDuration,
 		SessionDurationTrend:    sessionDurationTrend,
 		PlatformFixedCosts:      platformFixedCosts,
+		KpiRatingsTotal:         ratingsKPIs.Total,
+		KpiRatingsPositive:      ratingsKPIs.Positive,
+		KpiRatingsNegative:      ratingsKPIs.Negative,
+		KpiRatingsWithNotes:     ratingsKPIs.WithNotes,
 	}, nil
 }
 

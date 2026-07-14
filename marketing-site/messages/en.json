@@ -366,7 +366,8 @@
         "costs": "Costs & Economics",
         "quality": "AI Quality",
         "funnel": "Funnel & Retention",
-        "ops": "Operations"
+        "ops": "Operations",
+        "feedback": "Report Feedback"
       },
       "timeRange": {
         "7d": "7 days",
@@ -478,6 +479,42 @@
         "billingPeriod": "Billing Period",
         "amount": "Amount",
         "monthly": "monthly"
+      },
+      "feedback": {
+        "title": "Report Quality Feedback",
+        "subtitle": "Review therapist ratings and comments — track 👍/👎 counts, read feedback notes, manage review status.",
+        "kpiTotal": "Total Ratings",
+        "kpiTotalInfo": "Total number of ratings (positive and negative) therapists have given to AI-generated reports.",
+        "kpiPositive": "Positive 👍",
+        "kpiPositiveInfo": "Number of reports rated with thumbs up (positive). Target: >85% of all ratings.",
+        "kpiNegative": "Negative 👎",
+        "kpiNegativeInfo": "Number of reports rated with thumbs down (negative). Each negative is worth investigating.",
+        "kpiWithNotes": "With Comments",
+        "kpiWithNotesInfo": "How many ratings include a text comment describing the issue. These require attention.",
+        "tableTherapist": "Therapist",
+        "tableRating": "Rating",
+        "tableIssues": "Categories",
+        "tableNotes": "Note",
+        "tableDate": "Date",
+        "tableStatus": "Status",
+        "statusPending": "Pending",
+        "statusDone": "Done",
+        "filterAll": "All",
+        "filterPositive": "👍 Positive",
+        "filterNegative": "👎 Negative",
+        "filterPending": "Pending",
+        "filterDone": "Done",
+        "searchPlaceholder": "Search by therapist…",
+        "noData": "No feedback to display",
+        "noDataHint": "Data will appear after first report ratings",
+        "positive": "Positive",
+        "negative": "Negative",
+        "noNotes": "—",
+        "prev": "Previous",
+        "next": "Next",
+        "pageOf": "Page {page} of {total}",
+        "markDone": "Mark as done",
+        "markPending": "Revert to pending"
       }
     },
     "prompts": {

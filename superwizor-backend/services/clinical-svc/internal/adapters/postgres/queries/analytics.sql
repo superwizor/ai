@@ -370,3 +370,17 @@ WHERE s.deleted_at IS NULL
   AND s.created_at >= $1
 GROUP BY 1
 ORDER BY 1 ASC;
+
+-- name: GetRatingsKPIs :one
+-- CROSS-SERVICE READ: analytics-only
+-- Aggregated rating counts for the admin feedback dashboard KPI cards.
+SELECT
+  COUNT(*)::bigint AS total,
+  COUNT(*) FILTER (WHERE rr.rating = 'positive')::bigint AS positive,
+  COUNT(*) FILTER (WHERE rr.rating = 'negative')::bigint AS negative,
+  COUNT(*) FILTER (WHERE rr.notes != '')::bigint AS with_notes
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test';

@@ -13,6 +13,8 @@ import (
 )
 
 type Querier interface {
+	// Total count matching the same filters as AdminListReportRatings.
+	AdminCountReportRatings(ctx context.Context, arg AdminCountReportRatingsParams) (int64, error)
 	// Admin Prompt Studio (docs/31) — versioned modality prompt queries.
 	// The live prompt stays in modalities.therapist_ai_general_prompt
 	// (llm-worker reads it per report); modality_prompt_versions is the
@@ -50,6 +52,13 @@ type Querier interface {
 	// The handler requests LIMIT+1 so it can compute has_more without a
 	// separate COUNT(*) over the (possibly huge) sessions table.
 	AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error)
+	// ─── Admin feedback dashboard (SUPERWIZOR_ADMIN only) ──────
+	// Paginated list of all ratings with therapist name/email.
+	// Filters (all AND-combined): rating type, review status, therapist search.
+	// Test accounts excluded.
+	AdminListReportRatings(ctx context.Context, arg AdminListReportRatingsParams) ([]AdminListReportRatingsRow, error)
+	// Toggles a rating's admin review status (pending ↔ done).
+	AdminSetRatingReviewStatus(ctx context.Context, arg AdminSetRatingReviewStatusParams) error
 	// Session + owning kartoteka's patient for the transcript authz:
 	// the handler checks patient_id == caller AND shared marker.
 	ClientGetSharedSession(ctx context.Context, id uuid.UUID) (ClientGetSharedSessionRow, error)
@@ -213,6 +222,9 @@ type Querier interface {
 	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetPlatformFixedCosts(ctx context.Context) ([]GetPlatformFixedCostsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	// Aggregated rating counts for the admin feedback dashboard KPI cards.
+	GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetReadReportCount(ctx context.Context) (int64, error)
 	// CROSS-SERVICE READ: analytics-only

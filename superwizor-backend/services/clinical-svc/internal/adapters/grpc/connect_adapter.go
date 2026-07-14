@@ -257,6 +257,22 @@ func (a *ConnectAdapter) GetAdminAnalytics(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminListReportRatings(ctx context.Context, req *connect.Request[clinicalv1.AdminListReportRatingsRequest]) (*connect.Response[clinicalv1.AdminListReportRatingsResponse], error) {
+	resp, err := a.s.AdminListReportRatings(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminSetRatingReviewStatus(ctx context.Context, req *connect.Request[clinicalv1.AdminSetRatingReviewStatusRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.AdminSetRatingReviewStatus(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) GetOrgTherapistMetrics(ctx context.Context, req *connect.Request[clinicalv1.GetOrgTherapistMetricsRequest]) (*connect.Response[clinicalv1.OrgTherapistMetricsResponse], error) {
 	resp, err := a.s.GetOrgTherapistMetrics(ctx, req.Msg)
 	if err != nil {

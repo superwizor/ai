@@ -542,6 +542,40 @@ func (q *Queries) GetPlanDistribution(ctx context.Context) ([]GetPlanDistributio
 	return items, nil
 }
 
+const getRatingsKPIs = `-- name: GetRatingsKPIs :one
+SELECT
+  COUNT(*)::bigint AS total,
+  COUNT(*) FILTER (WHERE rr.rating = 'positive')::bigint AS positive,
+  COUNT(*) FILTER (WHERE rr.rating = 'negative')::bigint AS negative,
+  COUNT(*) FILTER (WHERE rr.notes != '')::bigint AS with_notes
+FROM report_ratings rr
+JOIN users u ON u.id = rr.therapist_id
+WHERE u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+`
+
+type GetRatingsKPIsRow struct {
+	Total     int64 `json:"total"`
+	Positive  int64 `json:"positive"`
+	Negative  int64 `json:"negative"`
+	WithNotes int64 `json:"with_notes"`
+}
+
+// CROSS-SERVICE READ: analytics-only
+// Aggregated rating counts for the admin feedback dashboard KPI cards.
+func (q *Queries) GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error) {
+	row := q.db.QueryRow(ctx, getRatingsKPIs)
+	var i GetRatingsKPIsRow
+	err := row.Scan(
+		&i.Total,
+		&i.Positive,
+		&i.Negative,
+		&i.WithNotes,
+	)
+	return i, err
+}
+
 const getReadReportCount = `-- name: GetReadReportCount :one
 SELECT COUNT(DISTINCT therapist_id)::bigint
 FROM analytics_events

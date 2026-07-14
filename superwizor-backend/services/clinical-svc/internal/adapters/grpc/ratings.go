@@ -476,3 +476,104 @@ func toProtoRating(r db.ReportRating) *clinicalv1.ReportRating {
 	}
 	return out
 }
+
+// ────────────────────────────────────────────────────────────
+// RPC: AdminListReportRatings — paginated list of all ratings.
+// SUPERWIZOR_ADMIN only. Powers the "Feedback" tab.
+// ────────────────────────────────────────────────────────────
+
+var allowedReviewStatus = map[string]bool{
+	"pending": true,
+	"done":    true,
+}
+
+func (s *Server) AdminListReportRatings(ctx context.Context, req *clinicalv1.AdminListReportRatingsRequest) (*clinicalv1.AdminListReportRatingsResponse, error) {
+	if err := requireSuperwizorAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	pageSize := int32(25)
+	if req.PageSize > 0 && req.PageSize <= 100 {
+		pageSize = req.PageSize
+	}
+	offset := req.Page * pageSize
+
+	rows, err := s.queries.AdminListReportRatings(ctx, db.AdminListReportRatingsParams{
+		Limit:   pageSize,
+		Offset:  offset,
+		Column3: req.RatingFilter,
+		Column4: req.StatusFilter,
+		Column5: req.Search,
+	})
+	if err != nil {
+		slog.Error("AdminListReportRatings", "error", err.Error())
+		return nil, status.Error(codes.Internal, "list ratings")
+	}
+
+	countRow, err := s.queries.AdminCountReportRatings(ctx, db.AdminCountReportRatingsParams{
+		Column1: req.RatingFilter,
+		Column2: req.StatusFilter,
+		Column3: req.Search,
+	})
+	if err != nil {
+		slog.Error("AdminCountReportRatings", "error", err.Error())
+		return nil, status.Error(codes.Internal, "count ratings")
+	}
+
+	out := make([]*clinicalv1.AdminReportRatingRow, len(rows))
+	for i, r := range rows {
+		name := strings.TrimSpace(r.TherapistFirstName + " " + r.TherapistLastName)
+		email := ""
+		if r.TherapistEmail != nil {
+			email = *r.TherapistEmail
+		}
+		out[i] = &clinicalv1.AdminReportRatingRow{
+			Id:                r.ID.String(),
+			ReportId:          r.ReportID.String(),
+			TherapistId:       r.TherapistID.String(),
+			TherapistName:     name,
+			TherapistEmail:    email,
+			Rating:            r.Rating,
+			Issues:            r.Issues,
+			Notes:             r.Notes,
+			Source:             r.Source,
+			AdminReviewStatus: r.AdminReviewStatus,
+			CreatedAt:         timestamppb.New(r.CreatedAt),
+			UpdatedAt:         timestamppb.New(r.UpdatedAt),
+		}
+	}
+
+	return &clinicalv1.AdminListReportRatingsResponse{
+		Ratings:    out,
+		TotalCount: countRow,
+	}, nil
+}
+
+// ────────────────────────────────────────────────────────────
+// RPC: AdminSetRatingReviewStatus — toggle done/pending.
+// SUPERWIZOR_ADMIN only.
+// ────────────────────────────────────────────────────────────
+
+func (s *Server) AdminSetRatingReviewStatus(ctx context.Context, req *clinicalv1.AdminSetRatingReviewStatusRequest) (*emptypb.Empty, error) {
+	if err := requireSuperwizorAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	ratingID, err := uuid.Parse(req.RatingId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid rating_id")
+	}
+	if !allowedReviewStatus[req.Status] {
+		return nil, status.Error(codes.InvalidArgument, "status must be 'pending' or 'done'")
+	}
+
+	if err := s.queries.AdminSetRatingReviewStatus(ctx, db.AdminSetRatingReviewStatusParams{
+		ID:                ratingID,
+		AdminReviewStatus: req.Status,
+	}); err != nil {
+		slog.Error("AdminSetRatingReviewStatus", "error", err.Error(), "rating_id", ratingID.String())
+		return nil, status.Error(codes.Internal, "update status")
+	}
+
+	return &emptypb.Empty{}, nil
+}
