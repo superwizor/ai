@@ -199,6 +199,9 @@ func (q *fakeAnalyticsQuerier) GetPlatformFixedCosts(ctx context.Context) ([]db.
 		},
 	}, nil
 }
+func (q *fakeAnalyticsQuerier) GetRatingsKPIs(ctx context.Context) (db.GetRatingsKPIsRow, error) {
+	return db.GetRatingsKPIsRow{Total: 42, Positive: 38, Negative: 4, WithNotes: 6}, nil
+}
 
 func TestGetAdminAnalytics_Success(t *testing.T) {
 	s := &Server{
