@@ -1,13 +1,15 @@
 ---
-subject: "Confirm your email for Superwizor AI"
+subject: "Confirm your email — Superwizor AI"
 ---
 Hi {first_name},
 
-Thanks for signing up for Superwizor AI. To finish setting up your account, please confirm your email address by clicking the link below:
+Your account is almost ready.
+
+Click the button below to confirm your email address and continue setting up your practice.
 
 {verify_url}
 
-The link expires on {expires_at}. If you didn't sign up for Superwizor AI, you can safely ignore this message.
+If you didn't create a Superwizor AI account, you can safely ignore this message.
 
 Warm regards,
 The Superwizor AI team

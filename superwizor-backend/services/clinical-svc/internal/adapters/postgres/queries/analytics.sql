@@ -82,9 +82,49 @@ WHERE role = 'THERAPIST' AND deleted_at IS NULL
   AND email NOT LIKE '%@superwizor.test'
   AND email NOT LIKE '%@example.com'
   AND email NOT LIKE '%@example.test'
+  AND email NOT LIKE '%@example.org'
+  AND email NOT LIKE '%@test.pl'
+  AND email NOT LIKE '%@superwizor.ai'
+  AND email NOT LIKE '%+%'
+  AND email != 'kolodzmaciej@gmail.com'
   AND created_at >= $1
 GROUP BY 1
 ORDER BY 1 ASC;
+
+-- name: GetRegistrationsDetail :many
+-- CROSS-SERVICE READ: analytics-only
+SELECT 
+  u.id,
+  u.email,
+  u.first_name,
+  u.last_name,
+  u.created_at,
+  COALESCE(ae.login_count, 0)::bigint AS login_count,
+  COALESCE(s.session_count, 0)::bigint AS session_count
+FROM users u
+LEFT JOIN (
+  SELECT therapist_id, COUNT(*) AS login_count
+  FROM analytics_events
+  WHERE event_name = 'app.session_started'
+  GROUP BY therapist_id
+) ae ON ae.therapist_id = u.id
+LEFT JOIN (
+  SELECT therapist_id, COUNT(*) AS session_count
+  FROM sessions
+  WHERE deleted_at IS NULL
+  GROUP BY therapist_id
+) s ON s.therapist_id = u.id
+WHERE u.role = 'THERAPIST' AND u.deleted_at IS NULL
+  AND u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND u.email NOT LIKE '%@example.org'
+  AND u.email NOT LIKE '%@test.pl'
+  AND u.email NOT LIKE '%@superwizor.ai'
+  AND u.email NOT LIKE '%+%'
+  AND u.email != 'kolodzmaciej@gmail.com'
+  AND u.created_at >= $1
+ORDER BY u.created_at DESC;
 
 -- name: GetPlanDistribution :many
 -- CROSS-SERVICE READ: analytics-only

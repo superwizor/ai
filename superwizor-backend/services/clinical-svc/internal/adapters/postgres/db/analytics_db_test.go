@@ -58,6 +58,9 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		_, err = q.GetRegistrationsTrend(ctx, since)
 		assert.NoError(t, err)
 
+		_, err = q.GetRegistrationsDetail(ctx, since)
+		assert.NoError(t, err)
+
 		_, err = q.GetPlanDistribution(ctx)
 		assert.NoError(t, err)
 

@@ -903,6 +903,19 @@ message GetAdminAnalyticsResponse {
   int64 kpi_ratings_positive = 35;
   int64 kpi_ratings_negative = 36;
   int64 kpi_ratings_with_notes = 37;
+
+  // Tab 1 registrations detail
+  repeated RegisteredUserDetail registrations_detail = 38;
+}
+
+message RegisteredUserDetail {
+  string user_id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  google.protobuf.Timestamp created_at = 5;
+  int64 login_count = 6;
+  int64 session_count = 7;
 }
 
 message TrendPoint {

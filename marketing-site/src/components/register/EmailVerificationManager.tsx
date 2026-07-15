@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { updateEmail } from "firebase/auth";
 import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient } from "@/lib/connect/clients";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -119,21 +119,14 @@ function Inner() {
     setEditSuccess(false);
 
     try {
-      // 1. Update email in Firebase
-      await updateEmail(user, newEmail.trim());
-
-      // Force token refresh and sync with backend so the new email is in our DB
-      await user.getIdToken(true);
-      try {
-        await identityClient.getMyProfile({});
-      } catch (e) {
-        console.warn("Failed to sync profile after email update", e);
-      }
-
-      // 2. Send new verification email via backend
-      await identityClient.resendVerificationEmail({
-        email: newEmail.trim(),
+      // 1. Call backend to update email and send new verification link
+      await identityClient.updateMyEmail({
+        newEmail: newEmail.trim(),
       });
+
+      // 2. Force reload and token refresh in Firebase Auth so client picks up the new email
+      await user.reload();
+      await user.getIdToken(true);
 
       setEditSuccess(true);
       setIsEditingEmail(false);
@@ -141,8 +134,10 @@ function Inner() {
       // Auto-hide success message after 5 seconds
       setTimeout(() => setEditSuccess(false), 5000);
     } catch (err: any) {
-      console.error("[verify-email] updateEmail failed:", err);
-      if (err.code === "auth/requires-recent-login") {
+      console.error("[verify-email] updateMyEmail failed:", err);
+      if (err instanceof ConnectError && err.code === Code.AlreadyExists) {
+        setEditError(t("emailInUse"));
+      } else if (err.code === "auth/requires-recent-login") {
         setEditError(t("sessionExpired"));
       } else if (err.code === "auth/email-already-in-use") {
         setEditError(t("emailInUse"));

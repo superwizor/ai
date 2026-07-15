@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	"github.com/superwizor-ai/backend/pkg/analytics"
@@ -157,6 +158,27 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	registrationsTrend := make([]*clinicalv1.TrendPoint, len(registrationsTrendRows))
 	for i, r := range registrationsTrendRows {
 		registrationsTrend[i] = &clinicalv1.TrendPoint{Label: r.Label, Value: r.Value}
+	}
+
+	registrationsDetailRows, err := s.queries.GetRegistrationsDetail(ctx, since)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get registrations detail: %v", err)
+	}
+	registrationsDetail := make([]*clinicalv1.RegisteredUserDetail, len(registrationsDetailRows))
+	for i, r := range registrationsDetailRows {
+		emailStr := ""
+		if r.Email != nil {
+			emailStr = *r.Email
+		}
+		registrationsDetail[i] = &clinicalv1.RegisteredUserDetail{
+			UserId:       r.ID.String(),
+			Email:        emailStr,
+			FirstName:    r.FirstName,
+			LastName:     r.LastName,
+			CreatedAt:    timestamppb.New(r.CreatedAt),
+			LoginCount:   r.LoginCount,
+			SessionCount: r.SessionCount,
+		}
 	}
 
 	planDistRows, err := s.queries.GetPlanDistribution(ctx)
@@ -487,6 +509,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		KpiRatingsPositive:      ratingsKPIs.Positive,
 		KpiRatingsNegative:      ratingsKPIs.Negative,
 		KpiRatingsWithNotes:     ratingsKPIs.WithNotes,
+		RegistrationsDetail:     registrationsDetail,
 	}, nil
 }
 

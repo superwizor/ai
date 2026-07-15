@@ -1,13 +1,15 @@
 ---
-subject: "Potwierdź swój adres e-mail w Superwizor AI"
+subject: "Potwierdź swój adres e-mail — Superwizor AI"
 ---
 Cześć {first_name},
 
-Dziękujemy za rejestrację w Superwizor AI. Aby zakończyć tworzenie konta, potwierdź swój adres e-mail klikając w poniższy link:
+Twoje konto jest prawie gotowe.
+
+Kliknij poniższy przycisk, żeby potwierdzić swój adres e-mail i przejść dalej do konfiguracji gabinetu.
 
 {verify_url}
 
-Link wygaśnie {expires_at}. Jeśli nie zakładał(a)eś konta w Superwizor AI, możesz zignorować tę wiadomość.
+Jeśli nie zakładałeś/aś konta w Superwizor AI, zignoruj tę wiadomość.
 
 Pozdrawiamy,
 Zespół Superwizor AI

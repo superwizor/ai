@@ -73,6 +73,7 @@ export default function AnalyticsPage() {
   };
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("12w");
+  const [showRegistrationsDetail, setShowRegistrationsDetail] = useState(false);
   const [data, setData] = useState<GetAdminAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -376,7 +377,21 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title={t("chart.registrationsTrend")} description={t("chart.registrationsTrendDesc")} info={t("chart.registrationsTrendInfo")} isEmpty={!hasData(data.registrationsTrend)}>
+            <ChartCard
+              title={t("chart.registrationsTrend")}
+              description={t("chart.registrationsTrendDesc")}
+              info={t("chart.registrationsTrendInfo")}
+              isEmpty={!hasData(data.registrationsTrend)}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowRegistrationsDetail(!showRegistrationsDetail)}
+                  className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-ember hover:text-ember/85 transition bg-frost/5 hover:bg-frost/10 px-2 py-1 rounded cursor-pointer"
+                >
+                  {showRegistrationsDetail ? t("chart.hideDetails") : t("chart.showDetails")}
+                </button>
+              }
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.registrationsTrend} margin={{ left: -20, right: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
@@ -440,6 +455,74 @@ export default function AnalyticsPage() {
               </ChartCard>
             )}
           </div>
+
+          {showRegistrationsDetail && (
+            <div className="rounded-card border border-frost/10 bg-surfaceTeal/10 p-6 backdrop-blur-md animate-in fade-in-0 duration-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-frost text-base font-semibold tracking-wide">
+                  {t("registrationsDetail.title")}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowRegistrationsDetail(false)}
+                  className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition cursor-pointer"
+                >
+                  {t("registrationsDetail.close")}
+                </button>
+              </div>
+              <div className="overflow-x-auto rounded-card border border-frost/5 bg-obsidian/30">
+                <table className="w-full text-sm">
+                  <thead className="bg-frost/5">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colName")}
+                      </th>
+                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colEmail")}
+                      </th>
+                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colCreatedAt")}
+                      </th>
+                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colLogins")}
+                      </th>
+                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colSessions")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.registrationsDetail?.map((user: any) => (
+                      <tr key={user.userId} className="border-t border-frost/5 hover:bg-frost/[0.02]">
+                        <td className="px-4 py-3 font-display text-frost">
+                          {user.firstName} {user.lastName}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-mist break-all">
+                          {user.email}
+                        </td>
+                        <td className="px-4 py-3 font-serif text-mist">
+                          {user.createdAt ? new Date(Number(user.createdAt.seconds) * 1000).toLocaleString(locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-frost">
+                          {Number(user.loginCount)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-frost">
+                          {Number(user.sessionCount)}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!data?.registrationsDetail || data.registrationsDetail.length === 0) && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-mist/60 font-serif">
+                          {t("registrationsDetail.empty")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

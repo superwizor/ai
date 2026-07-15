@@ -564,54 +564,75 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               </p>
 
               {/* Download & QR Section inside a premium card */}
-              <div className="bg-[#0F2E32] border border-[#1A3A3E] p-6 rounded-2xl flex flex-col items-center gap-6 justify-center my-6">
-                <div className="flex flex-col sm:flex-row items-center gap-6 justify-center w-full">
-                  {/* QR Code (hidden on small screens, shown on desktop) */}
-                  <div className="hidden sm:flex flex-col items-center gap-2">
-                     <div className="p-3 bg-white rounded-2xl shadow-lg w-[140px] h-[140px] flex items-center justify-center">
-                       <img
-                         src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(APP_STORE_URL)}`}
-                         alt="QR Code"
-                         className="w-[120px] h-[120px]"
-                       />
-                     </div>
-                     <span className="text-[10px] text-[#8FA5A0]/60 font-sans tracking-wide">
-                       {t("Zeskanuj telefonem", "Scan with phone")}
-                     </span>
-                  </div>
-
-                  {/* Vertical divider */}
-                  <div className="hidden sm:block w-[1px] h-[120px] bg-[#1A3A3E]" />
-
-                  {/* App Badges */}
-                  <div className="flex flex-col gap-3 w-full sm:w-auto">
+              <div className="bg-[#0F2E32] border border-[#1A3A3E] p-6 rounded-2xl my-6">
+                <div className="flex flex-col sm:flex-row items-stretch gap-6 justify-center w-full">
+                  {/* iOS Group */}
+                  <div className="flex-1 flex flex-col items-center gap-4">
                      {/* iOS App Store */}
-                     <button
-                       onClick={() => handleOpenModal("ios")}
-                       className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all text-xs font-semibold cursor-pointer w-full sm:w-[170px]"
+                     <a
+                       href={APP_STORE_URL}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all text-xs font-semibold cursor-pointer w-full sm:w-[170px] justify-center"
                      >
-                       <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                       <svg className="w-5 h-5 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.69-1.12 1.84-.98 2.94.1.08.21.12.33.12.87 0 1.98-.54 2.48-1.45z"/>
                        </svg>
                        <div className="flex flex-col text-left">
                          <span className="text-[9px] text-white/50 font-normal uppercase tracking-wider leading-none mb-0.5">Download on the</span>
                          <span className="text-xs font-bold leading-none">App Store</span>
                        </div>
-                     </button>
+                     </a>
 
+                     {/* iOS QR Code (hidden on small screens, shown on desktop) */}
+                     <div className="hidden sm:flex flex-col items-center gap-2">
+                        <div className="p-3 bg-white rounded-2xl shadow-lg w-[140px] h-[140px] flex items-center justify-center">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(APP_STORE_URL)}`}
+                            alt="App Store QR Code"
+                            className="w-[120px] h-[120px]"
+                          />
+                        </div>
+                        <span className="text-[10px] text-[#8FA5A0]/60 font-sans tracking-wide">
+                          {t("Zeskanuj dla iOS", "Scan for iOS")}
+                        </span>
+                     </div>
+                  </div>
+
+                  {/* Vertical divider */}
+                  <div className="hidden sm:block w-[1px] bg-[#1A3A3E] self-stretch my-2" />
+
+                  {/* Android Group */}
+                  <div className="flex-1 flex flex-col items-center gap-4">
                      {/* Android Google Play */}
-                     <button
-                       onClick={() => handleOpenModal("android")}
-                       className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all text-xs font-semibold cursor-pointer w-full sm:w-[170px]"
+                     <a
+                       href={PLAY_STORE_URL}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all text-xs font-semibold cursor-pointer w-full sm:w-[170px] justify-center"
                      >
-                       <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                       <svg className="w-5 h-5 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                          <path d="M3 20.285V3.716c0-.525.308-.94.757-1.077L14.654 12 3.757 21.362A1.14 1.14 0 013 20.285zM15.908 13.084l2.842 2.463L5.342 2.874l10.566 10.21zM19.98 12.569c.563-.326.563-.858 0-1.184l-2.909-1.686L14.654 12l2.417 2.253 2.909-1.684zM5.342 21.126L18.75 14.56l-2.842-2.56-10.566 9.126z"/>
                        </svg>
                        <div className="flex flex-col text-left">
                          <span className="text-[9px] text-white/50 font-normal uppercase tracking-wider leading-none mb-0.5">Get it on</span>
                          <span className="text-xs font-bold leading-none">Google Play</span>
                        </div>
-                     </button>
+                     </a>
+
+                     {/* Android QR Code (hidden on small screens, shown on desktop) */}
+                     <div className="hidden sm:flex flex-col items-center gap-2">
+                        <div className="p-3 bg-white rounded-2xl shadow-lg w-[140px] h-[140px] flex items-center justify-center">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(PLAY_STORE_URL)}`}
+                            alt="Google Play QR Code"
+                            className="w-[120px] h-[120px]"
+                          />
+                        </div>
+                        <span className="text-[10px] text-[#8FA5A0]/60 font-sans tracking-wide">
+                          {t("Zeskanuj dla Androida", "Scan for Android")}
+                        </span>
+                     </div>
                   </div>
                 </div>
               </div>

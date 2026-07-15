@@ -228,6 +228,8 @@ type Querier interface {
 	// CROSS-SERVICE READ: analytics-only
 	GetReadReportCount(ctx context.Context) (int64, error)
 	// CROSS-SERVICE READ: analytics-only
+	GetRegistrationsDetail(ctx context.Context, createdAt time.Time) ([]GetRegistrationsDetailRow, error)
+	// CROSS-SERVICE READ: analytics-only
 	GetRegistrationsTrend(ctx context.Context, createdAt time.Time) ([]GetRegistrationsTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetRelabelRate(ctx context.Context) (float64, error)

@@ -470,7 +470,19 @@
         "modalityDistributionInfo": "Wykres pokazuje, w jakich nurtach psychoterapeutycznych (np. CBT, psychodynamiczny, humanistyczny) najczęściej przeprowadzane są sesje. Pomaga określić, które szablony raportów klinicznych i podpowiadacze są najpopularniejsze.",
         "sessionDurationTrend": "Długość sesji (trend)",
         "sessionDurationTrendDesc": "Średni czas trwania sesji na tydzień (minuty)",
-        "sessionDurationTrendInfo": "Tygodniowy trend średniego czasu trwania sesji terapeutycznych w minutach. Pozwala monitorować zaangażowanie i sprawdzać, czy czas trwania nagrań jest stabilny w czasie."
+        "sessionDurationTrendInfo": "Tygodniowy trend średniego czasu trwania sesji terapeutycznych w minutach. Pozwala monitorować zaangażowanie i sprawdzać, czy czas trwania nagrań jest stabilny w czasie.",
+        "showDetails": "Rozwiń listę",
+        "hideDetails": "Zwiń listę"
+      },
+      "registrationsDetail": {
+        "title": "Szczegółowa lista nowych rejestracji",
+        "close": "Zamknij listę",
+        "colName": "Imię i nazwisko",
+        "colEmail": "Adres e-mail",
+        "colCreatedAt": "Data rejestracji",
+        "colLogins": "Ilość logowań",
+        "colSessions": "Liczba sesji",
+        "empty": "Brak zarejestrowanych terapeutów w wybranym okresie."
       },
       "fixedCostsTable": {
         "title": "Szczegółowa lista kosztów stałych",

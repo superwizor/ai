@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const getAIQualityKPIs = `-- name: GetAIQualityKPIs :one
@@ -590,6 +592,80 @@ func (q *Queries) GetReadReportCount(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const getRegistrationsDetail = `-- name: GetRegistrationsDetail :many
+SELECT 
+  u.id,
+  u.email,
+  u.first_name,
+  u.last_name,
+  u.created_at,
+  COALESCE(ae.login_count, 0)::bigint AS login_count,
+  COALESCE(s.session_count, 0)::bigint AS session_count
+FROM users u
+LEFT JOIN (
+  SELECT therapist_id, COUNT(*) AS login_count
+  FROM analytics_events
+  WHERE event_name = 'app.session_started'
+  GROUP BY therapist_id
+) ae ON ae.therapist_id = u.id
+LEFT JOIN (
+  SELECT therapist_id, COUNT(*) AS session_count
+  FROM sessions
+  WHERE deleted_at IS NULL
+  GROUP BY therapist_id
+) s ON s.therapist_id = u.id
+WHERE u.role = 'THERAPIST' AND u.deleted_at IS NULL
+  AND u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND u.email NOT LIKE '%@example.org'
+  AND u.email NOT LIKE '%@test.pl'
+  AND u.email NOT LIKE '%@superwizor.ai'
+  AND u.email NOT LIKE '%+%'
+  AND u.email != 'kolodzmaciej@gmail.com'
+  AND u.created_at >= $1
+ORDER BY u.created_at DESC
+`
+
+type GetRegistrationsDetailRow struct {
+	ID           uuid.UUID `json:"id"`
+	Email        *string   `json:"email"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	CreatedAt    time.Time `json:"created_at"`
+	LoginCount   int64     `json:"login_count"`
+	SessionCount int64     `json:"session_count"`
+}
+
+// CROSS-SERVICE READ: analytics-only
+func (q *Queries) GetRegistrationsDetail(ctx context.Context, createdAt time.Time) ([]GetRegistrationsDetailRow, error) {
+	rows, err := q.db.Query(ctx, getRegistrationsDetail, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRegistrationsDetailRow
+	for rows.Next() {
+		var i GetRegistrationsDetailRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.CreatedAt,
+			&i.LoginCount,
+			&i.SessionCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRegistrationsTrend = `-- name: GetRegistrationsTrend :many
 SELECT 
   TO_CHAR(date_trunc('week', created_at), 'YYYY-IW') AS label,
@@ -599,6 +675,11 @@ WHERE role = 'THERAPIST' AND deleted_at IS NULL
   AND email NOT LIKE '%@superwizor.test'
   AND email NOT LIKE '%@example.com'
   AND email NOT LIKE '%@example.test'
+  AND email NOT LIKE '%@example.org'
+  AND email NOT LIKE '%@test.pl'
+  AND email NOT LIKE '%@superwizor.ai'
+  AND email NOT LIKE '%+%'
+  AND email != 'kolodzmaciej@gmail.com'
   AND created_at >= $1
 GROUP BY 1
 ORDER BY 1 ASC

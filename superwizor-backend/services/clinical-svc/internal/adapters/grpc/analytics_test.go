@@ -126,6 +126,20 @@ func (q *fakeAnalyticsQuerier) GetSessionsTrend(ctx context.Context, since time.
 func (q *fakeAnalyticsQuerier) GetRegistrationsTrend(ctx context.Context, since time.Time) ([]db.GetRegistrationsTrendRow, error) {
 	return []db.GetRegistrationsTrendRow{{Label: "2026-01", Value: 5.0}}, nil
 }
+func (q *fakeAnalyticsQuerier) GetRegistrationsDetail(ctx context.Context, since time.Time) ([]db.GetRegistrationsDetailRow, error) {
+	emailVal := "therapist@example.com"
+	return []db.GetRegistrationsDetailRow{
+		{
+			ID:           uuid.New(),
+			Email:        &emailVal,
+			FirstName:    "John",
+			LastName:     "Doe",
+			CreatedAt:    time.Now(),
+			LoginCount:   5,
+			SessionCount: 10,
+		},
+	}, nil
+}
 func (q *fakeAnalyticsQuerier) GetPlanDistribution(ctx context.Context) ([]db.GetPlanDistributionRow, error) {
 	return []db.GetPlanDistributionRow{{PlanName: "Mistrzostwo", Count: 3}}, nil
 }

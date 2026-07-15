@@ -470,7 +470,19 @@
         "modalityDistributionInfo": "This chart shows which psychotherapeutic modalities (e.g. CBT, psychodynamic, humanistic) are most frequently used in recorded sessions. Helps identify the most popular report customization profiles.",
         "sessionDurationTrend": "Session Duration (Trend)",
         "sessionDurationTrendDesc": "Average session duration per week (minutes)",
-        "sessionDurationTrendInfo": "Weekly trend of average session duration in minutes. Allows monitoring engagement and checking session length stability over time."
+        "sessionDurationTrendInfo": "Weekly trend of average session duration in minutes. Allows monitoring engagement and checking session length stability over time.",
+        "showDetails": "Show details",
+        "hideDetails": "Hide details"
+      },
+      "registrationsDetail": {
+        "title": "Detailed New Registrations List",
+        "close": "Close list",
+        "colName": "Name",
+        "colEmail": "Email address",
+        "colCreatedAt": "Registration date",
+        "colLogins": "Logins count",
+        "colSessions": "Sessions count",
+        "empty": "No registered therapists in the selected period."
       },
       "fixedCostsTable": {
         "title": "Detailed Fixed Costs List",

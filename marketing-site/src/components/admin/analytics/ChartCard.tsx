@@ -12,9 +12,10 @@ interface ChartCardProps {
   /** Shown when chart has no data */
   emptyLabel?: string;
   isEmpty?: boolean;
+  action?: React.ReactNode;
 }
 
-export function ChartCard({ title, description, info, children, emptyLabel, isEmpty }: ChartCardProps) {
+export function ChartCard({ title, description, info, children, emptyLabel, isEmpty, action }: ChartCardProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   return (
@@ -24,6 +25,7 @@ export function ChartCard({ title, description, info, children, emptyLabel, isEm
           <h3 className="font-display text-frost text-base font-semibold tracking-wide flex-1">
             {title}
           </h3>
+          {action && <div className="flex-shrink-0 mr-1">{action}</div>}
           {info && (
             <div className="relative flex-shrink-0">
               <button
