@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
@@ -26,18 +26,55 @@ import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities"
 const STORAGE_KEY = "sw_onboarding_step";
 const APP_STORE_URL = "https://apps.apple.com/app/superwizor-ai/id6774975751";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ai.superwizor.superwizor";
-type OnboardingStep = 4 | 5 | 6;
+type OnboardingStep = 4 | 5 | 6 | 7 | 8;
 
 const LABELS_FALLBACK: Record<string, Record<"pl" | "en", string>> = {
   UNIV: { pl: "Integracyjny", en: "Integrative" },
   CBT: { pl: "CBT", en: "CBT" },
   PSYCHO: { pl: "Psychodynamiczny", en: "Psychodynamic" },
   GESTALT: { pl: "Gestalt", en: "Gestalt" },
+  PPT: { pl: "Pozytywna (PPT)", en: "Positive (PPT)" },
   ST: { pl: "Schematów", en: "Schema" },
   SYS: { pl: "Systemowa", en: "Systemic" },
   EFT: { pl: "EFT", en: "EFT" },
   COACH: { pl: "Coaching", en: "Coaching" },
 };
+
+// Emoji icons for each modality — matching Flutter app's Material Icons concept
+const MODALITY_ICONS: Record<string, string> = {
+  UNIV: "🔗",     // hub_outlined → interconnected/integrative
+  CBT: "🧠",      // psychology_outlined → cognitive
+  PSYCHO: "🧘",   // self_improvement_outlined → introspection
+  GESTALT: "🎯",  // center_focus_strong → figure/ground
+  PPT: "☀️",      // wb_sunny_outlined → positive
+  ST: "🧩",       // view_module_outlined → schemas/patterns
+  SYS: "👨‍👩‍👧‍👦",  // family_restroom_outlined → family/systemic
+  EFT: "❤️",      // favorite_outline → emotions-focused
+  COACH: "📈",    // trending_up_outlined → growth/coaching
+};
+
+// Premium SVG icons for modalities — flat, calm, psychotherapy-appropriate
+const svgClass = "w-6 h-6";
+const MODALITY_SVG_ICONS: Record<string, (active: boolean) => ReactNode> = {
+  UNIV: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.3 4.3M14.1 14.1l4.3 4.3M5.6 18.4l4.3-4.3M14.1 9.9l4.3-4.3"/></svg>,
+  CBT: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3-1.5 5-3 6.5V18a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.5C6.5 14 5 12 5 9a7 7 0 0 1 7-7z"/><path d="M9 22h6"/><path d="M10 14.5c.6-.4 1.3-.5 2-.5s1.4.1 2 .5"/></svg>,
+  PSYCHO: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10"/><path d="M12 2c2.8 0 5 4.5 5 10s-2.2 10-5 10"/><path d="M2 12h10"/><path d="M12 7c-2 2-2 5 0 7"/></svg>,
+  GESTALT: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>,
+  PPT: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>,
+  ST: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+  SYS: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="3"/><circle cx="5" cy="17" r="2.5"/><circle cx="19" cy="17" r="2.5"/><path d="M12 10v2M9 14l-2.5 1.5M15 14l2.5 1.5"/></svg>,
+  EFT: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 21c-4-3.5-8-6.5-8-10.5C4 7 7 4.5 9.5 4.5c1.5 0 2.5.7 2.5.7s1-.7 2.5-.7C17 4.5 20 7 20 10.5c0 4-4 7-8 10.5z"/></svg>,
+  COACH: (a) => <svg className={svgClass} viewBox="0 0 24 24" fill="none" stroke={a ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+};
+
+// SVG icon components for Step 5 — sessions, work format, counter
+const SvgSeedling = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22V10"/><path d="M5 10c0-4 3-7 7-7"/><path d="M19 10c0-4-3-7-7-7"/><path d="M5 10c0 3 2.5 5 7 5"/><path d="M19 10c0 3-2.5 5-7 5"/></svg>;
+const SvgTree = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22V13"/><path d="M12 13L8 9l4-6 4 6-4 4z"/><path d="M7 13c-2 0-4 1-4 4h18c0-3-2-4-4-4"/></svg>;
+const SvgForest = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-8"/><path d="M7 22v-5"/><path d="M17 22v-5"/><path d="M12 14l-4-5 4-6 4 6-4 5z"/><path d="M7 17l-3-4 3-4.5 3 4.5-3 4z"/><path d="M17 17l-3-4 3-4.5 3 4.5-3 4z"/></svg>;
+const SvgChart = () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>;
+const SvgMonitor = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>;
+const SvgBuilding = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h2v2H9zM13 10h2v2h-2zM9 15h2v2H9zM13 15h2v2h-2z"/></svg>;
+const SvgShuffle = ({ active }: { active: boolean }) => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={active ? "#F2F0EA" : "#8FA5A0"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>;
 
 // ─── Animations ──────────────────────────────────────────────
 
@@ -85,7 +122,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const n = parseInt(saved, 10);
-        if (n === 4 || n === 5 || n === 6) return n as OnboardingStep;
+        if (n === 4 || n === 5 || n === 6 || n === 7 || n === 8) return n as OnboardingStep;
       }
     }
     return 4;
@@ -148,26 +185,38 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     localStorage.setItem(STORAGE_KEY, String(step));
   }, [step]);
 
-  // Step 6: clear local storage only, no auto redirect
+  // Step 8: clear local storage only, no auto redirect
   useEffect(() => {
-    if (step === 6) {
+    if (step === 8) {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [step]);
 
+  // Cross-tab sync: listen for onboarding completion from other tabs
+  useEffect(() => {
+    try {
+      const ch = new BroadcastChannel("sw_onboarding");
+      ch.onmessage = (e) => {
+        if (e.data?.type === "onboarding_complete") {
+          localStorage.removeItem(STORAGE_KEY);
+          router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
+        }
+      };
+      return () => ch.close();
+    } catch {
+      return undefined;
+    }
+  }, [router, locale]);
+
   const goNext = useCallback(() => {
     setDirection(1);
-    setStep((s) => Math.min(s + 1, 6) as OnboardingStep);
+    setStep((s) => Math.min(s + 1, 8) as OnboardingStep);
   }, []);
 
   // Form state
-  const [practiceData, setPracticeData] = useState({
-    practiceName: "",
-    practiceSize: "solo",
-    modality: "",
-  });
-  const [preferences, setPreferences] = useState<string[]>([]);
-  const [otherText, setOtherText] = useState("");
+  const [selectedModality, setSelectedModality] = useState("");
+  const [weeklySessions, setWeeklySessions] = useState<"up_to_7" | "up_to_20" | "more_than_20" | "">("");
+  const [workFormat, setWorkFormat] = useState<"online" | "in_person" | "hybrid" | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,8 +227,8 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     setError(null);
     try {
       // 1. Save Modality (Step 4) to user profile. If skipped, use default Integrative UNIV
-      const activeMod = !skipped && practiceData.modality
-        ? modalities.find((m) => m.systemCode === practiceData.modality)
+      const activeMod = !skipped && selectedModality
+        ? modalities.find((m) => m.systemCode === selectedModality)
         : null;
       const modalityId = activeMod ? activeMod.id : "33e66b8d-8a71-4770-96f3-42e13297a7e7"; // fallback to UNIV UUID
       await identityClient.updateProfile(
@@ -194,45 +243,29 @@ export function OnboardingWizard({ locale }: { locale: string }) {
 
       // 3. Prepare CRM Note text
       if (!skipped) {
-        const modalityLabel = {
-          UNIV: t("Integracyjny", "Integrative"),
-          CBT: "CBT",
-          PSYCHO: t("Psychodynamiczny", "Psychodynamic"),
-          GESTALT: "Gestalt",
-          ST: t("Schematów", "Schema"),
-          SYS: t("Systemowa", "Systemic"),
-          EFT: "EFT",
-          COACH: "Coaching",
-        }[practiceData.modality] || practiceData.modality;
+        const modalityLabel = LABELS_FALLBACK[selectedModality]?.[locale as "pl" | "en"] || selectedModality;
 
-        const sizeLabel = {
-          solo: "Solo",
-          small: t("2-5 osób", "2-5 people"),
-          clinic: t("6+ osób", "6+ people"),
-        }[practiceData.practiceSize] || practiceData.practiceSize;
+        const sessionsLabel = weeklySessions
+          ? {
+              up_to_7: t("Do 7 sesji w tygodniu (ok. 30/miesiąc — Plan Podstawowy)", "Up to 7 sessions/week (~30/month — Basic Plan)"),
+              up_to_20: t("Do 20 sesji w tygodniu (ok. 90/miesiąc — Plan Profesjonalny)", "Up to 20 sessions/week (~90/month — Professional Plan)"),
+              more_than_20: t("Powyżej 20 sesji w tygodniu (Limit elastyczny — Pakiety dla Klinik)", "More than 20 sessions/week (Flexible limit — Clinic Packages)"),
+            }[weeklySessions]
+          : t("Nie wybrano", "Not selected");
 
-        const prefLabels: Record<string, string> = {
-          transcription: t("Dokładna transkrypcja i notatki z sesji", "Accurate session transcriptions & notes"),
-          reports: t("Automatyczne podsumowania i raporty z sesji", "Automated summaries & session reports"),
-          patterns: t("Analiza historii i wątków z wielu sesji klienta", "Analyzing patterns across multiple client sessions"),
-          modality: t("Raporty dopasowane do mojego nurtu", "Reports tailored to my therapy modality"),
-          gdpr: t("Pełne bezpieczeństwo danych i zgodność z RODO", "Full GDPR compliance & secure data storage"),
-          review: t("Błyskawiczne przygotowanie przed sesją (wgląd w 3 minuty)", "Quick review before sessions (3-minute prep)"),
-          other: t("INNE", "OTHER"),
-        };
-
-        const selectedPrefs = preferences
-          .map(p => prefLabels[p] || p)
-          .join(", ");
+        const formatLabel = workFormat
+          ? {
+              online: t("Online (zdalnie)", "Online (remote)"),
+              in_person: t("Stacjonarnie w gabinecie", "In-person at the office"),
+              hybrid: t("Hybrydowo (oba formaty)", "Hybrid (both formats)"),
+            }[workFormat]
+          : t("Nie wybrano", "Not selected");
 
         const crmNoteBody = [
           `[Automatyczny Onboarding - Kwestionariusz]`,
           `• Nurt terapii: ${modalityLabel}`,
-          `• Wielkość praktyki: ${sizeLabel}`,
-          `• Oczekiwania: ${selectedPrefs || t("Brak wybranych", "None selected")}`,
-          preferences.includes("other") && otherText.trim()
-            ? `• Inne szczegóły: ${otherText.trim()}`
-            : null
+          `• Szacowana liczba sesji: ${sessionsLabel}`,
+          `• Format pracy: ${formatLabel}`,
         ]
           .filter(Boolean)
           .join("\n");
@@ -258,26 +291,50 @@ export function OnboardingWizard({ locale }: { locale: string }) {
         });
       }
 
-      // Go to step 6 (Done)
+      // Go to step 7 (Account info card)
       setDirection(1);
-      setStep(6);
+      setStep(7);
+      // Notify other tabs that onboarding profile is now complete
+      try { new BroadcastChannel("sw_onboarding").postMessage({ type: "onboarding_complete" }); } catch {}
     } catch (e) {
       console.error("[onboarding] Save onboarding failed", e);
-      // If it fails, let's still let them proceed to step 6 so we don't block them from using the app
+      // If it fails, let's still let them proceed so we don't block them from using the app
       setDirection(1);
-      setStep(6);
+      setStep(7);
     } finally {
       setSaving(false);
     }
-  }, [practiceData, preferences, otherText, t]);
-  const visualStep = Math.min(step, 5);
+  }, [selectedModality, weeklySessions, workFormat, t]);
+
+  // Animated monthly sessions counter
+  const monthlyTarget = weeklySessions === "up_to_7" ? 30 : weeklySessions === "up_to_20" ? 87 : 0;
+  const [monthlyCount, setMonthlyCount] = useState(0);
+  useEffect(() => {
+    if (!monthlyTarget) { setMonthlyCount(0); return; }
+    setMonthlyCount(0);
+    const duration = 800; // ms
+    const steps = 30;
+    const increment = monthlyTarget / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= monthlyTarget) {
+        setMonthlyCount(monthlyTarget);
+        clearInterval(timer);
+      } else {
+        setMonthlyCount(Math.round(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [monthlyTarget]);
+  const visualStep = Math.min(step, 6);
 
   // ─── Render ────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12" style={{ fontSize: '110%' }}>
       {/* Progress Dots */}
-      {step < 6 && (
+      {step < 8 && (
         <motion.div
           className="flex flex-col items-center gap-2.5 mb-10 text-center"
           initial={{ opacity: 0, y: -20 }}
@@ -287,16 +344,18 @@ export function OnboardingWizard({ locale }: { locale: string }) {
           {step >= 4 ? (
             <div className="flex flex-col items-center gap-2">
               <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-ember/15 text-ember border border-ember/25 animate-pulse">
-                {locale === "pl" ? "Ostatnie 2 kroki" : "Last 2 steps"}
+                {locale === "pl" ? "Ostatnie kroki" : "Final steps"}
               </span>
               <div className="flex items-center gap-3 mt-1">
-                {[4, 5].map((n) => (
+                {[4, 5, 6, 7].map((n) => (
                   <motion.div
                     key={n}
                     className={`rounded-full transition-all duration-300 ${
                       n === step
                         ? "w-8 h-3 bg-gradient-to-r from-[#F5A623] to-[#E09500]"
-                        : "w-3 h-3 bg-[#1A3A3E]"
+                        : n < step
+                          ? "w-3 h-3 bg-[#F5A623]/40"
+                          : "w-3 h-3 bg-[#1A3A3E]"
                     }`}
                     layout
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -326,108 +385,75 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       )}
 
       {/* Step Cards */}
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-lg relative">
         <AnimatePresence mode="wait" custom={direction}>
-          {/* ── Step 4: Practice ── */}
+          {/* ── Step 4: Therapy Modality — visual icon cards ── */}
           {step === 4 && (
             <StepCard key="step4" direction={direction}>
-              <div className="text-5xl mb-4 text-center">🏥</div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
-                {t("Opowiedz o swojej praktyce", "Tell us about your practice")}
+              <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-[#0F2E32] border border-[#2F6B62]/40 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="#8FA5A0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h5"/></svg>
+              </div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-3">
+                {t("Wybierz swój nurt", "Choose your modality")}
               </h2>
-              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
-                {t("Możesz to zmienić później.", "You can change this later.")}
+              <p className="font-sans text-sm text-[#8FA5A0]/80 text-center leading-relaxed mb-8">
+                {t(
+                  "W jakim nurcie najczęściej prowadzisz sesje? Możesz to zmienić później.",
+                  "Which modality do you use most often? You can change this later."
+                )}
               </p>
 
-              {/* Practice size — visual cards */}
-              <motion.div variants={stagger} initial="initial" animate="animate">
-                <motion.div variants={childFade}>
-                  <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-3">
-                    {t("Wielkość praktyki", "Practice size")}
-                  </label>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {[
-                      { value: "solo", emoji: "🧘", label: "Solo" },
-                      { value: "small", emoji: "👥", label: t("2-5 osób", "2-5 people") },
-                      { value: "clinic", emoji: "🏥", label: t("6+ osób", "6+ people") },
-                    ].map(({ value, emoji, label }) => (
-                      <motion.button
-                        key={value}
-                        onClick={() => setPracticeData((d) => ({ ...d, practiceSize: value }))}
-                        className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border transition-all ${
-                          practiceData.practiceSize === value
-                            ? "bg-[#004D54] border-[#2F6B62] shadow-[0_0_20px_rgba(79,192,151,0.1)]"
-                            : "bg-[#0F2E32] border-[#1A3A3E] hover:border-[#2F6B62]"
-                        }`}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        type="button"
-                      >
-                        <span className="text-2xl">{emoji}</span>
-                        <span className={`font-sans text-xs font-bold ${practiceData.practiceSize === value ? "text-white" : "text-[#8FA5A0]"}`}>
-                          {label}
-                        </span>
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Modality — Dropdown Select */}
-                <motion.div variants={childFade}>
-                  <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-1">
-                    {t("Nurt terapii", "Therapy modality")}
-                  </label>
-                  <p className="font-sans text-[11px] text-[#8FA5A0]/80 mb-3 leading-normal normal-case font-normal">
-                    {t("w którym zwykle prowadzisz sesje z klientami", "in which you usually conduct sessions with clients")}
-                  </p>
-                  <div className="relative group">
-                    <select
-                      value={practiceData.modality}
-                      onChange={(e) => setPracticeData((d) => ({ ...d, modality: e.target.value }))}
-                      className="w-full rounded-xl bg-[#0A2326] border border-[#1A3A3E] pl-4 pr-10 py-3.5 font-sans text-sm text-[#F2F0EA] focus:outline-none focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623]/30 hover:border-[#2F6B62] transition-all cursor-pointer appearance-none"
-                    >
-                      <option value="" disabled>
-                        {t("— Wybierz nurt terapii —", "— Choose therapy modality —")}
-                      </option>
-                      {(modalities.length > 0
-                        ? modalities.map((m) => ({ value: m.systemCode, label: m.labels[locale as "pl" | "en"] || m.displayName }))
-                        : [
-                            { value: "UNIV", label: LABELS_FALLBACK.UNIV[locale as "pl" | "en"] },
-                            { value: "CBT", label: LABELS_FALLBACK.CBT[locale as "pl" | "en"] },
-                            { value: "PSYCHO", label: LABELS_FALLBACK.PSYCHO[locale as "pl" | "en"] },
-                            { value: "GESTALT", label: LABELS_FALLBACK.GESTALT[locale as "pl" | "en"] },
-                            { value: "ST", label: LABELS_FALLBACK.ST[locale as "pl" | "en"] },
-                            { value: "SYS", label: LABELS_FALLBACK.SYS[locale as "pl" | "en"] },
-                            { value: "EFT", label: LABELS_FALLBACK.EFT[locale as "pl" | "en"] },
-                            { value: "COACH", label: LABELS_FALLBACK.COACH[locale as "pl" | "en"] },
-                          ]
-                      ).map(({ value, label }) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-[#8FA5A0]/60 group-focus-within:text-[#F5A623] group-hover:text-[#8FA5A0] transition-colors">
-                      <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
+              <div className="grid grid-cols-3 gap-2.5 mb-6">
+                {(modalities.length > 0
+                  ? modalities.map((m) => ({ code: m.systemCode, label: m.labels[locale as "pl" | "en"] || m.displayName }))
+                  : [
+                      { code: "UNIV", label: LABELS_FALLBACK.UNIV[locale as "pl" | "en"] },
+                      { code: "CBT", label: LABELS_FALLBACK.CBT[locale as "pl" | "en"] },
+                      { code: "PSYCHO", label: LABELS_FALLBACK.PSYCHO[locale as "pl" | "en"] },
+                      { code: "GESTALT", label: LABELS_FALLBACK.GESTALT[locale as "pl" | "en"] },
+                      { code: "PPT", label: LABELS_FALLBACK.PPT[locale as "pl" | "en"] },
+                      { code: "ST", label: LABELS_FALLBACK.ST[locale as "pl" | "en"] },
+                      { code: "SYS", label: LABELS_FALLBACK.SYS[locale as "pl" | "en"] },
+                      { code: "EFT", label: LABELS_FALLBACK.EFT[locale as "pl" | "en"] },
+                      { code: "COACH", label: LABELS_FALLBACK.COACH[locale as "pl" | "en"] },
+                    ]
+                ).map(({ code, label }) => (
+                  <motion.button
+                    key={code}
+                    type="button"
+                    onClick={() => setSelectedModality(code)}
+                    className={`flex flex-col items-center gap-1.5 py-3.5 px-2 rounded-2xl border transition-all text-center ${
+                      selectedModality === code
+                        ? "bg-[#004D54] border-[#2F6B62] shadow-[0_0_20px_rgba(79,192,151,0.12)]"
+                        : "bg-[#0F2E32]/60 border-[#1A3A3E] hover:border-[#2F6B62]"
+                    }`}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#0A2326] border border-[#1A3A3E] flex items-center justify-center flex-shrink-0">
+                      {MODALITY_SVG_ICONS[code]?.(selectedModality === code) || MODALITY_SVG_ICONS.UNIV(selectedModality === code)}
                     </div>
-                  </div>
-                </motion.div>
-              </motion.div>
+                    <span className={`font-sans text-[10px] font-bold leading-tight ${
+                      selectedModality === code ? "text-white" : "text-[#8FA5A0]"
+                    }`}>
+                      {label}
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
 
               <PrimaryButton
                 onClick={goNext}
                 label={t("Dalej", "Continue")}
-                disabled={saving || !practiceData.modality}
+                disabled={saving || !selectedModality}
               />
             </StepCard>
           )}
 
-          {/* ── Step 5: Preferences ── */}
+          {/* ── Step 5: Weekly Sessions (separate step) ── */}
           {step === 5 && (
             <StepCard key="step5" direction={direction}>
-              {/* Back Arrow link */}
+              {/* Back Arrow */}
               <button
                 type="button"
                 onClick={() => {
@@ -442,101 +468,225 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 <span>{t("Wróć", "Back")}</span>
               </button>
 
-              <div className="text-5xl mb-4 text-center mt-3">🎯</div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
-                {t("Na co najbardziej czekasz?", "What do you look forward to?")}
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] text-center mb-3 mt-8">
+                {t("Ile sesji prowadzisz w tygodniu?", "How many sessions per week?")}
               </h2>
-              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
-                {t("Możesz wybrać kilka opcji.", "You can select multiple options.")}
+              <p className="font-sans text-sm text-[#8FA5A0]/80 text-center leading-relaxed mb-8">
+                {t(
+                  "Pomoże nam dopasować odpowiedni plan.",
+                  "Helps us match the right plan for you."
+                )}
               </p>
 
-              <motion.div
-                className="flex flex-col gap-2.5 max-h-[340px] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-white/10"
-                variants={stagger}
-                initial="initial"
-                animate="animate"
-              >
+              <div className="grid grid-cols-1 gap-2.5 mb-5">
                 {[
-                  { id: "transcription", emoji: "🎙️", label: t("Dokładna transkrypcja i notatki z sesji", "Accurate session transcriptions & notes") },
-                  { id: "reports", emoji: "📊", label: t("Automatyczne podsumowania i raporty z sesji", "Automated summaries & session reports") },
-                  { id: "patterns", emoji: "🔮", label: t("Analiza historii i wątków z wielu sesji klienta", "Analyzing patterns across multiple client sessions") },
-                  { id: "modality", emoji: "📋", label: t("Raporty dopasowane do mojego nurtu", "Reports tailored to my therapy modality") },
-                  { id: "gdpr", emoji: "🛡️", label: t("Pełne bezpieczeństwo danych i zgodność z RODO", "Full GDPR compliance & secure data storage") },
-                  { id: "review", emoji: "⚡", label: t("Błyskawiczne przygotowanie przed sesją (wgląd w 3 minuty)", "Quick review before sessions (3-minute prep)") },
-                  { id: "other", emoji: "✍️", label: t("INNE", "OTHER") },
-                ].map(({ id, emoji, label }) => (
-                  <motion.button
+                  { id: "up_to_7", pl: "Do 7 sesji / tydz.", en: "Up to 7 sessions / week" },
+                  { id: "up_to_20", pl: "Do 20 sesji / tydz.", en: "Up to 20 sessions / week" },
+                  { id: "more_than_20", pl: "Powyżej 20 sesji / tydz.", en: "Over 20 sessions / week" },
+                ].map(({ id, pl, en }) => (
+                  <button
                     key={id}
-                    onClick={() =>
-                      setPreferences((prev) =>
-                        prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-                      )
-                    }
-                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                      preferences.includes(id)
-                        ? "bg-[#004D54]/75 border-[#2F6B62] shadow-[0_2px_12px_rgba(79,192,151,0.08)]"
-                        : "bg-[#0F2E32]/50 border-[#1A3A3E] hover:border-[#2F6B62]"
+                    type="button"
+                    onClick={() => setWeeklySessions(id as any)}
+                    className={`flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all ${
+                      weeklySessions === id
+                        ? "bg-[#004D54]/75 border-[#2F6B62] shadow-[0_2px_10px_rgba(79,192,151,0.06)]"
+                        : "bg-[#0F2E32]/40 border-[#1A3A3E] hover:border-[#2F6B62]/60"
                     }`}
-                    variants={childFade}
-                    whileHover={{ scale: 1.01, x: 2 }}
-                    whileTap={{ scale: 0.99 }}
                   >
-                    <div className="flex items-center gap-3.5">
-                      <span className="text-xl w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg border border-white/5 select-none">{emoji}</span>
-                      <span className={`font-sans text-xs font-semibold leading-snug pr-4 ${preferences.includes(id) ? "text-[#FAFAFA]" : "text-[#8FA5A0]"}`}>
-                        {label}
+                    <span className="flex-shrink-0">{id === "up_to_7" ? <SvgSeedling active={weeklySessions === id} /> : id === "up_to_20" ? <SvgTree active={weeklySessions === id} /> : <SvgForest active={weeklySessions === id} />}</span>
+                    <div className="flex-1">
+                      <span className={`block font-sans text-sm font-bold ${weeklySessions === id ? "text-white" : "text-[#8FA5A0]"}`}>
+                        {t(pl, en)}
                       </span>
                     </div>
-
-                    {/* Checkbox circle on right */}
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all flex-shrink-0 ${
-                      preferences.includes(id)
-                        ? "border-[#F5A623] bg-[#F5A623]"
-                        : "border-[#8FA5A0]/30 bg-transparent"
-                    }`}>
-                      {preferences.includes(id) && (
-                        <svg className="w-3.5 h-3.5 text-[#1B2522]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </motion.button>
+                  </button>
                 ))}
-              </motion.div>
+              </div>
 
-              <AnimatePresence>
-                {preferences.includes("other") && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-5 space-y-2 text-left overflow-hidden"
-                  >
-                    <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider">
-                      {t("Napisz nam, na co najbardziej czekasz — to dla nas ważne:", "Tell us what you look forward to most — it's important to us:")}
-                    </label>
-                    <textarea
-                      value={otherText}
-                      onChange={(e) => setOtherText(e.target.value)}
-                      placeholder={t("Wpisz swoje oczekiwania...", "Write your expectations here...")}
-                      rows={3}
-                      className="w-full py-3 px-4 rounded-xl bg-[#0A2326] text-[#F2F0EA] border border-[#1A3A3E] font-sans text-sm placeholder:text-[#4E5A55] focus:border-[#F5A623] focus:shadow-[0_0_0_3px_rgba(245,166,35,0.1)] focus:outline-none transition-all resize-none"
-                    />
-                  </motion.div>
+              {/* Animated monthly counter */}
+              {weeklySessions && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="mb-5 rounded-xl border border-[#2F6B62]/30 bg-[#0A2326]/60 p-4 flex items-center gap-3"
+                >
+                  <span className="flex-shrink-0"><SvgChart /></span>
+                  <div className="flex-1">
+                    <span className="font-sans text-[10px] text-[#8FA5A0] uppercase tracking-wider">
+                      {t("Miesięcznie to około", "Monthly that's about")}
+                    </span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="font-serif text-2xl font-bold text-[#F5A623] tabular-nums">
+                        {weeklySessions === "more_than_20" ? "80+" : `~${monthlyCount}`}
+                      </span>
+                      <span className="font-sans text-xs text-[#8FA5A0]">
+                        {t("sesji / miesiąc", "sessions / month")}
+                      </span>
+                    </div>
+                    <span className="font-sans text-[10px] text-[#8FA5A0]/60 mt-0.5 block">
+                      {weeklySessions === "up_to_7"
+                        ? t("Plan Podstawowy", "Basic Plan")
+                        : weeklySessions === "up_to_20"
+                          ? t("Plan Profesjonalny", "Professional Plan")
+                          : t("Skontaktuj się, dopasujemy plan", "Contact us, we'll match a plan")}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+
+              <PrimaryButton
+                onClick={goNext}
+                label={t("Dalej", "Continue")}
+                disabled={saving || !weeklySessions}
+              />
+            </StepCard>
+          )}
+
+          {/* ── Step 6: Work Format (separate step) ── */}
+          {step === 6 && (
+            <StepCard key="step6" direction={direction}>
+              {/* Back Arrow */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDirection(-1);
+                  setStep(5);
+                }}
+                className="absolute top-6 left-6 flex items-center gap-1.5 text-xs font-bold text-[#8FA5A0] hover:text-white transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>{t("Wróć", "Back")}</span>
+              </button>
+
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] text-center mb-3 mt-8">
+                {t("Jak pracujesz?", "How do you work?")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0]/80 text-center leading-relaxed mb-8">
+                {t(
+                  "Wybierz format, który najczęściej stosujesz.",
+                  "Choose the format you use most often."
                 )}
-              </AnimatePresence>
+              </p>
 
-              <div className="flex gap-3 mt-8">
+              <div className="grid grid-cols-1 gap-2.5 mb-6">
+                {[
+                  { id: "online", pl: "Online", en: "Online", descPl: "sesje zdalne (wideo / telefon)", descEn: "remote sessions (video / phone)" },
+                  { id: "in_person", pl: "W gabinecie", en: "In-person", descPl: "sesje stacjonarne", descEn: "face-to-face sessions" },
+                  { id: "hybrid", pl: "Hybrydowo", en: "Hybrid", descPl: "mieszany format, oba rodzaje", descEn: "mix of both formats" },
+                ].map(({ id, pl, en, descPl, descEn }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setWorkFormat(id as any)}
+                    className={`flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all ${
+                      workFormat === id
+                        ? "bg-[#004D54]/75 border-[#2F6B62] shadow-[0_2px_10px_rgba(79,192,151,0.06)]"
+                        : "bg-[#0F2E32]/40 border-[#1A3A3E] hover:border-[#2F6B62]/60"
+                    }`}
+                  >
+                    <span className="flex-shrink-0">{id === "online" ? <SvgMonitor active={workFormat === id} /> : id === "in_person" ? <SvgBuilding active={workFormat === id} /> : <SvgShuffle active={workFormat === id} />}</span>
+                    <div className="flex-1">
+                      <span className={`block font-sans text-sm font-bold ${workFormat === id ? "text-white" : "text-[#8FA5A0]"}`}>
+                        {t(pl, en)}
+                      </span>
+                      <span className={`block font-sans text-xs mt-0.5 ${workFormat === id ? "text-[#8FA5A0]" : "text-[#8FA5A0]/50"}`}>
+                        {t(descPl, descEn)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
                 <SkipInline onClick={() => handleDone(true)} label={t("Pomiń", "Skip")} disabled={saving} />
-                <PrimaryButtonInline onClick={() => handleDone(false)} label={saving ? t("Zapisuję...", "Saving...") : t("Gotowe", "Done")} disabled={saving} />
+                <PrimaryButtonInline
+                  onClick={() => handleDone(false)}
+                  label={saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
+                  disabled={saving || !workFormat}
+                />
               </div>
             </StepCard>
           )}
 
-          {/* ── Step 6: Done ── */}
-          {step === 6 && (
+          {/* ── Step 7: Account Management Info ── */}
+          {step === 7 && (
+            <StepCard key="step7" direction={direction}>
+              {/* Back Arrow */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDirection(-1);
+                  setStep(6);
+                }}
+                className="absolute top-6 left-6 flex items-center gap-1.5 text-xs font-bold text-[#8FA5A0] hover:text-white transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>{t("Wróć", "Back")}</span>
+              </button>
+
+              <div className="w-12 h-12 mx-auto mb-4 mt-6 rounded-2xl bg-[#0F2E32] border border-[#2F6B62]/40 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="#8FA5A0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] text-center mb-3 leading-tight">
+                {t(
+                  "Pamiętaj: Subskrypcje kupujesz tylko na stronie WWW!",
+                  "Remember: Subscriptions are managed only on the website!"
+                )}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0]/80 text-center leading-relaxed mb-8">
+                {t(
+                  "Zarządzaj swoim kontem logując się na www.superwizor.ai",
+                  "Manage your account by logging in at www.superwizor.ai"
+                )}
+              </p>
+
+              <motion.div className="flex flex-col gap-3 mb-6" variants={stagger} initial="initial" animate="animate">
+                {[
+                  { key: "plan", label: t("Zmiana planu i subskrypcji", "Change plan & subscription"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg> },
+                  { key: "invoice", label: t("Faktury i historia płatności", "Invoices & payment history"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg> },
+                  { key: "profile", label: t("Dane profilu i organizacji", "Profile & organization data"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                ].map(({ key, label, svg }) => (
+                  <motion.div
+                    key={key}
+                    variants={childFade}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#0F2E32]/50 border border-[#1A3A3E]"
+                  >
+                    <span className="w-9 h-9 flex items-center justify-center bg-[#F5A623]/10 rounded-lg border border-[#F5A623]/20 flex-shrink-0">{svg}</span>
+                    <span className="font-sans text-sm font-semibold text-[#F2F0EA]">{label}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* Mobile app reminder callout */}
+              <div className="rounded-xl border border-[#F5A623]/20 bg-[#F5A623]/5 p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+                  <p className="font-sans text-xs text-[#8FA5A0] leading-relaxed">
+                    {t(
+                      "Aplikacja mobilna służy tylko do nagrywania sesji i przeglądania raportów.",
+                      "The mobile app is only for recording sessions and reviewing reports."
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <PrimaryButton
+                onClick={goNext}
+                label={t("Rozumiem, dalej", "Got it, continue")}
+              />
+            </StepCard>
+          )}
+
+          {/* ── Step 8: Done ── */}
+          {step === 8 && (
             <motion.div
-              key="step6"
+              key="step7"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 20 }}
