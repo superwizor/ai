@@ -921,6 +921,7 @@
       "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
       "weakPassword": "Hasło jest zbyt słabe.",
       "phoneRequired": "Numer telefonu jest wymagany.",
+      "phoneAlreadyInUse": "Konto z tym numerem telefonu już istnieje. Zaloguj się na nie lub podaj inny numer.",
       "phoneInvalid": "Wprowadź poprawny numer telefonu (np. 9 cyfr dla Polski). Sekwencje lub powtórzone cyfry są niedozwolone.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie.",

@@ -921,6 +921,7 @@
       "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
       "weakPassword": "This password is too weak.",
       "phoneRequired": "Phone number is required.",
+      "phoneAlreadyInUse": "An account with this phone number already exists. Please log in or use a different number.",
       "phoneInvalid": "Please enter a valid phone number (e.g. 9 digits for Poland). Sequential or repeating digits are not allowed.",
       "networkError": "Could not reach the server. Please try again.",
       "unknown": "Something went wrong. Please try again.",
