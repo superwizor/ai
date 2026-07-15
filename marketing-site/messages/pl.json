@@ -482,6 +482,13 @@
         "colCreatedAt": "Data rejestracji",
         "colLogins": "Ilość logowań",
         "colSessions": "Liczba sesji",
+        "colMarketing": "Zgoda marketingowa",
+        "filterMarketingAll": "Zgody: Wszystkie",
+        "filterMarketingYes": "Zgody: Zaznaczona",
+        "filterMarketingNo": "Zgody: Brak",
+        "exportCsv": "Eksportuj CSV (Mailing)",
+        "yes": "Tak",
+        "no": "Nie",
         "empty": "Brak zarejestrowanych terapeutów w wybranym okresie."
       },
       "fixedCostsTable": {

@@ -171,13 +171,14 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 			emailStr = *r.Email
 		}
 		registrationsDetail[i] = &clinicalv1.RegisteredUserDetail{
-			UserId:       r.ID.String(),
-			Email:        emailStr,
-			FirstName:    r.FirstName,
-			LastName:     r.LastName,
-			CreatedAt:    timestamppb.New(r.CreatedAt),
-			LoginCount:   r.LoginCount,
-			SessionCount: r.SessionCount,
+			UserId:              r.ID.String(),
+			Email:               emailStr,
+			FirstName:           r.FirstName,
+			LastName:            r.LastName,
+			CreatedAt:           timestamppb.New(r.CreatedAt),
+			LoginCount:          r.LoginCount,
+			SessionCount:        r.SessionCount,
+			HasMarketingConsent: r.HasMarketingConsent,
 		}
 	}
 

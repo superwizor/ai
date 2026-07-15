@@ -355,6 +355,14 @@ func (a *ConnectAdapter) CheckEmailExists(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) CheckPhoneNumberExists(ctx context.Context, req *connect.Request[identityv1.CheckPhoneNumberExistsRequest]) (*connect.Response[identityv1.CheckPhoneNumberExistsResponse], error) {
+	resp, err := a.s.CheckPhoneNumberExists(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ResendVerificationEmail(ctx context.Context, req *connect.Request[identityv1.ResendVerificationEmailRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.ResendVerificationEmail(ctx, req.Msg)
 	if err != nil {

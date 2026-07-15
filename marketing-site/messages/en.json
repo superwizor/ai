@@ -482,6 +482,13 @@
         "colCreatedAt": "Registration date",
         "colLogins": "Logins count",
         "colSessions": "Sessions count",
+        "colMarketing": "Marketing Consent",
+        "filterMarketingAll": "Consent: All",
+        "filterMarketingYes": "Consent: Yes",
+        "filterMarketingNo": "Consent: No",
+        "exportCsv": "Export CSV (Mailing)",
+        "yes": "Yes",
+        "no": "No",
         "empty": "No registered therapists in the selected period."
       },
       "fixedCostsTable": {

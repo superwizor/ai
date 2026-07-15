@@ -916,6 +916,7 @@ message RegisteredUserDetail {
   google.protobuf.Timestamp created_at = 5;
   int64 login_count = 6;
   int64 session_count = 7;
+  bool has_marketing_consent = 8;
 }
 
 message TrendPoint {

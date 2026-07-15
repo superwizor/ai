@@ -130,13 +130,14 @@ func (q *fakeAnalyticsQuerier) GetRegistrationsDetail(ctx context.Context, since
 	emailVal := "therapist@example.com"
 	return []db.GetRegistrationsDetailRow{
 		{
-			ID:           uuid.New(),
-			Email:        &emailVal,
-			FirstName:    "John",
-			LastName:     "Doe",
-			CreatedAt:    time.Now(),
-			LoginCount:   5,
-			SessionCount: 10,
+			ID:                  uuid.New(),
+			Email:               &emailVal,
+			FirstName:           "John",
+			LastName:            "Doe",
+			CreatedAt:           time.Now(),
+			LoginCount:          5,
+			SessionCount:        10,
+			HasMarketingConsent: true,
 		},
 	}, nil
 }

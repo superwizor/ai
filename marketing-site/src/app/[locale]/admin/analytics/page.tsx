@@ -1,7 +1,7 @@
 // src/app/[locale]/admin/analytics/page.tsx
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { clinicalClient } from "@/lib/connect/clients";
 import { useNbpRate } from "@/lib/hooks/useNbpRate";
@@ -74,9 +74,56 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("12w");
   const [showRegistrationsDetail, setShowRegistrationsDetail] = useState(false);
+  const [marketingFilter, setMarketingFilter] = useState<"all" | "yes" | "no">("all");
   const [data, setData] = useState<GetAdminAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const filteredRegistrations = useMemo(() => {
+    if (!data?.registrationsDetail) return [];
+    return data.registrationsDetail.filter((user: any) => {
+      if (marketingFilter === "yes") {
+        return user.hasMarketingConsent === true;
+      }
+      if (marketingFilter === "no") {
+        return user.hasMarketingConsent === false;
+      }
+      return true;
+    });
+  }, [data?.registrationsDetail, marketingFilter]);
+
+  const handleExportCSV = () => {
+    if (!filteredRegistrations || filteredRegistrations.length === 0) return;
+
+    const headers = [
+      t("registrationsDetail.colName"),
+      t("registrationsDetail.colEmail"),
+      t("registrationsDetail.colCreatedAt"),
+      t("registrationsDetail.colLogins"),
+      t("registrationsDetail.colSessions"),
+      t("registrationsDetail.colMarketing")
+    ];
+
+    const rows = filteredRegistrations.map((user: any) => [
+      `"${user.firstName} ${user.lastName}"`,
+      `"${user.email}"`,
+      `"${user.createdAt ? new Date(Number(user.createdAt.seconds) * 1000).toLocaleString(locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}"`,
+      user.loginCount,
+      user.sessionCount,
+      user.hasMarketingConsent ? t("registrationsDetail.yes") : t("registrationsDetail.no")
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `rejestracje_mailing_${timeRange}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Feedback tab state
   const [feedbackRatings, setFeedbackRatings] = useState<AdminReportRatingRow[]>([]);
@@ -458,17 +505,38 @@ export default function AnalyticsPage() {
 
           {showRegistrationsDetail && (
             <div className="rounded-card border border-frost/10 bg-surfaceTeal/10 p-6 backdrop-blur-md animate-in fade-in-0 duration-200">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <h3 className="font-display text-frost text-base font-semibold tracking-wide">
                   {t("registrationsDetail.title")}
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowRegistrationsDetail(false)}
-                  className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition cursor-pointer"
-                >
-                  {t("registrationsDetail.close")}
-                </button>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={marketingFilter}
+                    onChange={(e) => setMarketingFilter(e.target.value as any)}
+                    className="bg-frost/5 border border-frost/10 text-frost text-xs font-mono rounded-button px-3 py-1.5 focus:outline-none focus:border-ember/40 cursor-pointer"
+                  >
+                    <option value="all">{t("registrationsDetail.filterMarketingAll")}</option>
+                    <option value="yes">{t("registrationsDetail.filterMarketingYes")}</option>
+                    <option value="no">{t("registrationsDetail.filterMarketingNo")}</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    disabled={filteredRegistrations.length === 0}
+                    className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] bg-ember hover:bg-ember/85 disabled:opacity-30 disabled:hover:bg-ember text-nocturne font-bold px-3 py-1.5 rounded transition cursor-pointer"
+                  >
+                    {t("registrationsDetail.exportCsv")}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRegistrationsDetail(false)}
+                    className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition cursor-pointer ml-2"
+                  >
+                    {t("registrationsDetail.close")}
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto rounded-card border border-frost/5 bg-obsidian/30">
                 <table className="w-full text-sm">
@@ -489,10 +557,13 @@ export default function AnalyticsPage() {
                       <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
                         {t("registrationsDetail.colSessions")}
                       </th>
+                      <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                        {t("registrationsDetail.colMarketing")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.registrationsDetail?.map((user: any) => (
+                    {filteredRegistrations.map((user: any) => (
                       <tr key={user.userId} className="border-t border-frost/5 hover:bg-frost/[0.02]">
                         <td className="px-4 py-3 font-display text-frost">
                           {user.firstName} {user.lastName}
@@ -509,11 +580,20 @@ export default function AnalyticsPage() {
                         <td className="px-4 py-3 text-right font-mono text-frost">
                           {Number(user.sessionCount)}
                         </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                            user.hasMarketingConsent
+                              ? "bg-aurora/10 text-aurora border border-aurora/20"
+                              : "bg-frost/5 text-mist border border-frost/10"
+                          }`}>
+                            {user.hasMarketingConsent ? `👍 ${t("registrationsDetail.yes")}` : `❌ ${t("registrationsDetail.no")}`}
+                          </span>
+                        </td>
                       </tr>
                     ))}
-                    {(!data?.registrationsDetail || data.registrationsDetail.length === 0) && (
+                    {filteredRegistrations.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-mist/60 font-serif">
+                        <td colSpan={6} className="px-4 py-8 text-center text-mist/60 font-serif">
                           {t("registrationsDetail.empty")}
                         </td>
                       </tr>

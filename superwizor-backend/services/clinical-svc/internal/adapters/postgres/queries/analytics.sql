@@ -99,6 +99,7 @@ SELECT
   u.first_name,
   u.last_name,
   u.created_at,
+  u.has_marketing_consent,
   COALESCE(ae.login_count, 0)::bigint AS login_count,
   COALESCE(s.session_count, 0)::bigint AS session_count
 FROM users u

@@ -599,6 +599,7 @@ SELECT
   u.first_name,
   u.last_name,
   u.created_at,
+  u.has_marketing_consent,
   COALESCE(ae.login_count, 0)::bigint AS login_count,
   COALESCE(s.session_count, 0)::bigint AS session_count
 FROM users u
@@ -628,13 +629,14 @@ ORDER BY u.created_at DESC
 `
 
 type GetRegistrationsDetailRow struct {
-	ID           uuid.UUID `json:"id"`
-	Email        *string   `json:"email"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	CreatedAt    time.Time `json:"created_at"`
-	LoginCount   int64     `json:"login_count"`
-	SessionCount int64     `json:"session_count"`
+	ID                  uuid.UUID `json:"id"`
+	Email               *string   `json:"email"`
+	FirstName           string    `json:"first_name"`
+	LastName            string    `json:"last_name"`
+	CreatedAt           time.Time `json:"created_at"`
+	HasMarketingConsent bool      `json:"has_marketing_consent"`
+	LoginCount          int64     `json:"login_count"`
+	SessionCount        int64     `json:"session_count"`
 }
 
 // CROSS-SERVICE READ: analytics-only
@@ -653,6 +655,7 @@ func (q *Queries) GetRegistrationsDetail(ctx context.Context, createdAt time.Tim
 			&i.FirstName,
 			&i.LastName,
 			&i.CreatedAt,
+			&i.HasMarketingConsent,
 			&i.LoginCount,
 			&i.SessionCount,
 		); err != nil {
