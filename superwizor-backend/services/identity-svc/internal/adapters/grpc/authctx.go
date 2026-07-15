@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -59,7 +61,7 @@ func (s *Server) resolveCaller(ctx context.Context) (callerContext, error) {
 		token = token[7:]
 	}
 
-	firebaseUID, _, err := s.auth.VerifyToken(ctx, token)
+	firebaseUID, claims, err := s.auth.VerifyToken(ctx, token)
 	if err != nil {
 		return callerContext{}, status.Error(codes.Unauthenticated, "invalid Firebase token")
 	}
@@ -78,6 +80,23 @@ func (s *Server) resolveCaller(ctx context.Context) (callerContext, error) {
 	if !user.IsActive {
 		return callerContext{}, status.Error(codes.PermissionDenied,
 			"ACCOUNT_DEACTIVATED: konto nieaktywne — skontaktuj się z administratorem organizacji")
+	}
+
+	// Self-healing sync: if email in Firebase token claims differs from PostgreSQL, update DB
+	if emailVal, ok := claims["email"].(string); ok {
+		tokenEmail := strings.ToLower(strings.TrimSpace(emailVal))
+		dbEmail := strings.ToLower(strings.TrimSpace(derefString(user.Email)))
+		if tokenEmail != "" && tokenEmail != dbEmail {
+			_, errUpdate := s.queries.AdminUpdateUser(ctx, db.AdminUpdateUserParams{
+				ID:    user.ID,
+				Email: &tokenEmail,
+			})
+			if errUpdate != nil {
+				slog.WarnContext(ctx, "failed to sync user email from firebase token", "error", errUpdate, "uid", firebaseUID)
+			} else {
+				user.Email = &tokenEmail
+			}
+		}
 	}
 
 	c := callerContext{

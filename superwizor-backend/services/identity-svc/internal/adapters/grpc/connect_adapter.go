@@ -362,3 +362,12 @@ func (a *ConnectAdapter) ResendVerificationEmail(ctx context.Context, req *conne
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) UpdateMyEmail(ctx context.Context, req *connect.Request[identityv1.UpdateMyEmailRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.UpdateMyEmail(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+

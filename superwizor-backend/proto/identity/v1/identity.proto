@@ -160,6 +160,9 @@ service IdentityService {
 
   // Resends the email verification link to the user
   rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (google.protobuf.Empty);
+
+  // Updates the email address of the authenticated caller in both Firebase and the database.
+  rpc UpdateMyEmail(UpdateMyEmailRequest) returns (google.protobuf.Empty);
 }
 
 message AppLoginToken {
@@ -752,3 +755,8 @@ message CheckEmailExistsResponse {
 message ResendVerificationEmailRequest {
   string email = 1;
 }
+
+message UpdateMyEmailRequest {
+  string new_email = 1;
+}
+

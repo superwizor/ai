@@ -113,3 +113,16 @@ func (a *AuthClient) EmailVerificationLink(ctx context.Context, email, continueU
 	return link, nil
 }
 
+// UpdateUserEmail updates the email address and marks it unverified in Firebase Auth.
+func (a *AuthClient) UpdateUserEmail(ctx context.Context, uid string, newEmail string) error {
+	params := (&auth.UserToUpdate{}).
+		Email(newEmail).
+		EmailVerified(false)
+	_, err := a.client.UpdateUser(ctx, uid, params)
+	if err != nil {
+		return fmt.Errorf("update user email in firebase: %w", err)
+	}
+	return nil
+}
+
+
