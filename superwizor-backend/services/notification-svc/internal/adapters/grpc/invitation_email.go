@@ -54,10 +54,25 @@ func (s *Server) SendInvitationEmail(ctx context.Context, req *notificationv1.Se
 		"expires_at":         req.GetExpiresAtIso(),
 	})
 
+	// Wrap in the beautiful, branded generic HTML template
+	ctaText := "Zaakceptuj zaproszenie"
+	if req.GetInvitedRole() == "PATIENT" {
+		if strings.ToLower(req.GetLocale()) == "en" {
+			ctaText = "Join Panel"
+		} else {
+			ctaText = "Dołącz do panelu"
+		}
+	} else {
+		if strings.ToLower(req.GetLocale()) == "en" {
+			ctaText = "Accept Invitation"
+		}
+	}
+	htmlBody := wrapWithGenericTemplate(req.GetLocale(), subject, subject, body, req.GetAcceptUrl(), ctaText)
+
 	if err := s.emailer.Send(ctx, email.Message{
 		To:       req.GetRecipientEmail(),
 		Subject:  subject,
-		HTMLBody: bodyToHTML(body),
+		HTMLBody: htmlBody,
 		TextBody: body,
 		From:     tpl.From,
 	}); err != nil {
@@ -144,10 +159,18 @@ func (s *Server) SendQuotaWarning(ctx context.Context, req *notificationv1.SendQ
 		"period_end":        req.GetPeriodEndIso(),
 		"billing_url":       req.GetBillingUrl(),
 	})
+
+	// Wrap in the beautiful, branded generic HTML template
+	ctaText := "Zarządzaj subskrypcją"
+	if strings.ToLower(req.GetLocale()) == "en" {
+		ctaText = "Manage Subscription"
+	}
+	htmlBody := wrapWithGenericTemplate(req.GetLocale(), subject, subject, body, req.GetBillingUrl(), ctaText)
+
 	if err := s.emailer.Send(ctx, email.Message{
 		To:       req.GetRecipientEmail(),
 		Subject:  subject,
-		HTMLBody: bodyToHTML(body),
+		HTMLBody: htmlBody,
 		TextBody: body,
 		From:     tpl.From,
 	}); err != nil {

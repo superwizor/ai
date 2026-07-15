@@ -140,7 +140,7 @@ func (s *Server) renderActionPlan(
 		return "", "", "", lerr
 	}
 	subject, body := tpl.Render(vars)
-	return subject, bodyToHTML(body), body, nil
+	return subject, wrapWithGenericTemplate(locale, subject, subject, body, "", ""), body, nil
 }
 
 // recordActionPlanDelivery inserts the idempotency/audit row when the

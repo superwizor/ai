@@ -51,10 +51,25 @@ func (s *Server) SendClientPanelEvent(ctx context.Context, req *notificationv1.S
 		"panel_url":  req.GetPanelUrl(),
 	})
 
+	// Wrap in the beautiful, branded generic HTML template
+	ctaText := "Otwórz panel"
+	if req.GetEvent() == "CLIENT_NOTE_RECEIVED" {
+		if strings.ToLower(req.GetLocale()) == "en" {
+			ctaText = "View Note"
+		} else {
+			ctaText = "Zobacz notatkę"
+		}
+	} else {
+		if strings.ToLower(req.GetLocale()) == "en" {
+			ctaText = "Open Panel"
+		}
+	}
+	htmlBody := wrapWithGenericTemplate(req.GetLocale(), subject, subject, body, req.GetPanelUrl(), ctaText)
+
 	if err := s.emailer.Send(ctx, email.Message{
 		To:       req.GetRecipientEmail(),
 		Subject:  subject,
-		HTMLBody: bodyToHTML(body),
+		HTMLBody: htmlBody,
 		TextBody: body,
 		From:     tpl.From,
 	}); err != nil {
