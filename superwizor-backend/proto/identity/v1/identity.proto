@@ -157,6 +157,7 @@ service IdentityService {
 
   // Checks if an email address is already registered in our system
   rpc CheckEmailExists(CheckEmailExistsRequest) returns (CheckEmailExistsResponse);
+  rpc CheckPhoneNumberExists(CheckPhoneNumberExistsRequest) returns (CheckPhoneNumberExistsResponse);
 
   // Resends the email verification link to the user
   rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (google.protobuf.Empty);
@@ -750,6 +751,14 @@ message CheckEmailExistsRequest {
 message CheckEmailExistsResponse {
   bool exists = 2;
   bool is_pending_deletion = 3;
+}
+
+message CheckPhoneNumberExistsRequest {
+  string phone_number = 1;
+}
+
+message CheckPhoneNumberExistsResponse {
+  bool exists = 1;
 }
 
 message ResendVerificationEmailRequest {

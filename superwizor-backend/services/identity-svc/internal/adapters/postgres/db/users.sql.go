@@ -185,6 +185,19 @@ func (q *Queries) AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams
 	return i, err
 }
 
+const checkPhoneNumberExists = `-- name: CheckPhoneNumberExists :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE phone_number = $1 AND deleted_at IS NULL
+)
+`
+
+func (q *Queries) CheckPhoneNumberExists(ctx context.Context, phoneNumber *string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkPhoneNumberExists, phoneNumber)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     role, firebase_uid, email,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -146,6 +147,10 @@ func (s *Server) UpdateProfile(ctx context.Context, req *identityv1.UpdateProfil
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "idx_users_phone_number" {
+			return nil, status.Error(codes.AlreadyExists, "phone_number_already_in_use")
 		}
 		return nil, status.Errorf(codes.Internal, "update profile: %v", err)
 	}

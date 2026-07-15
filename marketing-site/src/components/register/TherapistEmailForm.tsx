@@ -37,6 +37,7 @@ import {
   CreateUserRequestSchema,
   UpdateProfileRequestSchema,
   CheckEmailExistsRequestSchema,
+  CheckPhoneNumberExistsRequestSchema,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import {
   Checkbox,
@@ -274,6 +275,7 @@ export function TherapistEmailForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [socialBusy, setSocialBusy] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
 
   const {
     register,
@@ -328,8 +330,27 @@ export function TherapistEmailForm() {
     } else if (step === 4) {
       const isValid = await trigger(["firstName", "lastName", "phoneNumber"]);
       if (isValid) {
-        setDirection(1);
-        setStep(5);
+        setCheckingPhone(true);
+        try {
+          const checkResp = await identityClient.checkPhoneNumberExists(
+            create(CheckPhoneNumberExistsRequestSchema, { phoneNumber: watch("phoneNumber") ?? "" })
+          );
+          if (checkResp.exists) {
+            setError("phoneNumber", {
+              type: "manual",
+              message: "phone-already-in-use",
+            });
+            setServerError(tErr("phoneAlreadyInUse"));
+            return;
+          }
+          setDirection(1);
+          setStep(5);
+        } catch (e) {
+          console.error("Failed to check phone number exists:", e);
+          setServerError(tErr("networkError"));
+        } finally {
+          setCheckingPhone(false);
+        }
       }
     }
   };
@@ -872,9 +893,10 @@ export function TherapistEmailForm() {
                     type="button"
                     id="next-step-btn"
                     onClick={handleNext}
-                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                    disabled={checkingPhone}
+                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    {tCommon("continue")}
+                    {checkingPhone ? tCommon("submitting") : tCommon("continue")}
                   </button>
                 </div>
               </motion.div>

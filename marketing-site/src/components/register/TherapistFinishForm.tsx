@@ -30,6 +30,7 @@ import {
   UserRole,
   CreateUserRequestSchema,
   UpdateProfileRequestSchema,
+  CheckPhoneNumberExistsRequestSchema,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import {
   Checkbox,
@@ -68,6 +69,7 @@ export function TherapistFinishForm({
     watch,
     setValue,
     control,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<TherapistFinishForm>({
     resolver: zodResolver(therapistFinishSchema),
@@ -92,6 +94,20 @@ export function TherapistFinishForm({
       return;
     }
     try {
+      if (data.phoneNumber) {
+        const checkResp = await identityClient.checkPhoneNumberExists(
+          create(CheckPhoneNumberExistsRequestSchema, { phoneNumber: data.phoneNumber })
+        );
+        if (checkResp.exists) {
+          setError("phoneNumber", {
+            type: "manual",
+            message: "phone-already-in-use",
+          });
+          setServerError(tErr("phoneAlreadyInUse"));
+          return;
+        }
+      }
+
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
       const created = await identityClient.createUser(

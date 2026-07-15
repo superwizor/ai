@@ -51,6 +51,18 @@ func Load(locale, name string) (Template, error) {
 	return parse(data)
 }
 
+// LoadHTMLTemplate reads a shared (locale-independent) HTML template
+// from templates/<name>.html. Returns empty string if the file doesn't
+// exist, so callers can gracefully degrade to bodyToHTML.
+func LoadHTMLTemplate(name string) string {
+	path := fmt.Sprintf("templates/%s.html", name)
+	data, err := templatesFS.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
 // parse splits the YAML frontmatter from the body. Frontmatter is a
 // minimal subset: lines of "key: value" between two "---" fences at the
 // top of the file. Only `subject` and `from` are recognised — anything

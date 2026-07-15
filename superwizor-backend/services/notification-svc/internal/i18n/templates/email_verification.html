@@ -15,55 +15,63 @@
   </noscript>
   <![endif]-->
 </head>
-<body style="margin:0;padding:0;background-color:#111113;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
-  <!-- Outer wrapper — full-width dark bg -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111113;">
+<body style="margin:0;padding:0;background-color:#004D54;font-family:'Montserrat','Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#004D54;">
     <tr>
       <td align="center" style="padding:40px 16px 32px;">
 
-        <!-- Card container — max 560px -->
-        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#1a1a1e;border-radius:16px;overflow:hidden;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#1F353A;border:1px solid #3A5055;border-radius:16px;overflow:hidden;">
 
-          <!-- Top gradient accent bar -->
+          <!-- Accent bar -->
           <tr>
-            <td style="height:4px;background:linear-gradient(90deg,#d4a853 0%,#e8c776 50%,#d4a853 100%);font-size:0;line-height:0;">&nbsp;</td>
+            <td style="height:4px;background:#FCAE2F;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
-          <!-- Logo section -->
+          <!-- Icon (left-aligned per user preference for a unified reading line) -->
           <tr>
-            <td align="center" style="padding:32px 40px 8px;">
+            <td align="left" style="padding:40px 40px 0;">
               <img src="https://superwizor.ai/superwizor-logo-512.png" alt="Superwizor AI" width="56" height="56" style="display:block;border:0;border-radius:12px;width:56px;height:56px;">
             </td>
           </tr>
 
-          <!-- Heading -->
+          <!-- Icon <-> H1: 24px -->
           <tr>
-            <td align="center" style="padding:12px 40px 0;">
-              <h1 style="margin:0;font-size:22px;font-weight:600;color:#f5f5f5;line-height:1.35;">
+            <td align="left" style="padding:24px 40px 0;">
+              <!-- H1: Semi-Bold (600), 24px, #F3F4F6 -->
+              <h1 style="margin:0;font-size:24px;font-weight:600;color:#F3F4F6;line-height:1.35;">
                 {{heading}}
               </h1>
             </td>
           </tr>
 
-          <!-- Body copy -->
+          <!-- H1 <-> Powitanie: 32px -->
           <tr>
-            <td style="padding:16px 40px 0;">
-              <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#a0a0a8;">
+            <td align="left" style="padding:32px 40px 0;">
+              <!-- Greeting: Semi-Bold (600), 16px, #FAFAFA -->
+              <p style="margin:0;font-size:16px;font-weight:600;color:#FAFAFA;line-height:1.5;">
                 {{greeting}}
               </p>
-              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#a0a0a8;">
+            </td>
+          </tr>
+
+          <!-- Powitanie <-> Body: 12px -->
+          <tr>
+            <td align="left" style="padding:12px 40px 0;">
+              <!-- Body: Regular (400), 16px, #D1D5DB, line-height 1.5 -->
+              <p style="margin:0;font-size:16px;font-weight:400;color:#D1D5DB;line-height:1.5;">
                 {{body_text}}
               </p>
             </td>
           </tr>
 
-          <!-- CTA Button -->
+          <!-- Body <-> CTA: 32px -->
           <tr>
-            <td align="center" style="padding:0 40px 8px;">
+            <td align="left" style="padding:32px 40px 0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" style="background:linear-gradient(135deg,#d4a853 0%,#c49a3f 100%);border-radius:10px;">
-                    <a href="{{verify_url}}" target="_blank" style="display:inline-block;padding:14px 40px;font-size:15px;font-weight:600;color:#111113;text-decoration:none;letter-spacing:0.3px;border-radius:10px;">
+                  <!-- CTA: Semi-Bold (600), 16px, Dark text on yellow -->
+                  <td align="center" style="background-color:#FCAE2F;border-radius:8px;">
+                    <a href="{{verify_url}}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#111827;text-decoration:none;border-radius:8px;">
                       {{cta_text}}
                     </a>
                   </td>
@@ -72,53 +80,52 @@
             </td>
           </tr>
 
-          <!-- Subtle divider -->
+          <!-- CTA <-> Divider: 40px -->
           <tr>
-            <td style="padding:24px 40px 0;">
-              <div style="height:1px;background-color:#2a2a2e;"></div>
+            <td style="padding:40px 40px 0;">
+              <div style="height:1px;background-color:#3A5055;"></div>
             </td>
           </tr>
 
-          <!-- Fallback URL (in case button doesn't render) -->
+          <!-- Divider <-> Microcopy 1: 24px -->
           <tr>
-            <td style="padding:16px 40px 0;">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#666670;">
+            <td align="left" style="padding:24px 40px 0;">
+              <!-- Microcopy 1: Regular (400), 13px, #9CA3AF, line-height 1.4 -->
+              <p style="margin:0;font-size:13px;font-weight:400;color:#9CA3AF;line-height:1.4;">
                 {{fallback_label}}
               </p>
-              <p style="margin:4px 0 0;font-size:12px;line-height:1.5;word-break:break-all;">
-                <a href="{{verify_url}}" style="color:#d4a853;text-decoration:underline;">{{verify_url}}</a>
+            </td>
+          </tr>
+
+          <!-- Microcopy 1 <-> Link: 8px -->
+          <tr>
+            <td align="left" style="padding:8px 40px 0;">
+              <p style="margin:0;font-size:13px;font-weight:400;color:#9CA3AF;line-height:1.4;word-break:break-all;">
+                <a href="{{verify_url}}" style="color:#FCAE2F;text-decoration:underline;">{{verify_url}}</a>
               </p>
             </td>
           </tr>
 
-          <!-- Safety note -->
+          <!-- Link <-> Microcopy 2: 24px -->
           <tr>
-            <td style="padding:20px 40px 0;">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#555560;">
+            <td align="left" style="padding:24px 40px 40px;">
+              <p style="margin:0;font-size:13px;font-weight:400;color:#9CA3AF;line-height:1.4;">
                 {{safety_note}}
               </p>
             </td>
           </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="padding:24px 40px 32px;">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#555560;">
-                {{sign_off}}<br>
-                <span style="color:#888890;">{{team_name}}</span>
-              </p>
-            </td>
-          </tr>
-
         </table>
-        <!-- /Card -->
 
-        <!-- Sub-footer: unsubscribe / address -->
+        <!-- Footer company info -->
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
           <tr>
-            <td align="center" style="padding:20px 40px 8px;">
-              <p style="margin:0;font-size:11px;line-height:1.5;color:#444450;">
-                Euphire sp. z o.o. · Warszawa, Polska
+            <td align="center" style="padding:24px 40px 8px;">
+              <p style="margin:0;font-size:12px;font-weight:400;color:#9CA3AF;line-height:1.5;">
+                {{sign_off}} <span style="color:#D1D5DB;">{{team_name}}</span>
+              </p>
+              <p style="margin:8px 0 0;font-size:12px;font-weight:400;color:#9CA3AF;line-height:1.5;">
+                Superwizor.ai · Kraków, Polska
               </p>
             </td>
           </tr>

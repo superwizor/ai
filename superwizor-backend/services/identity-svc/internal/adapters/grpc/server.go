@@ -232,6 +232,20 @@ func (s *Server) CheckEmailExists(ctx context.Context, req *identityv1.CheckEmai
 	}, nil
 }
 
+func (s *Server) CheckPhoneNumberExists(ctx context.Context, req *identityv1.CheckPhoneNumberExistsRequest) (*identityv1.CheckPhoneNumberExistsResponse, error) {
+	if req.PhoneNumber == "" {
+		return nil, status.Error(codes.InvalidArgument, "phone_number is required")
+	}
+
+	// Just checking the postgres DB using our newly generated SQLC query
+	exists, err := s.queries.CheckPhoneNumberExists(ctx, &req.PhoneNumber)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
+	}
+
+	return &identityv1.CheckPhoneNumberExistsResponse{Exists: exists}, nil
+}
+
 func (s *Server) ResendVerificationEmail(ctx context.Context, req *identityv1.ResendVerificationEmailRequest) (*emptypb.Empty, error) {
 	if req.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")

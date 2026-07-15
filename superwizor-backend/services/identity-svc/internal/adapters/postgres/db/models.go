@@ -1120,6 +1120,8 @@ type ReportRating struct {
 	Source      string    `json:"source"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	// Admin review status for the feedback dashboard. pending = unreviewed/to-do, done = admin marked as actioned.
+	AdminReviewStatus string `json:"admin_review_status"`
 }
 
 type SeatAssignment struct {

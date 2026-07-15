@@ -90,10 +90,18 @@ func (s *Server) SendEmailVerification(ctx context.Context, req *notificationv1.
 		"verify_url":      req.GetVerifyUrl(),
 		"expires_at":      req.GetExpiresAtIso(),
 	})
+
+	// Use the branded HTML template; fall back to bodyToHTML if unavailable.
+	firstName := firstNameOrDefault(req.GetFirstName(), req.GetLocale())
+	htmlBody := verificationEmailHTML(req.GetLocale(), firstName, req.GetVerifyUrl(), subject)
+	if htmlBody == "" {
+		htmlBody = bodyToHTML(body)
+	}
+
 	if err := s.emailer.Send(ctx, email.Message{
 		To:       req.GetRecipientEmail(),
 		Subject:  subject,
-		HTMLBody: bodyToHTML(body),
+		HTMLBody: htmlBody,
 		TextBody: body,
 		From:     tpl.From,
 	}); err != nil {

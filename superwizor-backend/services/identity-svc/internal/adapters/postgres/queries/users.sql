@@ -7,6 +7,11 @@ SELECT * FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL;
 -- name: GetUserByEmail :one
 SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL;
 
+-- name: CheckPhoneNumberExists :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE phone_number = $1 AND deleted_at IS NULL
+);
+
 -- name: CreateUser :one
 INSERT INTO users (
     role, firebase_uid, email,

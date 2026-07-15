@@ -28,6 +28,7 @@ type Querier interface {
 	// Every column is selective via COALESCE. The handler enforces the role
 	// gate + writes audit_events before calling this.
 	AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) (User, error)
+	CheckPhoneNumberExists(ctx context.Context, phoneNumber *string) (bool, error)
 	// Deactivation frees the seat. Idempotent — no open row is a no-op.
 	CloseActiveSeatAssignmentForUser(ctx context.Context, userID uuid.UUID) error
 	// The occupied half of the occupancy formula. FOR the seat-limit
