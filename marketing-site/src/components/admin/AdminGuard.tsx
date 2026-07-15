@@ -67,8 +67,16 @@ export function AdminGuardAndShell({ children }: { children: ReactNode }) {
             ? "allowed"
             : "forbidden",
         );
-      } catch {
-        if (!cancelled) setStatus("forbidden");
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error("AdminGuard: getMyProfile failed", err);
+          const isUnauthenticated = err?.code === 16 || err?.code === "unauthenticated";
+          if (isUnauthenticated) {
+            setStatus("signed-out");
+          } else {
+            setStatus("forbidden");
+          }
+        }
       }
     })();
     return () => {

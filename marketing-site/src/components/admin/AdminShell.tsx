@@ -11,6 +11,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
@@ -105,17 +106,17 @@ export function AdminShell({
   return (
     <div className="flex flex-1">
       <aside className="hidden md:flex w-60 flex-col border-r border-frost/10 bg-evergreen/40 px-4 py-6 gap-1">
-        <a
+        <Link
           href={`${prefix}/admin`}
           className="font-display text-frost font-semibold text-sm mb-6 px-2"
         >
           Superwizor <span className="text-ember">admin</span>
-        </a>
+        </Link>
         <nav className="flex flex-col gap-1.5">
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
-              <a
+              <Link
                 key={item.key}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
@@ -127,7 +128,7 @@ export function AdminShell({
               >
                 {getSidebarIcon(item.key, active)}
                 <span>{tSide(item.key)}</span>
-              </a>
+              </Link>
             );
           })}
         </nav>

@@ -75,13 +75,15 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("12w");
   const [showRegistrationsDetail, setShowRegistrationsDetail] = useState(false);
   const [marketingFilter, setMarketingFilter] = useState<"all" | "yes" | "no">("all");
+  const [sortField, setSortField] = useState<"name" | "email" | "createdAt" | "logins" | "sessions" | "marketing">("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [data, setData] = useState<GetAdminAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const filteredRegistrations = useMemo(() => {
     if (!data?.registrationsDetail) return [];
-    return data.registrationsDetail.filter((user: any) => {
+    const filtered = data.registrationsDetail.filter((user: any) => {
       if (marketingFilter === "yes") {
         return user.hasMarketingConsent === true;
       }
@@ -90,7 +92,54 @@ export default function AnalyticsPage() {
       }
       return true;
     });
-  }, [data?.registrationsDetail, marketingFilter]);
+
+    return [...filtered].sort((a: any, b: any) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortField) {
+        case "name":
+          aVal = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bVal = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case "email":
+          aVal = (a.email || "").toLowerCase();
+          bVal = (b.email || "").toLowerCase();
+          break;
+        case "createdAt":
+          aVal = a.createdAt ? Number(a.createdAt.seconds) : 0;
+          bVal = b.createdAt ? Number(b.createdAt.seconds) : 0;
+          break;
+        case "logins":
+          aVal = Number(a.loginCount);
+          bVal = Number(b.loginCount);
+          break;
+        case "sessions":
+          aVal = Number(a.sessionCount);
+          bVal = Number(b.sessionCount);
+          break;
+        case "marketing":
+          aVal = a.hasMarketingConsent ? 1 : 0;
+          bVal = b.hasMarketingConsent ? 1 : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [data?.registrationsDetail, marketingFilter, sortField, sortDirection]);
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
 
   const handleExportCSV = () => {
     if (!filteredRegistrations || filteredRegistrations.length === 0) return;
@@ -542,23 +591,77 @@ export default function AnalyticsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-frost/5">
                     <tr>
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colName")}
+                      <th className="px-4 py-3 text-left">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("name")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer"
+                        >
+                          {t("registrationsDetail.colName")}
+                          {sortField === "name" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colEmail")}
+                      <th className="px-4 py-3 text-left">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("email")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer"
+                        >
+                          {t("registrationsDetail.colEmail")}
+                          {sortField === "email" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colCreatedAt")}
+                      <th className="px-4 py-3 text-left">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("createdAt")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer"
+                        >
+                          {t("registrationsDetail.colCreatedAt")}
+                          {sortField === "createdAt" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
-                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colLogins")}
+                      <th className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("logins")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer justify-end ml-auto"
+                        >
+                          {t("registrationsDetail.colLogins")}
+                          {sortField === "logins" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
-                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colSessions")}
+                      <th className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("sessions")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer justify-end ml-auto"
+                        >
+                          {t("registrationsDetail.colSessions")}
+                          {sortField === "sessions" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
-                      <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-                        {t("registrationsDetail.colMarketing")}
+                      <th className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("marketing")}
+                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition focus:outline-none cursor-pointer justify-center mx-auto"
+                        >
+                          {t("registrationsDetail.colMarketing")}
+                          {sortField === "marketing" && (
+                            <span className="text-ember text-[8px]">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
                       </th>
                     </tr>
                   </thead>
