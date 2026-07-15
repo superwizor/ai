@@ -110,7 +110,6 @@ export function TherapistFinishForm({
 
       const extras =
         !!data.phoneNumber ||
-        !!data.professionalTitle ||
         data.hasMarketingConsent === true;
       if (extras) {
         await identityClient.updateProfile(
@@ -118,7 +117,6 @@ export function TherapistFinishForm({
             userId: "", // server resolves from token if blank
             firstName: data.firstName,
             lastName: data.lastName,
-            professionalTitle: data.professionalTitle ?? "",
             phoneNumber: data.phoneNumber ?? "",
             hasMarketingConsent: data.hasMarketingConsent ?? false,
           }),
@@ -164,23 +162,17 @@ export function TherapistFinishForm({
 
 
 
-        <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
+                <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
           <RadioGroup
             name="uiLanguage"
             value={uiLanguage}
             onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
+            className="grid grid-cols-2 gap-3"
+            optionClassName="px-5 py-3 text-base text-center"
             options={[
               { value: "pl", label: `🇵🇱 ${t("polish")}` },
               { value: "en", label: `🇬🇧 ${t("english")}` },
             ]}
-          />
-        </FieldShell>
-
-        <FieldShell id="professionalTitle" label={t("professionalTitle")}>
-          <TextInput
-            id="professionalTitle"
-            placeholder={t("professionalTitlePlaceholder")}
-            {...register("professionalTitle")}
           />
         </FieldShell>
 

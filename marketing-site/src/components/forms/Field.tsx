@@ -104,20 +104,24 @@ export function RadioGroup({
   options,
   value,
   onChange,
+  className = "flex gap-2 flex-wrap",
+  optionClassName = "px-4 py-2 text-sm",
 }: {
   name: string;
   options: { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
+  className?: string;
+  optionClassName?: string;
 }) {
   return (
-    <div role="radiogroup" className="flex gap-2 flex-wrap">
+    <div role="radiogroup" className={className}>
       {options.map((o) => {
         const active = o.value === value;
         return (
           <label
             key={o.value}
-            className={`cursor-pointer rounded-button border px-4 py-2 font-display text-sm transition ${active
+            className={`cursor-pointer rounded-button border font-display transition ${optionClassName} ${active
                 ? "border-ember bg-ember/10 text-frost"
                 : "border-frost/15 bg-frost/5 text-mist hover:border-frost/30"
               }`}

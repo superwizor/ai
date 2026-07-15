@@ -433,7 +433,6 @@ export function TherapistEmailForm() {
 
       // 3. Optional profile-only fields
       const hasExtras =
-        !!data.professionalTitle ||
         !!data.credentialsNumber ||
         !!data.phoneNumber;
 
@@ -442,7 +441,6 @@ export function TherapistEmailForm() {
           userId: created.id,
           firstName: data.firstName,
           lastName: data.lastName,
-          professionalTitle: data.professionalTitle ?? "",
           credentialsNumber: data.credentialsNumber ?? "",
           phoneNumber: data.phoneNumber ?? "",
           hasMarketingConsent: data.hasMarketingConsent ?? false,
@@ -488,6 +486,18 @@ export function TherapistEmailForm() {
           setServerError(tErr("networkError"));
           return;
         }
+      }
+      if (e instanceof ConnectError) {
+        console.error("[register/therapist] backend connect error", e);
+        if (e.code === Code.AlreadyExists) {
+          setError("email", { type: "manual", message: "email-already-in-use" });
+          setServerError(tErr("emailAlreadyInUse"));
+          setDirection(-1);
+          setStep(3);
+          return;
+        }
+        setServerError(locale === "pl" ? "Wystąpił błąd po stronie serwera. Spróbuj ponownie później." : "A server error occurred. Please try again later.");
+        return;
       }
       if (
         e instanceof TypeError &&
@@ -753,9 +763,17 @@ export function TherapistEmailForm() {
                 </div>
 
                 {serverError && (
-                  <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost">
-                    {serverError}
-                  </p>
+                  <div role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 flex flex-col gap-2 items-center text-center">
+                    <span className="font-sans text-sm text-frost">{serverError}</span>
+                    {serverError === tErr("emailAlreadyInUse") && (
+                      <a
+                        href={`${prefix}/login`}
+                        className="text-ember text-sm font-semibold hover:underline"
+                      >
+                        {locale === "pl" ? "Przejdź do logowania" : "Go to login"}
+                      </a>
+                    )}
+                  </div>
                 )}
 
                 <div className="flex gap-3 mt-4 pt-4 border-t border-frost/5">
@@ -888,18 +906,12 @@ export function TherapistEmailForm() {
                     name="uiLanguage"
                     value={uiLanguage}
                     onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
+                    className="grid grid-cols-2 gap-3"
+                    optionClassName="px-5 py-3 text-base text-center"
                     options={[
                       { value: "pl", label: `🇵🇱 ${t("polish")}` },
                       { value: "en", label: `🇬🇧 ${t("english")}` },
                     ]}
-                  />
-                </FieldShell>
-
-                <FieldShell id="professionalTitle" label={t("professionalTitle")}>
-                  <TextInput
-                    id="professionalTitle"
-                    placeholder={t("professionalTitlePlaceholder")}
-                    {...register("professionalTitle")}
                   />
                 </FieldShell>
 

@@ -157,6 +157,9 @@ service IdentityService {
 
   // Checks if an email address is already registered in our system
   rpc CheckEmailExists(CheckEmailExistsRequest) returns (CheckEmailExistsResponse);
+
+  // Resends the email verification link to the user
+  rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (google.protobuf.Empty);
 }
 
 message AppLoginToken {
@@ -746,3 +749,6 @@ message CheckEmailExistsResponse {
   bool is_pending_deletion = 3;
 }
 
+message ResendVerificationEmailRequest {
+  string email = 1;
+}

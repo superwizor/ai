@@ -91,7 +91,6 @@ export const therapistEmailSchema = z
     password,
     firstName: z.string().min(1),
     lastName: z.string().min(1),
-    professionalTitle: z.string().optional(),
     credentialsNumber: z.string().optional(),
     uiLanguage: z.enum(["pl", "en"]),
     phoneNumber: requiredPhone,
@@ -177,7 +176,6 @@ export const therapistFinishSchema = z.object({
   lastName: z.string().min(1),
   uiLanguage: z.enum(["pl", "en"]),
   phoneNumber: requiredPhone,
-  professionalTitle: z.string().optional(),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
 });

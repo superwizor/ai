@@ -174,15 +174,8 @@ function InnerContent() {
           } catch (e) {
             console.warn("Chime blocked by browser autoplay policy:", e);
           }
-          // Automatically redirect to onboarding or continueUrl after 3.5s
-          setTimeout(() => {
-            const continueUrl = searchParams?.get("continueUrl");
-            if (continueUrl) {
-              window.location.replace(continueUrl);
-            } else {
-              router.replace(`/${locale}/onboarding/`);
-            }
-          }, 3500);
+          // Usunięto automatyczny redirect, ponieważ powodował duplikację kart, 
+          // gdy użytkownik miał otwartą oryginalną kartę nasłuchującą w tle.
         })
         .catch(async (err) => {
           console.error("[authAction] Verification error:", err);
@@ -194,14 +187,6 @@ function InnerContent() {
               await authObj.currentUser.reload();
               if (authObj.currentUser.emailVerified) {
                 setStatus("success");
-                setTimeout(() => {
-                  const continueUrl = searchParams?.get("continueUrl");
-                  if (continueUrl) {
-                    window.location.replace(continueUrl);
-                  } else {
-                    router.replace(`/${locale}/onboarding/`);
-                  }
-                }, 2000);
                 return;
               }
             } catch {}

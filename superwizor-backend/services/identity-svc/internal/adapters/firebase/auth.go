@@ -90,3 +90,26 @@ func (a *AuthClient) UserExistsByEmail(ctx context.Context, email string) (bool,
 	return true, nil
 }
 
+// IsEmailVerified checks if the user's email is verified in Firebase Auth.
+func (a *AuthClient) IsEmailVerified(ctx context.Context, uid string) (bool, error) {
+	user, err := a.client.GetUser(ctx, uid)
+	if err != nil {
+		return false, fmt.Errorf("get user: %w", err)
+	}
+	return user.EmailVerified, nil
+}
+
+// EmailVerificationLink generates an out-of-band email verification link.
+// continueURL is where the user should be redirected after clicking the link.
+func (a *AuthClient) EmailVerificationLink(ctx context.Context, email, continueURL string) (string, error) {
+	actionCodeSettings := &auth.ActionCodeSettings{
+		URL:             continueURL,
+		HandleCodeInApp: false,
+	}
+	link, err := a.client.EmailVerificationLinkWithSettings(ctx, email, actionCodeSettings)
+	if err != nil {
+		return "", fmt.Errorf("generate email verification link: %w", err)
+	}
+	return link, nil
+}
+

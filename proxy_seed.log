@@ -1,8 +1,10 @@
-2026/07/07 20:22:59 Authorizing with Application Default Credentials
-2026/07/07 20:22:59 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] Listening on 127.0.0.1:5432
-2026/07/07 20:22:59 The proxy has started successfully and is ready for new connections!
-2026/07/07 20:23:05 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] Accepted connection from 127.0.0.1:59800
-2026/07/07 20:23:14 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] client closed the connection
-2026/07/07 20:23:14 Sending SIGTERM signal for proxy to shutdown.
-2026/07/07 20:23:14 SIGTERM signal received. Shutting down...
-2026/07/07 20:23:14 proxy server error: accept tcp 127.0.0.1:5432: use of closed network connection
+2026/07/14 20:50:16 Authorizing with Application Default Credentials
+2026/07/14 20:50:16 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] Listening on 127.0.0.1:5432
+2026/07/14 20:50:16 The proxy has started successfully and is ready for new connections!
+2026/07/14 20:50:19 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] Accepted connection from 127.0.0.1:56828
+2026/07/14 20:50:19 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] Accepted connection from 127.0.0.1:56830
+2026/07/14 20:50:20 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] client closed the connection
+2026/07/14 20:50:20 [superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de] client closed the connection
+2026/07/14 20:50:20 Sending SIGTERM signal for proxy to shutdown.
+2026/07/14 20:50:20 SIGTERM signal received. Shutting down...
+2026/07/14 20:50:20 proxy server error: accept tcp 127.0.0.1:5432: use of closed network connection

@@ -29,6 +29,8 @@ type TokenVerifier interface {
 	VerifyToken(ctx context.Context, idToken string) (uid string, claims map[string]any, err error)
 	CustomToken(ctx context.Context, uid string) (string, error)
 	UserExistsByEmail(ctx context.Context, email string) (bool, error)
+	IsEmailVerified(ctx context.Context, uid string) (bool, error)
+	EmailVerificationLink(ctx context.Context, email, continueURL string) (string, error)
 }
 
 type Server struct {
@@ -195,6 +197,56 @@ func (s *Server) CheckEmailExists(ctx context.Context, req *identityv1.CheckEmai
 	}, nil
 }
 
+func (s *Server) ResendVerificationEmail(ctx context.Context, req *identityv1.ResendVerificationEmailRequest) (*emptypb.Empty, error) {
+	if req.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "email is required")
+	}
+
+	emailLC := strings.ToLower(strings.TrimSpace(req.Email))
+	user, err := s.queries.GetUserByEmail(ctx, &emailLC)
+	if err != nil {
+		// Return success to avoid email enumeration
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &emptypb.Empty{}, nil
+		}
+		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
+	}
+
+	if user.FirebaseUid == nil || *user.FirebaseUid == "" {
+		return &emptypb.Empty{}, nil
+	}
+
+	verified, err := s.auth.IsEmailVerified(ctx, *user.FirebaseUid)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to check email verification status", "error", err, "uid", *user.FirebaseUid)
+		return nil, status.Errorf(codes.Internal, "failed to check email verification status")
+	}
+
+	if verified {
+		// Already verified, do nothing
+		return &emptypb.Empty{}, nil
+	}
+
+	link, err := s.auth.EmailVerificationLink(ctx, emailLC, s.acceptURLBase+"/admin")
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate verification link", "error", err, "email", emailLC)
+		return nil, status.Errorf(codes.Internal, "failed to generate verification link")
+	}
+
+	err = s.emailer.SendVerification(ctx, VerificationEmailParams{
+		Recipient: emailLC,
+		FirstName: user.FirstName,
+		VerifyURL: link,
+		Locale:    user.UiLanguage,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to send verification email", "error", err, "email", emailLC)
+		return nil, status.Errorf(codes.Internal, "failed to send verification email")
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *Server) GetUser(ctx context.Context, req *identityv1.GetUserRequest) (*identityv1.User, error) {
 	id, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -336,6 +388,24 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 			},
 			Source: "server",
 		})
+	}
+
+	// Send verification email if needed
+	if dbRole == "THERAPIST" {
+		verified, err := s.auth.IsEmailVerified(ctx, req.FirebaseUid)
+		if err == nil && !verified {
+			link, err := s.auth.EmailVerificationLink(ctx, req.Email, s.acceptURLBase+"/admin")
+			if err == nil {
+				_ = s.emailer.SendVerification(ctx, VerificationEmailParams{
+					Recipient: req.Email,
+					FirstName: req.FirstName,
+					VerifyURL: link,
+					Locale:    req.UiLanguage,
+				})
+			} else {
+				slog.ErrorContext(ctx, "failed to generate verification link during user creation", "error", err, "email", req.Email)
+			}
+		}
 	}
 
 	return toProtoUser(user), nil

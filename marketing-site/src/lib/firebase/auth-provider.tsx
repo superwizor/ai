@@ -31,7 +31,6 @@ import {
   OAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
@@ -106,19 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
         );
-        // Fire-and-forget verification email. Failures here aren't fatal
-        // (the user can resend from settings). docs/18 §6.5 R2 — every
-        // new account gets verification at signup.
-        let actionCodeSettings = undefined;
-        if (continueUrl) {
-          actionCodeSettings = {
-            url: continueUrl,
-            handleCodeInApp: false,
-          };
-        }
-        sendEmailVerification(cred.user, actionCodeSettings).catch((err) => {
-          console.error("sendEmailVerification FAILED:", err);
-        });
+        // Verification email is now handled automatically by the backend
+        // in identity-svc.CreateUser. We no longer call Firebase's
+        // sendEmailVerification() here to avoid unbranded emails.
         return cred.user;
       },
       signInWithGoogle: async () => {

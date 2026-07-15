@@ -38,3 +38,18 @@ func (e NotificationServiceEmailer) SendInvitation(ctx context.Context, p Invita
 	}
 	return nil
 }
+
+func (e NotificationServiceEmailer) SendVerification(ctx context.Context, p VerificationEmailParams) error {
+	_, err := e.client.SendEmailVerification(ctx, &notificationv1.SendEmailVerificationRequest{
+		RecipientEmail: p.Recipient,
+		FirstName:      p.FirstName,
+		VerifyUrl:      p.VerifyURL,
+		Locale:         p.Locale,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "notification-svc.SendEmailVerification failed",
+			"recipient", p.Recipient, "error", err)
+		return err
+	}
+	return nil
+}

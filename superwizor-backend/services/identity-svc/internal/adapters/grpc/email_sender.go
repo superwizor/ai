@@ -14,6 +14,15 @@ import (
 // notification-svc.SendInvitationEmail.
 type InvitationEmailer interface {
 	SendInvitation(ctx context.Context, params InvitationEmailParams) error
+	SendVerification(ctx context.Context, params VerificationEmailParams) error
+}
+
+// VerificationEmailParams captures what's needed for the email verification template.
+type VerificationEmailParams struct {
+	Recipient     string // email
+	FirstName     string // optional, if available
+	VerifyURL     string // the OOB link from Firebase Admin SDK
+	Locale        string // pl | en
 }
 
 // InvitationEmailParams captures everything the invitation template
@@ -41,6 +50,15 @@ func (NoopEmailSender) SendInvitation(ctx context.Context, params InvitationEmai
 		"accept_url", params.AcceptURL,
 		"locale", params.Locale,
 		"expires_at", params.ExpiresAt,
+	)
+	return nil
+}
+
+func (NoopEmailSender) SendVerification(ctx context.Context, params VerificationEmailParams) error {
+	slog.InfoContext(ctx, "verification email (noop sender)",
+		"recipient", params.Recipient,
+		"verify_url", params.VerifyURL,
+		"locale", params.Locale,
 	)
 	return nil
 }

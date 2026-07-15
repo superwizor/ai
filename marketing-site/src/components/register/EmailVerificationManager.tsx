@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { sendEmailVerification, updateEmail } from "firebase/auth";
+import { updateEmail } from "firebase/auth";
 import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { create } from "@bufbuild/protobuf";
@@ -91,18 +91,17 @@ function Inner() {
   }, [user]);
 
   const onResend = async () => {
-    if (!user) return;
+    if (!user?.email) return;
     setStatus("sending");
     try {
-      const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(user.email || "")}`;
-      await sendEmailVerification(user, {
-        url: continueUrl,
-        handleCodeInApp: false,
+      await identityClient.resendVerificationEmail({
+        email: user.email,
       });
       setStatus("sent");
       // Revert back to idle after 10 seconds so button becomes clickable again
       setTimeout(() => setStatus("idle"), 10000);
-    } catch {
+    } catch (err) {
+      console.error("[verify-email] resendVerificationEmail failed:", err);
       setStatus("idle");
     }
   };
@@ -123,11 +122,17 @@ function Inner() {
       // 1. Update email in Firebase
       await updateEmail(user, newEmail.trim());
 
-      // 2. Send new verification email with continueUrl
-      const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(newEmail.trim())}`;
-      await sendEmailVerification(user, {
-        url: continueUrl,
-        handleCodeInApp: false,
+      // Force token refresh and sync with backend so the new email is in our DB
+      await user.getIdToken(true);
+      try {
+        await identityClient.getMyProfile({});
+      } catch (e) {
+        console.warn("Failed to sync profile after email update", e);
+      }
+
+      // 2. Send new verification email via backend
+      await identityClient.resendVerificationEmail({
+        email: newEmail.trim(),
       });
 
       setEditSuccess(true);
