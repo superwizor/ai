@@ -237,6 +237,13 @@ func (s *Server) CheckPhoneNumberExists(ctx context.Context, req *identityv1.Che
 		return nil, status.Error(codes.InvalidArgument, "phone_number is required")
 	}
 
+	// Bypass test phone numbers for E2E and manual testing
+	cleanPhone := strings.ReplaceAll(req.PhoneNumber, " ", "")
+	cleanPhone = strings.ReplaceAll(cleanPhone, "-", "")
+	if cleanPhone == "+48000000000" {
+		return &identityv1.CheckPhoneNumberExistsResponse{Exists: false}, nil
+	}
+
 	// Just checking the postgres DB using our newly generated SQLC query
 	exists, err := s.queries.CheckPhoneNumberExists(ctx, &req.PhoneNumber)
 	if err != nil {
