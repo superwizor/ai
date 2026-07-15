@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -31,6 +32,7 @@ type TokenVerifier interface {
 	UserExistsByEmail(ctx context.Context, email string) (bool, error)
 	IsEmailVerified(ctx context.Context, uid string) (bool, error)
 	EmailVerificationLink(ctx context.Context, email, continueURL string) (string, error)
+	UpdateUserEmail(ctx context.Context, uid string, newEmail string) error
 }
 
 type Server struct {
@@ -68,6 +70,39 @@ func (s *Server) WithEmailer(e InvitationEmailer) *Server { s.emailer = e; retur
 // Defaults to https://app.superwizor.ai; CI / local dev passes a
 // localhost value.
 func (s *Server) WithAcceptURLBase(base string) *Server { s.acceptURLBase = base; return s }
+
+// rewriteVerificationLink rewrites a Firebase-generated OOB verification
+// link so it points at our branded custom action handler page instead of
+// Firebase's default white/blue `firebaseapp.com/__/auth/action` page.
+//
+// Firebase Admin SDK always generates links like:
+//   https://superwizor-ai-25ecd.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
+//
+// We rewrite the host+path to:
+//   https://superwizor.ai/{locale}/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
+//
+// The custom page (marketing-site /auth/action) calls applyActionCode()
+// client-side and renders the premium UI with confetti, sounds, and our
+// brand colors.
+func rewriteVerificationLink(firebaseLink, siteBase, locale string) string {
+	u, err := url.Parse(firebaseLink)
+	if err != nil {
+		return firebaseLink // fallback to original
+	}
+	base, err := url.Parse(siteBase)
+	if err != nil {
+		return firebaseLink
+	}
+	u.Scheme = base.Scheme
+	u.Host = base.Host
+	loc := strings.TrimSpace(locale)
+	if loc == "" || loc == "pl" {
+		u.Path = "/pl/auth/action"
+	} else {
+		u.Path = "/" + loc + "/auth/action"
+	}
+	return u.String()
+}
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*identityv1.HealthCheckResponse, error) {
 	return &identityv1.HealthCheckResponse{
@@ -227,11 +262,13 @@ func (s *Server) ResendVerificationEmail(ctx context.Context, req *identityv1.Re
 		return &emptypb.Empty{}, nil
 	}
 
-	link, err := s.auth.EmailVerificationLink(ctx, emailLC, s.acceptURLBase+"/admin")
+	continueURL := s.acceptURLBase + "/register/therapist/verify-email?email=" + url.QueryEscape(emailLC)
+	link, err := s.auth.EmailVerificationLink(ctx, emailLC, continueURL)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate verification link", "error", err, "email", emailLC)
 		return nil, status.Errorf(codes.Internal, "failed to generate verification link")
 	}
+	link = rewriteVerificationLink(link, s.acceptURLBase, user.UiLanguage)
 
 	err = s.emailer.SendVerification(ctx, VerificationEmailParams{
 		Recipient: emailLC,
@@ -241,6 +278,92 @@ func (s *Server) ResendVerificationEmail(ctx context.Context, req *identityv1.Re
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to send verification email", "error", err, "email", emailLC)
+		return nil, status.Errorf(codes.Internal, "failed to send verification email")
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) UpdateMyEmail(ctx context.Context, req *identityv1.UpdateMyEmailRequest) (*emptypb.Empty, error) {
+	caller, err := s.resolveCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	newEmail := strings.ToLower(strings.TrimSpace(req.NewEmail))
+	if newEmail == "" {
+		return nil, status.Error(codes.InvalidArgument, "new email is required")
+	}
+
+	// Simple email validation matching the frontend regex
+	if !strings.Contains(newEmail, "@") || !strings.Contains(newEmail, ".") {
+		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+	}
+
+	if newEmail == strings.ToLower(strings.TrimSpace(caller.email)) {
+		return &emptypb.Empty{}, nil
+	}
+
+	// 1. Get the current user info to access UI language and First Name
+	user, err := s.queries.GetUserByID(ctx, caller.userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
+	}
+
+	// 2. Check if the new email is already in use in our DB
+	_, err = s.queries.GetUserByEmail(ctx, &newEmail)
+	if err == nil {
+		return nil, status.Error(codes.AlreadyExists, "EMAIL_ALREADY_IN_USE: email address already in use")
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
+	}
+
+	// 3. Check if the new email is already in use in Firebase Auth
+	existsInFirebase, err := s.auth.UserExistsByEmail(ctx, newEmail)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "firebase user check failed: %v", err)
+	}
+	if existsInFirebase {
+		return nil, status.Error(codes.AlreadyExists, "EMAIL_ALREADY_IN_USE: email address already in use in auth provider")
+	}
+
+	// 4. Update the email in Firebase Auth (marks it unverified)
+	err = s.auth.UpdateUserEmail(ctx, caller.firebaseUID, newEmail)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update email in auth provider: %v", err)
+	}
+
+	// 5. Update the email and verification status in PostgreSQL DB
+	isVerifiedFalse := false
+	_, err = s.queries.AdminUpdateUser(ctx, db.AdminUpdateUserParams{
+		ID:              caller.userID,
+		Email:           &newEmail,
+		IsEmailVerified: &isVerifiedFalse,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "database update failed: %v", err)
+	}
+
+	// 6. Generate and send a new verification email
+	continueURL := s.acceptURLBase + "/register/therapist/verify-email?email=" + url.QueryEscape(newEmail)
+	link, err := s.auth.EmailVerificationLink(ctx, newEmail, continueURL)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate verification link", "error", err, "email", newEmail)
+		return nil, status.Errorf(codes.Internal, "failed to generate verification link")
+	}
+	link = rewriteVerificationLink(link, s.acceptURLBase, user.UiLanguage)
+
+	err = s.emailer.SendVerification(ctx, VerificationEmailParams{
+		Recipient: newEmail,
+		FirstName: user.FirstName,
+		VerifyURL: link,
+		Locale:    user.UiLanguage,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to send verification email", "error", err, "email", newEmail)
 		return nil, status.Errorf(codes.Internal, "failed to send verification email")
 	}
 
@@ -394,8 +517,10 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 	if dbRole == "THERAPIST" {
 		verified, err := s.auth.IsEmailVerified(ctx, req.FirebaseUid)
 		if err == nil && !verified {
-			link, err := s.auth.EmailVerificationLink(ctx, req.Email, s.acceptURLBase+"/admin")
+			continueURL := s.acceptURLBase + "/register/therapist/verify-email?email=" + url.QueryEscape(req.Email)
+			link, err := s.auth.EmailVerificationLink(ctx, req.Email, continueURL)
 			if err == nil {
+				link = rewriteVerificationLink(link, s.acceptURLBase, req.UiLanguage)
 				_ = s.emailer.SendVerification(ctx, VerificationEmailParams{
 					Recipient: req.Email,
 					FirstName: req.FirstName,
