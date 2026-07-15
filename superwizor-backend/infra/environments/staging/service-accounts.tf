@@ -139,6 +139,19 @@ resource "google_secret_manager_secret_iam_member" "identity_db_pwd" {
   member    = "serviceAccount:${google_service_account.identity_svc.email}"
 }
 
+# identity-svc needs Firebase Auth Admin to:
+#   - check email verification status (GetUser → IsEmailVerified)
+#   - generate email verification links (EmailVerificationLinkWithSettings)
+# These are used by the custom Resend-backed verification flow
+# (CreateUser + ResendVerificationEmail RPCs). Without this role the
+# Firebase Admin SDK returns 400 INSUFFICIENT_PERMISSION and the
+# verification email is silently dropped.
+resource "google_project_iam_member" "identity_firebase_auth" {
+  project = var.project_id
+  role    = "roles/firebaseauth.admin"
+  member  = "serviceAccount:${google_service_account.identity_svc.email}"
+}
+
 # notification-svc IAM
 resource "google_project_iam_member" "notification_sql_client" {
   project = var.project_id
