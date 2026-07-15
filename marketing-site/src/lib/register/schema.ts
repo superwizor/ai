@@ -15,11 +15,6 @@ const password = z
 function isValidPhone(v: string): boolean {
   const stripped = v.replace(/[^\d+]/g, "");
 
-  // Bypass for our end-to-end test phone number
-  if (stripped === "+48000000000") {
-    return true;
-  }
-
   // Must start with + followed by 7 to 15 digits
   if (!/^\+\d{7,15}$/.test(stripped)) {
     return false;

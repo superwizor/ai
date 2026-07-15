@@ -240,7 +240,7 @@ func (s *Server) CheckPhoneNumberExists(ctx context.Context, req *identityv1.Che
 	// Bypass test phone numbers for E2E and manual testing
 	cleanPhone := strings.ReplaceAll(req.PhoneNumber, " ", "")
 	cleanPhone = strings.ReplaceAll(cleanPhone, "-", "")
-	if cleanPhone == "+48000000000" {
+	if cleanPhone == "+48510417781" {
 		return &identityv1.CheckPhoneNumberExistsResponse{Exists: false}, nil
 	}
 
