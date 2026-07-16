@@ -298,13 +298,16 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       try { new BroadcastChannel("sw_onboarding").postMessage({ type: "onboarding_complete" }); } catch {}
     } catch (e) {
       console.error("[onboarding] Save onboarding failed", e);
-      // If it fails, let's still let them proceed so we don't block them from using the app
-      setDirection(1);
-      setStep(7);
+      setError(
+        locale === "en"
+          ? "Failed to save your preferences. Please try again."
+          : "Nie udało się zapisać preferencji. Spróbuj ponownie."
+      );
+      // Do NOT proceed to the next step — stay on current so they can retry
     } finally {
       setSaving(false);
     }
-  }, [selectedModality, weeklySessions, workFormat, t]);
+  }, [selectedModality, weeklySessions, workFormat, modalities, locale, t]);
 
   // Animated monthly sessions counter
   const monthlyTarget = weeklySessions === "up_to_7" ? 30 : weeklySessions === "up_to_20" ? 87 : 0;
@@ -601,6 +604,12 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 ))}
               </div>
 
+              {error && (
+                <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-sans text-center">
+                  {error}
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <SkipInline onClick={() => handleDone(true)} label={t("Pomiń", "Skip")} disabled={saving} />
                 <PrimaryButtonInline
@@ -790,7 +799,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               <button
                 onClick={() => {
                   localStorage.removeItem(STORAGE_KEY);
-                  router.push(`${prefix}/dashboard`);
+                  router.replace(`${prefix}/dashboard`);
                 }}
                 className="w-full flex items-center justify-center py-4 px-6 rounded-2xl bg-ember text-obsidian font-sans font-bold text-xs uppercase tracking-wider shadow-lg shadow-black/25 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer mt-4"
               >
