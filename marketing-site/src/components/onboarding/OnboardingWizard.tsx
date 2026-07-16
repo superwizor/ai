@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
@@ -197,12 +197,17 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     }
   }, [step, storageKey]);
 
-  // Cross-tab sync: listen for onboarding completion from other tabs
+  // Flag: this tab just completed onboarding itself (don't redirect on own broadcast)
+  const selfCompleted = useRef(false);
+
+  // Cross-tab sync: listen for onboarding completion from OTHER tabs
   useEffect(() => {
     try {
       const ch = new BroadcastChannel("sw_onboarding");
       ch.onmessage = (e) => {
         if (e.data?.type === "onboarding_complete") {
+          // Ignore if THIS tab just completed — we still need to show step 7/8
+          if (selfCompleted.current) return;
           if (storageKey) localStorage.removeItem(storageKey);
           router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
         }
@@ -262,6 +267,8 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     setSaving(false);
 
     // Notify other tabs that onboarding profile is now complete
+    // Mark self so our own listener ignores this broadcast
+    selfCompleted.current = true;
     try { new BroadcastChannel("sw_onboarding").postMessage({ type: "onboarding_complete" }); } catch {}
 
     // ── 3. BEST-EFFORT: CRM telemetry note (fire-and-forget) ────────
