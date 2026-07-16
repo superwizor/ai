@@ -275,6 +275,13 @@ class GrpcUploadIo implements UploadIo {
         patientFileId: u.patientFileId,
         therapistId: u.therapistId,
         estimatedSizeBytes: Int64(u.sizeBytes),
+        // Wall-clock capture time measured by RecordingService (clock
+        // frozen while paused/interrupted, so it tracks real audio).
+        // The server's decode probe stays authoritative; this feeds the
+        // client-vs-decode anomaly cross-check that catches corrupt
+        // FLAC headers from pause/resume cycles (session e22d25f3).
+        // 0 for flows that don't measure (file import) — server ignores.
+        estimatedDurationSeconds: u.actualDurationSeconds,
         contentType: u.contentType,
         clientPlatform: _platform(),
         // Same idempotencyKey across retries — server returns the

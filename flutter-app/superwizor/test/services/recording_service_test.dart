@@ -337,4 +337,63 @@ void main() {
     expect(service.activeSessionId, isNull);
     expect(service.activeFilePath, isNull);
   });
+
+  group('needsReencode (session e22d25f3 regression)', () {
+    test('plain start→stop: no re-encode needed', () async {
+      await service.start('s1');
+      await pump(60);
+      await service.stop();
+      expect(service.needsReencode, isFalse);
+    });
+
+    test('user pause→resume latches needsReencode without an interruption',
+        () async {
+      await service.start('s1');
+      await pump(60);
+      await service.pause();
+      await pump();
+      final resumed = await service.resume();
+      expect(resumed, isTrue);
+      await pump();
+      await service.stop();
+      // The e22d25f3 gap: hadInterruption stayed false on a user
+      // pause/resume, so the corrupt file uploaded as clean audio/flac.
+      expect(service.hadInterruption, isFalse);
+      expect(service.needsReencode, isTrue);
+    });
+
+    test('stop from paused (resume-before-stop guard) latches needsReencode',
+        () async {
+      await service.start('s1');
+      await pump(60);
+      await service.pause();
+      await pump();
+      await service.stop();
+      expect(service.needsReencode, isTrue);
+    });
+
+    test('OS interruption also implies needsReencode', () async {
+      await service.start('s1');
+      await pump(60);
+      recorder.emitNative(RecordState.pause); // no armed intent → OS pause
+      await pump(60);
+      expect(service.hadInterruption, isTrue);
+      expect(service.needsReencode, isTrue);
+    });
+
+    test('start() resets the latch from a previous session', () async {
+      await service.start('s1');
+      await pump(60);
+      await service.pause();
+      await pump();
+      await service.resume();
+      await pump();
+      await service.stop();
+      expect(service.needsReencode, isTrue);
+
+      await service.start('s2');
+      expect(service.needsReencode, isFalse);
+      await service.stop();
+    });
+  });
 }
