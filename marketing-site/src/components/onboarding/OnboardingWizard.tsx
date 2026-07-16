@@ -225,87 +225,74 @@ export function OnboardingWizard({ locale }: { locale: string }) {
   const handleDone = useCallback(async (skipped: boolean) => {
     setSaving(true);
     setError(null);
+
+    // ── 1. CRITICAL PATH: Save modality to profile ──────────────────
+    // This is the gate that Dashboard checks (me.defaultModalityId).
+    // If this fails, user MUST stay on this step and retry.
+    const activeMod = !skipped && selectedModality
+      ? modalities.find((m) => m.systemCode === selectedModality)
+      : null;
+    const modalityId = activeMod ? activeMod.id : "33e66b8d-8a71-4770-96f3-42e13297a7e7"; // fallback UNIV
+
     try {
-      // 1. Save Modality (Step 4) to user profile. If skipped, use default Integrative UNIV
-      const activeMod = !skipped && selectedModality
-        ? modalities.find((m) => m.systemCode === selectedModality)
-        : null;
-      const modalityId = activeMod ? activeMod.id : "33e66b8d-8a71-4770-96f3-42e13297a7e7"; // fallback to UNIV UUID
       await identityClient.updateProfile(
         create(UpdateProfileRequestSchema, {
           defaultModalityId: modalityId,
         }),
       );
-
-      // 2. Fetch profile to get database UUID
-      const me = await identityClient.getMyProfile(create(EmptySchema, {}));
-      const userId = me.id;
-
-      // 3. Prepare CRM Note text
-      if (!skipped) {
-        const modalityLabel = LABELS_FALLBACK[selectedModality]?.[locale as "pl" | "en"] || selectedModality;
-
-        const sessionsLabel = weeklySessions
-          ? {
-              up_to_7: t("Do 7 sesji w tygodniu (ok. 30/miesiąc — Plan Podstawowy)", "Up to 7 sessions/week (~30/month — Basic Plan)"),
-              up_to_20: t("Do 20 sesji w tygodniu (ok. 90/miesiąc — Plan Profesjonalny)", "Up to 20 sessions/week (~90/month — Professional Plan)"),
-              more_than_20: t("Powyżej 20 sesji w tygodniu (Limit elastyczny — Pakiety dla Klinik)", "More than 20 sessions/week (Flexible limit — Clinic Packages)"),
-            }[weeklySessions]
-          : t("Nie wybrano", "Not selected");
-
-        const formatLabel = workFormat
-          ? {
-              online: t("Online (zdalnie)", "Online (remote)"),
-              in_person: t("Stacjonarnie w gabinecie", "In-person at the office"),
-              hybrid: t("Hybrydowo (oba formaty)", "Hybrid (both formats)"),
-            }[workFormat]
-          : t("Nie wybrano", "Not selected");
-
-        const crmNoteBody = [
-          `[Automatyczny Onboarding - Kwestionariusz]`,
-          `• Nurt terapii: ${modalityLabel}`,
-          `• Szacowana liczba sesji: ${sessionsLabel}`,
-          `• Format pracy: ${formatLabel}`,
-        ]
-          .filter(Boolean)
-          .join("\n");
-
-        // Post CRM note
-        await fetch("/api/admin/crm/notes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            target_user_id: userId,
-            body: crmNoteBody,
-          }),
-        });
-      } else {
-        // If skipped, we can log that onboarding was skipped
-        await fetch("/api/admin/crm/notes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            target_user_id: userId,
-            body: `[Automatyczny Onboarding] Pominięty przez użytkownika.`,
-          }),
-        });
-      }
-
-      // Go to step 7 (Account info card)
-      setDirection(1);
-      setStep(7);
-      // Notify other tabs that onboarding profile is now complete
-      try { new BroadcastChannel("sw_onboarding").postMessage({ type: "onboarding_complete" }); } catch {}
     } catch (e) {
-      console.error("[onboarding] Save onboarding failed", e);
+      console.error("[onboarding] updateProfile failed — cannot proceed", e);
       setError(
         locale === "en"
           ? "Failed to save your preferences. Please try again."
           : "Nie udało się zapisać preferencji. Spróbuj ponownie."
       );
-      // Do NOT proceed to the next step — stay on current so they can retry
-    } finally {
       setSaving(false);
+      return; // ← hard stop, stay on Step 6
+    }
+
+    // ── 2. PROCEED: modality is persisted, user can safely navigate ──
+    setDirection(1);
+    setStep(7);
+    setSaving(false);
+
+    // Notify other tabs that onboarding profile is now complete
+    try { new BroadcastChannel("sw_onboarding").postMessage({ type: "onboarding_complete" }); } catch {}
+
+    // ── 3. BEST-EFFORT: CRM telemetry note (fire-and-forget) ────────
+    // A failure here does NOT block the user. We log it and move on.
+    try {
+      const me = await identityClient.getMyProfile(create(EmptySchema, {}));
+      const userId = me.id;
+
+      const crmNoteBody = skipped
+        ? `[Automatyczny Onboarding] Pominięty przez użytkownika.`
+        : [
+            `[Automatyczny Onboarding - Kwestionariusz]`,
+            `• Nurt terapii: ${LABELS_FALLBACK[selectedModality]?.[locale as "pl" | "en"] || selectedModality}`,
+            `• Szacowana liczba sesji: ${weeklySessions
+              ? {
+                  up_to_7: t("Do 7 sesji w tygodniu (ok. 30/miesiąc — Plan Podstawowy)", "Up to 7 sessions/week (~30/month — Basic Plan)"),
+                  up_to_20: t("Do 20 sesji w tygodniu (ok. 90/miesiąc — Plan Profesjonalny)", "Up to 20 sessions/week (~90/month — Professional Plan)"),
+                  more_than_20: t("Powyżej 20 sesji w tygodniu (Limit elastyczny — Pakiety dla Klinik)", "More than 20 sessions/week (Flexible limit — Clinic Packages)"),
+                }[weeklySessions]
+              : t("Nie wybrano", "Not selected")}`,
+            `• Format pracy: ${workFormat
+              ? {
+                  online: t("Online (zdalnie)", "Online (remote)"),
+                  in_person: t("Stacjonarnie w gabinecie", "In-person at the office"),
+                  hybrid: t("Hybrydowo (oba formaty)", "Hybrid (both formats)"),
+                }[workFormat]
+              : t("Nie wybrano", "Not selected")}`,
+          ].join("\n");
+
+      fetch("/api/admin/crm/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_user_id: userId, body: crmNoteBody }),
+      }).catch((err) => console.warn("[onboarding] CRM note failed (non-blocking)", err));
+    } catch (err) {
+      console.warn("[onboarding] CRM note skipped — profile fetch failed (non-blocking)", err);
     }
   }, [selectedModality, weeklySessions, workFormat, modalities, locale, t]);
 
