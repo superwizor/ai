@@ -43,6 +43,33 @@ Wybór: **Deepgram Nova-3** (`model=nova-3`, `language=pl`, `diarize=true`,
 
 Źródła: sekcja "Źródła" na końcu dokumentu.
 
+### 1.1 Cennik (zweryfikowany 2026-07-16)
+
+Stawki z oficjalnego cennika; przypis na stronie: *"Rates listed above opt
+in to the Model Improvement Program"*. Opt-out = rezygnacja z 50% zniżki
+MIP, w praktyce **2× stawki cennikowej**. **Uwaga: diaryzacja jest osobno
+płatnym dodatkiem** (nie jest wliczona w stawkę bazową).
+
+| Składnik ($/min, pre-recorded) | Pay-As-You-Go | Growth |
+|---|---|---|
+| Nova-3 monolingual (`language=pl`) | $0.0077 | $0.0065 |
+| Diaryzacja (dodatek) | $0.0020 | $0.0017 |
+| **Razem, MIP opt-in** (dane do treningu — nie dla nas) | $0.0097 | $0.0082 |
+| **Razem, `mip_opt_out=true` (2×)** | **$0.0194** | **$0.0164** |
+
+**Za 1 h transkrypcji (nasz wariant, `mip_opt_out=true`): $1.16 (PAYG) /
+$0.98 (Growth).** Dla porównania Chirp 3: $0.024/min = **$1.44/h** — bez
+diaryzacji dla polskiego (diaryzację dopłacamy tokenami Gemini w call-1).
+Nawet najdroższy wariant Deepgrama jest ~20% tańszy, z diaryzacją w cenie.
+`language=multi` (code-switching): baza $0.0092/min → ~$1.34/h przy
+opt-out na PAYG.
+
+Zastrzeżenia (Faza 0): Deepgram nie publikuje oficjalnej tabeli stawek po
+opt-oucie — "2×" wynika z zapisu o utracie 50% zniżki, potwierdzić w
+umowie/DPA; nie jest jasne, czy dodatek za diaryzację też podlega
+podwojeniu (założono konserwatywnie, że tak); brak informacji, czy
+endpoint EU ma tę samą cenę co US.
+
 ---
 
 ## 2. Architektura docelowa
@@ -289,8 +316,10 @@ nowe sesje) → watchdog dociąga wiszące sesje deepgram fallbackiem (audio
 
 ## 7. Otwarte punkty (wszystkie w Fazie 0)
 
-1. Cennik Nova-3 z `mip_opt_out` przy naszym wolumenie (2× stawki
-   cennikowej — porównać z Chirp $0.024/min).
+1. Cennik: potwierdzić w umowie stawki po opt-oucie (sekcja 1.1 —
+   szacunek $1.16/h PAYG / $0.98/h Growth), w tym czy dodatek za
+   diaryzację też podlega podwojeniu i czy endpoint EU kosztuje tyle
+   samo co US.
 2. Pisemne potwierdzenie `nova-3`+`pl`+`diarize` na endpointcie EU.
 3. DPA + lista podprocesorów Deepgrama (AWS EU).
 4. Ewentualna allow-lista IP (→ Cloud NAT).
