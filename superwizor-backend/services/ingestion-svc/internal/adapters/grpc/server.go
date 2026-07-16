@@ -287,6 +287,22 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Stash the client-reported capture time on the upload row. The
+	// subscriber's duration probe stays authoritative and overwrites
+	// this after the decode pass, but until then it serves two roles:
+	// the ffprobe-failure fallback, and the client-vs-decode anomaly
+	// cross-check (pause/resume FLAC corruption, session e22d25f3).
+	// Raw exec: the generated CreateAudioUpload insert doesn't carry
+	// duration; this avoids a sqlc regen for a single optional column.
+	if req.EstimatedDurationSeconds > 0 {
+		if _, derr := tx.Exec(ctx,
+			`UPDATE audio_uploads SET duration_seconds = $2 WHERE id = $1`,
+			upload.ID, req.EstimatedDurationSeconds,
+		); derr != nil {
+			return nil, status.Errorf(codes.Internal, "store client duration: %v", derr)
+		}
+	}
+
 	// Close the circular link sessions.audio_upload_id →
 	// audio_uploads.id now that the audio_uploads row exists. The
 	// partial UNIQUE INDEX from migration 000024 (added by Fix 1)

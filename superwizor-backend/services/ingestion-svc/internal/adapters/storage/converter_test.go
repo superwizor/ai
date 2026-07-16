@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -270,5 +271,145 @@ func TestDecodeDurationSec(t *testing.T) {
 	// Allow ±1 s for frame-boundary rounding in the sample count.
 	if got < wantSec-1 || got > wantSec+1 {
 		t.Fatalf("decodeDurationSec = %d, want ~%d", got, wantSec)
+	}
+}
+
+// TestDurationsMismatch codifies the tolerance math used for both the
+// header-vs-decode comparison (tight) and the client-vs-decode
+// cross-check (loose). The production incident it must catch:
+// session e22d25f3 — header 782 s, decoded 4382 s (73 min), implied
+// bitrate ~0.19 MB/s which the size heuristic alone let through.
+func TestDurationsMismatch(t *testing.T) {
+	cases := []struct {
+		name           string
+		a, b           int
+		relTol         float64
+		absTol         int
+		want           bool
+	}{
+		// The e22d25f3 incident under header-vs-decode tolerances.
+		{"incident_e22d25f3", 782, 4382, 0.05, 2, true},
+		// Header == decode: never a mismatch.
+		{"exact_match", 3600, 3600, 0.05, 2, false},
+		// Rounding drift on a long file stays within 5%.
+		{"rounding_long", 3600, 3598, 0.05, 2, false},
+		// Short files: absolute floor dominates (2 s grace).
+		{"short_within_abs", 5, 7, 0.05, 2, false},
+		{"short_beyond_abs", 5, 8, 0.05, 2, true},
+		// Client-vs-decode profile (15% / 10 s): wall-clock drift ok…
+		{"client_drift_ok", 3600, 3400, 0.15, 10, false},
+		// …but a 60-min capture claiming 13 min is not.
+		{"client_gross_mismatch", 782, 4382, 0.15, 10, true},
+		// Symmetric: order of args must not matter.
+		{"symmetric", 4382, 782, 0.05, 2, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := DurationsMismatch(tc.a, tc.b, tc.relTol, tc.absTol); got != tc.want {
+				t.Errorf("DurationsMismatch(%d, %d, %v, %d) = %v, want %v",
+					tc.a, tc.b, tc.relTol, tc.absTol, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestProbeLocalDuration_ConcatenatedFlac reproduces the pause/resume
+// corruption end-to-end at fixture scale: two independently-encoded
+// FLAC streams concatenated into one file. The leading STREAMINFO
+// describes only the first segment, so the header under-reports —
+// exactly the session-e22d25f3 shape (moderate under-report, below the
+// 1 MB/s size ceiling). probeLocalDuration must (a) return the real
+// decoded length and (b) flag the file as suspect via header_vs_decode.
+// Skips when ffmpeg isn't on PATH (CI image has it).
+func TestProbeLocalDuration_ConcatenatedFlac(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not on PATH; skipping (CI image has ffmpeg)")
+	}
+
+	tmp := t.TempDir()
+	genSine := func(name string, seconds int) string {
+		p := filepath.Join(tmp, name)
+		gen := exec.Command("ffmpeg",
+			"-hide_banner", "-loglevel", "error",
+			"-f", "lavfi",
+			"-i", "sine=frequency=440:duration="+strconv.Itoa(seconds)+":sample_rate=16000",
+			"-ac", "1", "-c:a", "flac", "-y", p,
+		)
+		if out, err := gen.CombinedOutput(); err != nil {
+			t.Fatalf("generate %s: %v\n%s", name, err, out)
+		}
+		return p
+	}
+
+	seg1 := genSine("seg1.flac", 8)
+	seg2 := genSine("seg2.flac", 30)
+
+	concat := filepath.Join(tmp, "concat.flac")
+	b1, err := os.ReadFile(seg1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b2, err := os.ReadFile(seg2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(concat, append(b1, b2...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(concat)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	durationSec, suspect, reason, err := probeLocalDuration(context.Background(), concat, fi.Size())
+	if err != nil {
+		t.Fatalf("probeLocalDuration: %v", err)
+	}
+	if !suspect {
+		t.Fatalf("suspect = false, want true (duration=%d reason=%q)", durationSec, reason)
+	}
+	if reason != "header_vs_decode" {
+		t.Errorf("reason = %q, want header_vs_decode", reason)
+	}
+	// True length is ~38 s; the header claims only the first ~8 s.
+	if durationSec < 36 || durationSec > 40 {
+		t.Errorf("durationSec = %d, want ~38 (decoded ground truth)", durationSec)
+	}
+}
+
+// TestProbeLocalDuration_HealthyFlac is the regression guard: a clean
+// single-stream FLAC must NOT be flagged suspect (a false positive
+// would re-encode every healthy upload — wasted CPU and a changed
+// object path on every session).
+func TestProbeLocalDuration_HealthyFlac(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not on PATH; skipping (CI image has ffmpeg)")
+	}
+
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, "clean.flac")
+	gen := exec.Command("ffmpeg",
+		"-hide_banner", "-loglevel", "error",
+		"-f", "lavfi",
+		"-i", "sine=frequency=440:duration=12:sample_rate=16000",
+		"-ac", "1", "-c:a", "flac", "-y", p,
+	)
+	if out, err := gen.CombinedOutput(); err != nil {
+		t.Fatalf("generate clean flac: %v\n%s", err, out)
+	}
+	fi, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	durationSec, suspect, reason, err := probeLocalDuration(context.Background(), p, fi.Size())
+	if err != nil {
+		t.Fatalf("probeLocalDuration: %v", err)
+	}
+	if suspect {
+		t.Fatalf("suspect = true (reason=%q), want false for a healthy file", reason)
+	}
+	if durationSec < 11 || durationSec > 13 {
+		t.Errorf("durationSec = %d, want ~12", durationSec)
 	}
 }
