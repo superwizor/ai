@@ -129,6 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         try {
           if (typeof window !== "undefined") {
+            // Clear per-user onboarding key
+            const uid = user?.uid;
+            if (uid) localStorage.removeItem(`sw_onboarding_step_${uid}`);
+            // Also clear legacy global key (backwards compat)
             localStorage.removeItem("sw_onboarding_step");
           }
         } catch (e) {

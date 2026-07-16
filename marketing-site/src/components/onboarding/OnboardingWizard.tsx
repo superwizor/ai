@@ -23,7 +23,7 @@ import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/ide
 import { motion, AnimatePresence } from "framer-motion";
 import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities";
 
-const STORAGE_KEY = "sw_onboarding_step";
+const STORAGE_KEY_PREFIX = "sw_onboarding_step";
 const APP_STORE_URL = "https://apps.apple.com/app/superwizor-ai/id6774975751";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ai.superwizor.superwizor";
 type OnboardingStep = 4 | 5 | 6 | 7 | 8;
@@ -117,9 +117,15 @@ export function OnboardingWizard({ locale }: { locale: string }) {
   const router = useRouter();
   const prefix = locale === "en" ? "/en" : "";
 
+  // Per-user storage key: prevents one user's progress leaking to another
+  // account on the same browser. If no UID yet, we just start at step 4.
+  const storageKey = fbUser?.uid
+    ? `${STORAGE_KEY_PREFIX}_${fbUser.uid}`
+    : null;
+
   const [step, setStep] = useState<OnboardingStep>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
+    if (typeof window !== "undefined" && storageKey) {
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const n = parseInt(saved, 10);
         if (n === 4 || n === 5 || n === 6 || n === 7 || n === 8) return n as OnboardingStep;
@@ -167,23 +173,12 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     identityClient
       .getMyProfile(create(EmptySchema, {}))
       .then((me) => {
-        if (!cancelled) {
-          if (me.defaultModalityId) {
-            router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
-          } else if (step > 6) {
-            // Safety guard: if localStorage says we are on step 7/8, but backend says
-            // profile is incomplete (new account reusing same browser), force step 4.
-            setStep(4);
-            setDirection(-1);
-          }
+        if (!cancelled && me.defaultModalityId) {
+          router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
         }
       })
       .catch(() => {
         // Signed-out / no profile yet — the wizard handles both.
-        if (!cancelled && step > 6) {
-          setStep(4);
-          setDirection(-1);
-        }
       });
     return () => {
       cancelled = true;
@@ -191,17 +186,16 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist step
+  // Persist step (per-user key — safe across account switches)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(step));
-  }, [step]);
-
-  // Step 8: clear local storage only, no auto redirect
-  useEffect(() => {
-    if (step === 8) {
-      localStorage.removeItem(STORAGE_KEY);
+    if (storageKey) {
+      if (step === 8) {
+        localStorage.removeItem(storageKey);
+      } else {
+        localStorage.setItem(storageKey, String(step));
+      }
     }
-  }, [step]);
+  }, [step, storageKey]);
 
   // Cross-tab sync: listen for onboarding completion from other tabs
   useEffect(() => {
@@ -209,7 +203,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       const ch = new BroadcastChannel("sw_onboarding");
       ch.onmessage = (e) => {
         if (e.data?.type === "onboarding_complete") {
-          localStorage.removeItem(STORAGE_KEY);
+          if (storageKey) localStorage.removeItem(storageKey);
           router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
         }
       };
@@ -217,7 +211,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     } catch {
       return undefined;
     }
-  }, [router, locale]);
+  }, [router, locale, storageKey]);
 
   const goNext = useCallback(() => {
     setDirection(1);
@@ -796,7 +790,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
 
               <button
                 onClick={() => {
-                  localStorage.removeItem(STORAGE_KEY);
+                  if (storageKey) localStorage.removeItem(storageKey);
                   router.replace(`${prefix}/dashboard`);
                 }}
                 className="w-full flex items-center justify-center py-4 px-6 rounded-2xl bg-ember text-obsidian font-sans font-bold text-xs uppercase tracking-wider shadow-lg shadow-black/25 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer mt-4"
