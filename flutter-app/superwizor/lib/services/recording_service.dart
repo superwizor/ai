@@ -136,6 +136,22 @@ class RecordingService {
   bool _hadInterruption = false;
   bool get hadInterruption => _hadInterruption;
 
+  /// Latches true after ANY native pause/resume cycle — user pause
+  /// included, not just OS interruptions. Every resume appends a fresh
+  /// FLAC sub-stream to the single output file and the final header
+  /// describes only the last segment (session e22d25f3: header said
+  /// 13 min, file held 73 min — uploaded as clean `audio/flac` because
+  /// the user-initiated Stop→"Wróć do nagrywania" cycle never set
+  /// `_hadInterruption`). Reset on every start().
+  bool _hadResumeCycle = false;
+
+  /// True when the finished file must go through the server-side
+  /// lossless re-encode (upload as `audio/x-flac`) because its header
+  /// can't be trusted: any pause/resume cycle OR an OS interruption.
+  /// Upload decisions must read THIS flag; `hadInterruption` stays for
+  /// interruption-specific UX only.
+  bool get needsReencode => _hadResumeCycle || _hadInterruption;
+
   // Intent timestamps: armed right before we drive the recorder ourselves,
   // consumed by the matching native event so it isn't misread as an
   // OS-initiated transition. Stale intents (event never delivered, e.g.
@@ -236,6 +252,7 @@ class RecordingService {
     _reportLanguage = reportLanguage;
     _accumulated = Duration.zero;
     _hadInterruption = false;
+    _hadResumeCycle = false;
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     _startTicker();
@@ -284,6 +301,9 @@ class RecordingService {
       debugPrint('[recording] resume failed: $e');
       return false;
     }
+    // The native recorder just appended a new FLAC sub-stream to the
+    // same file — its header can no longer be trusted at upload time.
+    _hadResumeCycle = true;
 
     if (fromInterruption) {
       final capturing = await _verifyCapture();
@@ -321,6 +341,9 @@ class RecordingService {
         }
         _arm(RecordState.record);
         await _recorder.resume();
+        // Resume-before-stop appends a sub-stream too — same header
+        // corruption risk as a user resume.
+        _hadResumeCycle = true;
         _segmentStart = DateTime.now();
         // Tiny dwell so the encoder writes its trailing frames cleanly.
         await Future<void>.delayed(const Duration(milliseconds: 200));
