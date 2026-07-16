@@ -3,6 +3,7 @@ package sttworker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/deepgram"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/sttgcs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
@@ -62,6 +64,7 @@ var (
 	transcriptsRawBkt  string // Chirp output destination (Stage 1)
 	projectID          string
 	billingClient      billingv1.BillingServiceClient // nil = billing hook disabled
+	dgClient           *deepgram.Client               // nil = deepgram provider disabled
 )
 
 func init() {
@@ -150,6 +153,26 @@ func init() {
 		}
 	} else {
 		crypto = cryptobox.NewMockBox()
+	}
+
+	// Deepgram provider (docs/39). Enabled only when the API key is
+	// mounted; the endpoint is pinned to the EU-resident host and the
+	// worker REFUSES TO START on any other value — same posture as the
+	// pinned europe-west4 Vertex region (ADR-IMPL-003). P3 exception
+	// scoped to "EU", not "wherever the env var points".
+	if dgKey := os.Getenv("DEEPGRAM_API_KEY"); dgKey != "" {
+		dgURL := os.Getenv("DEEPGRAM_API_URL")
+		if dgURL == "" {
+			dgURL = deepgram.DefaultBaseURL
+		}
+		if !deepgram.IsEUEndpoint(dgURL) {
+			slog.Error("DEEPGRAM_API_URL is not the EU-resident endpoint; refusing to start",
+				"url", dgURL)
+			os.Exit(1)
+		}
+		dgClient = deepgram.New(dgKey, dgURL)
+		slog.Info("stt-worker: deepgram client wired", "url", dgURL,
+			"provider_default", os.Getenv("STT_PROVIDER"))
 	}
 
 	functions.CloudEvent("ProcessAudio", ProcessAudio)
@@ -249,6 +272,13 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		// Should never happen — sessionUUID came from a valid
 		// CloudEvent payload — but defend defensively.
 		return nil
+	}
+
+	// Provider fork (docs/39 §4). The deepgram branch is synchronous and
+	// self-contained (claim → signed URL → /v1/listen → completeTranscript);
+	// everything below this if is the Chirp submit/finalize machinery.
+	if provider := resolveSTTProvider(ctx, event.SessionID); provider == "deepgram" {
+		return processAudioDeepgram(ctx, logger, event, sessionUUID, bcp47Lang)
 	}
 
 	// Stage 2: read audio_chunks for this upload. If ingestion-svc
@@ -845,9 +875,17 @@ func isTerminalStatusCode(code codes.Code) bool {
 	return false
 }
 
+// errTerminalSTT is a sentinel for wrapping errors that the caller has
+// ALREADY classified as terminal (e.g. deepgram.Classify == Terminal),
+// so handleSTTError's routing doesn't depend on string matching.
+var errTerminalSTT = errors.New("terminal stt error")
+
 func isTerminalSTTError(err error) bool {
 	if err == nil {
 		return false
+	}
+	if errors.Is(err, errTerminalSTT) {
+		return true
 	}
 	// gRPC code on the wrapped chain. errors.As via FromError unwraps
 	// any %w-wrapped grpc error and surfaces the code; direct grpc
@@ -1199,7 +1237,7 @@ func logPlaintextTranscript(logger *slog.Logger, sessionID string, result *Trans
 //     — llm-worker zaktualizuje labels po dedukcji ról.
 //
 // Zob. ADR-IMPL-006 (blob jako source of truth) i ADR-IMPL-007 (LLM diarization).
-func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, chunks []chunker.Chunk, processingTime time.Duration) (string, error) {
+func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, chunks []chunker.Chunk, processingTime time.Duration, sttModel string) (string, error) {
 	transcriptID := uuid.New()
 	sessID, err := uuid.Parse(sessionID)
 	if err != nil {
@@ -1266,7 +1304,7 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		transcriptID, sessID, blobCiphertext, blobDEK,
 		result.LanguageCode, result.WordCount, result.SpeakerCount,
-		result.ConfidenceAvg, "chirp_3", int(processingTime.Seconds()))
+		result.ConfidenceAvg, sttModel, int(processingTime.Seconds()))
 	if err != nil {
 		return "", err
 	}

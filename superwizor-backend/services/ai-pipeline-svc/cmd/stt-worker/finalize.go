@@ -262,10 +262,6 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 		}
 	}
 
-	chunkerCfg := chunker.DefaultConfig()
-	chunks := chunker.ChunkByPauses(merged, chunkerCfg)
-	chunkStats := chunker.ComputeStats(chunks)
-
 	tr := &TranscriptResult{
 		Words:                merged,
 		LanguageCode:         summary.LanguageCode,
@@ -278,12 +274,26 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 	logger.Info("merged transcript",
 		"language", summary.LanguageCode,
 		"raw_word_count", summary.WordCount,
-		"chunk_count", chunkStats.ChunkCount,
-		"total_words", chunkStats.TotalWords,
-		"avg_confidence", chunkStats.AvgConfidence,
 		"speaker_count", summary.SpeakerCount,
 		"native_diarization", summary.HasNativeDiarization,
 		"merge_chunks", len(parts))
+
+	return completeTranscript(ctx, logger, sessionID, tr, "chirp_3", startTime)
+}
+
+// completeTranscript is the provider-agnostic tail of the STT pipeline:
+// pause-chunk the word stream, persist the encrypted blob + segments,
+// flip the session to ANALYZING, bill, publish transcript.completed and
+// delete the source audio. Shared by the Chirp merge path
+// (mergeAndPersist) and the synchronous Deepgram path (docs/39 D5) —
+// everything downstream of this function cannot tell providers apart.
+//
+// Error contract matches mergeAndPersist's expectations: the returned
+// error is classified by the caller (terminal → FAILED, transient →
+// retry); nil means the point of no return was passed.
+func completeTranscript(ctx context.Context, logger *slog.Logger, sessionID uuid.UUID, tr *TranscriptResult, sttModel string, startTime time.Time) error {
+	chunkerCfg := chunker.DefaultConfig()
+	chunks := chunker.ChunkByPauses(tr.Words, chunkerCfg)
 
 	// DEV MODE ONLY: log plaintext transcript before encryption.
 	// PHI exposure — never set in production. See main.go comment on
@@ -292,7 +302,7 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 		logPlaintextTranscript(logger, sessionID.String(), tr, chunks)
 	}
 
-	transcriptID, err := persistTranscript(ctx, sessionID.String(), tr, chunks, time.Since(startTime))
+	transcriptID, err := persistTranscript(ctx, sessionID.String(), tr, chunks, time.Since(startTime), sttModel)
 	if err != nil {
 		// UNIQUE on transcripts(session_id) (migration 000021) — if
 		// a prior finalize attempt committed transcripts but crashed
@@ -316,8 +326,8 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 	// non-empty language. ingestion-svc populates this at session
 	// creation; we never want to overwrite it.
 	sessLang, _ := loadSessionLanguage(ctx, sessionID.String())
-	if sessLang == "" && summary.LanguageCode != "" {
-		_ = updateSessionLanguage(ctx, sessionID.String(), summary.LanguageCode)
+	if sessLang == "" && tr.LanguageCode != "" {
+		_ = updateSessionLanguage(ctx, sessionID.String(), tr.LanguageCode)
 	}
 
 	if err := updateSessionStatus(ctx, sessionID.String(), "ANALYZING"); err != nil {
@@ -339,14 +349,14 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 
 	// Point of no return reached: the transcript is durably persisted AND
 	// transcript.completed is published, so STT will never need the source
-	// audio again (nor can the deferred handler revert to TRANSCRIBING from
-	// here — rerr is nil on this path). Delete the audio now to shrink PHI
-	// exposure from the 48 h GCS lifecycle down to seconds after
-	// transcription. Fail-soft: the lifecycle rule remains the backstop.
+	// audio again. Delete the audio now to shrink PHI exposure from the
+	// 48 h GCS lifecycle down to seconds after transcription. Fail-soft:
+	// the lifecycle rule remains the backstop.
 	deleteSessionAudio(ctx, logger, sessionID)
 
-	logger.Info("merge done",
+	logger.Info("transcript complete",
 		"transcript_id", transcriptID,
+		"stt_model", sttModel,
 		"duration_ms", time.Since(startTime).Milliseconds(),
 		"chunks", len(chunks))
 	return nil
