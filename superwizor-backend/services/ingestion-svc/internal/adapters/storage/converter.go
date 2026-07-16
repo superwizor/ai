@@ -190,43 +190,46 @@ const (
 // ProbeDuration returns the duration in seconds of the audio object at
 // (bucketName, objectPath), plus a `suspect` flag indicating the
 // container's declared duration could not be trusted (corrupt /
-// unfinalized header — the pause/resume bug, or a mid-capture kill).
+// unfinalized header — the pause/resume bug, or a mid-capture kill)
+// and a machine-readable `reason` for observability.
 //
 // This is the AUTHORITATIVE duration source — Flutter clients vary in
 // what they report (0 for some upload flows; the actual recording
 // elapsed time for live recordings). Server-side probing makes the
 // long-audio chunking trigger client-implementation-independent.
 //
-// Two-tier strategy:
+// Strategy (since session e22d25f3, 2026-07-16):
 //  1. Read the container header via `ffprobe format=duration` (cheap).
-//  2. Sanity-check it against the file size. If the implied bitrate is
-//     impossible for real audio (> maxPlausibleBytesPerSec), the header
-//     is lying — re-derive the true duration by decoding the whole
-//     stream to raw PCM and counting samples. This ignores the corrupt
-//     timestamps entirely. `suspect` is returned true so the caller
-//     re-encodes the file (clean STREAMINFO + monotonic DTS) before it
-//     ever reaches the chunker / Chirp.
+//  2. ALWAYS decode the whole stream to raw PCM and count samples —
+//     this ignores the container's (possibly corrupt) timestamps and
+//     is the ground truth. A pause/resume-corrupted FLAC whose header
+//     under-reports only moderately (782 s claimed vs 4382 s real,
+//     ~0.19 MB/s implied — under the 1 MB/s size ceiling) is caught
+//     by the header-vs-decode comparison, which the size heuristic
+//     alone missed.
+//  3. The size heuristic (`isDurationSuspect`) remains as the backstop
+//     for the decode-failure path.
 //
-// Cost: header read is ~5s for a 100 MB FLAC (download + parse); the
-// decode-count fallback adds a full decode pass (~seconds), but only
-// runs on the rare corrupt file. Both run once per CompleteAudioUpload.
+// Cost: the full-decode pass runs at >1000× realtime on the local copy
+// we already downloaded for ffprobe (~0.5 s for a 73-min FLAC), once
+// per upload finalization.
 //
-// Returns (0, false, nil) when ffprobe succeeds but reports no duration
-// on a trivially small file (broken/empty media with no real audio).
-func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath string) (durationSec int, suspect bool, err error) {
+// `suspect == true` tells the caller to re-encode the file (clean
+// STREAMINFO + monotonic DTS) before chunking / Chirp see it.
+func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath string) (durationSec int, suspect bool, reason string, err error) {
 	ext := filepath.Ext(objectPath)
 	if ext == "" {
 		ext = ".bin"
 	}
 	tmpDir, err := os.MkdirTemp("", "audioprobe-*")
 	if err != nil {
-		return 0, false, fmt.Errorf("mktmp: %w", err)
+		return 0, false, "", fmt.Errorf("mktmp: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	local := filepath.Join(tmpDir, "input"+ext)
 	if err := c.downloadObject(ctx, bucketName, objectPath, local); err != nil {
-		return 0, false, fmt.Errorf("download src: %w", err)
+		return 0, false, "", fmt.Errorf("download src: %w", err)
 	}
 
 	fi, statErr := os.Stat(local)
@@ -235,23 +238,63 @@ func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath st
 		fileSizeBytes = fi.Size()
 	}
 
+	return probeLocalDuration(ctx, local, fileSizeBytes)
+}
+
+// probeLocalDuration implements ProbeDuration's decision logic on an
+// already-downloaded local file. Split out so the anomaly detection is
+// testable against synthesized fixtures without a GCS client.
+func probeLocalDuration(ctx context.Context, local string, fileSizeBytes int64) (durationSec int, suspect bool, reason string, err error) {
 	headerSec, headerErr := probeHeaderDuration(ctx, local)
 	if headerErr != nil {
-		return 0, false, headerErr
+		return 0, false, "", headerErr
 	}
 
-	if !isDurationSuspect(headerSec, fileSizeBytes) {
-		return headerSec, false, nil
-	}
+	sizeSuspect := isDurationSuspect(headerSec, fileSizeBytes)
 
-	// Header is untrustworthy — decode the real stream to get the true
-	// length. If the decode itself fails (genuinely broken media), fall
-	// back to whatever the header said rather than blocking the pipeline.
 	trueSec, decErr := decodeDurationSec(ctx, local)
 	if decErr != nil {
-		return headerSec, true, nil
+		// Decode unavailable (genuinely broken media) — judge on the
+		// size heuristic alone rather than blocking the pipeline.
+		if sizeSuspect {
+			return headerSec, true, "size_vs_header", nil
+		}
+		return headerSec, false, "", nil
 	}
-	return trueSec, true, nil
+
+	switch {
+	case sizeSuspect:
+		return trueSec, true, "size_vs_header", nil
+	case DurationsMismatch(headerSec, trueSec, 0.05, 2):
+		// Header and real stream disagree beyond rounding — the
+		// pause/resume concatenation signature (stale STREAMINFO).
+		return trueSec, true, "header_vs_decode", nil
+	}
+	return trueSec, false, "", nil
+}
+
+// DurationsMismatch reports whether two duration measurements disagree
+// beyond tolerance: max(absTolSec, relTol × the larger value). Used to
+// compare the container header against the decoded stream length
+// (tight: 5% / 2 s) and the client-reported capture time against the
+// decoded length (loose: caller passes ~30% / 30 s — this catches
+// gross corruption like 13 min claimed vs 73 min real, not sloppy
+// client estimates; old app versions report 0, which the caller must
+// filter out before calling). Pure function, unit-tested.
+func DurationsMismatch(aSec, bSec int, relTol float64, absTolSec int) bool {
+	diff := aSec - bSec
+	if diff < 0 {
+		diff = -diff
+	}
+	larger := aSec
+	if bSec > larger {
+		larger = bSec
+	}
+	tol := int(relTol * float64(larger))
+	if tol < absTolSec {
+		tol = absTolSec
+	}
+	return diff > tol
 }
 
 // probeHeaderDuration reads the container's declared duration via

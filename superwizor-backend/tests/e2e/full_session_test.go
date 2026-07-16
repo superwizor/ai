@@ -496,7 +496,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 		PatientFileId:            patient.Id,
 		ContentType:              "audio/flac",
 		EstimatedSizeBytes:       audioSize,
-		EstimatedDurationSeconds: 600,
+		EstimatedDurationSeconds: 0, // unknown — a fake value would trip the client-vs-decode anomaly check
 		IdempotencyKey:           fmt.Sprintf("e2e-upload-%d", runID),
 		ClientAppVersion:         "e2e-test-1.0",
 		ClientPlatform:           "test",

@@ -52,7 +52,7 @@ func runPipelineSession(t *testing.T, ctx context.Context, cfg config,
 		PatientFileId:            patientID,
 		ContentType:              "audio/flac",
 		EstimatedSizeBytes:       audioSize,
-		EstimatedDurationSeconds: 600,
+		EstimatedDurationSeconds: 0, // unknown — a fake value would trip the client-vs-decode anomaly check
 		IdempotencyKey:           idemKey,
 		ClientAppVersion:         "e2e-rag-test-1.0",
 		ClientPlatform:           "test",
