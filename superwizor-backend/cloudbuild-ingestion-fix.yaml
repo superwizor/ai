@@ -1,8 +1,8 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build',
-      '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:fix-duration-anomaly-52d8edd',
+      '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:fix-duration-anomaly-d5bc6f4',
       '-f', 'services/ingestion-svc/Dockerfile', '.']
 images:
-  - 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:fix-duration-anomaly-52d8edd'
+  - 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:fix-duration-anomaly-d5bc6f4'
 timeout: 1200s
