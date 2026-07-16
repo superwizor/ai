@@ -180,6 +180,10 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       })
       .catch(() => {
         // Signed-out / no profile yet — the wizard handles both.
+        if (!cancelled && step > 6) {
+          setStep(4);
+          setDirection(-1);
+        }
       });
     return () => {
       cancelled = true;
