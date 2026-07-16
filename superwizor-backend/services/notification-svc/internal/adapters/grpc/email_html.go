@@ -63,11 +63,11 @@ func wrapWithGenericTemplate(locale, subject, heading, bodyText, ctaURL, ctaText
 		ctaSection = `
           <!-- Body <-> CTA: 32px -->
           <tr>
-            <td align="left" style="padding:32px 40px 0;">
+            <td align="left" style="padding:32px 40px 0;background-color:#FFFFFF;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" style="background-color:#FCAE2F;border-radius:8px;">
-                    <a href="` + ctaURL + `" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#111827;text-decoration:none;border-radius:8px;">
+                  <td align="center" style="background-color:#004D54;border-radius:8px;">
+                    <a href="` + ctaURL + `" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:8px;">
                       ` + ctaText + `
                     </a>
                   </td>
@@ -78,24 +78,24 @@ func wrapWithGenericTemplate(locale, subject, heading, bodyText, ctaURL, ctaText
 
           <!-- CTA <-> Divider: 40px -->
           <tr>
-            <td style="padding:40px 40px 0;">
-              <div style="height:1px;background-color:#005C64;"></div>
+            <td style="padding:40px 40px 0;background-color:#FFFFFF;">
+              <div style="height:1px;background-color:#E5E7EB;"></div>
             </td>
           </tr>
 
           <!-- Divider <-> Fallback Link: 24px -->
           <tr>
-            <td align="left" style="padding:24px 40px 0;">
-              <p style="margin:0;font-size:13px;font-weight:400;color:#D1D5DB;line-height:1.4;">
+            <td align="left" style="padding:24px 40px 0;background-color:#FFFFFF;">
+              <p style="margin:0;font-size:13px;font-weight:400;color:#6B7280;line-height:1.4;">
                 ` + s.FallbackLabel + `
               </p>
             </td>
           </tr>
 
           <tr>
-            <td align="left" style="padding:8px 40px 0;">
-              <p style="margin:0;font-size:13px;font-weight:400;color:#D1D5DB;line-height:1.4;word-break:break-all;">
-                <a href="` + ctaURL + `" style="color:#FCAE2F;text-decoration:underline;">` + ctaURL + `</a>
+            <td align="left" style="padding:8px 40px 0;background-color:#FFFFFF;">
+              <p style="margin:0;font-size:13px;font-weight:400;color:#6B7280;line-height:1.4;word-break:break-all;">
+                <a href="` + ctaURL + `" style="color:#004D54;text-decoration:underline;">` + ctaURL + `</a>
               </p>
             </td>
           </tr>`
@@ -106,7 +106,7 @@ func wrapWithGenericTemplate(locale, subject, heading, bodyText, ctaURL, ctaText
 		safetySection = `
           <!-- Link <-> Safety Note: 24px -->
           <tr>
-            <td align="left" style="padding:24px 40px 0;">
+            <td align="left" style="padding:24px 40px 0;background-color:#FFFFFF;">
               <p style="margin:0;font-size:13px;font-weight:400;color:#9CA3AF;line-height:1.4;">
                 ` + s.SafetyNote + `
               </p>
@@ -146,7 +146,7 @@ func markdownToHTMLContent(body string, ctaURLToOmit string) string {
 		// Handle bullet lists
 		if strings.HasPrefix(p, "- ") || strings.HasPrefix(p, "* ") {
 			lines := strings.Split(p, "\n")
-			sb.WriteString("<ul style=\"margin:0 0 16px 0;padding-left:20px;color:#D1D5DB;\">")
+			sb.WriteString("<ul style=\"margin:0 0 16px 0;padding-left:20px;color:#4B5563;\">")
 			for _, line := range lines {
 				line = strings.TrimSpace(line)
 				if line == "" {
@@ -214,7 +214,7 @@ func formatTextInline(p string, ctaURLToOmit string) string {
 			p = p[:idx] + placeholder + p[idx+end:]
 			continue
 		}
-		linkHTML := `<a href="` + url + `" style="color:#FCAE2F;text-decoration:underline;">` + url + `</a>`
+		linkHTML := `<a href="` + url + `" style="color:#004D54;text-decoration:underline;">` + url + `</a>`
 		p = p[:idx] + linkHTML + p[idx+end:]
 	}
 

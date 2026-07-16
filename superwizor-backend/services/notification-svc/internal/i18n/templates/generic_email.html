@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>{{subject}}</title>
   <!--[if mso]>
   <noscript>
@@ -15,29 +16,29 @@
   </noscript>
   <![endif]-->
 </head>
-<body style="margin:0;padding:0;background-color:#ffffff;font-family:'Montserrat','Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
+<body class="body" style="margin:0;padding:0;background-color:#F2F3F5;font-family:'Montserrat','Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F2F3F5;">
     <tr>
       <td align="center" style="padding:40px 16px 32px;">
 
-        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#004D54;background:linear-gradient(180deg, #004D54 0%, #002E32 100%);border:1px solid #002E32;border-radius:16px;overflow:hidden;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border:1px solid #E5E7EB;border-radius:16px;overflow:hidden;">
 
           <!-- Accent bar -->
           <tr>
-            <td style="height:4px;background:#FCAE2F;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="height:4px;background-color:#004D54;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
           <!-- Icon/Logo -->
           <tr>
-            <td align="left" style="padding:40px 40px 0;">
+            <td align="left" style="padding:40px 40px 0;background-color:#FFFFFF;">
               <img src="https://superwizor.ai/superwizor-logo-512.png" alt="Superwizor AI" width="56" height="56" style="display:block;border:0;border-radius:12px;width:56px;height:56px;">
             </td>
           </tr>
 
           <!-- Heading / Subject line -->
           <tr>
-            <td align="left" style="padding:24px 40px 0;">
-              <h1 style="margin:0;font-size:24px;font-weight:600;color:#F3F4F6;line-height:1.35;">
+            <td align="left" style="padding:24px 40px 0;background-color:#FFFFFF;">
+              <h1 style="margin:0;font-size:24px;font-weight:600;color:#004D54;line-height:1.35;">
                 {{heading}}
               </h1>
             </td>
@@ -45,7 +46,7 @@
 
           <!-- Body content (with paragraphs, formatting, lists) -->
           <tr>
-            <td align="left" style="padding:24px 40px 0;font-size:16px;font-weight:400;color:#D1D5DB;line-height:1.6;">
+            <td align="left" style="padding:24px 40px 0;font-size:16px;font-weight:400;color:#4B5563;line-height:1.6;background-color:#FFFFFF;">
               {{body_html}}
             </td>
           </tr>
@@ -58,7 +59,7 @@
 
           <!-- Spacing before footer -->
           <tr>
-            <td style="height:40px;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="height:40px;font-size:0;line-height:0;background-color:#FFFFFF;">&nbsp;</td>
           </tr>
 
         </table>
@@ -67,10 +68,10 @@
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
           <tr>
             <td align="center" style="padding:24px 40px 8px;">
-              <p style="margin:0;font-size:12px;font-weight:400;color:#4B5563;line-height:1.5;">
+              <p style="margin:0;font-size:12px;font-weight:400;color:#6B7280;line-height:1.5;">
                 {{sign_off}} <span style="color:#004D54;font-weight:600;">{{team_name}}</span>
               </p>
-              <p style="margin:8px 0 0;font-size:12px;font-weight:400;color:#4B5563;line-height:1.5;">
+              <p style="margin:8px 0 0;font-size:12px;font-weight:400;color:#9CA3AF;line-height:1.5;">
                 Superwizor.ai · Kraków, Polska
               </p>
             </td>
