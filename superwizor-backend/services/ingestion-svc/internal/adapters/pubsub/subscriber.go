@@ -251,7 +251,7 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		if upload.DurationSeconds != nil {
 			clientSec = int(*upload.DurationSeconds)
 		}
-		if !suspectAudio && clientSec > 0 && storage.DurationsMismatch(clientSec, durationSec, 0.15, 10) {
+		if !suspectAudio && clientSec > 0 && storage.DurationsMismatch(clientSec, durationSec, 0.30, 30) {
 			suspectAudio = true
 			suspectReason = "client_vs_decode"
 		}

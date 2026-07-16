@@ -277,9 +277,10 @@ func probeLocalDuration(ctx context.Context, local string, fileSizeBytes int64) 
 // beyond tolerance: max(absTolSec, relTol × the larger value). Used to
 // compare the container header against the decoded stream length
 // (tight: 5% / 2 s) and the client-reported capture time against the
-// decoded length (loose: caller passes ~15% / 10 s — client clocks
-// drift and old app versions report 0, which the caller must filter
-// out before calling). Pure function, unit-tested.
+// decoded length (loose: caller passes ~30% / 30 s — this catches
+// gross corruption like 13 min claimed vs 73 min real, not sloppy
+// client estimates; old app versions report 0, which the caller must
+// filter out before calling). Pure function, unit-tested.
 func DurationsMismatch(aSec, bSec int, relTol float64, absTolSec int) bool {
 	diff := aSec - bSec
 	if diff < 0 {

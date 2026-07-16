@@ -297,9 +297,11 @@ func TestDurationsMismatch(t *testing.T) {
 		{"short_within_abs", 5, 7, 0.05, 2, false},
 		{"short_beyond_abs", 5, 8, 0.05, 2, true},
 		// Client-vs-decode profile (15% / 10 s): wall-clock drift ok…
-		{"client_drift_ok", 3600, 3400, 0.15, 10, false},
+		{"client_drift_ok", 3600, 3400, 0.30, 30, false},
 		// …but a 60-min capture claiming 13 min is not.
-		{"client_gross_mismatch", 782, 4382, 0.15, 10, true},
+		{"client_gross_mismatch", 782, 4382, 0.30, 30, true},
+		// Sloppy-but-honest harness estimate must NOT flag (60 s claimed, 40 s real).
+		{"client_sloppy_estimate_ok", 60, 40, 0.30, 30, false},
 		// Symmetric: order of args must not matter.
 		{"symmetric", 4382, 782, 0.05, 2, true},
 	}
