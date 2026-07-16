@@ -142,6 +142,23 @@ resource "google_secret_manager_secret_iam_member" "llm_worker_db_pwd" {
 }
 
 # 5. Cloud Functions Gen2
+# Deepgram provider (docs/39): the stt-worker signs V4 GET URLs for the
+# audio object via the IAM Credentials SignBlob API, which requires the
+# SA to hold tokenCreator ON ITSELF.
+resource "google_service_account_iam_member" "stt_worker_self_signer" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.stt_worker_sa_email}"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "stt_worker_deepgram_key" {
+  count     = var.deepgram_api_key_secret_id != "" ? 1 : 0
+  project   = var.project_id
+  secret_id = var.deepgram_api_key_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
 resource "google_cloudfunctions2_function" "stt_worker" {
   name        = "stt-worker"
   location    = var.region
@@ -164,13 +181,12 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     min_instance_count = 0
     available_memory   = "1Gi"
     available_cpu      = "1"
-    # 120s — reverted from the 1800s band-aid (commit on 2026-05-22)
-    # now that BatchRecognize uses GcsOutputConfig and stt-submit
-    # returns in ~5s without waiting on Chirp. The 540s timeout
-    # exceeded that was the symptom of the inline-output coupling
-    # this branch removes. See
-    # docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md Stage 1.
-    timeout_seconds       = 120
+    # 540s (docs/39, feat/stt-deepgram): a DELIBERATE budget for the
+    # synchronous Deepgram call (330s client timeout × up to 2 in-client
+    # attempts) — not a return of the 1800s Chirp band-aid. The Chirp
+    # branch still returns in ~5s (submit-only, GcsOutputConfig); only
+    # deepgram-routed sessions hold the instance for the transcription.
+    timeout_seconds       = 540
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
@@ -197,6 +213,17 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # finalize. Set via var.billing_svc_url (Phase 3, slice 5). Empty
       # = billing hook disabled.
       BILLING_SVC_URL = var.billing_svc_url
+      # ── Deepgram provider (docs/39) ────────────────────────────────
+      # Endpoint is pinned to the EU-resident host; the worker REFUSES
+      # TO START on any other value (init-time guard, mirrors the
+      # europe-west4 Vertex pin). Do not parameterize to a US host.
+      DEEPGRAM_API_URL = var.deepgram_api_url
+      # Engine selection: "chirp" (default) | "deepgram". Kill-switch =
+      # flip back to chirp; no DB change (docs/39 §4).
+      STT_PROVIDER = var.stt_provider
+      # Canary allowlist: CSV of therapist/org UUIDs routed to deepgram
+      # while STT_PROVIDER stays "chirp".
+      STT_PROVIDER_ALLOWLIST = var.stt_provider_allowlist
     }
 
     secret_environment_variables {
@@ -204,6 +231,19 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       project_id = var.project_id
       secret     = var.db_url_secret_id
       version    = "latest"
+    }
+
+    dynamic "secret_environment_variables" {
+      # Mounted only when the secret name is set — keeps environments
+      # without a Deepgram account deployable (provider then disabled
+      # in-process because DEEPGRAM_API_KEY is absent).
+      for_each = var.deepgram_api_key_secret_id != "" ? [1] : []
+      content {
+        key        = "DEEPGRAM_API_KEY"
+        project_id = var.project_id
+        secret     = var.deepgram_api_key_secret_id
+        version    = "latest"
+      }
     }
 
     vpc_connector                 = var.vpc_connector_id
