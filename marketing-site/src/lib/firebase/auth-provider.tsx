@@ -127,6 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return (await signInWithPopup(requireAuth(), provider)).user;
       },
       signOut: async () => {
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("sw_onboarding_step");
+          }
+        } catch (e) {
+          console.error("Failed to clear local storage", e);
+        }
         await fbSignOut(requireAuth());
       },
     };

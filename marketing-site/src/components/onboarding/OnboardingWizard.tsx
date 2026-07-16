@@ -167,8 +167,15 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     identityClient
       .getMyProfile(create(EmptySchema, {}))
       .then((me) => {
-        if (!cancelled && me.defaultModalityId) {
-          router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
+        if (!cancelled) {
+          if (me.defaultModalityId) {
+            router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
+          } else if (step > 6) {
+            // Safety guard: if localStorage says we are on step 7/8, but backend says
+            // profile is incomplete (new account reusing same browser), force step 4.
+            setStep(4);
+            setDirection(-1);
+          }
         }
       })
       .catch(() => {
