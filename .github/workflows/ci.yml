@@ -211,7 +211,12 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="ENV=staging,BILLING_SVC_URL=${BILLING_URL}"
+          # --set-secrets/--set-env-vars REPLACE their whole blocks. The
+          # live api-service revision mounts DATABASE_URL from Secret
+          # Manager (audited 2026-07-16 vs this file); without the
+          # --set-secrets line every CI deploy silently strips it.
           gcloud run services add-iam-policy-binding api-service \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
