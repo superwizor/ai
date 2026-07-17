@@ -1,15 +1,47 @@
 # 41 — Pseudonimizacja danych identyfikujących w raportach (call-2)
 
-**Status:** design (2026-07-17). Brak kodu. Branch implementacyjny:
-`feat/llm-pseudonymize`. Flaga `LLM_PSEUDONYMIZE`, default `off`.
+**Status:** design (2026-07-17; rewizja zakresu tego samego dnia —
+imiona zostają, pracodawcy/szkoły i miejscowości do tokenów, §1/§1.1/§3.1).
+Brak kodu. Branch implementacyjny: `feat/llm-pseudonymize`.
+Flaga `LLM_PSEUDONYMIZE`, default `off`.
 
 ## 1. Cel i rama prawna
 
 Usunąć z tekstu podawanego do call-2 (raport kliniczny) — a docelowo
-także z `Title`/`Summary`/tematów RAG — dane bezpośrednio identyfikujące
-osoby: imiona i nazwiska (pacjenta I osób trzecich), adresy/miasta,
-pracodawców/szkoły, identyfikatory (PESEL, telefon, e-mail, numery
-dokumentów), daty urodzenia.
+także z `Title`/`Summary`/tematów RAG — dane identyfikujące osoby.
+
+**Zakres redakcji (rewizja 2026-07-17, decyzja produktowa):**
+
+| Kategoria | Decyzja |
+|---|---|
+| **Imiona** | **ZOSTAJĄ** — niosą relacyjną treść kliniczną („Karol", „Kasia"), a samo imię identyfikuje słabo; raport pozostaje naturalnie czytelny |
+| Nazwiska | redakcja (pełne imię+nazwisko → samo imię; nazwisko solo → `[NAZWISKO-n]`) |
+| Identyfikatory: PESEL, nr dokumentów, telefony, e-maile | redakcja (warstwa regex, deterministyczna) |
+| Adresy: ulice, numery, kody pocztowe | redakcja |
+| Pracodawcy i szkoły | redakcja do tokenu generycznego — patrz §1.1 |
+| Miejscowości | redakcja — patrz §1.1 (rozstrzygnięcie graniczne) |
+| Daty urodzenia | redakcja (regex + LLM) |
+
+### 1.1 Rozstrzygnięcia kategorii granicznych
+
+**Pracodawcy i szkoły → redakcja do tokenu generycznego** (decyzja
+2026-07-17). Uzasadnienie: silne quasi-identyfikatory — imię +
+„pracuje w [firma X w Krakowie]" potrafi zidentyfikować osobę bez
+nazwiska; klinicznie „konflikt w pracy" niesie tę samą wartość co
+„konflikt w [nazwa firmy]". Token `[PRACODAWCA]` / `[SZKOŁA]`,
+numerowany tylko gdy w sesji występuje więcej niż jeden podmiot danej
+kategorii (`[PRACODAWCA-2]`) — zachowuje rozróżnialność wątków bez
+ujawniania nazw.
+
+**Miejscowości → redakcja wszystkich do `[MIEJSCOWOŚĆ-x]`**
+(rekomendacja — do akceptacji). Sama „duża" miejscowość identyfikuje
+słabo („mieszkam w Krakowie"), ale (a) mała miejscowość identyfikuje
+mocno, (b) granica duża/mała jest nieegzekwowalna spójnie przez LLM,
+(c) w KOMBINACJI z imieniem i generycznym `[PRACODAWCA]` nawet duże
+miasto zawęża („Karol, nauczyciel w [SZKOŁA] w Krakowie"). Jednolita
+reguła „wszystkie miejscowości" jest prostsza, testowalna i kosztuje
+klinicznie tyle co nic — kontekst „przeprowadzka", „dojazdy" zostaje.
+Odrzucona alternatywa: próg wielkości miasta (niespójna egzekucja).
 
 **To jest pseudonimizacja, nie anonimizacja** (RODO art. 4 pkt 5):
 dane pozostają danymi osobowymi; zysk to minimalizacja ryzyka —
@@ -40,10 +72,10 @@ Deepgramie wygasł.
 ```
 call-1 (role-only, Format B) ──► # Speakers / # Metadata / # RAG …
                                  # PII                  ← NOWA SEKCJA
-                                   [PACJENTKA]: Anna | Anny | Ani | Anna Nowak | Nowak
-                                   [MĄŻ]: Karol | Karola | Karolem
-                                   [MIASTO-A]: Wrocław | Wrocławiu
-                                   [PRACODAWCA-A]: Softex | Softexie
+                                   [NAZWISKO-1]: Nowak | Nowaka | Nowakiem   (imiona zostają!)
+                                   [PRACODAWCA]: Softex | Softexie
+                                   [SZKOŁA]: SP 12 | dwunastce
+                                   [MIEJSCOWOŚĆ-A]: Wrocław | Wrocławiu
         │
         ▼
 pseudonymize.Apply(text, entities)   ← czysty Go, deterministyczny
@@ -57,15 +89,22 @@ pseudonymize.Apply(text, entities)   ← czysty Go, deterministyczny
         └─► RAG_Summary / RAG_Theme (przed embed + persist)
 ```
 
-### 3.1 Taksonomia placeholderów
+### 3.1 Taksonomia placeholderów (rewizja 2026-07-17)
 
-Rolowe, nie generyczne — raport ma pozostać klinicznie czytelny:
-`[PACJENT]/[PACJENTKA]`, `[TERAPEUTA]`, `[MĄŻ]/[ŻONA]/[PARTNER]`,
-`[SYN-n]/[CÓRKA-n]`, `[MATKA]/[OJCIEC]`, `[OSOBA-n: <relacja>]` dla
-pozostałych, `[MIASTO-x]`, `[PRACODAWCA-x]`, `[SZKOŁA-x]`,
-`[IDENTYFIKATOR]` (warstwa regex). LLM przypisuje rolę na podstawie
-kontekstu; sufiksy numerowane utrzymują rozróżnialność (dwóch synów =
-`[SYN-1]`, `[SYN-2]`).
+Imiona zostają, więc placeholdery rolowe dla osób są ZBĘDNE — czytelność
+relacji zapewniają imiona. Redakcja osób sprowadza się do nazwisk:
+
+- pełne „Anna Kowalska" → **„Anna"** (nazwisko po prostu znika — zero
+  tokenu, naturalny tekst);
+- nazwisko solo („pani Kowalska", „z Kowalskim") → `[NAZWISKO-n]`
+  (numerowane per osoba; BEZ inicjału — inicjał + pracodawca +
+  miejscowość potrafi identyfikować);
+- `[PRACODAWCA(-n)]`, `[SZKOŁA(-n)]`, `[MIEJSCOWOŚĆ-x]`, `[ADRES]`,
+  `[IDENTYFIKATOR]` (warstwa regex), `[DATA-URODZENIA]`.
+
+Efekt uboczny rewizji: znika największe źródło false-positives
+(imiona-homonimy słów pospolitych) i ryzyko pomylenia ról przez LLM —
+model nie klasyfikuje już relacji, tylko wskazuje nazwiska i nazwy.
 
 ### 3.2 Gramatyka sekcji `# PII` (parser w internal/diarization)
 
