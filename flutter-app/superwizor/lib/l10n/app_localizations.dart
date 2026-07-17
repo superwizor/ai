@@ -5614,6 +5614,66 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wyślij ponownie'**
   String get upload_resend;
+
+  /// No description provided for @invite_client_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Potwierdź adres e-mail'**
+  String get invite_client_confirm_title;
+
+  /// No description provided for @invite_client_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaproszenie da dostęp do danych klinicznych tej kartoteki. Upewnij się, że adres jest poprawny:'**
+  String get invite_client_confirm_body;
+
+  /// No description provided for @invite_client_confirm_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij zaproszenie'**
+  String get invite_client_confirm_send;
+
+  /// No description provided for @invite_client_typo_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Czy na pewno? Być może chodziło o domenę: {suggestion}'**
+  String invite_client_typo_hint(String suggestion);
+
+  /// No description provided for @invite_client_code_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kod dla pacjenta'**
+  String get invite_client_code_title;
+
+  /// No description provided for @invite_client_code_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przekaż ten kod pacjentowi osobiście lub telefonicznie. Nie wysyłaj go e-mailem — pacjent wpisze go przy aktywacji konta.'**
+  String get invite_client_code_hint;
+
+  /// No description provided for @invite_client_code_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kod skopiowany'**
+  String get invite_client_code_copied;
+
+  /// No description provided for @invite_client_revoke.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cofnij zaproszenie'**
+  String get invite_client_revoke;
+
+  /// No description provided for @invite_client_revoke_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cofnąć zaproszenie?'**
+  String get invite_client_revoke_confirm_title;
+
+  /// No description provided for @invite_client_revoke_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.'**
+  String get invite_client_revoke_confirm_body;
 }
 
 class _AppLocalizationsDelegate

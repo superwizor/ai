@@ -1389,5 +1389,22 @@
   "transcript_tab": "Transcript",
   "unshare_with_client": "Unshare",
   "upload_cancel_processing": "Delete",
-  "upload_resend": "Resend"
+  "upload_resend": "Resend",
+  "invite_client_confirm_title": "Confirm the e-mail address",
+  "invite_client_confirm_body": "This invitation grants access to this file's clinical data. Make sure the address is correct:",
+  "invite_client_confirm_send": "Send invitation",
+  "invite_client_typo_hint": "Are you sure? Did you mean the domain: {suggestion}",
+  "@invite_client_typo_hint": {
+    "placeholders": {
+      "suggestion": {
+        "type": "String"
+      }
+    }
+  },
+  "invite_client_code_title": "Code for the patient",
+  "invite_client_code_hint": "Hand this code to the patient in person or by phone. Do not send it by e-mail — the patient will enter it during account activation.",
+  "invite_client_code_copied": "Code copied",
+  "invite_client_revoke": "Revoke invitation",
+  "invite_client_revoke_confirm_title": "Revoke the invitation?",
+  "invite_client_revoke_confirm_body": "The link in the sent e-mail will stop working immediately. You can send a new invitation afterwards."
 }

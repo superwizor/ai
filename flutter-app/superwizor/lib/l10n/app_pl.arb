@@ -1397,5 +1397,22 @@
   "transcript_tab": "Transkrypcja",
   "unshare_with_client": "Cofnij udostępnienie",
   "upload_cancel_processing": "Usuń",
-  "upload_resend": "Wyślij ponownie"
+  "upload_resend": "Wyślij ponownie",
+  "invite_client_confirm_title": "Potwierdź adres e-mail",
+  "invite_client_confirm_body": "Zaproszenie da dostęp do danych klinicznych tej kartoteki. Upewnij się, że adres jest poprawny:",
+  "invite_client_confirm_send": "Wyślij zaproszenie",
+  "invite_client_typo_hint": "Czy na pewno? Być może chodziło o domenę: {suggestion}",
+  "@invite_client_typo_hint": {
+    "placeholders": {
+      "suggestion": {
+        "type": "String"
+      }
+    }
+  },
+  "invite_client_code_title": "Kod dla pacjenta",
+  "invite_client_code_hint": "Przekaż ten kod pacjentowi osobiście lub telefonicznie. Nie wysyłaj go e-mailem — pacjent wpisze go przy aktywacji konta.",
+  "invite_client_code_copied": "Kod skopiowany",
+  "invite_client_revoke": "Cofnij zaproszenie",
+  "invite_client_revoke_confirm_title": "Cofnąć zaproszenie?",
+  "invite_client_revoke_confirm_body": "Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie."
 }

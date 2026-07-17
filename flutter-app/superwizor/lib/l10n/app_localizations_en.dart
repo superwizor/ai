@@ -3127,4 +3127,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get upload_resend => 'Resend';
+
+  @override
+  String get invite_client_confirm_title => 'Confirm the e-mail address';
+
+  @override
+  String get invite_client_confirm_body =>
+      'This invitation grants access to this file\'s clinical data. Make sure the address is correct:';
+
+  @override
+  String get invite_client_confirm_send => 'Send invitation';
+
+  @override
+  String invite_client_typo_hint(String suggestion) {
+    return 'Are you sure? Did you mean the domain: $suggestion';
+  }
+
+  @override
+  String get invite_client_code_title => 'Code for the patient';
+
+  @override
+  String get invite_client_code_hint =>
+      'Hand this code to the patient in person or by phone. Do not send it by e-mail — the patient will enter it during account activation.';
+
+  @override
+  String get invite_client_code_copied => 'Code copied';
+
+  @override
+  String get invite_client_revoke => 'Revoke invitation';
+
+  @override
+  String get invite_client_revoke_confirm_title => 'Revoke the invitation?';
+
+  @override
+  String get invite_client_revoke_confirm_body =>
+      'The link in the sent e-mail will stop working immediately. You can send a new invitation afterwards.';
 }
