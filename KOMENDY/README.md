@@ -35,6 +35,12 @@
 * 🍏 **`./KOMENDY/5`**
   └─ *Buduje produkcyjną paczkę .ipa i otwiera Xcode Organizer (gotowy do wysłania do TestFlight)*
 
+* 🤖 **`./KOMENDY/10`**
+  └─ *Buduje i wysyła paczkę na ścieżkę testów wewnętrznych (Internal testing) w Google Play*
+
+* 🚀 **`./KOMENDY/11`**
+  └─ *Buduje i wysyła paczkę bezpośrednio na produkcję (LIVE) w Google Play*
+
 ---
 
 ## 🌐 WEB & MARKETING

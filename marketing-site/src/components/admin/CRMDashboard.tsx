@@ -128,6 +128,7 @@ const ALERT_OPTIONS = [
   { value: "", label: "Wszystkie alerty" },
   { value: "critical", label: "🔴 Krytyczne (1 lub mniej)" },
   { value: "warning", label: "🟡 Ostrzeżenie (3 lub mniej)" },
+  { value: "expiring", label: "🟣 Wygasa (3 dni lub mniej)" },
 ];
 
 const EMAIL_TEMPLATES = [
@@ -818,6 +819,30 @@ export function CRMDashboard() {
     });
   };
 
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    setConfirmAction({
+      message: `CZY NA PEWNO CHCESZ USUNĄĆ ${selected.size} zaznaczonych użytkowników? Ta operacja trwale zablokuje ich dostęp do aplikacji.`,
+      onConfirm: async () => {
+        try {
+          const resp = await crmFetch("/admin/crm/subscribers/bulk-delete", {
+            method: "POST",
+            body: JSON.stringify({
+              user_ids: Array.from(selected),
+            }),
+          });
+          if (!resp.ok) throw new Error("Bulk delete failed");
+          showToast(`🗑️ Pomyślnie usunięto ${selected.size} użytkowników`);
+          setSelected(new Set());
+          void fetchSubscribers();
+        } catch {
+          showToast("❌ Błąd podczas usuwania użytkowników");
+        }
+        setConfirmAction(null);
+      },
+    });
+  };
+
   const bulkEmail = () => {
     if (selected.size === 0) return;
     const selectedSubs = sorted.filter((s) => selected.has(s.user_id));
@@ -998,11 +1023,26 @@ export function CRMDashboard() {
 
       {/* ── KPI Chips ────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
-        <KPIChip label="Łącznie" value={globalStats.total} color="#c9d1d9" />
-        <KPIChip label="Krytyczne" value={globalStats.critical} color="#ef4444" />
-        <KPIChip label="Ostrzeżenie" value={globalStats.warning} color="#f97316" />
-        <KPIChip label="Wygasa" value={globalStats.expiring} color="#a855f7" />
-        <KPIChip label="Churned" value={globalStats.churned} color="#6b7280" />
+        <KPIChip label="Łącznie" value={globalStats.total} color="#c9d1d9" onClick={() => {
+          setFilters((f) => ({ ...f, alert: "", status: "", tier: "" }));
+          setPage(1);
+        }} />
+        <KPIChip label="Krytyczne" value={globalStats.critical} color="#ef4444" onClick={() => {
+          setFilters((f) => ({ ...f, alert: "critical", status: "", tier: "" }));
+          setPage(1);
+        }} />
+        <KPIChip label="Ostrzeżenie" value={globalStats.warning} color="#f97316" onClick={() => {
+          setFilters((f) => ({ ...f, alert: "warning", status: "", tier: "" }));
+          setPage(1);
+        }} />
+        <KPIChip label="Wygasa" value={globalStats.expiring} color="#a855f7" onClick={() => {
+          setFilters((f) => ({ ...f, alert: "expiring", status: "", tier: "" }));
+          setPage(1);
+        }} />
+        <KPIChip label="Churned" value={globalStats.churned} color="#6b7280" onClick={() => {
+          setFilters((f) => ({ ...f, alert: "", status: "CANCELED", tier: "" }));
+          setPage(1);
+        }} />
       </div>
 
       {/* ── Filters ───────────────────────────────────────── */}
@@ -1429,6 +1469,7 @@ export function CRMDashboard() {
           <span className="text-xs text-[var(--crm-text)] font-medium">Zaznaczono: <span className="text-[var(--crm-ember-text)] font-bold">{selected.size}</span></span>
           <button onClick={bulkEmail} className="rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">📧 Email</button>
           <button onClick={bulkRemind} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-border)] transition">🔔 Przypomnij</button>
+          <button onClick={bulkDelete} className="rounded-lg bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)] text-[var(--crm-accent-red)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-danger-bg)] transition">🗑️ Usuń</button>
           <button onClick={() => setSelected(new Set())} className="text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition text-xs font-semibold">✕ Odznacz</button>
         </div>
       )}
@@ -1466,9 +1507,9 @@ export function CRMDashboard() {
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function KPIChip({ label, value, color }: { label: string; value: number; color: string }) {
+function KPIChip({ label, value, color, onClick }: { label: string; value: number; color: string; onClick?: () => void }) {
   return (
-    <div className="rounded-xl bg-[var(--crm-card)] border border-[var(--crm-border)] px-4 py-4 text-center hover:bg-[var(--crm-elevated)] transition-colors">
+    <div onClick={onClick} className={`rounded-xl bg-[var(--crm-card)] border border-[var(--crm-border)] px-4 py-4 text-center hover:bg-[var(--crm-elevated)] transition-colors ${onClick ? "cursor-pointer" : ""}`}>
       <div className="text-3xl font-bold" style={{ color }}>{value}</div>
       <div className="text-[11px] font-semibold text-[var(--crm-muted)] uppercase tracking-wider mt-1.5">{label}</div>
     </div>

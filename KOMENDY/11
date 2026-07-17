@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do budowania i wysylania aplikacji do Google Play na LIVE (Android)
+exec "$(dirname "$0")/11_wyslij_googleplay_live.sh" "$@"

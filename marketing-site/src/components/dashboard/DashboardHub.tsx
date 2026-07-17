@@ -127,6 +127,21 @@ export function DashboardHub({ locale }: { locale: string }) {
     };
   }, [fbUser, authStatus, router, prefix]);
 
+  // Cross-tab sync: if another tab completes onboarding, stop blocking
+  useEffect(() => {
+    try {
+      const ch = new BroadcastChannel("sw_onboarding");
+      ch.onmessage = (e) => {
+        if (e.data?.type === "onboarding_complete") {
+          setCheckingOnboarding(false);
+        }
+      };
+      return () => ch.close();
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   useEffect(() => {
     const hour = new Date().getHours();
     if (locale === "en") {
