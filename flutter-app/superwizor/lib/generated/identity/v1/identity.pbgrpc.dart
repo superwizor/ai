@@ -148,6 +148,39 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$removeTherapist, request, options: options);
   }
 
+  /// Manager (ORG_ADMIN) self-management (docs/38 PR14). An ORG_ADMIN can
+  /// list, invite, and deactivate/reactivate OTHER managers in their own
+  /// org — never their own account (SetMyOrgManagerStatus rejects self).
+  /// "Remove" is reversible deactivation; pending invites are revoked.
+  $grpc.ResponseFuture<$0.ListManagersResponse> listMyOrgManagers(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listMyOrgManagers, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.Invitation> inviteMyOrgManager(
+    $0.InviteMyOrgManagerRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$inviteMyOrgManager, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.User> setMyOrgManagerStatus(
+    $0.SetMyOrgManagerStatusRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setMyOrgManagerStatus, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$1.Empty> revokeMyOrgManagerInvite(
+    $0.RevokeMyOrgManagerInviteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$revokeMyOrgManagerInvite, request,
+        options: options);
+  }
+
   /// ─── Client (patient) panel — docs/39 ──────────────────────
   ///
   /// InviteClient: the kartoteka's "Zaproś klienta". Same magic-link
@@ -167,6 +200,17 @@ class IdentityServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$getClientInviteStatus, request, options: options);
+  }
+
+  /// docs/42: revokes the kartoteka's PENDING client invitation (token
+  /// dies immediately; status returns to NONE). Idempotent — revoking
+  /// when nothing is pending is a no-op. Authz: kartoteka owner or
+  /// ORG_ADMIN of the owner's org (same as InviteClient).
+  $grpc.ResponseFuture<$0.ClientInviteStatus> revokeClientInvite(
+    $0.RevokeClientInviteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$revokeClientInvite, request, options: options);
   }
 
   /// Reversible activation toggle (docs/38 §4). Deactivation frees the
@@ -372,6 +416,32 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$checkEmailExists, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.CheckPhoneNumberExistsResponse>
+      checkPhoneNumberExists(
+    $0.CheckPhoneNumberExistsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$checkPhoneNumberExists, request,
+        options: options);
+  }
+
+  /// Resends the email verification link to the user
+  $grpc.ResponseFuture<$1.Empty> resendVerificationEmail(
+    $0.ResendVerificationEmailRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$resendVerificationEmail, request,
+        options: options);
+  }
+
+  /// Updates the email address of the authenticated caller in both Firebase and the database.
+  $grpc.ResponseFuture<$1.Empty> updateMyEmail(
+    $0.UpdateMyEmailRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateMyEmail, request, options: options);
+  }
+
   // method descriptors
 
   static final _$validateToken =
@@ -436,6 +506,26 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/RemoveTherapist',
           ($0.RemoveTherapistRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$listMyOrgManagers =
+      $grpc.ClientMethod<$1.Empty, $0.ListManagersResponse>(
+          '/identity.v1.IdentityService/ListMyOrgManagers',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.ListManagersResponse.fromBuffer);
+  static final _$inviteMyOrgManager =
+      $grpc.ClientMethod<$0.InviteMyOrgManagerRequest, $0.Invitation>(
+          '/identity.v1.IdentityService/InviteMyOrgManager',
+          ($0.InviteMyOrgManagerRequest value) => value.writeToBuffer(),
+          $0.Invitation.fromBuffer);
+  static final _$setMyOrgManagerStatus =
+      $grpc.ClientMethod<$0.SetMyOrgManagerStatusRequest, $0.User>(
+          '/identity.v1.IdentityService/SetMyOrgManagerStatus',
+          ($0.SetMyOrgManagerStatusRequest value) => value.writeToBuffer(),
+          $0.User.fromBuffer);
+  static final _$revokeMyOrgManagerInvite =
+      $grpc.ClientMethod<$0.RevokeMyOrgManagerInviteRequest, $1.Empty>(
+          '/identity.v1.IdentityService/RevokeMyOrgManagerInvite',
+          ($0.RevokeMyOrgManagerInviteRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$inviteClient =
       $grpc.ClientMethod<$0.InviteClientRequest, $0.Invitation>(
           '/identity.v1.IdentityService/InviteClient',
@@ -446,6 +536,11 @@ class IdentityServiceClient extends $grpc.Client {
       '/identity.v1.IdentityService/GetClientInviteStatus',
       ($0.GetClientInviteStatusRequest value) => value.writeToBuffer(),
       $0.ClientInviteStatus.fromBuffer);
+  static final _$revokeClientInvite =
+      $grpc.ClientMethod<$0.RevokeClientInviteRequest, $0.ClientInviteStatus>(
+          '/identity.v1.IdentityService/RevokeClientInvite',
+          ($0.RevokeClientInviteRequest value) => value.writeToBuffer(),
+          $0.ClientInviteStatus.fromBuffer);
   static final _$setTherapistStatus =
       $grpc.ClientMethod<$0.SetTherapistStatusRequest, $0.User>(
           '/identity.v1.IdentityService/SetTherapistStatus',
@@ -547,6 +642,21 @@ class IdentityServiceClient extends $grpc.Client {
       '/identity.v1.IdentityService/CheckEmailExists',
       ($0.CheckEmailExistsRequest value) => value.writeToBuffer(),
       $0.CheckEmailExistsResponse.fromBuffer);
+  static final _$checkPhoneNumberExists = $grpc.ClientMethod<
+          $0.CheckPhoneNumberExistsRequest, $0.CheckPhoneNumberExistsResponse>(
+      '/identity.v1.IdentityService/CheckPhoneNumberExists',
+      ($0.CheckPhoneNumberExistsRequest value) => value.writeToBuffer(),
+      $0.CheckPhoneNumberExistsResponse.fromBuffer);
+  static final _$resendVerificationEmail =
+      $grpc.ClientMethod<$0.ResendVerificationEmailRequest, $1.Empty>(
+          '/identity.v1.IdentityService/ResendVerificationEmail',
+          ($0.ResendVerificationEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$updateMyEmail =
+      $grpc.ClientMethod<$0.UpdateMyEmailRequest, $1.Empty>(
+          '/identity.v1.IdentityService/UpdateMyEmail',
+          ($0.UpdateMyEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
 }
 
 @$pb.GrpcServiceName('identity.v1.IdentityService')
@@ -656,6 +766,38 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.RemoveTherapistRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.ListManagersResponse>(
+        'ListMyOrgManagers',
+        listMyOrgManagers_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.ListManagersResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.InviteMyOrgManagerRequest, $0.Invitation>(
+        'InviteMyOrgManager',
+        inviteMyOrgManager_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.InviteMyOrgManagerRequest.fromBuffer(value),
+        ($0.Invitation value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetMyOrgManagerStatusRequest, $0.User>(
+        'SetMyOrgManagerStatus',
+        setMyOrgManagerStatus_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SetMyOrgManagerStatusRequest.fromBuffer(value),
+        ($0.User value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.RevokeMyOrgManagerInviteRequest, $1.Empty>(
+            'RevokeMyOrgManagerInvite',
+            revokeMyOrgManagerInvite_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RevokeMyOrgManagerInviteRequest.fromBuffer(value),
+            ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.InviteClientRequest, $0.Invitation>(
         'InviteClient',
         inviteClient_Pre,
@@ -672,6 +814,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) =>
             $0.GetClientInviteStatusRequest.fromBuffer(value),
+        ($0.ClientInviteStatus value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RevokeClientInviteRequest,
+            $0.ClientInviteStatus>(
+        'RevokeClientInvite',
+        revokeClientInvite_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RevokeClientInviteRequest.fromBuffer(value),
         ($0.ClientInviteStatus value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.SetTherapistStatusRequest, $0.User>(
         'SetTherapistStatus',
@@ -845,6 +996,31 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.CheckEmailExistsRequest.fromBuffer(value),
         ($0.CheckEmailExistsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CheckPhoneNumberExistsRequest,
+            $0.CheckPhoneNumberExistsResponse>(
+        'CheckPhoneNumberExists',
+        checkPhoneNumberExists_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CheckPhoneNumberExistsRequest.fromBuffer(value),
+        ($0.CheckPhoneNumberExistsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ResendVerificationEmailRequest, $1.Empty>(
+        'ResendVerificationEmail',
+        resendVerificationEmail_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ResendVerificationEmailRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdateMyEmailRequest, $1.Empty>(
+        'UpdateMyEmail',
+        updateMyEmail_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdateMyEmailRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.UserContext> validateToken_Pre($grpc.ServiceCall $call,
@@ -953,6 +1129,38 @@ abstract class IdentityServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> removeTherapist(
       $grpc.ServiceCall call, $0.RemoveTherapistRequest request);
 
+  $async.Future<$0.ListManagersResponse> listMyOrgManagers_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return listMyOrgManagers($call, await $request);
+  }
+
+  $async.Future<$0.ListManagersResponse> listMyOrgManagers(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.Invitation> inviteMyOrgManager_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.InviteMyOrgManagerRequest> $request) async {
+    return inviteMyOrgManager($call, await $request);
+  }
+
+  $async.Future<$0.Invitation> inviteMyOrgManager(
+      $grpc.ServiceCall call, $0.InviteMyOrgManagerRequest request);
+
+  $async.Future<$0.User> setMyOrgManagerStatus_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SetMyOrgManagerStatusRequest> $request) async {
+    return setMyOrgManagerStatus($call, await $request);
+  }
+
+  $async.Future<$0.User> setMyOrgManagerStatus(
+      $grpc.ServiceCall call, $0.SetMyOrgManagerStatusRequest request);
+
+  $async.Future<$1.Empty> revokeMyOrgManagerInvite_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.RevokeMyOrgManagerInviteRequest> $request) async {
+    return revokeMyOrgManagerInvite($call, await $request);
+  }
+
+  $async.Future<$1.Empty> revokeMyOrgManagerInvite(
+      $grpc.ServiceCall call, $0.RevokeMyOrgManagerInviteRequest request);
+
   $async.Future<$0.Invitation> inviteClient_Pre($grpc.ServiceCall $call,
       $async.Future<$0.InviteClientRequest> $request) async {
     return inviteClient($call, await $request);
@@ -969,6 +1177,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.ClientInviteStatus> getClientInviteStatus(
       $grpc.ServiceCall call, $0.GetClientInviteStatusRequest request);
+
+  $async.Future<$0.ClientInviteStatus> revokeClientInvite_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RevokeClientInviteRequest> $request) async {
+    return revokeClientInvite($call, await $request);
+  }
+
+  $async.Future<$0.ClientInviteStatus> revokeClientInvite(
+      $grpc.ServiceCall call, $0.RevokeClientInviteRequest request);
 
   $async.Future<$0.User> setTherapistStatus_Pre($grpc.ServiceCall $call,
       $async.Future<$0.SetTherapistStatusRequest> $request) async {
@@ -1143,4 +1360,29 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.CheckEmailExistsResponse> checkEmailExists(
       $grpc.ServiceCall call, $0.CheckEmailExistsRequest request);
+
+  $async.Future<$0.CheckPhoneNumberExistsResponse> checkPhoneNumberExists_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.CheckPhoneNumberExistsRequest> $request) async {
+    return checkPhoneNumberExists($call, await $request);
+  }
+
+  $async.Future<$0.CheckPhoneNumberExistsResponse> checkPhoneNumberExists(
+      $grpc.ServiceCall call, $0.CheckPhoneNumberExistsRequest request);
+
+  $async.Future<$1.Empty> resendVerificationEmail_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ResendVerificationEmailRequest> $request) async {
+    return resendVerificationEmail($call, await $request);
+  }
+
+  $async.Future<$1.Empty> resendVerificationEmail(
+      $grpc.ServiceCall call, $0.ResendVerificationEmailRequest request);
+
+  $async.Future<$1.Empty> updateMyEmail_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UpdateMyEmailRequest> $request) async {
+    return updateMyEmail($call, await $request);
+  }
+
+  $async.Future<$1.Empty> updateMyEmail(
+      $grpc.ServiceCall call, $0.UpdateMyEmailRequest request);
 }

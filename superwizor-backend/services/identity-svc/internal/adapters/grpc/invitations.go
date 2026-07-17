@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"crypto/subtle"
+	"log/slog"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -291,6 +293,35 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 	// outer tx starves it — the request then hangs until the Cloud Run
 	// 300s timeout (caught live by the magic-link e2e).
 	if inv.InvitedRole == "PATIENT" {
+		// docs/42 O1: zaproszenia z kodem parowania (hash != NULL)
+		// wymagają drugiego czynnika. Stare zaproszenia (hash NULL,
+		// sprzed migracji 000076) przechodzą po staremu aż wygasną.
+		if len(inv.PairingCodeHash) > 0 {
+			if inv.CodeAttempts >= pairingCodeMaxAttempts {
+				return nil, status.Error(codes.FailedPrecondition,
+					"INVITATION_BLOCKED: too many wrong pairing codes — ask the therapist for a new invitation")
+			}
+			if subtle.ConstantTimeCompare(
+				hashPairingCode(req.PairingCode), inv.PairingCodeHash) != 1 {
+				attempts, aerr := s.queries.IncrementInvitationCodeAttempts(ctx, inv.ID)
+				if aerr != nil {
+					return nil, status.Errorf(codes.Internal, "count attempt: %v", aerr)
+				}
+				slog.InfoContext(ctx, "analytics",
+					"ae", "client_invite.code_rejected",
+					"invitation_id", inv.ID.String(),
+					"attempts", attempts)
+				if attempts >= pairingCodeMaxAttempts {
+					slog.WarnContext(ctx, "analytics",
+						"ae", "client_invite.blocked",
+						"invitation_id", inv.ID.String())
+					return nil, status.Error(codes.FailedPrecondition,
+						"INVITATION_BLOCKED: too many wrong pairing codes — ask the therapist for a new invitation")
+				}
+				return nil, status.Error(codes.InvalidArgument,
+					"PAIRING_CODE_INVALID: wrong pairing code")
+			}
+		}
 		return s.acceptClientInvitation(ctx, inv, req, verifiedUID)
 	}
 

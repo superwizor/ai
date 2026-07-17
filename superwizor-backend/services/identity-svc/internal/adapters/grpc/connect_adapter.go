@@ -155,6 +155,14 @@ func (a *ConnectAdapter) InviteClient(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) RevokeClientInvite(ctx context.Context, req *connect.Request[identityv1.RevokeClientInviteRequest]) (*connect.Response[identityv1.ClientInviteStatus], error) {
+	resp, err := a.s.RevokeClientInvite(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) GetClientInviteStatus(ctx context.Context, req *connect.Request[identityv1.GetClientInviteStatusRequest]) (*connect.Response[identityv1.ClientInviteStatus], error) {
 	resp, err := a.s.GetClientInviteStatus(ctx, req.Msg)
 	if err != nil {

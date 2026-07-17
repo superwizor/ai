@@ -101,8 +101,8 @@ func (q *Queries) GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (Ge
 }
 
 const getPendingPatientInvitationByFile = `-- name: GetPendingPatientInvitationByFile :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
-WHERE patient_file_id = $1 AND invited_role = 'PATIENT' AND accepted_at IS NULL
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
+WHERE patient_file_id = $1 AND invited_role = 'PATIENT' AND accepted_at IS NULL AND revoked_at IS NULL
 `
 
 func (q *Queries) GetPendingPatientInvitationByFile(ctx context.Context, patientFileID pgtype.UUID) (Invitation, error) {
@@ -123,6 +123,9 @@ func (q *Queries) GetPendingPatientInvitationByFile(ctx context.Context, patient
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
 		&i.PatientFileID,
+		&i.PairingCodeHash,
+		&i.CodeAttempts,
+		&i.RevokedAt,
 	)
 	return i, err
 }

@@ -994,6 +994,11 @@
       "alreadyAccepted": "This invitation has already been used. Please sign in normally.",
       "expired": "This invitation has expired. Ask your administrator to resend it.",
       "invalidToken": "Invalid token. Make sure you are using the latest link.",
+      "pairingCodeLabel": "Code from your therapist",
+      "pairingCodeHint": "The 6-digit code your therapist gave you (in person or by phone).",
+      "pairingCodeFormat": "Enter the 6-digit code you received from your therapist.",
+      "pairingCodeInvalid": "Invalid code. Check the code you received from your therapist and try again.",
+      "invitationBlocked": "This invitation was blocked after too many failed attempts. Ask your therapist for a new invitation.",
       "emailAlreadyRegistered": "This e-mail (or the signed-in Google/Apple account) already has a Superwizor AI account — one account can hold only one role. To accept this invitation, ask for it to be sent to a different e-mail address."
     },
     "verifyEmail": {

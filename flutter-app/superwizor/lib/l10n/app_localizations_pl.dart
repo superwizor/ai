@@ -3149,4 +3149,39 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get upload_resend => 'Wyślij ponownie';
+
+  @override
+  String get invite_client_confirm_title => 'Potwierdź adres e-mail';
+
+  @override
+  String get invite_client_confirm_body =>
+      'Zaproszenie da dostęp do danych klinicznych tej kartoteki. Upewnij się, że adres jest poprawny:';
+
+  @override
+  String get invite_client_confirm_send => 'Wyślij zaproszenie';
+
+  @override
+  String invite_client_typo_hint(String suggestion) {
+    return 'Czy na pewno? Być może chodziło o domenę: $suggestion';
+  }
+
+  @override
+  String get invite_client_code_title => 'Kod dla pacjenta';
+
+  @override
+  String get invite_client_code_hint =>
+      'Przekaż ten kod pacjentowi osobiście lub telefonicznie. Nie wysyłaj go e-mailem — pacjent wpisze go przy aktywacji konta.';
+
+  @override
+  String get invite_client_code_copied => 'Kod skopiowany';
+
+  @override
+  String get invite_client_revoke => 'Cofnij zaproszenie';
+
+  @override
+  String get invite_client_revoke_confirm_title => 'Cofnąć zaproszenie?';
+
+  @override
+  String get invite_client_revoke_confirm_body =>
+      'Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.';
 }

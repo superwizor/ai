@@ -72,6 +72,11 @@ service IdentityService {
   rpc InviteClient(InviteClientRequest) returns (Invitation);
   // Invite/activation state for the kartoteka header (docs/39 PR6).
   rpc GetClientInviteStatus(GetClientInviteStatusRequest) returns (ClientInviteStatus);
+  // docs/42: revokes the kartoteka's PENDING client invitation (token
+  // dies immediately; status returns to NONE). Idempotent — revoking
+  // when nothing is pending is a no-op. Authz: kartoteka owner or
+  // ORG_ADMIN of the owner's org (same as InviteClient).
+  rpc RevokeClientInvite(RevokeClientInviteRequest) returns (ClientInviteStatus);
 
   // Reversible activation toggle (docs/38 §4). Deactivation frees the
   // therapist's seat and blocks their sign-in (ValidateToken returns
@@ -446,6 +451,11 @@ message Invitation {
   // and prefilled on the accept page (acceptor's input wins).
   string first_name = 10;
   string last_name = 11;
+  // docs/42: 6-digit pairing code for PATIENT invites. Populated
+  // EXCLUSIVELY in the InviteClient response (shown once to the
+  // therapist, who hands it to the patient outside e-mail); every
+  // other read returns empty — only the hash is stored.
+  string pairing_code = 12;
 }
 
 message InviteTherapistRequest {
@@ -472,6 +482,10 @@ message InviteClientRequest {
 }
 
 message GetClientInviteStatusRequest {
+  string patient_file_id = 1;
+}
+
+message RevokeClientInviteRequest {
   string patient_file_id = 1;
 }
 
@@ -506,6 +520,10 @@ message AcceptInvitationRequest {
   string timezone = 7;
   bool has_accepted_tos = 8;
   bool has_marketing_consent = 9;
+  // docs/42: required iff the invitation carries a pairing code
+  // (InvitationPreview.requires_pairing_code). 6 digits; spaces
+  // tolerated. 5 wrong attempts block the invitation.
+  string pairing_code = 10;
 }
 
 message GetInvitationPreviewRequest {
@@ -519,6 +537,8 @@ message InvitationPreview {
   string last_name = 4;
   string organization_name = 5;   // welcome copy
   string inviter_first_name = 6;  // therapist name for PATIENT invites
+  // docs/42: the accept form must show the pairing-code field.
+  bool requires_pairing_code = 7;
 }
 
 message AcceptInvitationResponse {

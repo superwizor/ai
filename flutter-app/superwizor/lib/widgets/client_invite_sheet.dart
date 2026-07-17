@@ -5,6 +5,7 @@
 // mechanism as the org-manager invite — token refresh on re-invite.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
 import 'package:intl/intl.dart';
@@ -52,6 +53,10 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   bool _sending = false;
   String? _error;
   bool _sent = false;
+  // docs/42 O1: kod parowania z odpowiedzi InviteClient — pokazywany
+  // terapeucie JEDEN raz (ponowne wyświetlenie = re-invite z nowym kodem).
+  String? _pairingCode;
+  bool _revoking = false;
 
   static final RegExp _emailRegex =
       RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -83,13 +88,18 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
       return;
     }
 
+    // docs/42 O0: jawne potwierdzenie adresu + ostrzeżenie o literówce
+    // w popularnych domenach — zaproszenie prowadzi do danych klinicznych.
+    final confirmed = await _confirmEmailDialog(email);
+    if (confirmed != true) return;
+
     setState(() {
       _sending = true;
       _error = null;
     });
     try {
       final identity = ref.read(grpcClientsProvider).identity;
-      await identity.inviteClient(identity_pb.InviteClientRequest(
+      final inv = await identity.inviteClient(identity_pb.InviteClientRequest(
         patientFileId: widget.patient.id,
         email: email,
       ));
@@ -98,6 +108,7 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
         setState(() {
           _sending = false;
           _sent = true;
+          _pairingCode = inv.pairingCode.isEmpty ? null : inv.pairingCode;
         });
       }
     } on GrpcError catch (e) {
@@ -246,6 +257,25 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
             _buildEmailField(l),
             const SizedBox(height: 16),
             _sendButton(l, resend: true),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _revoking ? null : _revokeInvite,
+              icon: _revoking
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: EuphireColors.magma))
+                  : const Icon(Icons.link_off_rounded,
+                      size: 18, color: EuphireColors.magma),
+              label: Text(
+                l.invite_client_revoke,
+                style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    color: EuphireColors.magma),
+              ),
+            ),
           ],
         );
       default: // NONE
@@ -318,6 +348,158 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
     );
   }
 
+  /// docs/42 O0: potwierdzenie adresu przed wysyłką. Zwraca true po
+  /// akceptacji. Podpowiedź "czy chodziło o …?" przy literówce w
+  /// popularnej domenie (odległość edycyjna ≤ 2, bez dokładnego trafienia).
+  Future<bool?> _confirmEmailDialog(String email) {
+    final l = AppLocalizations.of(context);
+    final suggestion = _domainSuggestion(email);
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0E2B2F),
+        title: Text(l.invite_client_confirm_title,
+            style: const TextStyle(
+                fontFamily: 'Merriweather',
+                fontStyle: FontStyle.italic,
+                fontSize: 18,
+                color: EuphireColors.frostWhite)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.invite_client_confirm_body,
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    height: 1.5,
+                    color: EuphireColors.mist.withValues(alpha: 0.85))),
+            const SizedBox(height: 12),
+            Text(email,
+                style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.ember)),
+            if (suggestion != null) ...[
+              const SizedBox(height: 10),
+              Text(l.invite_client_typo_hint(suggestion),
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      color: EuphireColors.magma)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.common_cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: EuphireColors.ember),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.invite_client_confirm_send),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static const _commonDomains = [
+    'gmail.com', 'onet.pl', 'wp.pl', 'o2.pl', 'interia.pl',
+    'op.pl', 'icloud.com', 'outlook.com', 'poczta.onet.pl',
+  ];
+
+  /// Zwraca sugestię domeny przy prawdopodobnej literówce, inaczej null.
+  static String? _domainSuggestion(String email) {
+    final at = email.lastIndexOf('@');
+    if (at < 0) return null;
+    final domain = email.substring(at + 1).toLowerCase();
+    if (_commonDomains.contains(domain)) return null;
+    for (final d in _commonDomains) {
+      if (_editDistance(domain, d) <= 2) return d;
+    }
+    return null;
+  }
+
+  static int _editDistance(String a, String b) {
+    final m = List.generate(
+        a.length + 1, (i) => List<int>.filled(b.length + 1, 0));
+    for (var i = 0; i <= a.length; i++) {
+      m[i][0] = i;
+    }
+    for (var j = 0; j <= b.length; j++) {
+      m[0][j] = j;
+    }
+    for (var i = 1; i <= a.length; i++) {
+      for (var j = 1; j <= b.length; j++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        m[i][j] = [
+          m[i - 1][j] + 1,
+          m[i][j - 1] + 1,
+          m[i - 1][j - 1] + cost,
+        ].reduce((x, y) => x < y ? x : y);
+      }
+    }
+    return m[a.length][b.length];
+  }
+
+  /// docs/42 O0: cofnięcie wiszącego zaproszenia (token umiera od razu).
+  Future<void> _revokeInvite() async {
+    final l = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0E2B2F),
+        title: Text(l.invite_client_revoke_confirm_title,
+            style: const TextStyle(
+                fontFamily: 'Merriweather',
+                fontStyle: FontStyle.italic,
+                fontSize: 18,
+                color: EuphireColors.frostWhite)),
+        content: Text(l.invite_client_revoke_confirm_body,
+            style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 13,
+                height: 1.5,
+                color: EuphireColors.mist.withValues(alpha: 0.85))),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l.common_cancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: EuphireColors.magma),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.invite_client_revoke),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _revoking = true);
+    try {
+      final identity = ref.read(grpcClientsProvider).identity;
+      await identity.revokeClientInvite(identity_pb.RevokeClientInviteRequest(
+        patientFileId: widget.patient.id,
+      ));
+      ref.invalidate(clientInviteStatusProvider(widget.patient.id));
+      if (mounted) {
+        setState(() {
+          _revoking = false;
+          _sent = false;
+          _pairingCode = null;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _revoking = false;
+        _error = AppLocalizations.of(context).invite_client_error;
+      });
+    }
+  }
+
   Widget _sendButton(AppLocalizations l, {required bool resend}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -346,6 +528,75 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
             ),
           ),
           const SizedBox(height: 12),
+        ],
+        if (_sent && _pairingCode != null) ...[
+          // docs/42 O1: kod parowania — pokazywany raz; pacjent musi go
+          // wpisać przy aktywacji. NIE wysyłać e-mailem.
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: EuphireColors.ember.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: EuphireColors.ember.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  l.invite_client_code_title,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: EuphireColors.frostWhite,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${_pairingCode!.substring(0, 3)} ${_pairingCode!.substring(3)}',
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 4,
+                        color: EuphireColors.ember,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: l.invite_client_code_copied,
+                      icon: const Icon(Icons.copy_rounded,
+                          size: 20, color: EuphireColors.mist),
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: _pairingCode!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text(l.invite_client_code_copied)),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l.invite_client_code_hint,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    height: 1.5,
+                    color: EuphireColors.mist.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
         ElevatedButton(
           onPressed: _sending ? null : _sendInvite,

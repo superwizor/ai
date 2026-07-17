@@ -890,7 +890,10 @@ type Invitation struct {
 	InvitedFirstName *string            `json:"invited_first_name"`
 	InvitedLastName  *string            `json:"invited_last_name"`
 	// Kartoteka a PATIENT invite belongs to (docs/39). NULL for THERAPIST/ORG_ADMIN invites.
-	PatientFileID pgtype.UUID `json:"patient_file_id"`
+	PatientFileID   pgtype.UUID        `json:"patient_file_id"`
+	PairingCodeHash []byte             `json:"pairing_code_hash"`
+	CodeAttempts    int32              `json:"code_attempts"`
+	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type Invoice struct {
@@ -1174,6 +1177,9 @@ type SttOperation struct {
 	FinalizeError         *string            `json:"finalize_error"`
 	RetryCount            int32              `json:"retry_count"`
 	SourceAudioUri        string             `json:"source_audio_uri"`
+	Provider              string             `json:"provider"`
+	RequestID             *string            `json:"request_id"`
+	FallbackAttempted     bool               `json:"fallback_attempted"`
 }
 
 type Subscription struct {

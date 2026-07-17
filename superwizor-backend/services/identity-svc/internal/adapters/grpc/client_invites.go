@@ -2,8 +2,12 @@ package grpc
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math/big"
 	"net/url"
 	"strings"
 	"time"
@@ -104,7 +108,12 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "generate token: %v", err)
 	}
-	expiresAt := time.Now().Add(invitationTTL)
+	// docs/42 O1: kod parowania przekazywany pacjentowi POZA e-mailem.
+	pairingCode, pairingHash, err := generatePairingCode()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "generate pairing code: %v", err)
+	}
+	expiresAt := time.Now().Add(clientInvitationTTL)
 
 	inv, err := s.queries.CreateInvitation(ctx, db.CreateInvitationParams{
 		OrganizationID: *caller.organizationID,
@@ -115,9 +124,23 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 		InvitedRole:    "PATIENT",
 		PatientFileID:  pgtype.UUID{Bytes: pfID, Valid: true},
 	})
-	if err != nil {
+	if err == nil {
+		// Stamp the pairing hash on the fresh row. Osobny UPDATE zamiast
+		// zmiany współdzielonego CreateInvitation (jego sygnatury używają
+		// też zaproszenia zespołowe/managerskie). Okno awarii między
+		// INSERT a UPDATE zamyka refresh path poniżej — re-invite zawsze
+		// nadpisuje hash.
+		if uerr := s.queries.SetInvitationPairingCode(ctx, db.SetInvitationPairingCodeParams{
+			ID:              inv.ID,
+			PairingCodeHash: pairingHash,
+		}); uerr != nil {
+			return nil, status.Errorf(codes.Internal, "stamp pairing code: %v", uerr)
+		}
+	} else {
 		// Refresh path — a pending invite for this kartoteka (or the
-		// same (org,email) pair) already exists.
+		// same (org,email) pair) already exists. Rotacja tokenu I kodu
+		// zeruje licznik prób i zdejmuje ewentualne revoked_at (świadome
+		// ponowne zaproszenie po cofnięciu).
 		existing, lookupErr := s.queries.GetPendingPatientInvitationByFile(ctx,
 			pgtype.UUID{Bytes: pfID, Valid: true})
 		if lookupErr != nil {
@@ -126,9 +149,10 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 		if _, err := s.pool.Exec(ctx,
 			`UPDATE invitations
 			    SET token_hash = $2, expires_at = $3, invited_by_user = $4,
-			        email = $5, created_at = now()
+			        email = $5, created_at = now(),
+			        pairing_code_hash = $6, code_attempts = 0, revoked_at = NULL
 			  WHERE id = $1`,
-			existing.ID, tokenHash, expiresAt, caller.userID, email,
+			existing.ID, tokenHash, expiresAt, caller.userID, email, pairingHash,
 		); err != nil {
 			return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
 		}
@@ -137,6 +161,10 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 		inv.ExpiresAt = expiresAt
 		inv.Email = email
 	}
+	slog.InfoContext(ctx, "analytics",
+		"ae", "client_invite.sent",
+		"patient_file_id", pfID.String(),
+		"by_user", caller.userID.String())
 
 	// Post-create e-mail (patient_invite template via invited_role).
 	therapistName := ""
@@ -161,7 +189,11 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 		InvitedRole:      "PATIENT",
 	})
 
-	return toProtoInvitation(inv), nil
+	out := toProtoInvitation(inv)
+	// docs/42: plaintext kodu wyłącznie w TEJ odpowiedzi — pokazywany
+	// terapeucie jeden raz; każdy inny odczyt Invitation zwraca puste.
+	out.PairingCode = pairingCode
+	return out, nil
 }
 
 // GetClientInviteStatus feeds the kartoteka header chip
@@ -341,6 +373,10 @@ func (s *Server) acceptClientInvitation(ctx context.Context, inv db.Invitation, 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
+	slog.InfoContext(ctx, "analytics",
+		"ae", "client_invite.accepted",
+		"invitation_id", inv.ID.String(),
+		"patient_file_id", pfID.String())
 
 	org, err := s.queries.GetOrganizationByID(ctx, inv.OrganizationID)
 	if err != nil {
@@ -373,8 +409,9 @@ func (s *Server) GetInvitationPreview(ctx context.Context, req *identityv1.GetIn
 		return nil, status.Error(codes.NotFound, "invitation not found, expired, or already accepted")
 	}
 	out := &identityv1.InvitationPreview{
-		InvitedRole: toProtoRole(inv.InvitedRole),
-		Email:       inv.Email,
+		InvitedRole:         toProtoRole(inv.InvitedRole),
+		Email:               inv.Email,
+		RequiresPairingCode: len(inv.PairingCodeHash) > 0,
 	}
 	if inv.InvitedFirstName != nil {
 		out.FirstName = *inv.InvitedFirstName
@@ -389,4 +426,64 @@ func (s *Server) GetInvitationPreview(ctx context.Context, req *identityv1.GetIn
 		out.InviterFirstName = u.FirstName
 	}
 	return out, nil
+}
+
+
+// clientInvitationTTL — docs/42 O0: link klienta prowadzi do danych
+// klinicznych, więc żyje krócej niż zaproszenia zespołowe (7 d).
+const clientInvitationTTL = 72 * time.Hour
+
+// pairingCodeMaxAttempts blokuje zaproszenie po serii błędnych kodów.
+const pairingCodeMaxAttempts = 5
+
+// generatePairingCode zwraca 6-cyfrowy kod (crypto/rand) + jego hash.
+// Przestrzeń 10^6 jest wystarczająca, bo próby są limitowane server-side
+// (pairingCodeMaxAttempts), a hash nigdy nie opuszcza bazy.
+func generatePairingCode() (cleartext string, hash []byte, err error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", nil, err
+	}
+	cleartext = fmt.Sprintf("%06d", n.Int64())
+	return cleartext, hashPairingCode(cleartext), nil
+}
+
+// hashPairingCode — SHA-256 znormalizowanego kodu (bez spacji).
+func hashPairingCode(code string) []byte {
+	sum := sha256.Sum256([]byte(normalizePairingCode(code)))
+	return sum[:]
+}
+
+func normalizePairingCode(code string) string {
+	return strings.ReplaceAll(strings.TrimSpace(code), " ", "")
+}
+
+// RevokeClientInvite — docs/42 O0: jawne cofnięcie wiszącego
+// zaproszenia klienta. Token umiera natychmiast; idempotentne.
+func (s *Server) RevokeClientInvite(ctx context.Context, req *identityv1.RevokeClientInviteRequest) (*identityv1.ClientInviteStatus, error) {
+	pfID, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+	pf, err := s.queries.GetPatientFileForInvite(ctx, pfID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	caller, err := s.requireKartotekaAccess(ctx, pf)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := s.queries.RevokePatientInvitation(ctx,
+		pgtype.UUID{Bytes: pfID, Valid: true})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "revoke invitation: %v", err)
+	}
+	slog.InfoContext(ctx, "analytics",
+		"ae", "client_invite.revoked",
+		"patient_file_id", pfID.String(),
+		"by_user", caller.userID.String(),
+		"had_pending", affected > 0)
+	return s.GetClientInviteStatus(ctx, &identityv1.GetClientInviteStatusRequest{
+		PatientFileId: req.PatientFileId,
+	})
 }
