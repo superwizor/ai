@@ -994,6 +994,11 @@
       "alreadyAccepted": "To zaproszenie zostało już użyte. Zaloguj się normalnie.",
       "expired": "Zaproszenie wygasło. Poproś administratora o ponowne wysłanie.",
       "invalidToken": "Nieprawidłowy token. Sprawdź, czy używasz aktualnego linku.",
+      "pairingCodeLabel": "Kod od terapeuty",
+      "pairingCodeHint": "6-cyfrowy kod, który przekazał Ci terapeuta (osobiście lub telefonicznie).",
+      "pairingCodeFormat": "Wpisz 6-cyfrowy kod otrzymany od terapeuty.",
+      "pairingCodeInvalid": "Nieprawidłowy kod. Sprawdź kod otrzymany od terapeuty i spróbuj ponownie.",
+      "invitationBlocked": "Zaproszenie zostało zablokowane po zbyt wielu nieudanych próbach. Poproś terapeutę o nowe zaproszenie.",
       "emailAlreadyRegistered": "Ten adres e-mail (lub zalogowane konto Google/Apple) ma już konto w Superwizor AI — jedno konto może mieć tylko jedną rolę. Aby przyjąć to zaproszenie, poproś o wysłanie go na inny adres e-mail."
     },
     "verifyEmail": {

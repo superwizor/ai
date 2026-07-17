@@ -63,6 +63,10 @@ export function AcceptInviteForm({ token }: { token: string }) {
   // PATIENT invites hide the therapist-only modality field, prefill
   // the e-mail/names, and route to the client panel after acceptance.
   const [preview, setPreview] = useState<InvitationPreview | null>(null);
+  // docs/42: kod parowania od terapeuty — wymagany, gdy zaproszenie go
+  // niesie (requiresPairingCode z preview). Normalizowany ze spacji.
+  const [pairingCode, setPairingCode] = useState("");
+  const [pairingCodeError, setPairingCodeError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     identityClient
@@ -208,10 +212,20 @@ export function AcceptInviteForm({ token }: { token: string }) {
         }
       }
 
+      if (preview?.requiresPairingCode) {
+        const normalized = pairingCode.replace(/\s+/g, "");
+        if (!/^\d{6}$/.test(normalized)) {
+          setPairingCodeError(tInv("pairingCodeFormat"));
+          return;
+        }
+      }
+      setPairingCodeError(null);
+
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
       const req = create(AcceptInvitationRequestSchema, {
         token,
+        pairingCode: pairingCode.replace(/\s+/g, ""),
         firebaseUid: user.uid,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -271,6 +285,15 @@ export function AcceptInviteForm({ token }: { token: string }) {
         // account) already owns an account — a second role can't be
         // minted (live-tested 2026-07-04: a THERAPIST accepting their
         // own ORG_ADMIN invite).
+        // docs/42: kod parowania — zły kod vs blokada po 5 próbach.
+        if (e.message.includes("PAIRING_CODE_INVALID")) {
+          setPairingCodeError(tInv("pairingCodeInvalid"));
+          return;
+        }
+        if (e.message.includes("INVITATION_BLOCKED")) {
+          setServerError(tInv("invitationBlocked"));
+          return;
+        }
         if (e.message.includes("EMAIL_ALREADY_REGISTERED")) {
           setServerError(tInv("emailAlreadyRegistered"));
           return;
@@ -392,6 +415,29 @@ export function AcceptInviteForm({ token }: { token: string }) {
             <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
           </FieldShell>
         </div>
+
+        {preview?.requiresPairingCode && (
+          <FieldShell
+            id="pairingCode"
+            label={tInv("pairingCodeLabel")}
+            hint={tInv("pairingCodeHint")}
+            required
+            error={pairingCodeError ?? undefined}
+          >
+            <TextInput
+              id="pairingCode"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123 456"
+              maxLength={7}
+              value={pairingCode}
+              onChange={(e) => {
+                setPairingCode(e.target.value);
+                setPairingCodeError(null);
+              }}
+            />
+          </FieldShell>
+        )}
 
         {needsModality && (
         <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
