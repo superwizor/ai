@@ -418,12 +418,15 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 	clientEmail := "e2e-ml-client-" + suffix + "@superwizor.test"
 
 	// swapToken issues the invite via the REAL RPC, then replaces the
-	// stored hash with sha256 of a token we know.
-	swapToken := func(pfID uuid.UUID) string {
-		_, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
+	// stored hash with sha256 of a token we know. Returns (token,
+	// pairingCode) — docs/42: accept requires the code from the
+	// InviteClient response.
+	swapToken := func(pfID uuid.UUID) (string, string) {
+		inv, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
 			PatientFileId: pfID.String(), Email: clientEmail,
 		})
 		require.NoError(t, err, "InviteClient for %s", pfID)
+		require.Len(t, inv.PairingCode, 6, "InviteClient must return a 6-digit pairing code")
 		raw := make([]byte, 32)
 		_, err = rand.Read(raw)
 		require.NoError(t, err)
@@ -435,11 +438,11 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 			pfID, sum[:])
 		require.NoError(t, err)
 		require.EqualValues(t, 1, tag.RowsAffected(), "one pending invitation to swap")
-		return token
+		return token, inv.PairingCode
 	}
 
 	pf1 := newKartoteka("k1")
-	token1 := swapToken(pf1)
+	token1, code1 := swapToken(pf1)
 
 	// Fresh client Firebase account "clicks the link".
 	clSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
@@ -451,7 +454,7 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 	clIdentity := identityv1.NewIdentityServiceClient(clIdentityConn)
 
 	accepted, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
-		Token: token1, FirebaseUid: clSession.UID,
+		Token: token1, PairingCode: code1, FirebaseUid: clSession.UID,
 		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
@@ -480,9 +483,9 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 
 	// Contract 2: returning client — second kartoteka, same account.
 	pf2 := newKartoteka("k2")
-	token2 := swapToken(pf2)
+	token2, code2 := swapToken(pf2)
 	accepted2, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
-		Token: token2, FirebaseUid: clSession.UID,
+		Token: token2, PairingCode: code2, FirebaseUid: clSession.UID,
 		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
@@ -500,10 +503,206 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 
 	// Replay guard: a consumed token is dead.
 	_, err = clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
-		Token: token1, FirebaseUid: clSession.UID,
+		Token: token1, PairingCode: code1, FirebaseUid: clSession.UID,
 		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
 	require.Error(t, err, "replaying a consumed token must fail")
 	t.Logf("✓ returning client re-linked kartoteka %s without a duplicate; replay rejected", pf2)
+}
+
+// TestClientInvite_WrongCodeLockout — docs/42: 5 błędnych kodów
+// blokuje zaproszenie; poprawny kod po blokadzie też odpada; re-invite
+// rotuje token+kod i zeruje licznik.
+func TestClientInvite_WrongCodeLockout(t *testing.T) {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		t.Skip("DATABASE_URL not set — needs the token-hash seam")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	cfg := loadConfig(t)
+	pool, err := pgxpool.New(ctx, dbURL)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	suffix := strings.ToLower(uuid.NewString()[:8])
+
+	thSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-lk-th-"+suffix, "e2e-lk-th-"+suffix+"@superwizor.test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = thSession.cleanup() })
+	thIdentityConn := dial(t, cfg.identityURL, thSession.IDToken)
+	defer thIdentityConn.Close()
+	thIdentity := identityv1.NewIdentityServiceClient(thIdentityConn)
+	thClinicalConn := dial(t, cfg.clinicalURL, thSession.IDToken)
+	defer thClinicalConn.Close()
+	thClinical := clinicalv1.NewClinicalServiceClient(thClinicalConn)
+
+	therapist, err := thIdentity.CreateUser(ctx, &identityv1.CreateUserRequest{
+		FirebaseUid: thSession.UID, Email: thSession.Email,
+		Role:      identityv1.UserRole_USER_ROLE_THERAPIST,
+		FirstName: "Lockout", LastName: "Therapist",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err)
+	therapistID := uuid.MustParse(therapist.Id)
+	t.Cleanup(func() { cleanupClientPanel(t, pool, therapistID) })
+
+	pf, err := thClinical.CreatePatientFile(ctx, &clinicalv1.CreatePatientFileRequest{
+		TherapistId: therapist.Id, ModalityCode: "CBT",
+		WorkingAlias: "Lockout E2E " + suffix,
+		ProcessType:  clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
+		HasRecordingConsent: true,
+		IdempotencyKey:      "e2e-lk-" + suffix,
+		PatientFirstName:    "Klient", PatientLastName: "Lockout",
+	})
+	require.NoError(t, err)
+	pfID := uuid.MustParse(pf.Id)
+	clientEmail := "e2e-lk-client-" + suffix + "@superwizor.test"
+
+	issue := func() (string, string) {
+		inv, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
+			PatientFileId: pfID.String(), Email: clientEmail,
+		})
+		require.NoError(t, err)
+		raw := make([]byte, 32)
+		_, err = rand.Read(raw)
+		require.NoError(t, err)
+		token := base64.RawURLEncoding.EncodeToString(raw)
+		sum := sha256.Sum256([]byte(token))
+		_, err = pool.Exec(ctx, `UPDATE invitations SET token_hash = $2
+			WHERE patient_file_id = $1 AND accepted_at IS NULL`, pfID, sum[:])
+		require.NoError(t, err)
+		return token, inv.PairingCode
+	}
+	token, code := issue()
+
+	clSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-lk-cl-"+suffix, clientEmail)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clSession.cleanup() })
+	clConn := dial(t, cfg.identityURL, clSession.IDToken)
+	defer clConn.Close()
+	clIdentity := identityv1.NewIdentityServiceClient(clConn)
+
+	accept := func(tok, pc string) error {
+		_, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+			Token: tok, PairingCode: pc, FirebaseUid: clSession.UID,
+			FirstName: "Klient", LastName: "Lockout",
+			UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+		})
+		return err
+	}
+
+	// 4 błędne kody → PAIRING_CODE_INVALID; 5. → blokada.
+	for i := 1; i <= 4; i++ {
+		err := accept(token, "000000")
+		require.Error(t, err, "wrong code #%d", i)
+		require.Contains(t, err.Error(), "PAIRING_CODE_INVALID", "attempt %d", i)
+	}
+	err = accept(token, "000000")
+	require.Error(t, err, "5th wrong code must block")
+	require.Contains(t, err.Error(), "INVITATION_BLOCKED")
+
+	// Nawet poprawny kod po blokadzie odpada.
+	err = accept(token, code)
+	require.Error(t, err, "correct code after lockout must still fail")
+	require.Contains(t, err.Error(), "INVITATION_BLOCKED")
+
+	// Re-invite: nowy token+kod, licznik od zera → aktywacja przechodzi.
+	token2, code2 := issue()
+	require.NoError(t, accept(token2, code2), "accept after re-invite")
+	t.Log("✓ lockout po 5 próbach; re-invite odblokowuje z nowym kodem")
+}
+
+// TestClientInvite_Revoke — docs/42 O0: cofnięte zaproszenie ma martwy
+// token nawet z poprawnym kodem; status wraca do NONE; revoke jest
+// idempotentny.
+func TestClientInvite_Revoke(t *testing.T) {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		t.Skip("DATABASE_URL not set — needs the token-hash seam")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	cfg := loadConfig(t)
+	pool, err := pgxpool.New(ctx, dbURL)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	suffix := strings.ToLower(uuid.NewString()[:8])
+
+	thSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-rv-th-"+suffix, "e2e-rv-th-"+suffix+"@superwizor.test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = thSession.cleanup() })
+	thIdentityConn := dial(t, cfg.identityURL, thSession.IDToken)
+	defer thIdentityConn.Close()
+	thIdentity := identityv1.NewIdentityServiceClient(thIdentityConn)
+	thClinicalConn := dial(t, cfg.clinicalURL, thSession.IDToken)
+	defer thClinicalConn.Close()
+	thClinical := clinicalv1.NewClinicalServiceClient(thClinicalConn)
+
+	therapist, err := thIdentity.CreateUser(ctx, &identityv1.CreateUserRequest{
+		FirebaseUid: thSession.UID, Email: thSession.Email,
+		Role:      identityv1.UserRole_USER_ROLE_THERAPIST,
+		FirstName: "Revoke", LastName: "Therapist",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err)
+	therapistID := uuid.MustParse(therapist.Id)
+	t.Cleanup(func() { cleanupClientPanel(t, pool, therapistID) })
+
+	pf, err := thClinical.CreatePatientFile(ctx, &clinicalv1.CreatePatientFileRequest{
+		TherapistId: therapist.Id, ModalityCode: "CBT",
+		WorkingAlias: "Revoke E2E " + suffix,
+		ProcessType:  clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
+		HasRecordingConsent: true,
+		IdempotencyKey:      "e2e-rv-" + suffix,
+		PatientFirstName:    "Klient", PatientLastName: "Revoke",
+	})
+	require.NoError(t, err)
+	pfID := uuid.MustParse(pf.Id)
+	clientEmail := "e2e-rv-client-" + suffix + "@superwizor.test"
+
+	inv, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
+		PatientFileId: pfID.String(), Email: clientEmail,
+	})
+	require.NoError(t, err)
+	raw := make([]byte, 32)
+	_, err = rand.Read(raw)
+	require.NoError(t, err)
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	sum := sha256.Sum256([]byte(token))
+	_, err = pool.Exec(ctx, `UPDATE invitations SET token_hash = $2
+		WHERE patient_file_id = $1 AND accepted_at IS NULL`, pfID, sum[:])
+	require.NoError(t, err)
+
+	st, err := thIdentity.RevokeClientInvite(ctx, &identityv1.RevokeClientInviteRequest{
+		PatientFileId: pfID.String(),
+	})
+	require.NoError(t, err, "RevokeClientInvite")
+	require.Equal(t, "NONE", st.Status, "status po revoke")
+
+	// Idempotencja.
+	st2, err := thIdentity.RevokeClientInvite(ctx, &identityv1.RevokeClientInviteRequest{
+		PatientFileId: pfID.String(),
+	})
+	require.NoError(t, err, "second revoke is a no-op")
+	require.Equal(t, "NONE", st2.Status)
+
+	// Martwy token — nawet z poprawnym kodem.
+	clSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-rv-cl-"+suffix, clientEmail)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clSession.cleanup() })
+	clConn := dial(t, cfg.identityURL, clSession.IDToken)
+	defer clConn.Close()
+	clIdentity := identityv1.NewIdentityServiceClient(clConn)
+	_, err = clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+		Token: token, PairingCode: inv.PairingCode, FirebaseUid: clSession.UID,
+		FirstName: "Klient", LastName: "Revoke",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.Error(t, err, "revoked token must be dead")
+	t.Log("✓ revoke: token martwy, status NONE, idempotentne")
 }
