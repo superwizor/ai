@@ -780,6 +780,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
 		  AND u.deleted_at IS NULL
+		  AND u.email NOT LIKE 'kolodzmaciej%'
 		  AND u.email NOT LIKE '%@example.com'
 		  AND u.email NOT LIKE '%@superwizor.test'
 		  AND u.email NOT LIKE '%@test.pl'
@@ -834,6 +835,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
 		  AND u.deleted_at IS NULL
+		  AND u.email NOT LIKE 'kolodzmaciej%'
 		  AND u.email NOT LIKE '%@example.com'
 		  AND u.email NOT LIKE '%@superwizor.test'
 		  AND u.email NOT LIKE '%@test.pl'
