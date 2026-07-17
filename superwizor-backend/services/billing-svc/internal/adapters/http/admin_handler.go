@@ -1009,19 +1009,18 @@ func (h *AdminHandler) handleCRMBulkDelete(w http.ResponseWriter, r *http.Reques
 		uuids = append(uuids, id)
 	}
 
-	// 1. Soft-delete users in database
+	// 1. Exclude users from CRM by inserting them into crm_excluded_users
 	tag, err := h.pool.Exec(ctx, `
-		UPDATE users 
-		SET deleted_at = now() 
-		WHERE id = ANY($1::uuid[]) 
-		  AND deleted_at IS NULL
+		INSERT INTO crm_excluded_users (user_id, reason)
+		SELECT unnest($1::uuid[]), 'Bulk excluded from CRM'
+		ON CONFLICT (user_id) DO NOTHING
 	`, uuids)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to soft-delete users", err)
+		writeError(w, http.StatusInternalServerError, "failed to exclude users", err)
 		return
 	}
 
-	h.logger.InfoContext(ctx, "crm: bulk delete completed", "requested_count", len(uuids), "deleted_count", tag.RowsAffected())
+	h.logger.InfoContext(ctx, "crm: bulk delete completed", "requested_count", len(uuids), "excluded_count", tag.RowsAffected())
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message":       "ok",

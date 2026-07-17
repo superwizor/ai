@@ -822,7 +822,7 @@ export function CRMDashboard() {
   const bulkDelete = async () => {
     if (selected.size === 0) return;
     setConfirmAction({
-      message: `CZY NA PEWNO CHCESZ USUNĄĆ ${selected.size} zaznaczonych użytkowników? Ta operacja trwale zablokuje ich dostęp do aplikacji.`,
+      message: `CZY NA PEWNO CHCESZ USUNĄĆ ${selected.size} zaznaczonych użytkowników z widoku CRM? Konta użytkowników i ich dane w bazie pozostaną nienaruszone, ale znikną oni z paneli CRM.`,
       onConfirm: async () => {
         try {
           const resp = await crmFetch("/admin/crm/subscribers/bulk-delete", {
