@@ -15,6 +15,10 @@ To create your account, click this link:
 
 {accept_url}
 
+**To activate the account you will need a 6-digit code that you will
+receive directly from your therapist** (in person or by phone). The code
+is never sent by e-mail — it is an additional safeguard for your data.
+
 The link expires {expires_at}. Only you and your therapist can access your materials.
 
 Best regards,

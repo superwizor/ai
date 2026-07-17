@@ -15,6 +15,10 @@ Aby utworzyć konto, kliknij ten link:
 
 {accept_url}
 
+**Do aktywacji konta potrzebny będzie 6-cyfrowy kod, który otrzymasz
+bezpośrednio od terapeuty** (osobiście lub telefonicznie). Kod nie jest
+wysyłany e-mailem — to dodatkowe zabezpieczenie Twoich danych.
+
 Link wygaśnie {expires_at}. Dostęp do Twoich materiałów ma wyłącznie Ty i Twój terapeuta.
 
 Pozdrawiamy,
