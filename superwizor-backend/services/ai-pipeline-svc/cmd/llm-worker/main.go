@@ -564,16 +564,12 @@ func extractPIIFallback(ctx context.Context, reportLanguage string, chunks []tra
 	prompt := fmt.Sprintf(`Przeanalizuj transkrypt sesji terapeutycznej i wypisz dane identyfikujące.
 
 ZASADY (docs/41):
-- WYŁĄCZNIE linie w formacie [TOKEN]: forma1 | forma2 | ... — nic więcej.
-- Kategorie: [NAZWISKO-n] (nazwiska — NIE imiona!), [PRACODAWCA(-n)], [SZKOŁA(-n)], [MIEJSCOWOŚĆ-x], [ADRES], [DATA-URODZENIA].
-- Podaj WSZYSTKIE formy odmienione/zdrobniałe/przekręcone dokładnie tak, jak występują w tekście.
-- IMIONA POMIŃ — zostają. NIE zgaduj form nieobecnych w tekście.
-- Brak PII → zwróć pustą odpowiedź.
+%s
 
 JĘZYK: %s
 
 TRANSKRYPT:
-%s`, reportLanguage, transcriptStr)
+%s`, pseudonymize.PIIPromptRules, reportLanguage, transcriptStr)
 
 	cfg := metadataGenConfigMarkdown()
 	resp, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(prompt), cfg)
@@ -1131,9 +1127,10 @@ ZASADY:
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
 - RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
-- Sekcja "# PII" (docs/41): wypisz WYŁĄCZNIE dane identyfikujące obecne w transkrypcie, po jednej encji na linię, w formacie [TOKEN]: forma1 | forma2. Kategorie tokenów: [NAZWISKO-n] (nazwiska — NIE imiona!), [PRACODAWCA(-n)], [SZKOŁA(-n)], [MIEJSCOWOŚĆ-x], [ADRES] (ulice/numery), [DATA-URODZENIA]. Dla każdej encji podaj WSZYSTKIE formy odmienione/zdrobniałe/przekręcone występujące w tekście, dokładnie tak jak zapisane. IMIONA POMIŃ — zostają w tekście. NIE zgaduj form nieobecnych w transkrypcie. Brak PII → pomiń całą sekcję.
+- Sekcja "# PII" (docs/41) — zasady:
+%s
 - BEZ żadnego tekstu poza tym blokiem.`,
-			reportLanguage, transcriptStr)
+			reportLanguage, transcriptStr, pseudonymize.PIIPromptRules)
 	} else {
 		// Format A input, cluster grammar output (current Polish path
 		// — pl-PL has no native Chirp diarization).
