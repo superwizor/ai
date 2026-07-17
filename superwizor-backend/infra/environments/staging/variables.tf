@@ -52,3 +52,13 @@ variable "e2e_token_minters" {
   EOT
   default     = []
 }
+
+variable "stt_provider" {
+  type    = string
+  default = "chirp"
+}
+
+variable "stt_provider_allowlist" {
+  type    = string
+  default = ""
+}

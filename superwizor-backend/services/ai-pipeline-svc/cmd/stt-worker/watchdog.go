@@ -170,6 +170,17 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 			"chunk_index", op.ChunkIndex,
 			"operation_id", op.OperationID,
 		)
+		if op.Provider == "deepgram" {
+			// Deepgram rows have no long-running operation to poll — a
+			// pending row past the stuck threshold means the synchronous
+			// attempts (and their Pub/Sub redeliveries) dried up. One-shot
+			// fallback to Chirp (docs/39 §4); the transcript-exists guard
+			// inside handles the persisted-but-unmarked edge.
+			if err := rescueDeepgramOperation(ctx, opLogger, op); err != nil {
+				opLogger.Warn("deepgram rescue failed; will retry next tick", "error", err)
+			}
+			continue
+		}
 		if err := rescueOperation(ctx, opLogger, op); err != nil {
 			opLogger.Warn("rescue failed; will retry next tick", "error", err)
 			// Don't fail the HTTP response — each row is independent;
@@ -512,4 +523,22 @@ func truncateOpError(msg string) string {
 		return msg[:cap] + "...(truncated)"
 	}
 	return msg
+}
+
+// rescueDeepgramOperation handles a stuck provider='deepgram' row. By
+// the time the watchdog sees one (pending > 30 min), the redelivery-
+// driven takeover in processAudioDeepgram has stopped making progress —
+// fail the session over to Chirp exactly once. fallback_attempted rows
+// should not exist here (the fallback rewrites provider to 'chirp'),
+// but guard anyway so a partial failover can't loop.
+func rescueDeepgramOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) error {
+	if op.FallbackAttempted {
+		logger.Warn("deepgram row already failed over but still pending; leaving for give-up reaper")
+		return nil
+	}
+	if op.SourceAudioURI == "" {
+		logger.Warn("deepgram row has no source_audio_uri; cannot fall back — leaving for give-up reaper")
+		return nil
+	}
+	return fallbackToChirp(ctx, logger, op.SessionID, op.SourceAudioURI, op.LanguageCode)
 }

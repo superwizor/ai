@@ -42,6 +42,15 @@ type sttOpRow struct {
 	// FinalizedAt is nil when the row is still pending.
 	FinalizedAt   any // *time.Time on the wire; finalize only reads NULL/NOT-NULL state
 	FinalizeError *string
+	// Provider is the STT engine owning this row: "chirp" | "deepgram"
+	// (docs/39). Rows written before migration 000075 default to chirp.
+	Provider string
+	// RequestID is the Deepgram request handle (metadata.request_id)
+	// for provider-side audit; nil for Chirp rows.
+	RequestID *string
+	// FallbackAttempted marks a row failed over deepgram→chirp, so the
+	// failover runs at most once and can't ping-pong.
+	FallbackAttempted bool
 }
 
 // insertSTTOpParams is the write payload for a new stt_operations row.
@@ -55,6 +64,9 @@ type insertSTTOpParams struct {
 	LanguageCode          string
 	UsedNativeDiarization bool
 	SourceAudioURI        string
+	// Provider empty → "chirp" (matches the column default and every
+	// pre-000075 caller).
+	Provider string
 }
 
 // insertSTTOperation persists the submit record. Returns a unique-
@@ -65,15 +77,21 @@ func insertSTTOperation(ctx context.Context, p insertSTTOpParams) error {
 	if dbPool == nil {
 		return nil
 	}
+	provider := p.Provider
+	if provider == "" {
+		provider = "chirp"
+	}
 	_, err := dbPool.Exec(ctx, `
 		INSERT INTO stt_operations (
 			session_id, chunk_index, chunk_count, start_offset_ms,
 			operation_id, gcs_output_uri,
-			language_code, used_native_diarization, source_audio_uri
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			language_code, used_native_diarization, source_audio_uri,
+			provider
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		p.SessionID, p.ChunkIndex, p.ChunkCount, p.StartOffsetMS,
 		p.OperationID, p.GCSOutputURI,
 		p.LanguageCode, p.UsedNativeDiarization, p.SourceAudioURI,
+		provider,
 	)
 	return err
 }
@@ -245,7 +263,8 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 		SELECT id, session_id, chunk_index, chunk_count, start_offset_ms,
 		       operation_id, gcs_output_uri,
 		       language_code, used_native_diarization, finalize_error,
-		       source_audio_uri, retry_count, submitted_at
+		       source_audio_uri, retry_count, submitted_at,
+		       provider, request_id, fallback_attempted
 		FROM stt_operations
 		WHERE finalized_at IS NULL
 		  AND submitted_at < now() - make_interval(secs => $1)`,
@@ -262,6 +281,7 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 			&r.OperationID, &r.GCSOutputURI,
 			&r.LanguageCode, &r.UsedNativeDiarization, &r.FinalizeError,
 			&r.SourceAudioURI, &r.RetryCount, &r.SubmittedAt,
+			&r.Provider, &r.RequestID, &r.FallbackAttempted,
 		); err != nil {
 			return nil, err
 		}

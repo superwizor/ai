@@ -87,6 +87,10 @@ module "cloud_functions" {
   session_deleted_topic          = module.pubsub.session_deleted_topic
   session_status_changed_topic   = module.pubsub.session_status_changed_topic
   billing_svc_url                = var.billing_svc_url
+  # Deepgram provider (docs/39). Defaults: chirp + pusty canary.
+  # Walidacyjne przelaczenie: TF_VAR_stt_provider=deepgram terragrunt apply.
+  stt_provider                   = var.stt_provider
+  stt_provider_allowlist         = var.stt_provider_allowlist
   audio_uploaded_dlq_topic       = module.pubsub.audio_uploaded_dlq_topic
   transcript_completed_dlq_topic = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"

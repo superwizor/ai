@@ -84,3 +84,34 @@ variable "billing_svc_url" {
   description = "Cloud Run URL for billing-svc — passed to stt-worker as BILLING_SVC_URL env so post-STT finalize can call CommitUsage. Empty disables the billing hook."
   default     = ""
 }
+
+# ── Deepgram provider (docs/39_DEEPGRAM_STT_MIGRATION.md) ─────────────
+
+variable "deepgram_api_url" {
+  type = string
+  # EU-resident endpoint ONLY. The worker refuses to start on any other
+  # value; this variable exists for test doubles, not for region choice.
+  default = "https://api.eu.deepgram.com"
+}
+
+variable "deepgram_api_key_secret_id" {
+  type = string
+  # Secret Manager secret name holding the Deepgram API key. Empty
+  # disables the provider entirely (no secret mount, worker falls back
+  # to chirp regardless of STT_PROVIDER).
+  default = "deepgram-api-key"
+}
+
+variable "stt_provider" {
+  type = string
+  # "chirp" | "deepgram". Default chirp until the docs/39 Faza-3 canary
+  # completes. Kill-switch: flip back + terragrunt apply.
+  default = "chirp"
+}
+
+variable "stt_provider_allowlist" {
+  type = string
+  # CSV of therapist/org UUIDs canaried onto deepgram while the default
+  # stays chirp. Empty = no canary.
+  default = ""
+}
