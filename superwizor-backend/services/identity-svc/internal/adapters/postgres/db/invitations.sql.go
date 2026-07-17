@@ -54,7 +54,7 @@ INSERT INTO invitations (
     invited_role, allocation_id, invited_first_name, invited_last_name,
     patient_file_id
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id
+RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at
 `
 
 type CreateInvitationParams struct {
@@ -107,12 +107,15 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
 		&i.PatientFileID,
+		&i.PairingCodeHash,
+		&i.CodeAttempts,
+		&i.RevokedAt,
 	)
 	return i, err
 }
 
 const getInvitationByOrgEmail = `-- name: GetInvitationByOrgEmail :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
 WHERE organization_id = $1 AND email = $2 AND accepted_at IS NULL
 `
 
@@ -139,17 +142,23 @@ func (q *Queries) GetInvitationByOrgEmail(ctx context.Context, arg GetInvitation
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
 		&i.PatientFileID,
+		&i.PairingCodeHash,
+		&i.CodeAttempts,
+		&i.RevokedAt,
 	)
 	return i, err
 }
 
 const getUnacceptedInvitationByTokenHash = `-- name: GetUnacceptedInvitationByTokenHash :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
-WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now()
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
+WHERE token_hash = $1 AND accepted_at IS NULL AND revoked_at IS NULL
+  AND expires_at > now()
 `
 
 // The hot path on AcceptInvitation. Uses idx_invitations_token_hash
 // partial index (WHERE accepted_at IS NULL).
+// revoked_at IS NULL: docs/42 — an explicitly revoked invitation is
+// dead even if the link is still within TTL.
 func (q *Queries) GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenHash []byte) (Invitation, error) {
 	row := q.db.QueryRow(ctx, getUnacceptedInvitationByTokenHash, tokenHash)
 	var i Invitation
@@ -168,12 +177,30 @@ func (q *Queries) GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenH
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
 		&i.PatientFileID,
+		&i.PairingCodeHash,
+		&i.CodeAttempts,
+		&i.RevokedAt,
 	)
 	return i, err
 }
 
+const incrementInvitationCodeAttempts = `-- name: IncrementInvitationCodeAttempts :one
+UPDATE invitations
+SET code_attempts = code_attempts + 1
+WHERE id = $1
+RETURNING code_attempts
+`
+
+// docs/42: atomic wrong-pairing-code counter; caller blocks at >= 5.
+func (q *Queries) IncrementInvitationCodeAttempts(ctx context.Context, id uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementInvitationCodeAttempts, id)
+	var code_attempts int32
+	err := row.Scan(&code_attempts)
+	return code_attempts, err
+}
+
 const listPendingInvitationsByOrg = `-- name: ListPendingInvitationsByOrg :many
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
 WHERE organization_id = $1 AND accepted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -202,6 +229,9 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 			&i.InvitedFirstName,
 			&i.InvitedLastName,
 			&i.PatientFileID,
+			&i.PairingCodeHash,
+			&i.CodeAttempts,
+			&i.RevokedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -214,7 +244,7 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 }
 
 const listPendingManagerInvitationsByOrg = `-- name: ListPendingManagerInvitationsByOrg :many
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
 WHERE organization_id = $1 AND accepted_at IS NULL AND invited_role = 'ORG_ADMIN'
 ORDER BY created_at DESC
 `
@@ -244,6 +274,9 @@ func (q *Queries) ListPendingManagerInvitationsByOrg(ctx context.Context, organi
 			&i.InvitedFirstName,
 			&i.InvitedLastName,
 			&i.PatientFileID,
+			&i.PairingCodeHash,
+			&i.CodeAttempts,
+			&i.RevokedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -346,4 +379,38 @@ func (q *Queries) RevokeManagerInvitation(ctx context.Context, arg RevokeManager
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const revokePatientInvitation = `-- name: RevokePatientInvitation :execrows
+UPDATE invitations
+SET revoked_at = now()
+WHERE patient_file_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+// docs/42: therapist-initiated revoke of the kartoteka's pending
+// client invitation. Idempotent (second call affects 0 rows).
+func (q *Queries) RevokePatientInvitation(ctx context.Context, patientFileID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePatientInvitation, patientFileID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setInvitationPairingCode = `-- name: SetInvitationPairingCode :exec
+UPDATE invitations
+SET pairing_code_hash = $2, code_attempts = 0, revoked_at = NULL
+WHERE id = $1
+`
+
+type SetInvitationPairingCodeParams struct {
+	ID              uuid.UUID `json:"id"`
+	PairingCodeHash []byte    `json:"pairing_code_hash"`
+}
+
+// docs/42: stamps/rotates the pairing-code hash; resets the attempt
+// counter and clears any revocation (deliberate re-invite).
+func (q *Queries) SetInvitationPairingCode(ctx context.Context, arg SetInvitationPairingCodeParams) error {
+	_, err := q.db.Exec(ctx, setInvitationPairingCode, arg.ID, arg.PairingCodeHash)
+	return err
 }

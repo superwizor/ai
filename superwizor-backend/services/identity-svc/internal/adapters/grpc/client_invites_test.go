@@ -29,6 +29,8 @@ type clientInviteFakeQuerier struct {
 	getPendingByFileFn     func(ctx context.Context, pf pgtype.UUID) (db.Invitation, error)
 
 	createInvitationCalls []db.CreateInvitationParams
+	// docs/42: zarejestrowane stemplowania hasha kodu parowania.
+	setPairingCodeCalls []db.SetInvitationPairingCodeParams
 }
 
 func (f *clientInviteFakeQuerier) GetUserByFirebaseUID(ctx context.Context, uid *string) (db.User, error) {
@@ -55,6 +57,10 @@ func (f *clientInviteFakeQuerier) SetPatientFileEmail(ctx context.Context, arg d
 func (f *clientInviteFakeQuerier) CreateInvitation(ctx context.Context, arg db.CreateInvitationParams) (db.Invitation, error) {
 	f.createInvitationCalls = append(f.createInvitationCalls, arg)
 	return f.createInvitationFn(ctx, arg)
+}
+func (f *clientInviteFakeQuerier) SetInvitationPairingCode(ctx context.Context, arg db.SetInvitationPairingCodeParams) error {
+	f.setPairingCodeCalls = append(f.setPairingCodeCalls, arg)
+	return nil
 }
 func (f *clientInviteFakeQuerier) GetPendingPatientInvitationByFile(ctx context.Context, pf pgtype.UUID) (db.Invitation, error) {
 	if f.getPendingByFileFn != nil {
@@ -117,6 +123,17 @@ func TestInviteClient_OwnerHappyPath_BindsKartotekaAndRole(t *testing.T) {
 	}
 	if inv.InvitedRole != identityv1.UserRole_USER_ROLE_PATIENT {
 		t.Errorf("invited_role = %v, want PATIENT", inv.InvitedRole)
+	}
+	// docs/42 O1: odpowiedź niesie 6-cyfrowy kod parowania, a jego hash
+	// wylądował w bazie (dokładnie raz).
+	if len(inv.PairingCode) != 6 {
+		t.Errorf("pairing_code = %q, want 6 digits", inv.PairingCode)
+	}
+	if len(q.setPairingCodeCalls) != 1 {
+		t.Fatalf("SetInvitationPairingCode calls = %d, want 1", len(q.setPairingCodeCalls))
+	}
+	if string(q.setPairingCodeCalls[0].PairingCodeHash) != string(hashPairingCode(inv.PairingCode)) {
+		t.Error("stored hash does not match the returned pairing code")
 	}
 	got := q.createInvitationCalls[0]
 	if !got.PatientFileID.Valid || uuid.UUID(got.PatientFileID.Bytes) != pfID {
@@ -260,5 +277,33 @@ func TestGetClientInviteStatus_States(t *testing.T) {
 	st, err = s.GetClientInviteStatus(authedCtx(), &identityv1.GetClientInviteStatusRequest{PatientFileId: uuid.NewString()})
 	if err != nil || st.Status != "INACTIVE" {
 		t.Fatalf("want INACTIVE, got %v err=%v", st.GetStatus(), err)
+	}
+}
+
+// docs/42: czyste funkcje kodu parowania.
+func TestPairingCodeHelpers(t *testing.T) {
+	code, hash, err := generatePairingCode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(code) != 6 {
+		t.Errorf("code %q, want 6 digits", code)
+	}
+	for _, r := range code {
+		if r < '0' || r > '9' {
+			t.Errorf("non-digit in code %q", code)
+		}
+	}
+	if string(hash) != string(hashPairingCode(code)) {
+		t.Error("hash mismatch with hashPairingCode")
+	}
+	// Normalizacja: spacje i white-space nie psują porównania
+	// (użytkownik wpisze "123 456").
+	if string(hashPairingCode(" 12 3 456 ")) != string(hashPairingCode("123456")) {
+		t.Error("normalization must strip spaces")
+	}
+	// Różne kody → różne hashe (sanity).
+	if string(hashPairingCode("000000")) == string(hashPairingCode("000001")) {
+		t.Error("distinct codes must hash differently")
 	}
 }

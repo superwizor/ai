@@ -8,7 +8,7 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetPendingPatientInvitationByFile :one
 SELECT * FROM invitations
-WHERE patient_file_id = $1 AND invited_role = 'PATIENT' AND accepted_at IS NULL;
+WHERE patient_file_id = $1 AND invited_role = 'PATIENT' AND accepted_at IS NULL AND revoked_at IS NULL;
 
 -- name: SetPatientFileEmail :exec
 UPDATE patient_files SET patient_email = $2 WHERE id = $1;

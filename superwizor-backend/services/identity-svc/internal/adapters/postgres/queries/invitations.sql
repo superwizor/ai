@@ -27,8 +27,11 @@ WHERE organization_id = $1 AND email = $2 AND accepted_at IS NULL;
 -- name: GetUnacceptedInvitationByTokenHash :one
 -- The hot path on AcceptInvitation. Uses idx_invitations_token_hash
 -- partial index (WHERE accepted_at IS NULL).
+-- revoked_at IS NULL: docs/42 — an explicitly revoked invitation is
+-- dead even if the link is still within TTL.
 SELECT * FROM invitations
-WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now();
+WHERE token_hash = $1 AND accepted_at IS NULL AND revoked_at IS NULL
+  AND expires_at > now();
 
 -- name: MarkInvitationAccepted :exec
 UPDATE invitations
@@ -70,3 +73,24 @@ ORDER BY created_at ASC;
 SELECT COUNT(*) FROM invitations
 WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now()
   AND id <> $2;
+
+-- name: RevokePatientInvitation :execrows
+-- docs/42: therapist-initiated revoke of the kartoteka's pending
+-- client invitation. Idempotent (second call affects 0 rows).
+UPDATE invitations
+SET revoked_at = now()
+WHERE patient_file_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL;
+
+-- name: IncrementInvitationCodeAttempts :one
+-- docs/42: atomic wrong-pairing-code counter; caller blocks at >= 5.
+UPDATE invitations
+SET code_attempts = code_attempts + 1
+WHERE id = $1
+RETURNING code_attempts;
+
+-- name: SetInvitationPairingCode :exec
+-- docs/42: stamps/rotates the pairing-code hash; resets the attempt
+-- counter and clears any revocation (deliberate re-invite).
+UPDATE invitations
+SET pairing_code_hash = $2, code_attempts = 0, revoked_at = NULL
+WHERE id = $1;

@@ -92,10 +92,14 @@ type Querier interface {
 	GetSeatAllocationForUpdate(ctx context.Context, id uuid.UUID) (OrgSeatAllocation, error)
 	// The hot path on AcceptInvitation. Uses idx_invitations_token_hash
 	// partial index (WHERE accepted_at IS NULL).
+	// revoked_at IS NULL: docs/42 — an explicitly revoked invitation is
+	// dead even if the link is still within TTL.
 	GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenHash []byte) (Invitation, error)
 	GetUserByEmail(ctx context.Context, email *string) (User, error)
 	GetUserByFirebaseUID(ctx context.Context, firebaseUid *string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// docs/42: atomic wrong-pairing-code counter; caller blocks at >= 5.
+	IncrementInvitationCodeAttempts(ctx context.Context, id uuid.UUID) (int32, error)
 	// Used by RegisterOrganization (sets the just-created ORG_ADMIN user's
 	// organization_id to the new org) and AcceptInvitation (sets the new
 	// THERAPIST's org to the inviting org).
@@ -123,6 +127,12 @@ type Querier interface {
 	// Guarded to accepted_at IS NULL + invited_role = 'ORG_ADMIN' so a
 	// therapist/client invite or an accepted row can't be removed here.
 	RevokeManagerInvitation(ctx context.Context, arg RevokeManagerInvitationParams) (int64, error)
+	// docs/42: therapist-initiated revoke of the kartoteka's pending
+	// client invitation. Idempotent (second call affects 0 rows).
+	RevokePatientInvitation(ctx context.Context, patientFileID pgtype.UUID) (int64, error)
+	// docs/42: stamps/rotates the pairing-code hash; resets the attempt
+	// counter and clears any revocation (deliberate re-invite).
+	SetInvitationPairingCode(ctx context.Context, arg SetInvitationPairingCodeParams) error
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
 	SetPatientFileEmail(ctx context.Context, arg SetPatientFileEmailParams) error
 	SetPatientFilePatientID(ctx context.Context, arg SetPatientFilePatientIDParams) error
