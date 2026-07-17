@@ -27,6 +27,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/pseudonymize"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
@@ -311,18 +312,69 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return failGen(err, "metadata")
 	}
 
+	// Pseudonimizacja (docs/41, fail-open): zbuduj plan redakcji z sekcji
+	// # PII call-1; gdy jej brak (gramatyka klastrująca / JSON / model
+	// pominął) — mini-call fallbacku. Każde niepowodzenie → raport idzie
+	// BEZ pseudonimizacji + glosny log (nowa klasa zawieszonych sesji
+	// byłaby gorsza niż status quo — lekcja docs/21).
+	pMode := pseudonymizeMode()
+	workChunks := chunks
+	if pMode != "off" {
+		entities := metadataPayload.PIIEntities
+		if len(entities) == 0 {
+			var perr error
+			entities, perr = extractPIIFallback(ctx, session.ReportLanguage, chunks)
+			if perr != nil {
+				logger.Error("pseudonymize_failed — proceeding UNREDACTED (fail-open)",
+					"stage", "fallback_call", "error", perr)
+				slog.InfoContext(ctx, "analytics", "ae", "llm.pseudonymize_failed",
+					"session_id", ev.SessionID, "stage", "fallback_call")
+				entities = nil
+			}
+		}
+		repl := pseudonymize.NewReplacer(piiEntitiesToEngine(entities))
+		var pstats pseudonymize.Stats
+		workChunks, pstats = pseudonymizeChunks(repl, chunks)
+		if pMode == "all" {
+			metadataPayload.Title, _ = repl.Apply(metadataPayload.Title)
+			metadataPayload.SummaryShort, _ = repl.Apply(metadataPayload.SummaryShort)
+			metadataPayload.RAGSummaryChunk, _ = repl.Apply(metadataPayload.RAGSummaryChunk)
+			for i := range metadataPayload.RAGThemes {
+				metadataPayload.RAGThemes[i], pstats = repl.Apply(metadataPayload.RAGThemes[i])
+			}
+		}
+		slog.InfoContext(ctx, "analytics", "ae", "llm.pseudonymize_applied",
+			"session_id", ev.SessionID,
+			"mode", pMode,
+			"entities", pstats.EntityCount,
+			"replacements", pstats.Replacements,
+			"regex_replacements", pstats.RegexReplacements,
+			"collisions", pstats.Collisions,
+			"unmatched_forms", len(pstats.UnmatchedForms))
+		if len(pstats.UnmatchedForms) > 0 {
+			logger.Warn("pseudonymize: model listed forms absent from text (possible hallucination)",
+				"count", len(pstats.UnmatchedForms))
+		}
+	}
+
 	// Retrieve prior-session context using THIS session's distilled
-	// themes (docs/30). Best-effort — empty on any failure.
+	// themes (docs/30). Best-effort — empty on any failure. W trybie
+	// "all" zapytania i fallback head/tail idą po tekście zredagowanym.
+	ragChunks := chunks
+	if pMode == "all" {
+		ragChunks = workChunks
+	}
 	ragContext, err := loadRAGContextV2(ctx, ev.SessionID, session.PatientFileID,
-		metadataPayload.RAGThemes, metadataPayload.RAGSummaryChunk, chunks)
+		metadataPayload.RAGThemes, metadataPayload.RAGSummaryChunk, ragChunks)
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
 	}
 
 	// Call 2 — the full report, now grounded in the retrieved context.
+	// workChunks = zredagowany tekst gdy LLM_PSEUDONYMIZE != off.
 	reportJSON, tokenStats, err := generateReportBody(ctx, ev.SessionID, session.ReportLanguage,
-		modalityPrompt, ragContext, chunks, session.ReportPreferences, metadataPayload, stats)
+		modalityPrompt, ragContext, workChunks, session.ReportPreferences, metadataPayload, stats)
 	if err != nil {
 		return failGen(err, "report")
 	}
@@ -425,6 +477,10 @@ type ReportPayload struct {
 	// persisted as its own embedded rag_memories row for thread-level
 	// cross-session retrieval (docs/30). Empty for short/legacy sessions.
 	RAGThemes []string `json:"rag_themes,omitempty"`
+	// PIIEntities — docs/41: encje z sekcji `# PII` call-1 (markdown
+	// mode). Nigdy nie serializowane do raportu; konsumowane wyłącznie
+	// przez silnik pseudonimizacji w ProcessTranscript.
+	PIIEntities []diarization.PIIEntity `json:"-"`
 }
 
 // SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
@@ -465,6 +521,79 @@ var reportSchemaBytes []byte
 // New-SDK note: config is now passed PER CALL to
 // client.Models.GenerateContent(...) — there's no per-model
 // GenerationConfig slot to mutate (vertexai's pattern).
+// ── pseudonimizacja (docs/41) ───────────────────────────────────────
+
+// pseudonymizeMode: LLM_PSEUDONYMIZE ∈ {off, call2, all}. off = prompt
+// i pipeline bajt w bajt jak przed featurą.
+func pseudonymizeMode() string {
+	switch v := strings.ToLower(os.Getenv("LLM_PSEUDONYMIZE")); v {
+	case "call2", "all":
+		return v
+	default:
+		return "off"
+	}
+}
+
+// piiEntitiesToEngine converts parser entities to the engine's type.
+func piiEntitiesToEngine(in []diarization.PIIEntity) []pseudonymize.Entity {
+	out := make([]pseudonymize.Entity, 0, len(in))
+	for _, e := range in {
+		out = append(out, pseudonymize.Entity{Placeholder: e.Placeholder, Forms: e.Forms})
+	}
+	return out
+}
+
+// pseudonymizeChunks returns a redacted COPY of chunks (blob kanoniczny
+// nietknięty — ADR-IMPL-006; redagujemy tylko tekst idący do promptów).
+func pseudonymizeChunks(r *pseudonymize.Replacer, chunks []transcriptfmt.Chunk) ([]transcriptfmt.Chunk, pseudonymize.Stats) {
+	out := make([]transcriptfmt.Chunk, len(chunks))
+	var last pseudonymize.Stats
+	copy(out, chunks)
+	for i := range out {
+		out[i].Text, last = r.Apply(out[i].Text)
+	}
+	return out, last
+}
+
+// extractPIIFallback — docs/41 §3.4: osobny mini-call ekstrakcji PII dla
+// ścieżek, gdzie call-1 nie niesie sekcji # PII (gramatyka klastrująca
+// na fallbacku Chirp, tryb JSON, albo model pominął sekcję). Wyjście:
+// wyłącznie linie `[TOKEN]: formy`, parsowane tolerancyjnie.
+func extractPIIFallback(ctx context.Context, reportLanguage string, chunks []transcriptfmt.Chunk) ([]diarization.PIIEntity, error) {
+	transcriptStr := transcriptfmt.FormatSpeakerTurns(chunks)
+	prompt := fmt.Sprintf(`Przeanalizuj transkrypt sesji terapeutycznej i wypisz dane identyfikujące.
+
+ZASADY (docs/41):
+- WYŁĄCZNIE linie w formacie [TOKEN]: forma1 | forma2 | ... — nic więcej.
+- Kategorie: [NAZWISKO-n] (nazwiska — NIE imiona!), [PRACODAWCA(-n)], [SZKOŁA(-n)], [MIEJSCOWOŚĆ-x], [ADRES], [DATA-URODZENIA].
+- Podaj WSZYSTKIE formy odmienione/zdrobniałe/przekręcone dokładnie tak, jak występują w tekście.
+- IMIONA POMIŃ — zostają. NIE zgaduj form nieobecnych w tekście.
+- Brak PII → zwróć pustą odpowiedź.
+
+JĘZYK: %s
+
+TRANSKRYPT:
+%s`, reportLanguage, transcriptStr)
+
+	cfg := metadataGenConfigMarkdown()
+	resp, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(prompt), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("pii fallback call: %w", err)
+	}
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+		return nil, fmt.Errorf("pii fallback: no candidates")
+	}
+	var out strings.Builder
+	for _, part := range resp.Candidates[0].Content.Parts {
+		out.WriteString(part.Text)
+	}
+	entities, skipped := diarization.ParsePIIOnly(out.String())
+	if skipped > 0 {
+		slog.Warn("pii fallback: skipped malformed lines", "skipped", skipped)
+	}
+	return entities, nil
+}
+
 func metadataGenConfigJSON(schema *genai.Schema) *genai.GenerateContentConfig {
 	return &genai.GenerateContentConfig{
 		Temperature:      genai.Ptr[float32](geminiTempMetadata),
@@ -738,6 +867,8 @@ CZEGO NIE PISZ / WHAT NOT TO WRITE:
   what tool produced this output.
 - NIE rozwijaj sekcji o pola, których szablon nie wymaga.
 
+TOKENY PRYWATNOŚCI: fragmenty w nawiasach kwadratowych ([NAZWISKO-1], [PRACODAWCA], [MIEJSCOWOŚĆ-A], [ADRES], [IDENTYFIKATOR]) to celowa pseudonimizacja. Zachowuj je dosłownie, nie rozwijaj, nie komentuj i nie próbuj odgadywać ukrytych danych.
+
 ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - Raport powinien być WARTOŚCIOWY dla superwizora, NIE wielostronicowy.
 - Każda sekcja: 2-5 zdań, max 1 akapit. Wyjątek: studium przypadku / hipotezy
@@ -988,12 +1119,19 @@ Overall_diarization_confidence: 0.94
 RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
 RAG_Theme: <jeden odrębny wątek kliniczny TEJ sesji w jednej linii (2-3 zdania), np. "lęk przed matką — klient opisuje onieśmielenie i unikanie". Wygeneruj 2-5 osobnych linii "RAG_Theme:", każda inny temat mogący powrócić w przyszłych sesjach. BEZ danych identyfikujących, w 3. osobie. Nie dziel jednego tematu na kilka wpisów; nie twórz wątku ze small-talku. Pomiń gdy materiał zbyt krótki (≤1 chunk).>
 
+# PII
+
+[NAZWISKO-1]: Nowak | Nowaka | Nowakiem
+[PRACODAWCA]: Softex | Softexie
+[MIEJSCOWOŚĆ-A]: Wrocław | Wrocławiu
+
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
 - Po jednym wierszu na speakera w "# Speakers".
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
 - RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
+- Sekcja "# PII" (docs/41): wypisz WYŁĄCZNIE dane identyfikujące obecne w transkrypcie, po jednej encji na linię, w formacie [TOKEN]: forma1 | forma2. Kategorie tokenów: [NAZWISKO-n] (nazwiska — NIE imiona!), [PRACODAWCA(-n)], [SZKOŁA(-n)], [MIEJSCOWOŚĆ-x], [ADRES] (ulice/numery), [DATA-URODZENIA]. Dla każdej encji podaj WSZYSTKIE formy odmienione/zdrobniałe/przekręcone występujące w tekście, dokładnie tak jak zapisane. IMIONA POMIŃ — zostają w tekście. NIE zgaduj form nieobecnych w transkrypcie. Brak PII → pomiń całą sekcję.
 - BEZ żadnego tekstu poza tym blokiem.`,
 			reportLanguage, transcriptStr)
 	} else {
@@ -1293,6 +1431,7 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		rag = r.Summary
 	}
 	return ReportPayload{
+		PIIEntities: r.PIIEntities,
 		Title:           r.Title,
 		SummaryShort:    r.Summary,
 		RAGSummaryChunk: rag,

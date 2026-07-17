@@ -228,7 +228,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_language_label => 'Report language';
 
   @override
-  String get addPatient_last_name_label => 'Initial or alias';
+  String get addPatient_last_name_label => 'Alias';
 
   @override
   String get addPatient_modality_label => 'Therapy modality';

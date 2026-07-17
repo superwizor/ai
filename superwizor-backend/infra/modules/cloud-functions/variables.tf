@@ -132,3 +132,9 @@ variable "stt_order_gate_max_wait_h" {
   # see wire_dlq.sh and ordering_gate.go for the coupled knobs.
   default = "12"
 }
+
+variable "llm_pseudonymize" {
+  type = string
+  # docs/41: "off" | "call2" | "all". Default off do czasu evalu.
+  default = "off"
+}

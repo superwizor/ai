@@ -678,6 +678,8 @@ Two env vars on the workers, both safe defaults:
 | `STT_NATIVE_DIARIZATION` (on stt-worker) | unset / `off` | Always-off regardless of language allow-list. Identical to pre-refactor behavior. | When `on`, allow-list (`chirp3DiarizationLanguages`) decides per-session. Languages flagged `false` still skip native diarization. |
 | `LLM_DIARIZATION_MODE` (on llm-worker) | `json` | Call 1 uses schema-constrained JSON; current parsing path. | `markdown` → call 1 emits Markdown, parsed by `internal/diarization`. Call 2 is **always Format B Markdown** input regardless of this flag. |
 
+**Pseudonimizacja (docs/41, 2026-07-17):** flaga `LLM_PSEUDONYMIZE ∈ {off, call2, all}` na llm-worker (default `off` — prompty bajt w bajt bez zmian). `call2` redaguje tekst transkryptu idący do call-2; `all` dodatkowo Title/Summary/RAG. Encje z sekcji `# PII` call-1 (gramatyka role-only); ścieżki bez sekcji (klastrująca/JSON) → mini-call `extractPIIFallback`. Silnik: `internal/pseudonymize` (warstwa regex zawsze aktywna). Fail-open: każdy błąd = raport bez redakcji + `llm.pseudonymize_failed`. Blob kanoniczny transkryptu NIETKNIĘTY (ADR-IMPL-006).
+
 **Ordering gate (docs/40, 2026-07-17):** dwie dodatkowe flagi na stt-worker:
 
 | Flag | Default | Effect |

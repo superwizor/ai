@@ -228,7 +228,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_language_label => 'Język raportu';
 
   @override
-  String get addPatient_last_name_label => 'Inicjał lub pseudonim';
+  String get addPatient_last_name_label => 'Pseudonim';
 
   @override
   String get addPatient_modality_label => 'Nurt terapeutyczny';

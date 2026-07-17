@@ -77,3 +77,8 @@ variable "stt_order_gate_max_wait_h" {
   type    = string
   default = "12"
 }
+
+variable "llm_pseudonymize" {
+  type    = string
+  default = "off"
+}

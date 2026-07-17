@@ -473,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_last_name_label.
   ///
   /// In pl, this message translates to:
-  /// **'Inicjał lub pseudonim'**
+  /// **'Pseudonim'**
   String get addPatient_last_name_label;
 
   /// No description provided for @addPatient_modality_label.

@@ -86,7 +86,7 @@
   "addPatient_email_required_error": "Podaj e-mail lub zmień język klienta.",
   "addPatient_first_name_label": "Imię (wymagane)",
   "addPatient_language_label": "Język raportu",
-  "addPatient_last_name_label": "Inicjał lub pseudonim",
+  "addPatient_last_name_label": "Pseudonim",
   "addPatient_modality_label": "Nurt terapeutyczny",
   "addPatient_no_consent_body": "Nie możemy rozpocząć sesji bez wyraźnej zgody klienta. Wymagają tego przepisy o ochronie danych.",
   "addPatient_no_consent_header": "Brak zgody na nagrywanie.",

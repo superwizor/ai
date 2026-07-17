@@ -314,6 +314,10 @@ resource "google_cloudfunctions2_function" "llm_worker" {
       # Rollback: change to "json" + re-apply (no rebuild needed,
       # terraform updates the env var in place in ~30s).
       LLM_DIARIZATION_MODE = "markdown"
+      # docs/41: pseudonimizacja raportów. off (default) → prompty i
+      # pipeline bajt w bajt jak przed featurą; call2 → redakcja tylko
+      # tekstu do call-2; all → także Title/Summary/RAG. Rollback = flip.
+      LLM_PSEUDONYMIZE = var.llm_pseudonymize
     }
 
     secret_environment_variables {

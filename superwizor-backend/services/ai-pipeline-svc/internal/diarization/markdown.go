@@ -69,6 +69,13 @@ type Result struct {
 	// model emitted none; never causes a parse failure. Capped at
 	// maxRAGThemes; each truncated to maxRAGThemeLen.
 	RAGThemes                    []string
+	// PIIEntities are the optional `# PII` section entries (docs/41):
+	// entities to redact from downstream text (surnames, employers,
+	// schools, localities, addresses — first names deliberately NOT
+	// listed). Tolerant parse: a missing section yields an empty slice,
+	// malformed lines are skipped and counted in PIISkippedLines.
+	PIIEntities     []PIIEntity
+	PIISkippedLines int
 	OverallDiarizationConfidence float64
 	Speakers                     []Speaker
 	// DroppedDuplicates counts cross-group chunk-index collisions the
@@ -80,6 +87,15 @@ type Result struct {
 	// TestParse_DuplicateChunkAcrossGroupsDropsAndContinues for the
 	// behaviour contract.
 	DroppedDuplicates int
+}
+
+// PIIEntity is one `[TOKEN]: form | form | …` line from `# PII`.
+// Placeholder keeps the square brackets (`[NAZWISKO-1]`); Forms are the
+// literal surface strings to replace, exactly as they appear in the
+// transcript (all inflections the model spotted).
+type PIIEntity struct {
+	Placeholder string
+	Forms       []string
 }
 
 // Speaker — one entry under "# Speakers". For cluster grammar Index
@@ -136,6 +152,10 @@ const (
 	// dropped silently — never a parse error). maxRAGThemeLen bounds a
 	// single theme line; oversize is truncated, mirroring RAGSummary.
 	maxRAGThemes   = 5
+	// PII caps (docs/41 §3.2): defensive bounds on the entity list.
+	maxPIIEntities = 40
+	maxPIIForms    = 15
+	maxPIIFormLen  = 60
 	maxRAGThemeLen = 400
 )
 
@@ -170,6 +190,8 @@ var (
 	// Repeated-prefix form (not a sub-list) keeps the strict line-based
 	// parser happy; aliases mirror the RAG_Summary tolerance.
 	ragThemeLine = regexp.MustCompile(`^(?:RAG_Theme|RAGTheme|Rag_theme|rag_theme):\s*(.+)$`)
+	// "[NAZWISKO-1]: Nowak | Nowaka | Nowakiem"  (# PII, docs/41)
+	piiLine = regexp.MustCompile(`^\[([^\]\s][^\]]{0,39})\]:\s*(.+)$`)
 )
 
 // ParseMetadataMarkdown parses an LLM call-1 response. Auto-detects
@@ -246,6 +268,14 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 			finalizeCurrentGroup()
 			sawMetadata = true
 			state = stateInMetadata
+			continue
+		}
+		if isSection(line, "PII") {
+			// docs/41: optional trailing section. Tolerant by design —
+			// pseudonymization is fail-open, so nothing in this section
+			// may fail the whole parse.
+			finalizeCurrentGroup()
+			state = stateInPII
 			continue
 		}
 
@@ -396,6 +426,9 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 				continue
 			}
 			return Result{}, fmt.Errorf("%w: %q in '# Metadata'", ErrUnexpectedLine, line)
+
+		case stateInPII:
+			res.parsePIILine(line)
 		}
 	}
 
@@ -419,6 +452,7 @@ const (
 	stateInit parseState = iota
 	stateInSpeakers
 	stateInMetadata
+	stateInPII
 )
 
 // isSection matches "# <name>" with case-insensitive name match. The
@@ -481,4 +515,53 @@ func parseChunkList(s string) ([]int, error) {
 		out = append(out, n)
 	}
 	return out, nil
+}
+
+
+// parsePIILine consumes one line inside `# PII`. Tolerant: anything
+// that doesn't match the grammar bumps PIISkippedLines and is dropped —
+// pseudonymization must never fail the report (docs/41 §4).
+func (r *Result) parsePIILine(line string) {
+	if len(r.PIIEntities) >= maxPIIEntities {
+		r.PIISkippedLines++
+		return
+	}
+	m := piiLine.FindStringSubmatch(line)
+	if m == nil {
+		r.PIISkippedLines++
+		return
+	}
+	placeholder := "[" + strings.TrimSpace(m[1]) + "]"
+	var forms []string
+	for _, f := range strings.Split(m[2], "|") {
+		f = strings.TrimSpace(f)
+		if f == "" || len(f) > maxPIIFormLen {
+			continue
+		}
+		forms = append(forms, f)
+		if len(forms) >= maxPIIForms {
+			break
+		}
+	}
+	if len(forms) == 0 {
+		r.PIISkippedLines++
+		return
+	}
+	r.PIIEntities = append(r.PIIEntities, PIIEntity{Placeholder: placeholder, Forms: forms})
+}
+
+// ParsePIIOnly parses a response consisting of (at most) a bare `# PII`
+// section — the shape emitted by the standalone extraction call used on
+// the cluster-grammar fallback path (docs/41 §3.4). Header optional;
+// every non-matching line is skipped, mirroring the in-band tolerance.
+func ParsePIIOnly(raw string) ([]PIIEntity, int) {
+	var r Result
+	for _, rawLine := range strings.Split(strings.TrimSpace(raw), "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || isSection(line, "PII") {
+			continue
+		}
+		r.parsePIILine(line)
+	}
+	return r.PIIEntities, r.PIISkippedLines
 }
