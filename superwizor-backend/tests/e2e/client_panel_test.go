@@ -246,10 +246,13 @@ func TestClientPanel_FullFlow(t *testing.T) {
 	require.NoError(t, err, "ClientMarkNoteRead")
 
 	// ── 8. Client note → therapist read-back + read-only guard ──────
+	// 000068/4d8f66e: notatki klienta są PRYWATNYMI szkicami do momentu
+	// wysłania — terapeuta widzi je dopiero po send_to_therapist.
 	clientNote, err := clClinical.ClientCreateNote(ctx, &clinicalv1.ClientCreateNoteRequest{
-		PatientFileId: pf.Id,
-		Title:         "Moje przemyślenia",
-		Text:          "Po sesji czuję się spokojniej.",
+		PatientFileId:   pf.Id,
+		Title:           "Moje przemyślenia",
+		Text:            "Po sesji czuję się spokojniej.",
+		SendToTherapist: true,
 	})
 	require.NoError(t, err, "ClientCreateNote")
 	require.Equal(t, "CLIENT_NOTE", clientNote.Kind)
