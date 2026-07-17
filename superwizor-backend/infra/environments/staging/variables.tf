@@ -79,6 +79,9 @@ variable "stt_order_gate_max_wait_h" {
 }
 
 variable "llm_pseudonymize" {
-  type    = string
-  default = "off"
+  type = string
+  # "all" od 2026-07-17 (docs/41: pii-eval GATE PASS x3, e2e strict
+  # leaks=[]). Jak wyzej — default utrwalony, zeby zwykly terragrunt
+  # apply bez TF_VAR nie cofnal pseudonimizacji na off.
+  default = "all"
 }
