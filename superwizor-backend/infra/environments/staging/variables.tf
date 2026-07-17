@@ -54,8 +54,11 @@ variable "e2e_token_minters" {
 }
 
 variable "stt_provider" {
-  type    = string
-  default = "chirp"
+  type = string
+  # "deepgram" od 2026-07-17 (decyzja po walidacji e2e docs/39 Faza 2/3).
+  # Default utrwalony tutaj, zeby zwykly terragrunt apply bez TF_VAR nie
+  # cofnal providera na chirp. Rollback = zmiana tego defaulta.
+  default = "deepgram"
 }
 
 variable "stt_provider_allowlist" {
@@ -64,8 +67,10 @@ variable "stt_provider_allowlist" {
 }
 
 variable "stt_order_gate" {
-  type    = string
-  default = "off"
+  type = string
+  # "on" od 2026-07-17 (walidacja e2e docs/40: serialization held,
+  # 4x ordering_gate_wait, zero bypass). Jak wyzej — default utrwalony.
+  default = "on"
 }
 
 variable "stt_order_gate_max_wait_h" {
