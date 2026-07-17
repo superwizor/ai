@@ -30,6 +30,19 @@
 #   (~5-10 minutes) and operators would be paged via the alerting
 #   policy on DLQ ingress.
 #
+# ORDERING GATE DEPENDS ON THESE VALUES (docs/40)
+# ------------------------------------------------
+# stt-worker's per-patient-file ordering gate uses INTENTIONAL NACKs
+# against the audio.uploaded Eventarc subscription as its wait loop:
+# a session whose predecessor is still processing is redelivered until
+# the predecessor finishes. The gate's bypass window
+# (STT_ORDER_GATE_MAX_WAIT_H, default 12h) is sized to stay BELOW the
+# retry envelope configured here (~15-16h at 100 attempts x <=600s).
+# If you lower max-delivery-attempts or shorten the backoff on the
+# audio.uploaded trigger subscription, re-derive that envelope and
+# shrink the gate's bypass window FIRST — otherwise waiting sessions
+# will dead-letter and the DLQ reaper will FAIL healthy sessions.
+#
 # Provider-limitation tracking:
 #   - docs/agents/TODO.md "Wire DLQ on Eventarc-managed Pub/Sub
 #     subscriptions" — original issue spec.

@@ -225,3 +225,18 @@ In CI, `db-migrator` Cloud Run Job runs `migrate up` on every push to main (befo
 - `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.5 — observability + Cloud Monitoring.
 - `docs/06_FAZA_2_INGESTION_AI.md` Sprints 2.1, 2.2, 2.4 — migration DDL, GCS, Pub/Sub.
 - `infra/modules/<module>/main.tf` — actual code is the truth.
+
+
+## Ordering gate ↔ retry subskrypcji audio.uploaded (docs/40, 2026-07-17)
+
+`infra/scripts/wire_dlq.sh` ustawia na Eventarc-owej subskrypcji
+stt-workera (`audio.uploaded`) DLQ + `max_delivery_attempts=100` przy
+backoffie 10–600 s (budżet ≈ 15–16 h). **Te wartości są teraz częścią
+kontraktu ordering gate'a** (`STT_ORDER_GATE`, docs/40): brama czeka na
+poprzednika przez CELOWE NACK-i, a jej okno bypass
+(`STT_ORDER_GATE_MAX_WAIT_H=12`) musi pozostać ostro poniżej budżetu
+retry. Obniżasz liczbę prób albo skracasz backoff → NAJPIERW zmniejsz
+okno bypass (trzy sprzężone miejsca: wire_dlq.sh, ordering_gate.go,
+test `TestOrderGateMaxWait_DLQSafetyInvariant`). Wpisy ERROR frameworka
+Cloud Functions z komunikatem `ordering gate: waiting for predecessor`
+są oczekiwane przy włączonej bramie — wykluczyć z alertingu.

@@ -678,6 +678,13 @@ Two env vars on the workers, both safe defaults:
 | `STT_NATIVE_DIARIZATION` (on stt-worker) | unset / `off` | Always-off regardless of language allow-list. Identical to pre-refactor behavior. | When `on`, allow-list (`chirp3DiarizationLanguages`) decides per-session. Languages flagged `false` still skip native diarization. |
 | `LLM_DIARIZATION_MODE` (on llm-worker) | `json` | Call 1 uses schema-constrained JSON; current parsing path. | `markdown` → call 1 emits Markdown, parsed by `internal/diarization`. Call 2 is **always Format B Markdown** input regardless of this flag. |
 
+**Ordering gate (docs/40, 2026-07-17):** dwie dodatkowe flagi na stt-worker:
+
+| Flag | Default | Effect |
+|---|---|---|
+| `STT_ORDER_GATE` | `off` | `on` → ProcessAudio serializuje sesje per patient_file: gdy wcześniejsza sesja tej samej kartoteki jest w `CREATED..ANALYZING`, handler zwraca błąd = **CELOWY NACK** (Pub/Sub redelivery jest pętlą odpytującą, nie awarią). Filtr alertów błędów musi wykluczać komunikat `ordering gate: waiting for predecessor`. |
+| `STT_ORDER_GATE_MAX_WAIT_H` | `12` | Okno bypass. TWARDY inwariant: < ~15 h budżetu retry subskrypcji (100 prób × ≤600 s, wire_dlq.sh) — inaczej czekające sesje spadają do DLQ. Test-strażnik: `TestOrderGateMaxWait_DLQSafetyInvariant`. |
+
 Rollout pattern: ship both flags off, run the 3-session probe on a `--no-traffic` revision with `LLM_DIARIZATION_MODE=markdown`, gate the staging promotion on probe success. `STT_NATIVE_DIARIZATION=on` only after a per-language probe shows Chirp 3's tags are usable (today: all languages stay `false`).
 
 Rollback = env-var flip. No DB / schema change.

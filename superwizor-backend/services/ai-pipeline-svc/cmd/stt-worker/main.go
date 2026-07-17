@@ -228,6 +228,14 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return nil
 	}
 
+	// Per-patient-file ordering gate (docs/40): when an earlier session
+	// of the same patient file is still in the pipeline, NACK and let
+	// Pub/Sub redelivery poll until it finishes. Must run BEFORE the
+	// TRANSCRIBING flip so the waiting session stays honestly in CREATED.
+	if gateErr, handled := applyOrderingGate(ctx, logger, event.SessionID); handled {
+		return gateErr
+	}
+
 	if err := updateSessionStatus(ctx, event.SessionID, "TRANSCRIBING"); err != nil {
 		logger.Error("status update", "error", err)
 		return err
