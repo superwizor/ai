@@ -62,6 +62,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, auth *AdminAuthMiddlew
 	mux.HandleFunc("POST /admin/email-drip", schedAuth.Require(h.handleEmailDrip))
 	mux.HandleFunc("POST /admin/renewal-reminders", schedAuth.Require(h.handleRenewalReminders))
 	mux.HandleFunc("GET /admin/crm/subscribers", auth.Require(h.handleCRMSubscribers))
+	mux.HandleFunc("POST /admin/crm/subscribers/bulk-delete", auth.Require(h.handleCRMBulkDelete))
 }
 
 // ---------- reservation-expiry ----------
@@ -464,6 +465,7 @@ func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
 		WHERE p.tier = 'TRIAL'
 		  AND s.status IN ('ACTIVE', 'TRIALING')
 		  AND uc.tokens_used >= p.tokens_per_period
+		  AND u.deleted_at IS NULL
 		  AND NOT EXISTS (
 		    SELECT 1 FROM email_drip_log edl
 		    WHERE edl.user_id = u.id
@@ -498,6 +500,7 @@ func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
 		JOIN users u ON u.id::text = edl.user_id
 		WHERE edl.template_name = 'trial_exhausted'
 		  AND edl.sent_at < now() - interval '3 days'
+		  AND u.deleted_at IS NULL
 		  AND NOT EXISTS (
 		    SELECT 1 FROM email_drip_log edl2
 		    WHERE edl2.user_id = edl.user_id
@@ -529,6 +532,7 @@ func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
 		JOIN users u ON u.id::text = edl.user_id
 		WHERE edl.template_name = 'trial_exhausted'
 		  AND edl.sent_at < now() - interval '7 days'
+		  AND u.deleted_at IS NULL
 		  AND NOT EXISTS (
 		    SELECT 1 FROM email_drip_log edl2
 		    WHERE edl2.user_id = edl.user_id
@@ -568,6 +572,7 @@ func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
 		WHERE p.tier = 'BETA'
 		  AND s.status IN ('ACTIVE', 'TRIALING')
 		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND u.deleted_at IS NULL
 		  AND NOT EXISTS (
 		    SELECT 1 FROM email_drip_log edl
 		    WHERE edl.user_id = u.id::text
@@ -629,6 +634,7 @@ func (h *AdminHandler) handleRenewalReminders(w http.ResponseWriter, r *http.Req
 		WHERE s.status = 'ACTIVE'
 		  AND s.provider = 'STRIPE'
 		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND u.deleted_at IS NULL
 		  AND NOT EXISTS (
 		    SELECT 1 FROM email_drip_log edl
 		    WHERE edl.user_id = u.id::text
@@ -773,6 +779,8 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
+		  AND u.deleted_at IS NULL
+		  AND u.email NOT LIKE 'kolodzmaciej%'
 		  AND u.email NOT LIKE '%@example.com'
 		  AND u.email NOT LIKE '%@superwizor.test'
 		  AND u.email NOT LIKE '%@test.pl'
@@ -826,6 +834,8 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
+		  AND u.deleted_at IS NULL
+		  AND u.email NOT LIKE 'kolodzmaciej%'
 		  AND u.email NOT LIKE '%@example.com'
 		  AND u.email NOT LIKE '%@superwizor.test'
 		  AND u.email NOT LIKE '%@test.pl'
@@ -923,6 +933,9 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		if alertFilter == "warning" && sub.CreditAlert != "critical" && sub.CreditAlert != "warning" {
 			continue
 		}
+		if alertFilter == "expiring" && (sub.PeriodEnd == "" || sub.DaysUntilRenewal > 3) {
+			continue
+		}
 
 		// Server-side text search (P2.4 fix — search must run before
 		// pagination so totalFiltered reflects the real count)
@@ -965,5 +978,52 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		PerPage:     perPage,
 		GlobalStats: globalStats,
 		Message:     "ok",
+	})
+}
+
+// handleCRMBulkDelete — POST /admin/crm/subscribers/bulk-delete
+func (h *AdminHandler) handleCRMBulkDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "crm: bulk delete requested")
+
+	var req struct {
+		UserIDs []string `json:"user_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", err)
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "no users specified", "deleted_count": 0})
+		return
+	}
+
+	uuids := make([]uuid.UUID, 0, len(req.UserIDs))
+	for _, idStr := range req.UserIDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid uuid %q", idStr), err)
+			return
+		}
+		uuids = append(uuids, id)
+	}
+
+	// 1. Exclude users from CRM by inserting them into crm_excluded_users
+	tag, err := h.pool.Exec(ctx, `
+		INSERT INTO crm_excluded_users (user_id, reason)
+		SELECT unnest($1::uuid[]), 'Bulk excluded from CRM'
+		ON CONFLICT (user_id) DO NOTHING
+	`, uuids)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to exclude users", err)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "crm: bulk delete completed", "requested_count", len(uuids), "excluded_count", tag.RowsAffected())
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message":       "ok",
+		"deleted_count": tag.RowsAffected(),
 	})
 }

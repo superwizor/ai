@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 10_wyslij_googleplay.sh
+# 11_wyslij_googleplay_live.sh
 set -e
-echo "🚀 Przygotowanie wersji do Google Play..."
+echo "🚀 Przygotowanie wersji produkcyjnej (LIVE) do Google Play..."
 
 # Wyszukaj i załaduj zmienne środowiskowe z credentials.env jeśli istnieje
 ENV_FILE="$(dirname "$0")/../credentials.env"
@@ -49,9 +49,9 @@ if [ -z "$TOKEN" ]; then
 fi
 
 cd ../../superwizor-backend
-go run scripts/upload_to_play.go -key "$PLAY_KEY_PATH" -aab "../flutter-app/superwizor/build/app/outputs/bundle/release/app-release.aab" -track "internal" -token "$TOKEN"
+go run scripts/upload_to_play.go -key "$PLAY_KEY_PATH" -aab "../flutter-app/superwizor/build/app/outputs/bundle/release/app-release.aab" -track "production" -token "$TOKEN"
 
 echo "============================================================"
-echo "🎉 Sukces! Aplikacja została automatycznie wysłana do Google Play."
-echo "👉 Wejdź za ok. 10-15 minut do Google Play Console, aby sprawdzić wersję roboczą."
+echo "🎉 Sukces! Aplikacja została wysłana bezpośrednio na produkcję (LIVE) w Google Play."
+echo "👉 Wejdź za ok. 10-15 minut do Google Play Console, aby sprawdzić wydanie produkcyjne."
 echo "============================================================"
