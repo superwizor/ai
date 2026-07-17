@@ -115,3 +115,20 @@ variable "stt_provider_allowlist" {
   # stays chirp. Empty = no canary.
   default = ""
 }
+
+# ── Per-patient-file ordering gate (docs/40_STT_ORDERING_GATE.md) ─────
+
+variable "stt_order_gate" {
+  type = string
+  # "on" | "off". Serializes sessions of one patient_file through the
+  # pipeline via intentional NACK-as-wait at ProcessAudio entry.
+  default = "off"
+}
+
+variable "stt_order_gate_max_wait_h" {
+  type = string
+  # Hours a successor may be held before proceeding out of order.
+  # MUST stay below the Eventarc subscription retry envelope (~15-16h);
+  # see wire_dlq.sh and ordering_gate.go for the coupled knobs.
+  default = "12"
+}

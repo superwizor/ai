@@ -73,24 +73,26 @@ module "migrations" {
 }
 
 module "cloud_functions" {
-  source                         = "../../modules/cloud-functions"
-  project_id                     = var.project_id
-  region                         = "europe-central2"
-  network_id                     = module.vpc.network_id
-  db_connection_name             = module.cloud_sql.instance_connection_name
-  db_url_secret_id               = "postgres-database-url"
-  vpc_connector_id               = module.vpc.vpc_connector_id
-  audio_bucket_name              = module.storage.audio_uploads_bucket_name
-  transcripts_raw_bucket_name    = module.storage.transcripts_raw_bucket_name
-  audio_uploaded_topic           = module.pubsub.audio_uploaded_topic
-  transcript_completed_topic     = module.pubsub.transcript_completed_topic
-  session_deleted_topic          = module.pubsub.session_deleted_topic
-  session_status_changed_topic   = module.pubsub.session_status_changed_topic
-  billing_svc_url                = var.billing_svc_url
+  source                       = "../../modules/cloud-functions"
+  project_id                   = var.project_id
+  region                       = "europe-central2"
+  network_id                   = module.vpc.network_id
+  db_connection_name           = module.cloud_sql.instance_connection_name
+  db_url_secret_id             = "postgres-database-url"
+  vpc_connector_id             = module.vpc.vpc_connector_id
+  audio_bucket_name            = module.storage.audio_uploads_bucket_name
+  transcripts_raw_bucket_name  = module.storage.transcripts_raw_bucket_name
+  audio_uploaded_topic         = module.pubsub.audio_uploaded_topic
+  transcript_completed_topic   = module.pubsub.transcript_completed_topic
+  session_deleted_topic        = module.pubsub.session_deleted_topic
+  session_status_changed_topic = module.pubsub.session_status_changed_topic
+  billing_svc_url              = var.billing_svc_url
   # Deepgram provider (docs/39). Defaults: chirp + pusty canary.
   # Walidacyjne przelaczenie: TF_VAR_stt_provider=deepgram terragrunt apply.
   stt_provider                   = var.stt_provider
   stt_provider_allowlist         = var.stt_provider_allowlist
+  stt_order_gate                 = var.stt_order_gate
+  stt_order_gate_max_wait_h      = var.stt_order_gate_max_wait_h
   audio_uploaded_dlq_topic       = module.pubsub.audio_uploaded_dlq_topic
   transcript_completed_dlq_topic = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"

@@ -224,6 +224,19 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # Canary allowlist: CSV of therapist/org UUIDs routed to deepgram
       # while STT_PROVIDER stays "chirp".
       STT_PROVIDER_ALLOWLIST = var.stt_provider_allowlist
+      # ── Per-patient-file ordering gate (docs/40) ───────────────────
+      # When "on", ProcessAudio NACKs sessions whose earlier sibling
+      # (same patient_file) is still in the pipeline. THE NACKS ARE
+      # INTENTIONAL — Pub/Sub redelivery (10-600s backoff, 100 attempts
+      # via infra/scripts/wire_dlq.sh) is the polling loop, not an
+      # error condition. Do NOT "fix" the resulting framework-level
+      # error logs; filter them by the "ordering gate" message.
+      STT_ORDER_GATE = var.stt_order_gate
+      # Bypass window in hours. HARD INVARIANT: must stay strictly
+      # below the subscription's ~15-16h retry envelope (100 × ≤600s),
+      # or waiting sessions exhaust delivery attempts and dead-letter.
+      # Guarded by TestOrderGateMaxWait_DLQSafetyInvariant.
+      STT_ORDER_GATE_MAX_WAIT_H = var.stt_order_gate_max_wait_h
     }
 
     secret_environment_variables {

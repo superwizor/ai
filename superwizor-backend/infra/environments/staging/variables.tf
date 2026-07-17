@@ -62,3 +62,13 @@ variable "stt_provider_allowlist" {
   type    = string
   default = ""
 }
+
+variable "stt_order_gate" {
+  type    = string
+  default = "off"
+}
+
+variable "stt_order_gate_max_wait_h" {
+  type    = string
+  default = "12"
+}
