@@ -992,23 +992,23 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
-	PatientEmail   *string `json:"patient_email"`
 	// Therapist-managed patient file lifecycle: ACTIVE | COMPLETED | PAUSED. COMPLETED replaces is_process_closed=true. Default ACTIVE.
 	LifecycleStatus string `json:"lifecycle_status"`
 	AvatarConfig    []byte `json:"avatar_config"`
 }
 
 type PatientNote struct {
-	ID                 uuid.UUID          `json:"id"`
-	PatientFileID      uuid.UUID          `json:"patient_file_id"`
-	TherapistID        uuid.UUID          `json:"therapist_id"`
-	Kind               string             `json:"kind"`
-	SourceSessionID    pgtype.UUID        `json:"source_session_id"`
-	TitleCiphertext    []byte             `json:"title_ciphertext"`
-	TitleEncryptedDek  []byte             `json:"title_encrypted_dek"`
-	TextCiphertext     []byte             `json:"text_ciphertext"`
-	TextEncryptedDek   []byte             `json:"text_encrypted_dek"`
-	SentToPatientAt    pgtype.Timestamptz `json:"sent_to_patient_at"`
+	ID                uuid.UUID          `json:"id"`
+	PatientFileID     uuid.UUID          `json:"patient_file_id"`
+	TherapistID       uuid.UUID          `json:"therapist_id"`
+	Kind              string             `json:"kind"`
+	SourceSessionID   pgtype.UUID        `json:"source_session_id"`
+	TitleCiphertext   []byte             `json:"title_ciphertext"`
+	TitleEncryptedDek []byte             `json:"title_encrypted_dek"`
+	TextCiphertext    []byte             `json:"text_ciphertext"`
+	TextEncryptedDek  []byte             `json:"text_encrypted_dek"`
+	SentToPatientAt   pgtype.Timestamptz `json:"sent_to_patient_at"`
+	// MASKED recipient of the action-plan e-mail (e.g. p***@example.com). Full address is resolved at send time and never persisted (000077).
 	SentToEmail        *string            `json:"sent_to_email"`
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`

@@ -70,26 +70,22 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 		return nil, err
 	}
 
-	// Resolve the recipient: explicit e-mail wins (and is persisted),
-	// else the kartoteka's stored patient_email.
+	// Resolve the recipient: explicit e-mail wins, else the resolved
+	// address (activated account → latest invitation). Nothing is
+	// persisted on the kartoteka — since migration 000077 the only
+	// durable copies of a client e-mail are the invitation row this
+	// call is about to create and users.email after activation.
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	if email != "" && !strings.Contains(email, "@") {
 		return nil, status.Error(codes.InvalidArgument, "invalid email")
 	}
 	if email == "" {
-		if pf.PatientEmail != nil {
-			email = strings.ToLower(strings.TrimSpace(*pf.PatientEmail))
+		if pf.ResolvedEmail != nil {
+			email = strings.ToLower(strings.TrimSpace(*pf.ResolvedEmail))
 		}
 		if email == "" {
 			return nil, status.Error(codes.FailedPrecondition,
 				"CLIENT_EMAIL_MISSING: kartoteka has no patient e-mail — provide one")
-		}
-	} else if pf.PatientEmail == nil || !strings.EqualFold(*pf.PatientEmail, email) {
-		if err := s.queries.SetPatientFileEmail(ctx, db.SetPatientFileEmailParams{
-			ID:           pfID,
-			PatientEmail: &email,
-		}); err != nil {
-			return nil, status.Errorf(codes.Internal, "persist patient email: %v", err)
 		}
 	}
 
@@ -212,8 +208,8 @@ func (s *Server) GetClientInviteStatus(ctx context.Context, req *identityv1.GetC
 	}
 
 	out := &identityv1.ClientInviteStatus{Status: "NONE"}
-	if pf.PatientEmail != nil {
-		out.Email = *pf.PatientEmail
+	if pf.ResolvedEmail != nil {
+		out.Email = *pf.ResolvedEmail
 	}
 
 	// Activated? The kartoteka's patient user carries a firebase_uid
@@ -297,13 +293,13 @@ func (s *Server) acceptClientInvitation(ctx context.Context, inv db.Invitation, 
 		user = existing
 
 	case errors.Is(lookupErr, pgx.ErrNoRows) && pf.PatientID.Valid:
-		// (2) activate the kartoteka's own patient row.
+		// (2) activate the kartoteka's own patient row. req.FirstName/
+		// LastName are deliberately NOT stamped (docs/43 §4: the client's
+		// only direct identifier is the e-mail).
 		user, err = qtx.ActivatePatientUser(ctx, db.ActivatePatientUserParams{
 			ID:          uuid.UUID(pf.PatientID.Bytes),
 			FirebaseUid: &verifiedUID,
 			Email:       &emailLC,
-			Column4:     req.FirstName,
-			Column5:     req.LastName,
 		})
 		if err != nil {
 			if isUniqueViolationErr(err) {
@@ -325,8 +321,6 @@ func (s *Server) acceptClientInvitation(ctx context.Context, inv db.Invitation, 
 						ID:          other.ID,
 						FirebaseUid: &verifiedUID,
 						Email:       &emailLC,
-						Column4:     req.FirstName,
-						Column5:     req.LastName,
 					})
 					if err != nil {
 						return nil, status.Errorf(codes.Internal, "activate patient: %v", err)
@@ -339,13 +333,14 @@ func (s *Server) acceptClientInvitation(ctx context.Context, inv db.Invitation, 
 		}
 
 	case errors.Is(lookupErr, pgx.ErrNoRows):
-		// (3) pseudonymous kartoteka — mint the patient user now.
+		// (3) pseudonymous kartoteka — mint the patient user now, with
+		// blank names (docs/43 §4: the account carries no identity
+		// beyond the e-mail; the kartoteka identifies the client by
+		// working_alias).
 		user, err = qtx.CreateUser(ctx, db.CreateUserParams{
 			Role:           "PATIENT",
 			FirebaseUid:    &verifiedUID,
 			Email:          &emailLC,
-			FirstName:      req.FirstName,
-			LastName:       req.LastName,
 			UiLanguage:     defaultStr(req.UiLanguage, "pl"),
 			Timezone:       defaultStr(req.Timezone, "Europe/Warsaw"),
 			HasAcceptedTos: req.HasAcceptedTos,

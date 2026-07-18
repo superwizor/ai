@@ -24,7 +24,6 @@ type clientInviteFakeQuerier struct {
 	getUserByIDFn          func(ctx context.Context, id uuid.UUID) (db.User, error)
 	getUserByEmailFn       func(ctx context.Context, email *string) (db.User, error)
 	getPFForInviteFn       func(ctx context.Context, id uuid.UUID) (db.GetPatientFileForInviteRow, error)
-	setPFEmailFn           func(ctx context.Context, arg db.SetPatientFileEmailParams) error
 	createInvitationFn     func(ctx context.Context, arg db.CreateInvitationParams) (db.Invitation, error)
 	getPendingByFileFn     func(ctx context.Context, pf pgtype.UUID) (db.Invitation, error)
 
@@ -47,12 +46,6 @@ func (f *clientInviteFakeQuerier) GetUserByEmail(ctx context.Context, email *str
 }
 func (f *clientInviteFakeQuerier) GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (db.GetPatientFileForInviteRow, error) {
 	return f.getPFForInviteFn(ctx, id)
-}
-func (f *clientInviteFakeQuerier) SetPatientFileEmail(ctx context.Context, arg db.SetPatientFileEmailParams) error {
-	if f.setPFEmailFn != nil {
-		return f.setPFEmailFn(ctx, arg)
-	}
-	return nil
 }
 func (f *clientInviteFakeQuerier) CreateInvitation(ctx context.Context, arg db.CreateInvitationParams) (db.Invitation, error) {
 	f.createInvitationCalls = append(f.createInvitationCalls, arg)
@@ -99,9 +92,9 @@ func TestInviteClient_OwnerHappyPath_BindsKartotekaAndRole(t *testing.T) {
 		},
 		getPFForInviteFn: func(_ context.Context, id uuid.UUID) (db.GetPatientFileForInviteRow, error) {
 			return db.GetPatientFileForInviteRow{
-				ID:           id,
-				TherapistID:  therapist,
-				PatientEmail: &email,
+				ID:            id,
+				TherapistID:   therapist,
+				ResolvedEmail: &email,
 			}, nil
 		},
 		createInvitationFn: func(_ context.Context, arg db.CreateInvitationParams) (db.Invitation, error) {

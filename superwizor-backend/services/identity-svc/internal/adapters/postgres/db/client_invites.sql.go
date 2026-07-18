@@ -16,8 +16,6 @@ const activatePatientUser = `-- name: ActivatePatientUser :one
 UPDATE users
 SET firebase_uid     = $2,
     email            = $3,
-    first_name       = COALESCE(NULLIF($4::text, ''), first_name),
-    last_name        = COALESCE(NULLIF($5::text, ''), last_name),
     has_accepted_tos = TRUE
 WHERE id = $1 AND role = 'PATIENT' AND deleted_at IS NULL
 RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at
@@ -27,21 +25,14 @@ type ActivatePatientUserParams struct {
 	ID          uuid.UUID `json:"id"`
 	FirebaseUid *string   `json:"firebase_uid"`
 	Email       *string   `json:"email"`
-	Column4     string    `json:"column_4"`
-	Column5     string    `json:"column_5"`
 }
 
 // Attach-not-create (docs/39 D1): the accept flow fills in the auth
-// identity on the EXISTING patient row. Names update only when the
-// acceptor typed them.
+// identity on the EXISTING patient row. No name stamping (docs/43 §4:
+// the client's only direct identifier is the e-mail; the kartoteka
+// identifies the client by working_alias).
 func (q *Queries) ActivatePatientUser(ctx context.Context, arg ActivatePatientUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, activatePatientUser,
-		arg.ID,
-		arg.FirebaseUid,
-		arg.Email,
-		arg.Column4,
-		arg.Column5,
-	)
+	row := q.db.QueryRow(ctx, activatePatientUser, arg.ID, arg.FirebaseUid, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -74,20 +65,29 @@ func (q *Queries) ActivatePatientUser(ctx context.Context, arg ActivatePatientUs
 
 const getPatientFileForInvite = `-- name: GetPatientFileForInvite :one
 
-SELECT id, therapist_id, patient_id, patient_email
-FROM patient_files
-WHERE id = $1 AND deleted_at IS NULL
+SELECT pf.id, pf.therapist_id, pf.patient_id,
+  COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS resolved_email
+FROM patient_files pf
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.id = $1 AND pf.deleted_at IS NULL
 `
 
 type GetPatientFileForInviteRow struct {
-	ID           uuid.UUID   `json:"id"`
-	TherapistID  uuid.UUID   `json:"therapist_id"`
-	PatientID    pgtype.UUID `json:"patient_id"`
-	PatientEmail *string     `json:"patient_email"`
+	ID            uuid.UUID   `json:"id"`
+	TherapistID   uuid.UUID   `json:"therapist_id"`
+	PatientID     pgtype.UUID `json:"patient_id"`
+	ResolvedEmail *string     `json:"resolved_email"`
 }
 
 // Client (patient) panel invitations — docs/39. Same-DB reads of
 // patient_files mirror the seats.sql precedent.
+// resolved_email: since migration 000077 the kartoteka stores no client
+// e-mail (docs/43 §4) — the activated account's users.email wins, else
+// the latest non-revoked invitation's address. NULL = nothing on file.
 func (q *Queries) GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (GetPatientFileForInviteRow, error) {
 	row := q.db.QueryRow(ctx, getPatientFileForInvite, id)
 	var i GetPatientFileForInviteRow
@@ -95,7 +95,7 @@ func (q *Queries) GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (Ge
 		&i.ID,
 		&i.TherapistID,
 		&i.PatientID,
-		&i.PatientEmail,
+		&i.ResolvedEmail,
 	)
 	return i, err
 }
@@ -128,20 +128,6 @@ func (q *Queries) GetPendingPatientInvitationByFile(ctx context.Context, patient
 		&i.RevokedAt,
 	)
 	return i, err
-}
-
-const setPatientFileEmail = `-- name: SetPatientFileEmail :exec
-UPDATE patient_files SET patient_email = $2 WHERE id = $1
-`
-
-type SetPatientFileEmailParams struct {
-	ID           uuid.UUID `json:"id"`
-	PatientEmail *string   `json:"patient_email"`
-}
-
-func (q *Queries) SetPatientFileEmail(ctx context.Context, arg SetPatientFileEmailParams) error {
-	_, err := q.db.Exec(ctx, setPatientFileEmail, arg.ID, arg.PatientEmail)
-	return err
 }
 
 const setPatientFilePatientID = `-- name: SetPatientFilePatientID :exec

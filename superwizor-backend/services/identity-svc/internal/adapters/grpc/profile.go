@@ -88,6 +88,17 @@ func (s *Server) UpdateProfile(ctx context.Context, req *identityv1.UpdateProfil
 
 	params := db.UpdateProfileParams{ID: c.userID}
 
+	// Role gate (docs/43 §4): a CLIENT account is pseudonymous — its
+	// only direct identifier is the e-mail. Reject any attempt to put
+	// names, a phone number or a photo on a PATIENT row; the remaining
+	// fields (ui_language, timezone, marketing consent) stay editable.
+	isPatient := c.role == db.UserRolePATIENT
+	if isPatient && (req.FirstName != "" || req.LastName != "" ||
+		req.PhoneNumber != "" || (req.AvatarUrl != nil && *req.AvatarUrl != "")) {
+		return nil, status.Error(codes.InvalidArgument,
+			"CLIENT_PROFILE_PSEUDONYMOUS: client accounts carry no name/phone/photo")
+	}
+
 	// Legacy fields — empty string = "don't change". The existing iOS
 	// client sends the full form payload every save; empty strings on
 	// fields the user never edited would otherwise blank the column.

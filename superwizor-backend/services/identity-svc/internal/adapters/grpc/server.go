@@ -800,6 +800,17 @@ func toProtoUser(u db.User) *identityv1.User {
 		CreatedAt:       timestamppb.New(u.CreatedAt),
 		IsActive:        u.IsActive,
 	}
+	if u.Role == db.UserRolePATIENT {
+		// A client profile is pseudonymous (docs/43 §4): the e-mail is
+		// the only identifier the API exposes. Legacy rows may still
+		// carry alias-backfilled names (migration 000013) or a phone —
+		// never emit them.
+		resp.FirstName, resp.LastName = "", ""
+		if u.OrganizationID.Valid {
+			resp.OrganizationId = uuid.UUID(u.OrganizationID.Bytes).String()
+		}
+		return resp
+	}
 	if u.OrganizationID.Valid {
 		resp.OrganizationId = uuid.UUID(u.OrganizationID.Bytes).String()
 	}

@@ -13,8 +13,9 @@ import (
 
 type Querier interface {
 	// Attach-not-create (docs/39 D1): the accept flow fills in the auth
-	// identity on the EXISTING patient row. Names update only when the
-	// acceptor typed them.
+	// identity on the EXISTING patient row. No name stamping (docs/43 §4:
+	// the client's only direct identifier is the e-mail; the kartoteka
+	// identifies the client by working_alias).
 	ActivatePatientUser(ctx context.Context, arg ActivatePatientUserParams) (User, error)
 	// Global cross-org audit log for the /admin/audit page. LEFT JOINs to
 	// users so we can both ILIKE-filter on actor_email AND emit the email
@@ -71,6 +72,9 @@ type Querier interface {
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	// Client (patient) panel invitations — docs/39. Same-DB reads of
 	// patient_files mirror the seats.sql precedent.
+	// resolved_email: since migration 000077 the kartoteka stores no client
+	// e-mail (docs/43 §4) — the activated account's users.email wins, else
+	// the latest non-revoked invitation's address. NULL = nothing on file.
 	GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (GetPatientFileForInviteRow, error)
 	GetPendingPatientInvitationByFile(ctx context.Context, patientFileID pgtype.UUID) (Invitation, error)
 	// Returns the raw JSONB. Empty object {} when the user has never
@@ -134,7 +138,6 @@ type Querier interface {
 	// counter and clears any revocation (deliberate re-invite).
 	SetInvitationPairingCode(ctx context.Context, arg SetInvitationPairingCodeParams) error
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
-	SetPatientFileEmail(ctx context.Context, arg SetPatientFileEmailParams) error
 	SetPatientFilePatientID(ctx context.Context, arg SetPatientFilePatientIDParams) error
 	// Reversible activation toggle. deactivated_at doubles as the audit
 	// timestamp of the LAST deactivation (cleared on reactivate).
