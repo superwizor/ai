@@ -1234,6 +1234,10 @@ export type AcceptInvitationRequest = Message<"identity.v1.AcceptInvitationReque
   firebaseUid: string;
 
   /**
+   * For PATIENT invitations these are IGNORED (docs/43 §4: the client
+   * account is pseudonymous — its only direct identifier is the
+   * e-mail). Therapist/manager invitations still use them.
+   *
    * @generated from field: string first_name = 3;
    */
   firstName: string;
