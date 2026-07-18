@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_hardcoded_strings_in_widgets
+
 // Debug Pipeline Simulator — walks through SessionStepperPhase states
 // so you can visually verify the stepper UI without a real backend.
 //

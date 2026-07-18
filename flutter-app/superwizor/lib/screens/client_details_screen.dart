@@ -1637,19 +1637,21 @@ class _SessionCard extends ConsumerWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final d = session.date;
     final dateStr = DateFormat('d MMM', locale).format(d);
-    final timeStr =
-        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final durationMin = session.duration.inMinutes;
 
     // Rich metadata line: "11 Maj / 11:00 - 11:56 / 54 min"
     String metaStr;
     if (durationMin > 0) {
-      final endTime = d.add(session.duration);
+      final startTime = d.subtract(session.duration);
+      final startStr =
+          '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
       final endStr =
-          '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+          '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
       metaStr =
-          '$dateStr  \u2022  $timeStr \u2013 $endStr  \u2022  $durationMin min';
+          '$dateStr  \u2022  $startStr \u2013 $endStr  \u2022  $durationMin min';
     } else {
+      final timeStr =
+          '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
       metaStr = '$dateStr  \u2022  $timeStr';
     }
 

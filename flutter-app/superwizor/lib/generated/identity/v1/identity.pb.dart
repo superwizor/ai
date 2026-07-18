@@ -3095,6 +3095,9 @@ class AcceptInvitationRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearFirebaseUid() => $_clearField(2);
 
+  /// For PATIENT invitations these are IGNORED (docs/43 §4: the client
+  /// account is pseudonymous — its only direct identifier is the
+  /// e-mail). Therapist/manager invitations still use them.
   @$pb.TagNumber(3)
   $core.String get firstName => $_getSZ(2);
   @$pb.TagNumber(3)

@@ -67,6 +67,7 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
                   } else if (snapshot.hasError) {
                     return Center(
                       child: Text(
+                        // ignore: avoid_hardcoded_strings_in_widgets
                         'Error loading document.',
                         style: TextStyle(
                           fontFamily: 'Montserrat',

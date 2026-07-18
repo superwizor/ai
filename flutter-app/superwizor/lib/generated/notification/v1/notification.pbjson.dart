@@ -31,6 +31,28 @@ final $typed_data.Uint8List platformDescriptor = $convert.base64Decode(
     'CghQbGF0Zm9ybRIYChRQTEFURk9STV9VTlNQRUNJRklFRBAAEhAKDFBMQVRGT1JNX0lPUxABEh'
     'QKEFBMQVRGT1JNX0FORFJPSUQQAhIQCgxQTEFURk9STV9XRUIQAw==');
 
+@$core.Deprecated('Use sendClientPanelEventRequestDescriptor instead')
+const SendClientPanelEventRequest$json = {
+  '1': 'SendClientPanelEventRequest',
+  '2': [
+    {'1': 'recipient_email', '3': 1, '4': 1, '5': 9, '10': 'recipientEmail'},
+    {'1': 'event', '3': 2, '4': 1, '5': 9, '10': 'event'},
+    {'1': 'item_kind', '3': 3, '4': 1, '5': 9, '10': 'itemKind'},
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'panel_url', '3': 5, '4': 1, '5': 9, '10': 'panelUrl'},
+    {'1': 'recipient_user_id', '3': 6, '4': 1, '5': 9, '10': 'recipientUserId'},
+    {'1': 'patient_file_id', '3': 7, '4': 1, '5': 9, '10': 'patientFileId'},
+  ],
+};
+
+/// Descriptor for `SendClientPanelEventRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendClientPanelEventRequestDescriptor = $convert.base64Decode(
+    'ChtTZW5kQ2xpZW50UGFuZWxFdmVudFJlcXVlc3QSJwoPcmVjaXBpZW50X2VtYWlsGAEgASgJUg'
+    '5yZWNpcGllbnRFbWFpbBIUCgVldmVudBgCIAEoCVIFZXZlbnQSGwoJaXRlbV9raW5kGAMgASgJ'
+    'UghpdGVtS2luZBIWCgZsb2NhbGUYBCABKAlSBmxvY2FsZRIbCglwYW5lbF91cmwYBSABKAlSCH'
+    'BhbmVsVXJsEioKEXJlY2lwaWVudF91c2VyX2lkGAYgASgJUg9yZWNpcGllbnRVc2VySWQSJgoP'
+    'cGF0aWVudF9maWxlX2lkGAcgASgJUg1wYXRpZW50RmlsZUlk');
+
 @$core.Deprecated('Use sendContactEmailRequestDescriptor instead')
 const SendContactEmailRequest$json = {
   '1': 'SendContactEmailRequest',
@@ -111,6 +133,7 @@ const SendInvitationEmailRequest$json = {
     {'1': 'accept_url', '3': 4, '4': 1, '5': 9, '10': 'acceptUrl'},
     {'1': 'expires_at_iso', '3': 5, '4': 1, '5': 9, '10': 'expiresAtIso'},
     {'1': 'locale', '3': 6, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'invited_role', '3': 7, '4': 1, '5': 9, '10': 'invitedRole'},
   ],
 };
 
@@ -120,7 +143,8 @@ final $typed_data.Uint8List sendInvitationEmailRequestDescriptor = $convert.base
     'JlY2lwaWVudEVtYWlsEisKEW9yZ2FuaXphdGlvbl9uYW1lGAIgASgJUhBvcmdhbml6YXRpb25O'
     'YW1lEiwKEmludml0ZXJfZmlyc3RfbmFtZRgDIAEoCVIQaW52aXRlckZpcnN0TmFtZRIdCgphY2'
     'NlcHRfdXJsGAQgASgJUglhY2NlcHRVcmwSJAoOZXhwaXJlc19hdF9pc28YBSABKAlSDGV4cGly'
-    'ZXNBdElzbxIWCgZsb2NhbGUYBiABKAlSBmxvY2FsZQ==');
+    'ZXNBdElzbxIWCgZsb2NhbGUYBiABKAlSBmxvY2FsZRIhCgxpbnZpdGVkX3JvbGUYByABKAlSC2'
+    'ludml0ZWRSb2xl');
 
 @$core.Deprecated('Use sendEmailVerificationRequestDescriptor instead')
 const SendEmailVerificationRequest$json = {

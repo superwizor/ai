@@ -20,6 +20,144 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'notification.pbenum.dart';
 
+class SendClientPanelEventRequest extends $pb.GeneratedMessage {
+  factory SendClientPanelEventRequest({
+    $core.String? recipientEmail,
+    $core.String? event,
+    $core.String? itemKind,
+    $core.String? locale,
+    $core.String? panelUrl,
+    $core.String? recipientUserId,
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (recipientEmail != null) result.recipientEmail = recipientEmail;
+    if (event != null) result.event = event;
+    if (itemKind != null) result.itemKind = itemKind;
+    if (locale != null) result.locale = locale;
+    if (panelUrl != null) result.panelUrl = panelUrl;
+    if (recipientUserId != null) result.recipientUserId = recipientUserId;
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  SendClientPanelEventRequest._();
+
+  factory SendClientPanelEventRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendClientPanelEventRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendClientPanelEventRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'recipientEmail')
+    ..aOS(2, _omitFieldNames ? '' : 'event')
+    ..aOS(3, _omitFieldNames ? '' : 'itemKind')
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..aOS(5, _omitFieldNames ? '' : 'panelUrl')
+    ..aOS(6, _omitFieldNames ? '' : 'recipientUserId')
+    ..aOS(7, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendClientPanelEventRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendClientPanelEventRequest copyWith(
+          void Function(SendClientPanelEventRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as SendClientPanelEventRequest))
+          as SendClientPanelEventRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendClientPanelEventRequest create() =>
+      SendClientPanelEventRequest._();
+  @$core.override
+  SendClientPanelEventRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendClientPanelEventRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendClientPanelEventRequest>(create);
+  static SendClientPanelEventRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get recipientEmail => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set recipientEmail($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecipientEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecipientEmail() => $_clearField(1);
+
+  /// ITEM_SHARED           → to the client ("new item in your panel")
+  /// CLIENT_NOTE_RECEIVED  → to the therapist ("a client wrote a note")
+  @$pb.TagNumber(2)
+  $core.String get event => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set event($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEvent() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEvent() => $_clearField(2);
+
+  /// For ITEM_SHARED: SESSION | NOTE. Ignored otherwise.
+  @$pb.TagNumber(3)
+  $core.String get itemKind => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set itemKind($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasItemKind() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearItemKind() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get panelUrl => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set panelUrl($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPanelUrl() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPanelUrl() => $_clearField(5);
+
+  /// CLIENT_NOTE_RECEIVED only: the therapist's users.id and the
+  /// kartoteka id. Present → notification-svc ALSO fires a PHI-free FCM
+  /// data push (notification_type=client_note_received, patient_file_id
+  /// in data) so the therapist app refreshes the notes list live. Empty
+  /// → e-mail only (backward compatible).
+  @$pb.TagNumber(6)
+  $core.String get recipientUserId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set recipientUserId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRecipientUserId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRecipientUserId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get patientFileId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set patientFileId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPatientFileId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPatientFileId() => $_clearField(7);
+}
+
 class SendContactEmailRequest extends $pb.GeneratedMessage {
   factory SendContactEmailRequest({
     $core.String? name,
@@ -296,6 +434,7 @@ class SendInvitationEmailRequest extends $pb.GeneratedMessage {
     $core.String? acceptUrl,
     $core.String? expiresAtIso,
     $core.String? locale,
+    $core.String? invitedRole,
   }) {
     final result = create();
     if (recipientEmail != null) result.recipientEmail = recipientEmail;
@@ -304,6 +443,7 @@ class SendInvitationEmailRequest extends $pb.GeneratedMessage {
     if (acceptUrl != null) result.acceptUrl = acceptUrl;
     if (expiresAtIso != null) result.expiresAtIso = expiresAtIso;
     if (locale != null) result.locale = locale;
+    if (invitedRole != null) result.invitedRole = invitedRole;
     return result;
   }
 
@@ -327,6 +467,7 @@ class SendInvitationEmailRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'acceptUrl')
     ..aOS(5, _omitFieldNames ? '' : 'expiresAtIso')
     ..aOS(6, _omitFieldNames ? '' : 'locale')
+    ..aOS(7, _omitFieldNames ? '' : 'invitedRole')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -403,6 +544,18 @@ class SendInvitationEmailRequest extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(5);
   @$pb.TagNumber(6)
   void clearLocale() => $_clearField(6);
+
+  /// Template selector (docs/38): "ORG_ADMIN" → org_manager_invite
+  /// (manager onboarding, sent by AdminCreateOrganization); anything
+  /// else (incl. empty for old callers) → the therapist invitation.
+  @$pb.TagNumber(7)
+  $core.String get invitedRole => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set invitedRole($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasInvitedRole() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearInvitedRole() => $_clearField(7);
 }
 
 class SendEmailVerificationRequest extends $pb.GeneratedMessage {

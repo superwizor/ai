@@ -223,5 +223,18 @@ flutter install -d <DEVICE_ID> --profile
 - [ ] Dodać `ActivityAuthorizationInfo().activityEnablementUpdates` (async stream dostępny od iOS 17.2) — **ale wymaga testów na iOS 26**
 - [ ] Zaakceptować rozjazd jako "known limitation" i nie walczyć z tym
 
+### 6.7 Live Activity & FCM Background Pushes (Lipiec 2026 - Faza 4)
+
+Podczas integracji powiadomień FCM z Live Activities napotkano krytyczne błędy architektoniczne:
+
+1. **MethodChannel w Background Isolate**: Dart background FCM handler (`_firebaseMessagingBackgroundHandler`) działa w odizolowanym headless `FlutterEngine`, na którym nie są zarejestrowane kanały MethodChannel głównej aplikacji. Wywołania MethodChannel z tła rzucają ciche wyjątki `MissingPluginException`. 
+   * **Rozwiązanie**: Przechwytywanie powiadomień FCM dla Live Activities natywnie po stronie iOS w `AppDelegate.swift` (`application(_:didReceiveRemoteNotification:)`) i wywoływanie `LiveActivityManager` bezpośrednio z pominięciem Darta.
+
+2. **Resume Observer i Przypadkowe Zabijanie LA**: Nasłuchiwanie na `AppLifecycleState.resumed` i zamykanie LA w ciemno (aby pozbyć się widgetu po przejściu z tła) powodowało zamykanie LA przy każdym przełączeniu aplikacji (np. w celu przeczytania SMSa) podczas *trwania* aktywnego nagrywania.
+   * **Rozwiązanie**: Wprowadzenie asynchronicznej metody `LiveActivityService.shouldDismissOnResume()`, która weryfikuje intencję zamknięcia. Sprawdza ona zarówno flagę po stronie Dart (ustawianą w UI) jak i odpytuje natywny `LiveActivityManager` (przez nowe wywołanie `isReportReady`), aby zamykać LA tylko gdy raport jest rzeczywiście gotowy.
+
+3. **Foreground Handlery vs Kaskada UI**: Otrzymanie powiadomienia `report_ready` na pierwszym planie (`FirebaseMessaging.onMessage`) nie powinno od razu wywoływać `stop()`, ponieważ przerywa to kaskadę animacji i odtwarzanie dźwięków w `SessionStatusScreen`. 
+   * **Rozwiązanie**: Na pierwszym planie ustawiana jest tylko flaga przez `markReportReady()`, a zarządzanie zamknięciem LA pozostawione jest naturalnemu cyklowi życia kaskady UI wewnątrz `SessionStatusScreen`.
+
 ---
-*Dokumentacja stworzona w czerwcu 2026 r. w ramach wdrożenia stabilizacji widgetów i Dynamic Island. Zaktualizowana 19 czerwca 2026 r. o lekcje z sesji debugowania.*
+*Dokumentacja stworzona w czerwcu 2026 r. w ramach wdrożenia stabilizacji widgetów i Dynamic Island. Zaktualizowana 19 lipca 2026 r. o lekcje z sesji integracji FCM (Faza 4).*

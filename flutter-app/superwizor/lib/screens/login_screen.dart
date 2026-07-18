@@ -480,6 +480,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: ClipOval(
         child: Image.asset(
+          // ignore: avoid_hardcoded_strings_in_widgets
           'assets/images/PNG/v02_supervisor_logo_gradient.png',
           fit: BoxFit.cover,
           width: 88,

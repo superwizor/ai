@@ -50,7 +50,7 @@ class OfflineBanner extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppLocalizations.of(context).offline_banner_title ?? 'Brak połączenia',
+                      AppLocalizations.of(context).offline_banner_title,
                       style: const TextStyle(
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w700,
@@ -60,7 +60,7 @@ class OfflineBanner extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      AppLocalizations.of(context).offline_banner_desc ?? 'Jesteś w trybie offline. Aplikacja działa, ale synchronizacja nastąpi po odzyskaniu połączenia.',
+                      AppLocalizations.of(context).offline_banner_desc,
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 13,
@@ -76,7 +76,7 @@ class OfflineBanner extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }

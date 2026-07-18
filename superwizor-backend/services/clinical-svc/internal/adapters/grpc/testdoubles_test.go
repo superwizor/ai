@@ -56,6 +56,8 @@ type fakeQuerier struct {
 	getPatientNotesForExportFn      func(ctx context.Context, patientFileID uuid.UUID) ([]db.PatientNote, error)
 	getSessionsForExportFn          func(ctx context.Context, patientFileID uuid.UUID) ([]db.Session, error)
 	getTranscriptBySessionFn        func(ctx context.Context, sessionID uuid.UUID) (db.Transcript, error)
+	getTranscriptForRebuildFn       func(ctx context.Context, sessionID uuid.UUID) (db.GetTranscriptForRebuildRow, error)
+	updateTranscriptBlobFn          func(ctx context.Context, arg db.UpdateTranscriptBlobParams) error
 	listTranscriptSegmentsFn        func(ctx context.Context, transcriptID uuid.UUID) ([]db.TranscriptSegment, error)
 	listReportsBySessionFn          func(ctx context.Context, sessionID uuid.UUID) ([]db.Report, error)
 	softDeleteSessionsForDSARFn     func(ctx context.Context, patientFileID uuid.UUID) error
@@ -188,6 +190,14 @@ func (f *fakeQuerier) GetSessionsForExport(ctx context.Context, patientFileID uu
 
 func (f *fakeQuerier) GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (db.Transcript, error) {
 	return f.getTranscriptBySessionFn(ctx, sessionID)
+}
+
+func (f *fakeQuerier) GetTranscriptForRebuild(ctx context.Context, sessionID uuid.UUID) (db.GetTranscriptForRebuildRow, error) {
+	return f.getTranscriptForRebuildFn(ctx, sessionID)
+}
+
+func (f *fakeQuerier) UpdateTranscriptBlob(ctx context.Context, arg db.UpdateTranscriptBlobParams) error {
+	return f.updateTranscriptBlobFn(ctx, arg)
 }
 
 func (f *fakeQuerier) ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]db.TranscriptSegment, error) {

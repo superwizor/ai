@@ -24,6 +24,7 @@ import '../utils/haptics.dart';
 import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/patient_avatar_provider.dart';
+import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../screens/legal_markdown_screen.dart';
@@ -33,6 +34,7 @@ import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_form_widgets.dart';
 import '../widgets/euphire_toast.dart';
+import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../widgets/modality_sheet.dart';
 
 const String _kCurrentDpaVersion = 'dpa-v1-2026-04';
@@ -63,6 +65,11 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   bool _duplicateError = false;
 
   // ── Step 2 fields ──
+  final _emailController = TextEditingController();
+  final _emailFocus = FocusNode();
+  String? _emailError;
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   late String _modalityCode;
   bool _consentGiven = false;
   bool _saving = false;
@@ -95,6 +102,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     _aliasController.removeListener(_onAliasChanged);
     _aliasController.dispose();
     _aliasFocus.dispose();
+    _emailController.dispose();
+    _emailFocus.dispose();
     _avatarLabelController.dispose();
     _pageController.dispose();
     super.dispose();
@@ -145,6 +154,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   }
 
   void _goToPage(int page) {
+    FocusScope.of(context).unfocus();
     _pageController.animateToPage(
       page,
       duration: const Duration(milliseconds: 300),
@@ -369,6 +379,54 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                       }
                     },
                   ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.security_rounded,
+                          color: EuphireColors.ember,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.addPatient_anonymization_title,
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: EuphireColors.frostWhite,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                t.addPatient_anonymization_description,
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 12,
+                                  color: EuphireColors.mist.withValues(alpha: 0.7),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -449,8 +507,79 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // docs/43 §4: no e-mail field here — the client e-mail
-                  // is entered only in the invite flow (client_invite_sheet).
+                  FormSectionLabel(text: t.addPatient_email_label),
+                  const SizedBox(height: 8),
+                  GlassTextField(
+                    controller: _emailController,
+                    label: t.addPatient_email_label,
+                    focusNode: _emailFocus,
+                    errorText: _emailError,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onChanged: (_) {
+                      if (_emailError != null) {
+                        setState(() => _emailError = null);
+                      }
+                    },
+                    onSubmitted: (_) {
+                      final email = _emailController.text.trim();
+                      if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
+                        setState(() => _emailError = t.invite_client_email_missing);
+                      } else {
+                        setState(() => _emailError = null);
+                        _goToPage(2);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.security_rounded,
+                          color: EuphireColors.ember,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.addPatient_email_privacy_title,
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: EuphireColors.frostWhite,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                t.addPatient_email_privacy_hint,
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 12,
+                                  color: EuphireColors.mist.withValues(alpha: 0.7),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // ── Language Dropdown ──
                   FormSectionLabel(text: t.addPatient_language_label),
@@ -462,6 +591,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                         value: 'pl-PL',
                         child: Row(
                           children: [
+                            // ignore: avoid_hardcoded_strings_in_widgets
                             const Text('🇵🇱', style: TextStyle(fontSize: 18)),
                             const SizedBox(width: 10),
                             Text(t.language_pl_name),
@@ -472,6 +602,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                         value: 'en-US',
                         child: Row(
                           children: [
+                            // ignore: avoid_hardcoded_strings_in_widgets
                             const Text('🇬🇧', style: TextStyle(fontSize: 18)),
                             const SizedBox(width: 10),
                             Text(t.language_en_name),
@@ -498,7 +629,15 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               text: t.addPatient_step1_next,
               icon: Icons.arrow_forward_rounded,
               iconOnRight: true,
-              onPressed: () => _goToPage(2),
+              onPressed: () {
+                final email = _emailController.text.trim();
+                if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
+                  setState(() => _emailError = t.invite_client_email_missing);
+                } else {
+                  setState(() => _emailError = null);
+                  _goToPage(2);
+                }
+              },
             ),
           ),
         ),
@@ -983,6 +1122,13 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     final alias = _aliasController.text.trim();
     if (alias.isEmpty) return;
 
+    final email = _emailController.text.trim();
+    if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
+      _goToPage(1);
+      setState(() => _emailError = t.invite_client_email_missing);
+      return;
+    }
+
     // ── Client-side duplicate detection ──
     final existingPatients =
         ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
@@ -1018,6 +1164,24 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               documentVersion: _kCurrentDpaVersion,
             );
         _createdPatientId = created.id;
+
+        if (email.isNotEmpty) {
+          try {
+            final identity = ref.read(grpcClientsProvider).identity;
+            await identity.inviteClient(identity_pb.InviteClientRequest(
+              patientFileId: created.id,
+              email: email,
+            ));
+          } catch (e) {
+            debugPrint('[addPatient] auto-invite failed: $e');
+            if (mounted) {
+              EuphireToast.error(
+                context,
+                message: t.invite_client_error,
+              );
+            }
+          }
+        }
       }
 
       if (mounted) {

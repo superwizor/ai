@@ -1,11 +1,13 @@
+import 'dart:io';
+
 import 'analytics/analytics_collector.dart';
 import 'providers/current_user_provider.dart';
 import 'providers/patient_notes_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/connectivity_provider.dart';
+import 'services/live_activity_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +43,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // onMessageOpenedApp when user taps the notification.
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('FCM bg msg: ${message.messageId}');
+
+  // NOTE: Live Activity updates are handled NATIVELY in AppDelegate.swift
+  // (application(_:didReceiveRemoteNotification:fetchCompletionHandler:)).
+  // We do NOT call MethodChannel from here because this background isolate
+  // runs on a separate FlutterEngine where our channel is not registered.
 }
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -69,6 +76,15 @@ void main() async {
   // the app returns to the foreground. The runner itself is created
   // lazily by uploadQueueRunnerProvider after the user signs in.
   WidgetsBinding.instance.addObserver(UploadQueueLifecycleObserver());
+
+  // Live Activity cleanup on app resume: when the user returns to the
+  // app, dismiss any lingering Dynamic Island / Lock Screen widget.
+  // Covers: (1) report finished while app was killed, (2) offline
+  // scenario where FCM push arrived late, (3) user just wants to use
+  // the app and the widget is redundant. On Android this is a no-op.
+  if (Platform.isIOS) {
+    WidgetsBinding.instance.addObserver(_LiveActivityResumeObserver());
+  }
 
   // Firestore offline persistence — keeps last seen session_states
   // for offline-first reads.
@@ -101,6 +117,18 @@ void main() async {
             .catchError((_) {});
       }
     }
+    // Report ready while app is in foreground: DON'T stop the Live
+    // Activity here — SessionStatusScreen has its own success cascade
+    // with animation + sound that calls showReportReady() + stop().
+    // Stopping here would kill the cascade's presentation. If the user
+    // is NOT on SessionStatusScreen, the resume observer or native
+    // cold-start cleanup handles it.
+    //
+    // But DO mark the flag so the resume observer knows it can dismiss
+    // next time the user leaves and comes back.
+    if (Platform.isIOS && msg.data['notification_type'] == 'report_ready') {
+      LiveActivityService.markReportReady();
+    }
   });
 
   // Tap-from-background routing.
@@ -108,6 +136,9 @@ void main() async {
     final type = msg.data['notification_type'];
     final sessionId = msg.data['session_id'];
     if (type == 'report_ready' && sessionId is String && sessionId.isNotEmpty) {
+      // User tapped the push → they're about to see the report.
+      // Dismiss the Live Activity widget so it doesn't linger.
+      if (Platform.isIOS) LiveActivityService.stopFromBackground();
       // Routes via the global navigator; SessionStatusScreen will
       // pick up `done` immediately and run the cascade.
       navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
@@ -149,6 +180,7 @@ class SuperWizorApp extends ConsumerWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
+      // ignore: avoid_hardcoded_strings_in_widgets
       title: 'Superwizor AI',
       theme: EuphireTheme.themeData,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -242,5 +274,34 @@ class _LockGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locked = ref.watch(appLockProvider);
     return locked ? const LockScreen() : const HomeScreen();
+  }
+}
+
+// ── Live Activity app-resume cleanup ───────────────────────────────
+
+/// When the user returns to the app (foreground), dismiss any lingering
+/// Live Activity. The widget is only useful when the app is NOT open;
+/// once the user is back, the in-app UI takes over.
+///
+/// This is the safety net for:
+///   • FCM push arrived in background → widget showed "Raport gotowy" →
+///     user now opens the app → widget dismissed.
+///   • Offline scenario: widget was stale → user comes online and opens
+///     the app → widget dismissed.
+///   • Any race condition where SessionStatusScreen was disposed before
+///     calling stop() on the Live Activity.
+class _LiveActivityResumeObserver extends WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAndDismiss();
+    }
+  }
+
+  Future<void> _checkAndDismiss() async {
+    final shouldDismiss = await LiveActivityService.shouldDismissOnResume();
+    if (shouldDismiss) {
+      await LiveActivityService.stopFromBackground();
+    }
   }
 }

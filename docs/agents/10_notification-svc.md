@@ -20,18 +20,19 @@ Two responsibilities under one Go module:
 
 This is the **only** service allowed to write to Firestore from the backend (per architecture §6.3).
 
-## Status (2026-05-09)
+## Status (2026-07-18)
 
-- **Phase 3 — DONE.** Cloud Run gRPC server + Cloud Functions Gen2 worker fully implemented and deployed via CI.
-- **Server** (`cmd/server/main.go`, 108 lines): Firebase Auth + pgxpool + gRPC with `RegisterFCMToken`, `RemoveFCMToken`, `GetUnreadCount`, `HealthCheck`. Deployed with dedicated SA `notification-svc@` and `--allow-unauthenticated`.
-- **Worker** (`cmd/worker/main.go`, 451 lines): Three CloudEvent handlers — `ProcessReportGenerated` (FCM multicast + Firestore mirror `done` + inbox doc + idempotency), `ProcessTranscriptCompleted` (status mirror `analyzing`), `ProcessAudioUploaded` (status mirror `uploaded`).
+- **Phase 4 — DONE.** Unified `session.status_changed` topic replaces the three separate per-status topics.
+- **Server** (`cmd/server/main.go`): Firebase Auth + pgxpool + gRPC with `RegisterFCMToken`, `RemoveFCMToken`, `GetUnreadCount`, `HealthCheck`. Deployed with dedicated SA `notification-svc@` and `--allow-unauthenticated`.
+- **Worker** (`cmd/worker/main.go`): Two CloudEvent handlers via `functions.CloudEvent()`:
+  - `ProcessSessionStatusChanged` — unified handler for all pipeline transitions (`uploaded | transcribing | analyzing | done | failed | cancelled`). On each transition: idempotency check → Firestore status mirror → **silent FCM data-only push** for intermediate states (`uploaded`, `transcribing`, `analyzing`) to update iOS Live Activity. On `done`: full FCM push (visible notification) + inbox doc via `handleReportReady`.
+  - `ProcessSessionDeleted` — RODO erase of Firestore mirror + inbox docs.
 - **Adapters**: `internal/adapters/{fcm,firestore,grpc,postgres}` — all built.
-- Pub/Sub topics wired (`audio.uploaded`, `transcript.completed`, `report.generated`).
+- Pub/Sub wired to unified `session.status_changed` topic.
 - Firestore rules are **production-ready** (64 lines, per-user read, write denied, default deny). No expiration placeholder.
-- **Not yet mirrored to Firestore:** `transcribing` and `failed` statuses (per ADR-IMPL-012, deferred to Phase 4). Flutter uses fallback poll to `clinical-svc.GetSessionDetails` for these.
 - Implementation plan: [`docs/08_FAZA_3_NOTIFICATIONS.md`](../08_FAZA_3_NOTIFICATIONS.md).
 
-## Repo paths (after Phase 3 build)
+## Repo paths (after Phase 4 build)
 
 ```
 services/notification-svc/
@@ -46,7 +47,7 @@ services/notification-svc/
     │   ├── grpc/                    # gRPC server impl
     │   ├── postgres/db/             # sqlc-generated
     │   ├── firestore/               # session_states + user_notifications writers
-    │   └── fcm/                     # Firebase Admin SDK wrapper
+    │   └── fcm/                     # Firebase Admin SDK wrapper (Send + SendSilent)
     └── domain/
 
 proto/notification/v1/notification.proto
@@ -101,7 +102,7 @@ Flutter has `allow write: if false` on both — Firestore rules enforce this. Se
 
 ## Key dependencies
 
-- **Upstream Pub/Sub** — `audio.uploaded`, `transcript.completed`, `report.generated` (all in `infra/modules/pubsub/main.tf`, already deployed).
+- **Upstream Pub/Sub** — unified `session.status_changed` topic (in `infra/modules/pubsub/main.tf`, already deployed).
 - **identity-svc** — to resolve users.id from Firebase UID for the gRPC server (or via local sqlc query on `users` table).
 - **Firebase project** (`superwizor-ai-25ecd`) for FCM messaging.
 - **Cloud SQL** for fcm_tokens / notification_deliveries.
@@ -137,7 +138,7 @@ Two distinct Flutter subscribers read this doc — both via
 | **ADR-IMPL-009** | Firestore writes are **best-effort**. A failed Firestore write must NEVER fail the FCM send or block the clinical pipeline. Failed writes go to `firestore-sync.dlq`; alert exists, deploy doesn't. |
 | **ADR-IMPL-010** | Worker = Cloud Functions Gen2 (`package notificationworker`, no `main()`). Server = Cloud Run. Same split as `ai-pipeline-svc`. |
 | **ADR-IMPL-011** | Multi-token per user; UNIQUE (user_id, token) with `WHERE invalidated_at IS NULL`. Soft-delete on FCM `NotRegistered`/`InvalidArgument`. Send to ALL active tokens via FCM multicast. |
-| **ADR-IMPL-012** | Phase 3 mirrors only 3 status transitions to Firestore: `uploaded`, `analyzing`, `done`. `transcribing` and `failed` deferred to Phase 4 (would need a new `session.status_changed` topic). |
+| **ADR-IMPL-012** | Unified `session.status_changed` topic. Worker mirrors ALL transitions to Firestore. Intermediate states (`uploaded`, `transcribing`, `analyzing`) also send **silent data-only FCM push** (`content-available:1`) for iOS Live Activity updates. `done` gets a full visible push. Silent pushes are best-effort; `shouldSilentPush()` controls which states get them. |
 | **ADR-IMPL-013** | FCM payload carries NO PHI. Title/body localized generic strings. Data: `{session_id, notification_type}` only. Real content via clinical-svc.GetReport (KMS-decrypted). |
 | **P1 Zero Data Loss** | Idempotency key on `notification_deliveries`: `${session_id}:${notification_type}`. INSERT ... ON CONFLICT DO NOTHING. Re-delivery from Pub/Sub at-least-once → no duplicate FCM. |
 | **P4 Flutter read-only** | Firestore rules enforce `allow write: if false` on `session_states` and `user_notifications`. The only client-side write Flutter is allowed: `update` on its own `inbox/{notifId}.readAt` (diff check via `affectedKeys().hasOnly(['readAt'])`). |
@@ -151,7 +152,7 @@ Two distinct Flutter subscribers read this doc — both via
 | IAM bindings | `cloudsql.client`, `secretmanager.secretAccessor` on `postgres-database-url`, `datastore.user`, `firebasecloudmessaging.messagesSender`, `eventarc.eventReceiver` |
 | Pub/Sub service agent → token creator on this SA | so Eventarc can act as the worker |
 | Cloud Run `notification-svc` | public, VPC connector, `--allow-unauthenticated` + `public_invoker` IAM via terraform (extend `local.public_cloud_run_services`) |
-| Cloud Functions Gen2 worker(s) | Three trigger functions, one source bundle: `notification-worker-on-uploaded`, `-on-transcribed`, `-on-report`. Each binds to its own Eventarc trigger. |
+| Cloud Functions Gen2 worker | `notification-worker-on-status` (session.status_changed) + `notification-worker-on-deleted` (session.deleted). |
 | Firestore (default DB) | `(default)` instance in `europe-central2`. Rules deployed via `firebase deploy --only firestore:rules`. |
 | FCM | enabled on Firebase project; no extra config beyond Admin SDK + `messagesSender` role |
 
@@ -184,6 +185,7 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - Tweak FCM message templates / localization.
 - Add new Firestore field on `session_states` (additive).
 - Refine retry / idempotency logic.
+- Add new status values to `shouldSilentPush()`.
 
 **Careful — touches contracts:**
 - `session_states` doc shape — Flutter has live listeners. Field rename = client breakage. Additive changes only.
@@ -199,6 +201,7 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - Add `func main()` to `cmd/worker/` — it's `package notificationworker` for Cloud Functions Gen2.
 - Send notifications to invalidated tokens. Filter `WHERE invalidated_at IS NULL` on every send.
 - Hard-delete `fcm_tokens` rows. Soft-delete via `invalidated_at` so the audit trail (`notification_deliveries.target_token_id`) stays intact.
+- **Call MethodChannel from a background Dart isolate** — see "MethodChannel in background isolates" gotcha below.
 
 ## Common gotchas
 
@@ -212,6 +215,11 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - **App in foreground vs background** — FCM iOS shows the system notification only if app is backgrounded; foreground app gets the message via `onMessage` callback and must show in-app UI. Document the FCM payload shape so Flutter's foreground handler renders correctly.
 - **Pub/Sub is unordered — `WriteSessionState` must stay monotonic.** The three notification-worker Cloud Functions (`-on-uploaded` / `-on-transcribed` / `-on-report`) consume independent topics and can deliver out of order, especially when a topic's subscription is backlogged (audio.uploaded was the recurring offender — see 04_ingestion-svc.md "Historical note"). `firestore/writer.go::WriteSessionState` runs a Firestore transaction with a rank table (uploaded=1, analyzing=2, done=3) and refuses to regress. **Do not "simplify" it back to a plain `Set + MergeAll`** — that brings back the bug where a late `audio.uploaded` event silently flips status="done" back to "uploaded" and parks Flutter on the "Tworzymy transkrypcję" stepper. If you add new statuses (Phase 4: `transcribing`, `failed`), extend the rank table — `failed` needs special handling because it's terminal but doesn't outrank `done`.
 - **`UpdateNotificationDeliveryStatus` $2 cast.** The statement references `$2` twice — once as `status = $2`, once as `CASE WHEN $2 = 'sent'`. `notification_deliveries.status` is the `notification_status` enum, so pgx can't unify the type without explicit `$2::notification_status` casts on both sides. The error `inconsistent types deduced for parameter $2 (SQLSTATE 42P08)` surfaced this in production on 2026-05-22; casts are pinned in `internal/adapters/postgres/notifications.go`. If you add more dual-context params to any sqlc-or-raw-pgx UPDATE, cast every reference.
+- **MethodChannel in background Dart isolates** — `_firebaseMessagingBackgroundHandler` runs in a **separate Dart isolate** with a **headless FlutterEngine**. MethodChannels registered on the main engine (via `didInitializeImplicitFlutterEngine` in AppDelegate) are NOT available from that isolate. Calls throw `MissingPluginException` (silently caught if wrapped in try/catch). **For any native operation needed from a background FCM handler (e.g., Live Activity updates), handle it on the native iOS side** in `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` in AppDelegate.swift, which runs on the main app process and has full access to `LiveActivityManager.shared`.
+- **iOS Live Activity lifecycle on app resume** — Don't blindly `stop()` all Live Activities when the app resumes. This kills active recording sessions if the user briefly switches apps (e.g., to read an SMS). Instead, query native ActivityKit state (via `isReportReady` MethodChannel call) to check whether the activity is in a terminal state before dismissing. The `_LiveActivityResumeObserver` in `main.dart` uses `LiveActivityService.shouldDismissOnResume()` which checks both a Dart-side flag and the native ActivityKit state.
+- **iOS Live Activity staleDate safety net** — Always set `staleDate` on `ActivityContent` updates. 15 minutes for recording/processing phases, 4 hours for report-ready state. If the app goes away (killed by iOS) and no more pushes arrive, iOS automatically dims the widget instead of showing a false status. This is the last-resort safety net after FCM, Firestore listener, and native push handler.
+- **`fcm.SendSilent` vs `fcm.Send`** — `SendSilent` sends data-only FCM messages (no `Notification` field, no sound/banner). On iOS, `content-available:1` wakes the app. Silent pushes are best-effort for Live Activity updates; a missed one just means the widget waits for the next transition. The final `report_ready` is always a full visible push via `Send`. Don't send silent pushes for `done`/`failed`/`cancelled` — those have dedicated handlers.
+- **Cold-start Live Activity cleanup** — `LiveActivityManager.cleanupOrphaned()` is called in `didFinishLaunchingWithOptions` to dismiss any Live Activities from a previous app session. Without this, a killed app would leave a zombie widget stuck on the last status forever. Safe because: if the user is opening the app, the in-app UI shows session state.
 
 ## Source-doc pointers
 
@@ -219,5 +227,5 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (lines 466–475) — service responsibility spec.
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §6 (lines 631–724) — Firestore as sync layer (philosophy, doc shapes, rules, cost).
 - `docs/03_DATA_MODEL.md` — notifications tables in migration 000009.
-- `infra/modules/pubsub/main.tf` — topics (`audio.uploaded`, `transcript.completed`, `report.generated`) deployed.
+- `infra/modules/pubsub/main.tf` — unified `session.status_changed` topic deployed.
 - `firestore.rules` — production rules (64 lines, per-user read, default deny).

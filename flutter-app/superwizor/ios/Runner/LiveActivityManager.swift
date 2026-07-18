@@ -83,6 +83,17 @@ class LiveActivityManager {
             }
             result(true)
 
+        case "isReportReady":
+            // Returns true if the current Live Activity is showing
+            // a completed report (reportSessionId is set). Used by
+            // the Dart-side resume observer to decide whether to
+            // dismiss the widget on app resume.
+            if let activity = currentActivity {
+                result(activity.content.state.reportSessionId != nil)
+            } else {
+                result(false) // No active LA → nothing to dismiss
+            }
+
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -109,7 +120,10 @@ class LiveActivityManager {
         )
 
         do {
-            let content = ActivityContent(state: state, staleDate: nil)
+            // 15-minute stale date: if the app is killed before the first
+            // update arrives, iOS dims the widget rather than showing a
+            // false "recording" status forever.
+            let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(15 * 60))
             _ = try Activity.request(
                 attributes: attributes,
                 content: content,
@@ -132,7 +146,10 @@ class LiveActivityManager {
             readyReportCount: nil
         )
         Task {
-            let content = ActivityContent(state: state, staleDate: nil)
+            // 15-minute stale date: safety net so the widget dims if
+            // the app goes away mid-pipeline instead of showing a
+            // permanently false status like "Pracujemy nad raportem".
+            let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(15 * 60))
             await activity.update(content)
         }
     }
@@ -151,13 +168,61 @@ class LiveActivityManager {
             readyReportCount: reportCount > 1 ? reportCount : nil
         )
         Task {
-            let content = ActivityContent(state: state, staleDate: nil)
+            // Report-ready can linger longer — 4 hours before iOS dims it.
+            let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(4 * 3600))
             await activity.update(content)
         }
     }
 
     private func stop() {
         for activity in Activity<LiveActivityAttributes>.activities {
+            Task {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
+    // MARK: - Push-driven updates (called from AppDelegate)
+    //
+    // These are called from application(_:didReceiveRemoteNotification:)
+    // on the NATIVE side, bypassing the Dart MethodChannel entirely.
+    // This is critical because background Dart isolates run on a
+    // separate FlutterEngine where our MethodChannel is NOT registered.
+
+    /// Update the Live Activity with an intermediate pipeline status.
+    /// Called when a silent data-only FCM push arrives for status_uploaded,
+    /// status_transcribing, or status_analyzing.
+    func updateFromPush(status: String) {
+        guard currentActivity != nil else {
+            debugPrint("[LiveActivity] updateFromPush: no active activity, ignoring")
+            return
+        }
+        let statusText = localizedStatus(status)
+        let phase = processingPhase(status)
+        update(statusText: statusText, isPaused: false, elapsedSeconds: 0, processingPhase: phase)
+        debugPrint("[LiveActivity] updateFromPush: \(status)")
+    }
+
+    /// Transition to "report ready" state. Called when a report_ready
+    /// FCM push arrives (visible push, not silent).
+    func showReportReadyFromPush(sessionId: String) {
+        guard currentActivity != nil else {
+            debugPrint("[LiveActivity] showReportReadyFromPush: no active activity, ignoring")
+            return
+        }
+        showReportReady(sessionId: sessionId, reportCount: 1)
+        debugPrint("[LiveActivity] showReportReadyFromPush: \(sessionId)")
+    }
+
+    /// Dismiss any Live Activities that survived a previous app session.
+    /// Called once during didFinishLaunchingWithOptions (cold start).
+    /// Safe because: if the user is opening the app, the in-app UI
+    /// takes over and the widget is redundant.
+    func cleanupOrphaned() {
+        let activities = Activity<LiveActivityAttributes>.activities
+        guard !activities.isEmpty else { return }
+        debugPrint("[LiveActivity] cleanupOrphaned: ending \(activities.count) orphaned activities")
+        for activity in activities {
             Task {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }

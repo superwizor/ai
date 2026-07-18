@@ -27,11 +27,41 @@ class LiveActivityService {
 
   final MethodChannel _channel;
 
+  // ── Phase tracking for resume observer ─────────────────────────
+  //
+  // When the user resumes the app, the _LiveActivityResumeObserver
+  // checks this flag. It only stops the Live Activity if the report
+  // has arrived (so we don't kill it during recording or processing).
+  static bool _reportReadyReceived = false;
+
+  /// Whether the resume observer should dismiss the Live Activity.
+  /// Checks BOTH the Dart-side flag (set by foreground push or cascade)
+  /// AND the native ActivityKit state (set by background push in
+  /// AppDelegate). This covers all cases including warm resume after
+  /// a background push.
+  static Future<bool> shouldDismissOnResume() async {
+    // Fast path: Dart-side flag was already set
+    if (_reportReadyReceived) return true;
+
+    // Slow path: check native ActivityKit state. The background push
+    // handler in AppDelegate may have updated the Live Activity to
+    // report_ready without Dart knowing about it.
+    const channel = MethodChannel('ai.superwizor/live_activity');
+    try {
+      final result = await channel.invokeMethod<bool>('isReportReady');
+      return result ?? false;
+    } catch (e) {
+      debugPrint('[live-activity] isReportReady check failed: $e');
+      return false;
+    }
+  }
+
   /// Start a new Live Activity / AppWidget for the given session.
   Future<void> start({
     required String patientAlias,
     required int elapsedSeconds,
   }) async {
+    _reportReadyReceived = false; // New session — reset dismiss flag
     try {
       await _channel.invokeMethod('start', {
         'patientAlias': patientAlias,
@@ -65,6 +95,7 @@ class LiveActivityService {
     required String sessionId,
     int reportCount = 1,
   }) async {
+    _reportReadyReceived = true; // Enable dismiss on resume
     try {
       await _channel.invokeMethod('reportReady', {
         'sessionId': sessionId,
@@ -77,6 +108,7 @@ class LiveActivityService {
 
   /// End the Live Activity / dismiss the AppWidget.
   Future<void> stop() async {
+    _reportReadyReceived = false; // Reset on explicit stop
     try {
       await _channel.invokeMethod('stop');
     } catch (e) {
@@ -105,5 +137,30 @@ class LiveActivityService {
     } catch (e) {
       debugPrint('[live-activity] openSettings failed (ignored): $e');
     }
+  }
+
+  // ── Static helpers for lifecycle contexts ────────────────────────
+
+  /// Dismiss any lingering Live Activity. Called from:
+  ///   - onMessageOpenedApp (user tapped push → about to see the report)
+  ///   - _LiveActivityResumeObserver (user opened app after report arrived)
+  ///
+  /// NOTE: Background isolate Live Activity updates are handled NATIVELY
+  /// in AppDelegate.swift — MethodChannel is not available from bg isolates.
+  static Future<void> stopFromBackground() async {
+    _reportReadyReceived = false;
+    const channel = MethodChannel('ai.superwizor/live_activity');
+    try {
+      await channel.invokeMethod('stop');
+      debugPrint('[live-activity] stopped from background/resume');
+    } catch (e) {
+      debugPrint('[live-activity] bg stop failed (ignored): $e');
+    }
+  }
+
+  /// Mark that a report is ready (called by native side via AppDelegate).
+  /// This enables the resume observer to dismiss the widget.
+  static void markReportReady() {
+    _reportReadyReceived = true;
   }
 }

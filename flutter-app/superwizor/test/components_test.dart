@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_hardcoded_strings_in_widgets
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:superwizor/theme/euphire_theme.dart';

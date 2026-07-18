@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_hardcoded_strings_in_widgets
+
 // Debug panel for testing notification badge & sort behaviour.
 //
 // Shows a floating pill (🛠) in the bottom-left corner that opens a

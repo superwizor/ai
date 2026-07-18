@@ -11,13 +11,9 @@
 // Read path:  patientsProvider refresh → Patient.lifecycleStatus
 //             → syncFromPatients() populates the in-memory map
 
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
-import '../models/patient.dart';
-import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import 'patient_provider.dart';
 
@@ -49,92 +45,19 @@ String _toBackend(PatientLifecycle lifecycle) {
 }
 
 class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
-  static const _keyPrefix = 'patient_lifecycle_';
-  bool _hasReceivedBackendData = false;
-
   @override
   Map<String, PatientLifecycle> build() {
-    _loadFromPrefs();
-    // Also sync from backend data if patients are already loaded.
-    _syncFromPatientsProvider();
-    // Reactively sync whenever patientsProvider emits new data.
-    // This covers the common case where patients load AFTER this
-    // provider's build() has already returned {} — without this
-    // listen, the lifecycle map would stay empty (or stale from
-    // SharedPreferences) until the next full provider rebuild.
-    ref.listen<AsyncValue<List<Patient>>>(patientsProvider, (_, next) {
-      next.whenData((patients) {
-        final backendMap = <String, PatientLifecycle>{};
-        for (final p in patients) {
-          backendMap[p.id] = _fromBackend(p.lifecycleStatus);
-        }
-        if (backendMap.isNotEmpty) {
-          _hasReceivedBackendData = true;
-          state = {...state, ...backendMap};
-          _saveToPrefs();
-        }
-      });
-    }, fireImmediately: true);
-    return {};
-  }
+    // Watch patientsProvider so we rebuild when the patient list is loaded/updated.
+    final patientsAsync = ref.watch(patientsProvider);
+    final map = <String, PatientLifecycle>{};
 
-  /// Loads the lifecycle map from SharedPreferences (legacy/fallback).
-  Future<void> _loadFromPrefs() async {
-    final user = ref.read(currentUserProvider).value;
-    if (user == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_keyPrefix${user.id}');
-    if (raw == null) return;
-    try {
-      final map = (jsonDecode(raw) as Map<String, dynamic>).map(
-        (k, v) => MapEntry(k, PatientLifecycle.values.byName(v as String)),
-      );
-      // Only set if we haven't already received backend data.
-      // This prevents the asynchronous SharedPreferences read from overwriting
-      // the authoritative backend list.
-      if (!_hasReceivedBackendData) {
-        state = map;
-      }
-    } catch (_) {}
-  }
-
-  /// Persists the lifecycle map to SharedPreferences (local backup).
-  Future<void> _saveToPrefs() async {
-    final user = ref.read(currentUserProvider).value;
-    if (user == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final map = state.map((k, v) => MapEntry(k, v.name));
-    await prefs.setString('$_keyPrefix${user.id}', jsonEncode(map));
-  }
-
-  /// Reads the lifecycle status from already-loaded patients and
-  /// populates the in-memory map. This is the primary read path —
-  /// backend data wins over local SharedPreferences.
-  void _syncFromPatientsProvider() {
-    final patientsAsync = ref.read(patientsProvider);
     patientsAsync.whenData((patients) {
-      final backendMap = <String, PatientLifecycle>{};
       for (final p in patients) {
-        backendMap[p.id] = _fromBackend(p.lifecycleStatus);
-      }
-      if (backendMap.isNotEmpty) {
-        _hasReceivedBackendData = true;
-        state = {...state, ...backendMap};
-        _saveToPrefs(); // Sync local cache with backend truth
+        map[p.id] = _fromBackend(p.lifecycleStatus);
       }
     });
-  }
 
-  /// Called by the patients provider after a refresh to update the
-  /// lifecycle map from fresh backend data. This ensures the map
-  /// stays in sync when patients are reloaded.
-  void syncFromBackendData(Map<String, String> lifecycleMap) {
-    final mapped = lifecycleMap.map(
-      (id, status) => MapEntry(id, _fromBackend(status)),
-    );
-    _hasReceivedBackendData = true;
-    state = {...state, ...mapped};
-    _saveToPrefs();
+    return map;
   }
 
   PatientLifecycle getLifecycle(String patientId) {
@@ -146,7 +69,6 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
   Future<void> setLifecycle(String patientId, PatientLifecycle lifecycle) async {
     // Optimistic update — UI sees the change immediately.
     state = {...state, patientId: lifecycle};
-    await _saveToPrefs();
 
     // Sync to backend.
     try {
@@ -157,6 +79,12 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
         // is_process_closed is derived server-side from lifecycle_status
         // when lifecycle_status is non-empty (see SQL CASE in 000058).
       ));
+
+      // Refresh the patients provider in the background. This will fetch
+      // the fresh list from the backend (with the updated lifecycle_status),
+      // update the Hive cache, and publish the new list to the UI without
+      // entering a loading state (avoiding UI collapse and flickering).
+      await ref.read(patientsProvider.notifier).forceRefresh();
     } catch (e) {
       debugPrint('[lifecycle] backend sync failed (local state persisted): $e');
       // Don't revert — the local state is the user's intent. Next

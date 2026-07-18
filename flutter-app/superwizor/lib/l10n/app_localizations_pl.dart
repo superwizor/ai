@@ -168,13 +168,21 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_alias_instruction =>
-      'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.';
+      'Wpisz inicjały, które kojarzą Ci się z klientem.';
 
   @override
   String get addPatient_alias_label => 'Etykieta robocza';
 
   @override
-  String get addPatient_avatar_format_hint => 'Litery, cyfry lub emoji (max 2)';
+  String get addPatient_anonymization_description =>
+      'Używamy wyłącznie pseudonimów. Wprowadź nazwę (np. inicjały lub fikcyjne imię), która nie pozwala osobom trzecim na identyfikację Twojego klienta.';
+
+  @override
+  String get addPatient_anonymization_title => 'Zasada anonimizacji danych';
+
+  @override
+  String get addPatient_avatar_format_hint =>
+      'Litery, cyfry lub emoji (max. 2 znaki)';
 
   @override
   String get addPatient_background_color => 'KOLOR TŁA';
@@ -185,6 +193,16 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_consent_link_label => 'Zobacz DPA';
+
+  @override
+  String get addPatient_email_label => 'E-mail klienta (opcjonalnie)';
+
+  @override
+  String get addPatient_email_privacy_hint =>
+      'Adres e-mail jest szyfrowany i bezpiecznie przechowywany w celu wysłania klientowi notatek z sesji i transkrypcji.';
+
+  @override
+  String get addPatient_email_privacy_title => 'Bezpieczeństwo i szyfrowanie';
 
   @override
   String get addPatient_customize_label_title => 'Spersonalizuj oznaczenie';
@@ -212,7 +230,8 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_duplicate_primary => 'Poprawię nazwę';
 
   @override
-  String get addPatient_language_label => 'Język raportu';
+  String get addPatient_language_label =>
+      'Język, w jakim rozmawiasz z klientem';
 
   @override
   String get addPatient_last_name_label => 'Pseudonim';
@@ -3137,6 +3156,10 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get transcript_search_hint => 'Szukaj w transkrypcji…';
+
+  @override
+  String get transcript_search_helper_hint =>
+      'Dotknij kafelka, aby przejść do niego w pełnej transkrypcji';
 
   @override
   String get transcript_segment_unknown_speaker => '—';

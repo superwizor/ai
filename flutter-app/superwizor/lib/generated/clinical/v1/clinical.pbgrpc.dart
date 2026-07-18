@@ -314,6 +314,27 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getAdminAnalytics, request, options: options);
   }
 
+  /// ─── Admin Report Feedback Dashboard — SUPERWIZOR_ADMIN only ───
+  /// Paginated list of all report ratings with therapist info.
+  /// Powers the "Feedback" tab in the admin analytics page.
+  $grpc.ResponseFuture<$0.AdminListReportRatingsResponse>
+      adminListReportRatings(
+    $0.AdminListReportRatingsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListReportRatings, request,
+        options: options);
+  }
+
+  /// Toggles a rating's admin review status (pending ↔ done).
+  $grpc.ResponseFuture<$1.Empty> adminSetRatingReviewStatus(
+    $0.AdminSetRatingReviewStatusRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminSetRatingReviewStatus, request,
+        options: options);
+  }
+
   /// ─── Admin Prompt Studio (docs/31) — SUPERWIZOR_ADMIN only ───
   /// Versioned editor for modalities.therapist_ai_general_prompt.
   /// The live column is what llm-worker reads per report; every update
@@ -481,6 +502,23 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deletePatientData, request, options: options);
   }
 
+  /// ─── Transcript segment editing and splitting ───
+  $grpc.ResponseFuture<$0.EditTranscriptSegmentResponse> editTranscriptSegment(
+    $0.EditTranscriptSegmentRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$editTranscriptSegment, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.SplitTranscriptSegmentResponse>
+      splitTranscriptSegment(
+    $0.SplitTranscriptSegmentRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$splitTranscriptSegment, request,
+        options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -638,6 +676,16 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/GetAdminAnalytics',
       ($0.GetAdminAnalyticsRequest value) => value.writeToBuffer(),
       $0.GetAdminAnalyticsResponse.fromBuffer);
+  static final _$adminListReportRatings = $grpc.ClientMethod<
+          $0.AdminListReportRatingsRequest, $0.AdminListReportRatingsResponse>(
+      '/clinical.v1.ClinicalService/AdminListReportRatings',
+      ($0.AdminListReportRatingsRequest value) => value.writeToBuffer(),
+      $0.AdminListReportRatingsResponse.fromBuffer);
+  static final _$adminSetRatingReviewStatus =
+      $grpc.ClientMethod<$0.AdminSetRatingReviewStatusRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/AdminSetRatingReviewStatus',
+          ($0.AdminSetRatingReviewStatusRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$adminListModalityPrompts =
       $grpc.ClientMethod<$1.Empty, $0.AdminListModalityPromptsResponse>(
           '/clinical.v1.ClinicalService/AdminListModalityPrompts',
@@ -730,6 +778,16 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/DeletePatientData',
           ($0.DeletePatientDataRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$editTranscriptSegment = $grpc.ClientMethod<
+          $0.EditTranscriptSegmentRequest, $0.EditTranscriptSegmentResponse>(
+      '/clinical.v1.ClinicalService/EditTranscriptSegment',
+      ($0.EditTranscriptSegmentRequest value) => value.writeToBuffer(),
+      $0.EditTranscriptSegmentResponse.fromBuffer);
+  static final _$splitTranscriptSegment = $grpc.ClientMethod<
+          $0.SplitTranscriptSegmentRequest, $0.SplitTranscriptSegmentResponse>(
+      '/clinical.v1.ClinicalService/SplitTranscriptSegment',
+      ($0.SplitTranscriptSegmentRequest value) => value.writeToBuffer(),
+      $0.SplitTranscriptSegmentResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -992,6 +1050,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetAdminAnalyticsRequest.fromBuffer(value),
         ($0.GetAdminAnalyticsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminListReportRatingsRequest,
+            $0.AdminListReportRatingsResponse>(
+        'AdminListReportRatings',
+        adminListReportRatings_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminListReportRatingsRequest.fromBuffer(value),
+        ($0.AdminListReportRatingsResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminSetRatingReviewStatusRequest, $1.Empty>(
+            'AdminSetRatingReviewStatus',
+            adminSetRatingReviewStatus_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminSetRatingReviewStatusRequest.fromBuffer(value),
+            ($1.Empty value) => value.writeToBuffer()));
     $addMethod(
         $grpc.ServiceMethod<$1.Empty, $0.AdminListModalityPromptsResponse>(
             'AdminListModalityPrompts',
@@ -1145,6 +1221,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.DeletePatientDataRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.EditTranscriptSegmentRequest,
+            $0.EditTranscriptSegmentResponse>(
+        'EditTranscriptSegment',
+        editTranscriptSegment_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.EditTranscriptSegmentRequest.fromBuffer(value),
+        ($0.EditTranscriptSegmentResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SplitTranscriptSegmentRequest,
+            $0.SplitTranscriptSegmentResponse>(
+        'SplitTranscriptSegment',
+        splitTranscriptSegment_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SplitTranscriptSegmentRequest.fromBuffer(value),
+        ($0.SplitTranscriptSegmentResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -1405,6 +1499,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$0.GetAdminAnalyticsResponse> getAdminAnalytics(
       $grpc.ServiceCall call, $0.GetAdminAnalyticsRequest request);
 
+  $async.Future<$0.AdminListReportRatingsResponse> adminListReportRatings_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminListReportRatingsRequest> $request) async {
+    return adminListReportRatings($call, await $request);
+  }
+
+  $async.Future<$0.AdminListReportRatingsResponse> adminListReportRatings(
+      $grpc.ServiceCall call, $0.AdminListReportRatingsRequest request);
+
+  $async.Future<$1.Empty> adminSetRatingReviewStatus_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminSetRatingReviewStatusRequest> $request) async {
+    return adminSetRatingReviewStatus($call, await $request);
+  }
+
+  $async.Future<$1.Empty> adminSetRatingReviewStatus(
+      $grpc.ServiceCall call, $0.AdminSetRatingReviewStatusRequest request);
+
   $async.Future<$0.AdminListModalityPromptsResponse>
       adminListModalityPrompts_Pre(
           $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
@@ -1560,4 +1672,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> deletePatientData(
       $grpc.ServiceCall call, $0.DeletePatientDataRequest request);
+
+  $async.Future<$0.EditTranscriptSegmentResponse> editTranscriptSegment_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.EditTranscriptSegmentRequest> $request) async {
+    return editTranscriptSegment($call, await $request);
+  }
+
+  $async.Future<$0.EditTranscriptSegmentResponse> editTranscriptSegment(
+      $grpc.ServiceCall call, $0.EditTranscriptSegmentRequest request);
+
+  $async.Future<$0.SplitTranscriptSegmentResponse> splitTranscriptSegment_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SplitTranscriptSegmentRequest> $request) async {
+    return splitTranscriptSegment($call, await $request);
+  }
+
+  $async.Future<$0.SplitTranscriptSegmentResponse> splitTranscriptSegment(
+      $grpc.ServiceCall call, $0.SplitTranscriptSegmentRequest request);
 }

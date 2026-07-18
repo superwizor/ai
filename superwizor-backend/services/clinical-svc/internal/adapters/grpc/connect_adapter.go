@@ -436,3 +436,19 @@ func (a *ConnectAdapter) AdminUpdateModalityPrompt(ctx context.Context, req *con
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) EditTranscriptSegment(ctx context.Context, req *connect.Request[clinicalv1.EditTranscriptSegmentRequest]) (*connect.Response[clinicalv1.EditTranscriptSegmentResponse], error) {
+	resp, err := a.s.EditTranscriptSegment(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) SplitTranscriptSegment(ctx context.Context, req *connect.Request[clinicalv1.SplitTranscriptSegmentRequest]) (*connect.Response[clinicalv1.SplitTranscriptSegmentResponse], error) {
+	resp, err := a.s.SplitTranscriptSegment(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

@@ -464,7 +464,22 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     final hasPendingUpload = sessions.any(
       (s) => s.status == SessionStatus.pendingUpload,
     );
-    if (hasPendingUpload) return _PatientStatus.uploading;
+    if (hasPendingUpload) {
+      // Option F race: the client finished the GCS PUT (local
+      // phase=completed) but the server hasn't processed the bucket
+      // notification yet — the session row is still PENDING_UPLOAD.
+      // From the therapist's POV the upload is done and AI is now
+      // processing. Show 'analyzing' to avoid a stale 'Wgrywanie'.
+      final localCompletedForPatient = pendingUploads.any((u) =>
+          u.patientFileId == patient.id &&
+          (u.phase == UploadPhase.completed ||
+              u.phase == UploadPhase.uploaded ||
+              u.phase == UploadPhase.converted));
+      if (localCompletedForPatient) {
+        return _PatientStatus.analyzing;
+      }
+      return _PatientStatus.uploading;
+    }
     final hasError = sessions.any(
       (s) => s.status == SessionStatus.error,
     );
@@ -858,16 +873,6 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                           color: const Color(0xFF60A5FA).withValues(alpha: 0.5),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Tooltip(
-                        message: t.home_section_paused_tooltip,
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Icon(
-                          Icons.help_outline,
-                          size: 14,
-                          color: const Color(0xFF60A5FA).withValues(alpha: 0.5),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -966,16 +971,16 @@ class _SectionLabel extends StatelessWidget {
   final String label;
   final int count;
   const _SectionLabel({required this.label, required this.count});
-
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final isMainLabel = label == t.home_section_active || label == t.home_section_active_filtered;
     
     if (isMainLabel && count == 0) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
         child: Text(
+          // ignore: avoid_hardcoded_strings_in_widgets
           'AKTYWNE KARTOTEKI: 0',
           style: TextStyle(
             fontFamily: 'Montserrat',
@@ -1745,7 +1750,6 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                 icon: Icons.pause_circle_outline_rounded,
                 selected: currentLifecycle == PatientLifecycle.paused,
                 accentColor: const Color(0xFF60A5FA),
-                tooltipMessage: t.home_section_paused_tooltip,
                 onTap: () => ref
                     .read(patientLifecycleProvider.notifier)
                     .setLifecycle(widget.patientId, PatientLifecycle.paused),
@@ -2134,7 +2138,6 @@ class _LifecycleSegment extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color accentColor;
-  final String? tooltipMessage;
 
   const _LifecycleSegment({
     required this.label,
@@ -2142,7 +2145,6 @@ class _LifecycleSegment extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.accentColor = EuphireColors.ember,
-    this.tooltipMessage,
   });
 
   @override
@@ -2191,20 +2193,6 @@ class _LifecycleSegment extends StatelessWidget {
                           : EuphireColors.mist.withValues(alpha: 0.5),
                     ),
                   ),
-                  if (tooltipMessage != null) ...[
-                    const SizedBox(width: 4),
-                    Tooltip(
-                      message: tooltipMessage,
-                      triggerMode: TooltipTriggerMode.tap,
-                      child: Icon(
-                        Icons.help_outline,
-                        size: 12,
-                        color: selected
-                            ? accentColor.withValues(alpha: 0.8)
-                            : EuphireColors.mist.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ],
@@ -2686,11 +2674,13 @@ class _DebugTapLogoState extends ConsumerState<_DebugTapLogo> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SvgPicture.asset(
+                  // ignore: avoid_hardcoded_strings_in_widgets
                   'assets/images/svg/Brandmark_whiteSam_sygnet_euphire.svg',
                   height: 24,
                 ),
                 const SizedBox(width: 8),
                 const Text(
+                  // ignore: avoid_hardcoded_strings_in_widgets
                   'Superwizor AI',
                   style: TextStyle(
                     fontFamily: 'Montserrat',

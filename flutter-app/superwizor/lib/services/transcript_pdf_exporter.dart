@@ -60,7 +60,9 @@ class TranscriptPdfExporter {
             pw.Text(strings.title,
                 style: pw.TextStyle(
                     fontSize: 16, fontWeight: pw.FontWeight.bold)),
-            pw.Text('Superwizor AI',
+            pw.Text(
+                // ignore: avoid_hardcoded_strings_in_widgets
+                'Superwizor AI',
                 style: const pw.TextStyle(
                     fontSize: 10, color: PdfColors.grey700)),
           ],

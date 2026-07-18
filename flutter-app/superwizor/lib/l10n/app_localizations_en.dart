@@ -166,14 +166,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_alias_instruction =>
-      'Give the client a unique label — it will make navigation easier.';
+      'Enter initials that you associate with the client.';
 
   @override
   String get addPatient_alias_label => 'Working alias';
 
   @override
+  String get addPatient_anonymization_description =>
+      'We only use pseudonyms. Enter a label (e.g. initials or a fictional first name) that does not allow third parties to identify your client.';
+
+  @override
+  String get addPatient_anonymization_title => 'Data anonymization principle';
+
+  @override
   String get addPatient_avatar_format_hint =>
-      'Letters, numbers or emoji (max 2)';
+      'Letters, numbers or emoji (max. 2 characters)';
 
   @override
   String get addPatient_background_color => 'BACKGROUND COLOR';
@@ -184,6 +191,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_consent_link_label => 'View DPA';
+
+  @override
+  String get addPatient_email_label => 'Client e-mail (optional)';
+
+  @override
+  String get addPatient_email_privacy_hint =>
+      'The e-mail address is encrypted and securely stored for sending session notes and transcripts to the client.';
+
+  @override
+  String get addPatient_email_privacy_title => 'Security & encryption';
 
   @override
   String get addPatient_customize_label_title => 'Customize label';
@@ -211,7 +228,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_duplicate_primary => 'I\'ll fix the name';
 
   @override
-  String get addPatient_language_label => 'Report language';
+  String get addPatient_language_label => 'Language you speak with the client';
 
   @override
   String get addPatient_last_name_label => 'Alias';
@@ -3115,6 +3132,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transcript_search_hint => 'Search in transcript…';
+
+  @override
+  String get transcript_search_helper_hint =>
+      'Tap a tile to go to its position in the full transcript';
 
   @override
   String get transcript_segment_unknown_speaker => '—';

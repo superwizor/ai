@@ -29,8 +29,8 @@ DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-superwizor}"
 
-# Wskazujemy SDK Firebase na lokalny emulator Auth
-export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:9099"
+# Wskazujemy SDK Firebase na lokalny emulator Auth (zakomentowane, aby korzystać ze stagingowego Firebase w chmurze)
+# export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:9099"
 
 # Automatyczne pobieranie prawdziwego hasła ze stagingu z Secret Managera, jeśli deweloper używa portu 5432
 if [[ "${DB_PASSWORD}" == "superwizor_password" && "${DB_HOST}" == "127.0.0.1" && "${DB_PORT}" == "5432" ]]; then
@@ -232,15 +232,15 @@ GCP_PROJECT_ID="superwizor-ai-25ecd" \
 "${BACKEND_DIR}/bin/notification-svc" > "${LOGS_DIR}/notification-svc.log" 2>&1 &
 PIDS+=($!)
 
-# F. Firebase Auth Emulator
-if ! nc -z -w 1 127.0.0.1 9099 >/dev/null 2>&1; then
-  echo "🟢 Uruchamianie emulatora Firebase Auth na porcie 9099..."
-  (cd "${BACKEND_DIR}/.." && npx firebase-tools emulators:start --only auth > "${LOGS_DIR}/firebase-emulator.log" 2>&1) &
-  PIDS+=($!)
-  sleep 2
-else
-  echo "✅ Firebase Auth Emulator już działa na porcie 9099."
-fi
+# F. Firebase Auth Emulator (pomijamy, korzystamy z chmury)
+# if ! nc -z -w 1 127.0.0.1 9099 >/dev/null 2>&1; then
+#   echo "🟢 Uruchamianie emulatora Firebase Auth na porcie 9099..."
+#   (cd "${BACKEND_DIR}/.." && npx firebase-tools emulators:start --only auth > "${LOGS_DIR}/firebase-emulator.log" 2>&1) &
+#   PIDS+=($!)
+#   sleep 2
+# else
+#   echo "✅ Firebase Auth Emulator już działa na porcie 9099."
+# fi
 
 # G. Stripe CLI Webhook Listener
 # Forwarduje eventy Stripe do lokalnego billing-svc. Bez tego webhook

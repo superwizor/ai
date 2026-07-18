@@ -363,6 +363,33 @@ func ProcessSessionStatusChanged(ctx context.Context, e event.Event) error {
 		logger.Warn("firestore mirror failed", "error", err)
 	}
 
+	// Silent data-only push for intermediate pipeline states so the iOS
+	// Live Activity widget updates in real time even when the app is
+	// backgrounded. Best-effort: if this fails the widget just shows the
+	// last known status until the next transition (or the final
+	// report_ready visible push).
+	if shouldSilentPush(fsStatus) {
+		tokens, tokErr := store.ListActiveFCMTokensByUser(ctx, session.TherapistID)
+		if tokErr != nil {
+			logger.Warn("silent push: list tokens failed", "error", tokErr)
+		} else if len(tokens) > 0 {
+			tokenStrings := make([]string, len(tokens))
+			for i, t := range tokens {
+				tokenStrings[i] = t.Token
+			}
+			_, pushErr := fcmSender.SendSilent(ctx, fcm.Push{
+				Tokens:           tokenStrings,
+				SessionID:        sessionIDStr,
+				NotificationType: "status_" + fsStatus,
+			})
+			if pushErr != nil {
+				logger.Warn("silent push failed (non-fatal)", "error", pushErr)
+			} else {
+				logger.Info("silent push sent", "status", fsStatus)
+			}
+		}
+	}
+
 	logger.Info("status mirror written", "status", fsStatus)
 	return nil
 }
@@ -382,6 +409,20 @@ func progressForStatus(s string) int {
 		return 100
 	default:
 		return 0
+	}
+}
+
+// shouldSilentPush returns true for intermediate pipeline statuses that
+// warrant a silent data-only FCM push to update the iOS Live Activity
+// widget. "done" is excluded because it gets a full visible push via
+// handleReportReady. "failed" and "cancelled" are excluded because the
+// app handles those through Firestore listener or app-resume checks.
+func shouldSilentPush(status string) bool {
+	switch status {
+	case "uploaded", "transcribing", "analyzing":
+		return true
+	default:
+		return false
 	}
 }
 

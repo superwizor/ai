@@ -359,7 +359,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_alias_instruction.
   ///
   /// In pl, this message translates to:
-  /// **'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.'**
+  /// **'Wpisz inicjały, które kojarzą Ci się z klientem.'**
   String get addPatient_alias_instruction;
 
   /// No description provided for @addPatient_alias_label.
@@ -368,10 +368,22 @@ abstract class AppLocalizations {
   /// **'Etykieta robocza'**
   String get addPatient_alias_label;
 
+  /// No description provided for @addPatient_anonymization_description.
+  ///
+  /// In pl, this message translates to:
+  /// **'Używamy wyłącznie pseudonimów. Wprowadź nazwę (np. inicjały lub fikcyjne imię), która nie pozwala osobom trzecim na identyfikację Twojego klienta.'**
+  String get addPatient_anonymization_description;
+
+  /// No description provided for @addPatient_anonymization_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zasada anonimizacji danych'**
+  String get addPatient_anonymization_title;
+
   /// No description provided for @addPatient_avatar_format_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Litery, cyfry lub emoji (max 2)'**
+  /// **'Litery, cyfry lub emoji (max. 2 znaki)'**
   String get addPatient_avatar_format_hint;
 
   /// No description provided for @addPatient_background_color.
@@ -391,6 +403,24 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Zobacz DPA'**
   String get addPatient_consent_link_label;
+
+  /// No description provided for @addPatient_email_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'E-mail klienta (opcjonalnie)'**
+  String get addPatient_email_label;
+
+  /// No description provided for @addPatient_email_privacy_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Adres e-mail jest szyfrowany i bezpiecznie przechowywany w celu wysłania klientowi notatek z sesji i transkrypcji.'**
+  String get addPatient_email_privacy_hint;
+
+  /// No description provided for @addPatient_email_privacy_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bezpieczeństwo i szyfrowanie'**
+  String get addPatient_email_privacy_title;
 
   /// No description provided for @addPatient_customize_label_title.
   ///
@@ -443,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_language_label.
   ///
   /// In pl, this message translates to:
-  /// **'Język raportu'**
+  /// **'Język, w jakim rozmawiasz z klientem'**
   String get addPatient_language_label;
 
   /// No description provided for @addPatient_last_name_label.
@@ -5590,6 +5620,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Szukaj w transkrypcji…'**
   String get transcript_search_hint;
+
+  /// No description provided for @transcript_search_helper_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dotknij kafelka, aby przejść do niego w pełnej transkrypcji'**
+  String get transcript_search_helper_hint;
 
   /// No description provided for @transcript_segment_unknown_speaker.
   ///

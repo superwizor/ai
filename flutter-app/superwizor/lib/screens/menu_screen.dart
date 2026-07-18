@@ -1161,6 +1161,7 @@ class _LanguagePickerSheet extends ConsumerWidget {
             ),
             const Divider(color: Colors.white10, height: 1),
             _LangTile(
+              // ignore: avoid_hardcoded_strings_in_widgets
               flag: '🇵🇱',
               name: AppLocalizations.of(context).language_pl_name,
               sub: AppLocalizations.of(context).language_pl_sub,
@@ -1174,6 +1175,7 @@ class _LanguagePickerSheet extends ConsumerWidget {
               },
             ),
             _LangTile(
+              // ignore: avoid_hardcoded_strings_in_widgets
               flag: '🇬🇧',
               name: AppLocalizations.of(context).language_en_name,
               sub: AppLocalizations.of(context).language_en_sub,
@@ -1835,11 +1837,12 @@ class _LicensesScreenState extends State<_LicensesScreen> {
   void initState() {
     super.initState();
     LicenseRegistry.licenses.toList().then((list) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _licenses = list;
           _loading = false;
         });
+      }
     });
   }
 

@@ -249,9 +249,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: EuphireSegmentedControl(
+            // ignore: avoid_hardcoded_strings_in_widgets
             selected: 'report',
+            // ignore: avoid_hardcoded_strings_in_widgets
             leftValue: 'transcript',
             leftLabel: t.transcript_tab,
+            // ignore: avoid_hardcoded_strings_in_widgets
             rightValue: 'report',
             rightLabel: t.report_tab,
             onSelect: (v) {

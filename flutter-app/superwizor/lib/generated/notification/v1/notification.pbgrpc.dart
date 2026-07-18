@@ -119,6 +119,19 @@ class NotificationServiceClient extends $grpc.Client {
     return $createUnaryCall(_$sendContactEmail, request, options: options);
   }
 
+  /// docs/39 PR9: PHI-free client-panel notifications. Internal RPC —
+  /// clinical-svc fires it best-effort from the share toggles and
+  /// ClientCreateNote. The rendered e-mail deliberately carries NO PHI:
+  /// no names, no titles, no content — only "something new in the panel"
+  /// plus a login link (D6: the panel is the content channel, e-mail is
+  /// just the signal).
+  $grpc.ResponseFuture<$1.Empty> sendClientPanelEvent(
+    $0.SendClientPanelEventRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendClientPanelEvent, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.HealthCheckResponse> healthCheck(
     $1.Empty request, {
     $grpc.CallOptions? options,
@@ -167,6 +180,11 @@ class NotificationServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.SendContactEmailRequest, $1.Empty>(
           '/notification.v1.NotificationService/SendContactEmail',
           ($0.SendContactEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$sendClientPanelEvent =
+      $grpc.ClientMethod<$0.SendClientPanelEventRequest, $1.Empty>(
+          '/notification.v1.NotificationService/SendClientPanelEvent',
+          ($0.SendClientPanelEventRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
   static final _$healthCheck =
       $grpc.ClientMethod<$1.Empty, $0.HealthCheckResponse>(
@@ -245,6 +263,14 @@ abstract class NotificationServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.SendContactEmailRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendClientPanelEventRequest, $1.Empty>(
+        'SendClientPanelEvent',
+        sendClientPanelEvent_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendClientPanelEventRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.HealthCheckResponse>(
         'HealthCheck',
         healthCheck_Pre,
@@ -319,6 +345,14 @@ abstract class NotificationServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> sendContactEmail(
       $grpc.ServiceCall call, $0.SendContactEmailRequest request);
+
+  $async.Future<$1.Empty> sendClientPanelEvent_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SendClientPanelEventRequest> $request) async {
+    return sendClientPanelEvent($call, await $request);
+  }
+
+  $async.Future<$1.Empty> sendClientPanelEvent(
+      $grpc.ServiceCall call, $0.SendClientPanelEventRequest request);
 
   $async.Future<$0.HealthCheckResponse> healthCheck_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {

@@ -112,6 +112,68 @@ func (s *Sender) Send(ctx context.Context, p Push) ([]PerTokenResult, error) {
 	return out, nil
 }
 
+// SendSilent issues a data-only (silent) push — no visible notification,
+// no sound, no banner. On iOS the content-available:1 flag wakes the
+// app's background handler so Flutter can update the Live Activity
+// widget with the new pipeline status (uploading → analyzing → …).
+//
+// Best-effort: errors are returned but callers should not retry — a
+// missed silent push simply means the widget waits for the next
+// transition or the final report_ready (which is a full push).
+func (s *Sender) SendSilent(ctx context.Context, p Push) ([]PerTokenResult, error) {
+	if len(p.Tokens) == 0 {
+		return nil, nil
+	}
+	if s == nil || s.client == nil {
+		out := make([]PerTokenResult, len(p.Tokens))
+		for i := range out {
+			out[i] = PerTokenResult{Success: true, MessageID: "mock-no-fcm"}
+		}
+		return out, nil
+	}
+
+	msg := &fbmessaging.MulticastMessage{
+		Tokens: p.Tokens,
+		// No Notification field → data-only message.
+		Data: func() map[string]string {
+			d := map[string]string{
+				"session_id":        p.SessionID,
+				"notification_type": p.NotificationType,
+			}
+			if p.PatientFileID != "" {
+				d["patient_file_id"] = p.PatientFileID
+			}
+			return d
+		}(),
+		// iOS: content-available wakes the background handler.
+		APNS: &fbmessaging.APNSConfig{
+			Payload: &fbmessaging.APNSPayload{
+				Aps: &fbmessaging.Aps{ContentAvailable: true},
+			},
+		},
+		// Android: high priority so the data message is delivered promptly.
+		Android: &fbmessaging.AndroidConfig{
+			Priority: "high",
+		},
+	}
+
+	batch, err := s.client.SendEachForMulticast(ctx, msg)
+	if err != nil {
+		return nil, fmt.Errorf("fcm SendEachForMulticast (silent): %w", err)
+	}
+
+	out := make([]PerTokenResult, len(batch.Responses))
+	for i, r := range batch.Responses {
+		out[i] = PerTokenResult{
+			Success:          r.Success,
+			MessageID:        r.MessageID,
+			Err:              r.Error,
+			TokenInvalidated: r.Error != nil && isTokenInvalid(r.Error),
+		}
+	}
+	return out, nil
+}
+
 // isTokenInvalid centralises the "should we invalidate this token?"
 // decision. Unregistered (app uninstalled / token rotated out) is the
 // canonical signal; InvalidArgument also typically means the token string
@@ -135,3 +197,4 @@ func isTokenInvalid(err error) bool {
 }
 
 var errSentinelTokenInvalid = errors.New("fcm: sentinel token-invalid (unused)")
+

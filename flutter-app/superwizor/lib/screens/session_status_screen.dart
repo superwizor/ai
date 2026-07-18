@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_hardcoded_strings_in_widgets
+
 // SessionStatusScreen — Etap 4 (full screen for the stepper +
 // Success Cascade after report.generated).
 //

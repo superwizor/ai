@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_hardcoded_strings_in_widgets
+
 // Debug State Gallery — Storybook-style preview of every visual state
 // the SessionStatusScreen can be in. No real backend, Hive queue, or
 // Firestore needed — all data is synthetic.

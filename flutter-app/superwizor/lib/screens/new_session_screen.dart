@@ -436,6 +436,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             const SizedBox(width: 12),
             _EncryptionChip(
               icon: Icons.verified_user_rounded,
+              // ignore: avoid_hardcoded_strings_in_widgets
               label: 'RODO',
             ),
           ],
