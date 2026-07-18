@@ -23,7 +23,6 @@ import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
-import '../repositories/patient_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/billing_quota_cache.dart';
 import '../services/billing_quota_state.dart';
@@ -276,9 +275,13 @@ final pendingUploadsForPatientProvider =
 /// `Map<patientId, sessions>` stays stale until the next manual
 /// fetchSessions() call.
 Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
+  // Refresh THROUGH the notifier, not the bare repository: a repo-only
+  // refresh() updates the Hive cache but leaves patientsProvider's
+  // in-memory state (the home-list tiles' data source, incl.
+  // sessionCount) stale until restart — the same trap the sessions
+  // comment below describes, previously fixed only for sessions.
   try {
-    final patientRepo = await ref.read(patientRepositoryProvider.future);
-    await patientRepo?.refresh();
+    await ref.read(patientsProvider.notifier).forceRefresh();
   } catch (e) {
     debugPrint('[upload-runner] patient refresh failed: $e');
   }

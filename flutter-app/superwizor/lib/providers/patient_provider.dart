@@ -185,17 +185,13 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     state = AsyncValue.data(fresh.map((d) => d.toModel()).toList());
   }
 
-  void incrementSessionCount(String patientId) {
-    final current = state.whenOrNull(data: (d) => d);
-    if (current != null) {
-      state = AsyncValue.data(current.map((p) {
-        if (p.id == patientId) {
-          return p.copyWith(sessionCount: p.sessionCount + 1);
-        }
-        return p;
-      }).toList());
-    }
-  }
+  /// Network refresh + state publish, for callers OUTSIDE this notifier
+  /// (upload-queue callbacks). A bare repository.refresh() updates the
+  /// Hive cache but leaves this provider's in-memory state — the thing
+  /// the home-list tiles actually watch (sessionCount!) — untouched
+  /// until the next invalidate/app restart. That was the "ilość sesji
+  /// nie jest zaktualizowana" bug (2026-07-18).
+  Future<void> forceRefresh() => _refreshAndPublish();
 }
 
 final sessionsProvider = AsyncNotifierProvider<SessionsNotifier, Map<String, List<Session>>>(() {
