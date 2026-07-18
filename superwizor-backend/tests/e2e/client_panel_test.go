@@ -457,11 +457,13 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 	clIdentity := identityv1.NewIdentityServiceClient(clIdentityConn)
 
 	accepted, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+		// NO names (docs/43 §4): the web form no longer collects them and
+		// the server must accept a name-free PATIENT payload — the old
+		// blanket validation 400'd exactly this shape (2026-07-18).
 		Token: token1, PairingCode: code1, FirebaseUid: clSession.UID,
-		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
-	require.NoError(t, err, "AcceptInvitation (first click)")
+	require.NoError(t, err, "AcceptInvitation (first click, name-free)")
 	require.Equal(t, identityv1.UserRole_USER_ROLE_PATIENT, accepted.User.Role,
 		"accept must mint a PATIENT account")
 	require.Equal(t, clientEmail, accepted.User.Email)
@@ -489,7 +491,6 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 	token2, code2 := swapToken(pf2)
 	accepted2, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
 		Token: token2, PairingCode: code2, FirebaseUid: clSession.UID,
-		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
 	require.NoError(t, err, "AcceptInvitation (returning client)")
@@ -507,7 +508,6 @@ func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
 	// Replay guard: a consumed token is dead.
 	_, err = clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
 		Token: token1, PairingCode: code1, FirebaseUid: clSession.UID,
-		FirstName: "Klient", LastName: "MagicLink",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
 	require.Error(t, err, "replaying a consumed token must fail")
@@ -591,7 +591,6 @@ func TestClientInvite_WrongCodeLockout(t *testing.T) {
 	accept := func(tok, pc string) error {
 		_, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
 			Token: tok, PairingCode: pc, FirebaseUid: clSession.UID,
-			FirstName: "Klient", LastName: "Lockout",
 			UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 		})
 		return err

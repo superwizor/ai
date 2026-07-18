@@ -1950,6 +1950,11 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Breathing room for the floating label — it renders ON the
+        // outline border, ~half its height ABOVE the field, and the
+        // crossfade container clips it without this (visible as a
+        // half-cut "Inicjał lub pseudonim", reported 2026-07-18).
+        const SizedBox(height: 10),
         // ── Working alias ("Pseudonim") — the only editable client
         // identifier (docs/43 §4). ──
         _GlassField(

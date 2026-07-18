@@ -46,6 +46,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const tFields = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
   const tErr = useTranslations("register.errors");
+  const tInv = useTranslations("register.acceptInvite");
   const locale = useLocale();
   const auth = useAuth();
 
@@ -83,6 +84,22 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // docs/42 O1: aktywacja konta klienta wymaga 6-cyfrowego kodu
+  // parowania od terapeuty (requiresPairingCode z preview). Ten
+  // formularz go wcześniej NIE zbierał — każdy accept szedł bez kodu,
+  // padał na PAIRING_CODE_INVALID i dobijał licznik blokady (bug
+  // zgłoszony 2026-07-18).
+  const [pairingCode, setPairingCode] = useState("");
+  const [pairingCodeError, setPairingCodeError] = useState<string | null>(null);
+
+  // requirePairingCode: walidacja przed KAŻDĄ ścieżką (social i hasło)
+  // — bez kodu nie odpalamy nawet popupu logowania.
+  const requirePairingCode = (): boolean => {
+    if (!preview?.requiresPairingCode) return true;
+    if (/^\d{6}$/.test(pairingCode.replace(/\s+/g, ""))) return true;
+    setPairingCodeError(tInv("pairingCodeFormat"));
+    return false;
+  };
 
   // Shared tail: exchange the token for the PATIENT account and hand
   // off to the client panel (app origin) via SSO. No names — the
@@ -98,6 +115,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
         timezone: tz,
         hasAcceptedTos: true,
         hasMarketingConsent: false,
+        pairingCode: pairingCode.replace(/\s+/g, ""),
       }),
     );
     await openAppWithSso(ssoEmail);
@@ -112,12 +130,17 @@ export function ClientOnboardingForm({ token }: { token: string }) {
           : t("alreadyAccepted");
       }
       if (e.message.includes("CLIENT_EMAIL_TAKEN")) return t("emailTaken");
+      if (e.message.includes("PAIRING_CODE_INVALID"))
+        return tInv("pairingCodeInvalid");
+      if (e.message.includes("INVITATION_BLOCKED"))
+        return tInv("invitationBlocked");
     }
     return tErr("unknown");
   };
 
   // ── Social path: sign in, then exchange the token right away ──
   const onSocial = async (kind: "google" | "apple") => {
+    if (!requirePairingCode()) return;
     setBusy(true);
     setError(null);
     let user;
@@ -149,6 +172,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const onPasswordSubmit = async () => {
     setError(null);
     setInfo(null);
+    if (!requirePairingCode()) return;
     const finalPassword = passwordRef.current?.value || password || "";
     if (finalPassword.length < 8 || !/\d/.test(finalPassword)) {
       setError(tFields("passwordHint"));
@@ -256,6 +280,34 @@ export function ClientOnboardingForm({ token }: { token: string }) {
 
   return (
     <div className="grid gap-6">
+      {/* ── Pairing code (docs/42 O1) — required for BOTH auth paths,
+             so it sits above them. Hash-only server-side; 5 wrong
+             attempts block the invitation. ── */}
+      {preview.requiresPairingCode && (
+        <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
+          <FieldShell
+            id="cl-pairing-code"
+            label={tInv("pairingCodeLabel")}
+            hint={tInv("pairingCodeHint")}
+            required
+            error={pairingCodeError ?? undefined}
+          >
+            <TextInput
+              id="cl-pairing-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123 456"
+              maxLength={7}
+              value={pairingCode}
+              onChange={(e) => {
+                setPairingCode(e.target.value);
+                setPairingCodeError(null);
+              }}
+            />
+          </FieldShell>
+        </section>
+      )}
+
       {/* ── Option 1: social login — the simplest path ── */}
       <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
         <h2 className="font-display text-frost text-sm font-semibold">

@@ -259,9 +259,11 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 	if !req.HasAcceptedTos {
 		return nil, status.Error(codes.FailedPrecondition, "must accept ToS")
 	}
-	if req.FirstName == "" || req.LastName == "" {
-		return nil, status.Error(codes.InvalidArgument, "first_name and last_name required")
-	}
+	// Names are NOT validated here: the invited role is known only after
+	// the token lookup, and PATIENT accepts are name-free (docs/43 §4 —
+	// the client account is pseudonymous; the old blanket check 400'd
+	// every client registration once the web form stopped collecting
+	// names, 2026-07-18). Staff invites re-check below.
 
 	verifiedUID, err := s.verifyFirebaseTokenFromContext(ctx)
 	if err != nil {
@@ -323,6 +325,12 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 			}
 		}
 		return s.acceptClientInvitation(ctx, inv, req, verifiedUID)
+	}
+
+	// Staff (therapist/manager) accounts DO carry names — enforce the
+	// pre-docs/43 requirement for every non-PATIENT role.
+	if req.FirstName == "" || req.LastName == "" {
+		return nil, status.Error(codes.InvalidArgument, "first_name and last_name required")
 	}
 
 	// Tx: create User, link to org, mark invitation accepted.
