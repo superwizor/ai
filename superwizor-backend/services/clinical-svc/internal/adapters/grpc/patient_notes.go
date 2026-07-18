@@ -351,9 +351,11 @@ func (s *Server) GetActionPlanDraft(ctx context.Context, req *clinicalv1.GetActi
 		SuggestedTitle: "Plan działania",
 		SuggestedText:  suggestedText,
 	}
-	if pf.PatientEmail != nil && *pf.PatientEmail != "" {
+	// Send-time resolution (migration 000077): the kartoteka stores no
+	// e-mail; users.email → latest non-revoked invitation.
+	if email, rerr := s.queries.ResolvePatientEmail(ctx, pf.ID); rerr == nil && email != nil && *email != "" {
 		draft.PatientHasEmail = true
-		draft.PatientEmailMasked = maskEmail(*pf.PatientEmail)
+		draft.PatientEmailMasked = maskEmail(*email)
 	}
 	return draft, nil
 }
@@ -482,12 +484,18 @@ func sendErrorCode(err error) string {
 // stamps the note as sent. The note is already persisted by the caller;
 // errors here leave it saved-but-unsent.
 func (s *Server) sendActionPlan(ctx context.Context, therapistID uuid.UUID, note db.PatientNote, pf db.PatientFile) (db.PatientNote, error) {
-	if pf.PatientEmail == nil || *pf.PatientEmail == "" {
-		// Note is saved; surface a typed precondition the UI maps to a
-		// "add the patient's e-mail first" prompt.
+	// Send-time resolution (migration 000077, docs/43 §4): the kartoteka
+	// stores no e-mail. users.email (activated account) wins, else the
+	// latest non-revoked invitation's address. No address → the UI maps
+	// the precondition to an "invite the client first" prompt.
+	resolved, rerr := s.queries.ResolvePatientEmail(ctx, pf.ID)
+	if rerr != nil {
+		return note, status.Errorf(codes.Internal, "resolve patient email: %v", rerr)
+	}
+	if resolved == nil || *resolved == "" {
 		return note, status.Error(codes.FailedPrecondition, "PATIENT_EMAIL_MISSING")
 	}
-	toEmail := *pf.PatientEmail
+	toEmail := *resolved
 
 	if s.notification == nil {
 		// NOTIFICATION_SVC_URL unset (local dev). The note is saved;
@@ -538,10 +546,12 @@ func (s *Server) sendActionPlan(ctx context.Context, therapistID uuid.UUID, note
 		return note, status.Errorf(codes.Internal, "send action plan e-mail failed: %v", serr)
 	}
 
-	emailCopy := toEmail
+	// Persist only the MASKED recipient (migration 000077): enough of an
+	// audit trail for DSAR, without keeping the full address around.
+	masked := maskEmail(toEmail)
 	stamped, merr := s.queries.MarkPatientNoteSent(ctx, db.MarkPatientNoteSentParams{
 		ID:          note.ID,
-		SentToEmail: &emailCopy,
+		SentToEmail: &masked,
 	})
 	if merr != nil {
 		// E-mail went out but we couldn't record it. Log loudly; the

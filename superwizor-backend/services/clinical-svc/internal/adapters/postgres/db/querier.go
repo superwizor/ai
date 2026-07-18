@@ -118,7 +118,12 @@ type Querier interface {
 	// Inserts a fresh PATIENT row. firebase_uid + email stay NULL (patient
 	// has no account yet); the partial CHECK constraints in migration 000013
 	// allow that for role='PATIENT'.
-	CreatePatientUser(ctx context.Context, arg CreatePatientUserParams) (uuid.UUID, error)
+	//
+	// first_name/last_name are deliberately blank (docs/43 §4: the client's
+	// only direct identifier is the e-mail; the kartoteka identifies the
+	// client by patient_files.working_alias). Columns stay NOT NULL for the
+	// therapist rows, so we write ''.
+	CreatePatientUser(ctx context.Context, uiLanguage string) (uuid.UUID, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// Hard delete. patient_files.patient_id FK is SET NULL (migration
 	// 000013) so any kartoteka referencing this row gets its patient_id
@@ -200,6 +205,13 @@ type Querier interface {
 	// migration 000014's CASCADE flip; kept LEFT for defensiveness on
 	// already-orphaned rows in production). NULL user columns are
 	// emitted as empty strings by the proto mapper.
+	//
+	// patient_email is RESOLVED, not stored (migration 000077, docs/43 §4):
+	// the activated account's users.email wins; otherwise the most recent
+	// non-revoked invitation's address (identity domain, TTL'd). The
+	// kartoteka itself holds no client e-mail. This read of identity-owned
+	// tables (users/invitations) is the sanctioned read-only seam — the
+	// services share one database; clinical never writes those tables.
 	//
 	// INNER JOIN on modalities — patient_files.modality_id is NOT NULL
 	// (migration 000005), so an INNER JOIN won't drop any rows but does
@@ -390,17 +402,16 @@ type Querier interface {
 	PurgePatientNote(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgePatientUser(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgeSession(ctx context.Context, id uuid.UUID) (int64, error)
+	// Send-time resolution of the client's e-mail (docs/43 §4 — no stored
+	// copy in the clinical domain since migration 000077). Activated
+	// account first, then the latest non-revoked invitation. NULL = no
+	// address on file; callers surface that as "invite the client first".
+	ResolvePatientEmail(ctx context.Context, id uuid.UUID) (*string, error)
 	// Sets or clears the avatar customization on a kartoteka.
 	// Empty string or '{}' from the caller clears it (back to defaults).
 	// The therapist_id predicate is the authz guard at the SQL layer.
 	SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams) error
 	SetNoteSharedWithClient(ctx context.Context, arg SetNoteSharedWithClientParams) (SetNoteSharedWithClientRow, error)
-	// Sets (or clears) the patient's contact e-mail on the kartoteka
-	// (migration 000040). Plaintext contact PII, consistent with
-	// working_alias. An empty string from the caller is normalized to NULL
-	// so "no e-mail" is a single canonical representation. Authz
-	// (therapist ownership) is enforced in the handler before this runs.
-	SetPatientEmail(ctx context.Context, arg SetPatientEmailParams) error
 	// shared=true stamps now() once (idempotent); false clears.
 	SetSessionSharedWithClient(ctx context.Context, arg SetSessionSharedWithClientParams) (SetSessionSharedWithClientRow, error)
 	// Kept for backwards compatibility — old gRPC handlers may still call
@@ -432,9 +443,9 @@ type Querier interface {
 	// re-encrypts the full plaintext on every edit). bumps updated_at.
 	UpdatePatientNote(ctx context.Context, arg UpdatePatientNoteParams) (PatientNote, error)
 	// COALESCE/NULLIF pattern: empty string from the caller means "leave
-	// this field alone". Concrete value (even a single character) replaces
-	// the column. Returns the refreshed row so the handler can re-emit the
-	// PatientFile proto with fresh user fields.
+	// this field alone". Names are no longer editable here (docs/43 §4 —
+	// the kartoteka's identifier is working_alias, edited via
+	// UpdatePatientFile); only the patient's UI language remains.
 	UpdatePatientUser(ctx context.Context, arg UpdatePatientUserParams) (UpdatePatientUserRow, error)
 	UpdateSegmentLabel(ctx context.Context, arg UpdateSegmentLabelParams) error
 	UpdateSessionLabelMapping(ctx context.Context, arg UpdateSessionLabelMappingParams) error

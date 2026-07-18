@@ -15,15 +15,9 @@ import (
 const createPatientUser = `-- name: CreatePatientUser :one
 
 INSERT INTO users (role, first_name, last_name, ui_language)
-VALUES ('PATIENT', $1, $2, $3)
+VALUES ('PATIENT', '', '', $1)
 RETURNING id
 `
-
-type CreatePatientUserParams struct {
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	UiLanguage string `json:"ui_language"`
-}
 
 // Patient user CRUD — operates on rows in `users` with role='PATIENT'.
 // Created/edited from clinical-svc.CreatePatientFile + UpdatePatientUser
@@ -34,8 +28,13 @@ type CreatePatientUserParams struct {
 // Inserts a fresh PATIENT row. firebase_uid + email stay NULL (patient
 // has no account yet); the partial CHECK constraints in migration 000013
 // allow that for role='PATIENT'.
-func (q *Queries) CreatePatientUser(ctx context.Context, arg CreatePatientUserParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createPatientUser, arg.FirstName, arg.LastName, arg.UiLanguage)
+//
+// first_name/last_name are deliberately blank (docs/43 §4: the client's
+// only direct identifier is the e-mail; the kartoteka identifies the
+// client by patient_files.working_alias). Columns stay NOT NULL for the
+// therapist rows, so we write ”.
+func (q *Queries) CreatePatientUser(ctx context.Context, uiLanguage string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createPatientUser, uiLanguage)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -58,27 +57,20 @@ func (q *Queries) DeletePatientUser(ctx context.Context, id uuid.UUID) (int64, e
 }
 
 const getPatientUser = `-- name: GetPatientUser :one
-SELECT id, first_name, last_name, ui_language
+SELECT id, ui_language
 FROM users
 WHERE id = $1 AND role = 'PATIENT' AND deleted_at IS NULL
 `
 
 type GetPatientUserRow struct {
 	ID         uuid.UUID `json:"id"`
-	FirstName  string    `json:"first_name"`
-	LastName   string    `json:"last_name"`
 	UiLanguage string    `json:"ui_language"`
 }
 
 func (q *Queries) GetPatientUser(ctx context.Context, id uuid.UUID) (GetPatientUserRow, error) {
 	row := q.db.QueryRow(ctx, getPatientUser, id)
 	var i GetPatientUserRow
-	err := row.Scan(
-		&i.ID,
-		&i.FirstName,
-		&i.LastName,
-		&i.UiLanguage,
-	)
+	err := row.Scan(&i.ID, &i.UiLanguage)
 	return i, err
 }
 
@@ -134,44 +126,28 @@ func (q *Queries) ListSessionIDsForPatient(ctx context.Context, patientID pgtype
 
 const updatePatientUser = `-- name: UpdatePatientUser :one
 UPDATE users SET
-  first_name  = COALESCE(NULLIF($1::text, ''), first_name),
-  last_name   = COALESCE(NULLIF($2::text, ''), last_name),
-  ui_language = COALESCE(NULLIF($3::text, ''), ui_language)
-WHERE id = $4 AND role = 'PATIENT' AND deleted_at IS NULL
-RETURNING id, first_name, last_name, ui_language
+  ui_language = COALESCE(NULLIF($1::text, ''), ui_language)
+WHERE id = $2 AND role = 'PATIENT' AND deleted_at IS NULL
+RETURNING id, ui_language
 `
 
 type UpdatePatientUserParams struct {
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
 	LanguageCode string    `json:"language_code"`
 	ID           uuid.UUID `json:"id"`
 }
 
 type UpdatePatientUserRow struct {
 	ID         uuid.UUID `json:"id"`
-	FirstName  string    `json:"first_name"`
-	LastName   string    `json:"last_name"`
 	UiLanguage string    `json:"ui_language"`
 }
 
 // COALESCE/NULLIF pattern: empty string from the caller means "leave
-// this field alone". Concrete value (even a single character) replaces
-// the column. Returns the refreshed row so the handler can re-emit the
-// PatientFile proto with fresh user fields.
+// this field alone". Names are no longer editable here (docs/43 §4 —
+// the kartoteka's identifier is working_alias, edited via
+// UpdatePatientFile); only the patient's UI language remains.
 func (q *Queries) UpdatePatientUser(ctx context.Context, arg UpdatePatientUserParams) (UpdatePatientUserRow, error) {
-	row := q.db.QueryRow(ctx, updatePatientUser,
-		arg.FirstName,
-		arg.LastName,
-		arg.LanguageCode,
-		arg.ID,
-	)
+	row := q.db.QueryRow(ctx, updatePatientUser, arg.LanguageCode, arg.ID)
 	var i UpdatePatientUserRow
-	err := row.Scan(
-		&i.ID,
-		&i.FirstName,
-		&i.LastName,
-		&i.UiLanguage,
-	)
+	err := row.Scan(&i.ID, &i.UiLanguage)
 	return i, err
 }

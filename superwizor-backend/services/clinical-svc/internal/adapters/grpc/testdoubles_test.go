@@ -45,7 +45,7 @@ type fakeQuerier struct {
 	updateSessionStatusFn      func(ctx context.Context, arg db.UpdateSessionStatusParams) error
 	getUserOrganizationIDFn    func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
-	setPatientEmailFn func(ctx context.Context, arg db.SetPatientEmailParams) error
+	resolvePatientEmailFn func(ctx context.Context, id uuid.UUID) (*string, error)
 
 	getModalityDistributionFn func(ctx context.Context) ([]db.GetModalityDistributionRow, error)
 	getAvgSessionDurationFn   func(ctx context.Context) (float64, error)
@@ -74,7 +74,6 @@ type fakeQuerier struct {
 	deletePatientUserCalls    []uuid.UUID
 	hardDeletePatientFileArgs []db.HardDeletePatientFileParams
 	updateSessionStatusCalls  []db.UpdateSessionStatusParams
-	setPatientEmailCalls      []db.SetPatientEmailParams
 }
 
 func (f *fakeQuerier) GetPatientFile(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
@@ -135,15 +134,14 @@ func (f *fakeQuerier) GetUserOrganizationID(ctx context.Context, id uuid.UUID) (
 	return f.getUserOrganizationIDFn(ctx, id)
 }
 
-// SetPatientEmail records the call and defaults to a no-op success so
-// UpdatePatientUser tests that don't care about the e-mail leg keep
-// passing. Set setPatientEmailFn to assert behavior or inject an error.
-func (f *fakeQuerier) SetPatientEmail(ctx context.Context, arg db.SetPatientEmailParams) error {
-	f.setPatientEmailCalls = append(f.setPatientEmailCalls, arg)
-	if f.setPatientEmailFn == nil {
-		return nil
+// ResolvePatientEmail defaults to "no address on file" (nil) so tests
+// that don't care about the e-mail leg keep passing. Set
+// resolvePatientEmailFn to return an address or inject an error.
+func (f *fakeQuerier) ResolvePatientEmail(ctx context.Context, id uuid.UUID) (*string, error) {
+	if f.resolvePatientEmailFn == nil {
+		return nil, nil
 	}
-	return f.setPatientEmailFn(ctx, arg)
+	return f.resolvePatientEmailFn(ctx, id)
 }
 
 func (f *fakeQuerier) GetModalityDistribution(ctx context.Context) ([]db.GetModalityDistributionRow, error) {

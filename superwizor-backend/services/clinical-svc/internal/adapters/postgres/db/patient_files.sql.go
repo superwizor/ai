@@ -35,7 +35,7 @@ INSERT INTO patient_files (
   CASE WHEN $7::boolean THEN now() ELSE NULL END,
   $8
 )
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, lifecycle_status, avatar_config
 `
 
 type CreatePatientFileParams struct {
@@ -96,7 +96,6 @@ func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFilePa
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.IdempotencyKey,
-		&i.PatientEmail,
 		&i.LifecycleStatus,
 		&i.AvatarConfig,
 	)
@@ -104,7 +103,7 @@ func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFilePa
 }
 
 const getPatientFile = `-- name: GetPatientFile :one
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, lifecycle_status, avatar_config FROM patient_files
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -131,7 +130,6 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.IdempotencyKey,
-		&i.PatientEmail,
 		&i.LifecycleStatus,
 		&i.AvatarConfig,
 	)
@@ -139,7 +137,7 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 }
 
 const getPatientFileByIdempotency = `-- name: GetPatientFileByIdempotency :one
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, lifecycle_status, avatar_config FROM patient_files
 WHERE therapist_id = $1
   AND idempotency_key = $2
   AND deleted_at IS NULL
@@ -177,7 +175,6 @@ func (q *Queries) GetPatientFileByIdempotency(ctx context.Context, arg GetPatien
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.IdempotencyKey,
-		&i.PatientEmail,
 		&i.LifecycleStatus,
 		&i.AvatarConfig,
 	)
@@ -186,10 +183,13 @@ func (q *Queries) GetPatientFileByIdempotency(ctx context.Context, arg GetPatien
 
 const getPatientFileWithUser = `-- name: GetPatientFileWithUser :one
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email, pf.lifecycle_status, pf.avatar_config,
-  u.first_name  AS patient_first_name,
-  u.last_name   AS patient_last_name,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.lifecycle_status, pf.avatar_config,
   u.ui_language AS patient_language_code,
+  COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email,
   m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
@@ -215,12 +215,10 @@ type GetPatientFileWithUserRow struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	IdempotencyKey        *string            `json:"idempotency_key"`
-	PatientEmail          *string            `json:"patient_email"`
 	LifecycleStatus       string             `json:"lifecycle_status"`
 	AvatarConfig          []byte             `json:"avatar_config"`
-	PatientFirstName      *string            `json:"patient_first_name"`
-	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
+	PatientEmail          *string            `json:"patient_email"`
 	ModalityCode          string             `json:"modality_code"`
 }
 
@@ -230,6 +228,13 @@ type GetPatientFileWithUserRow struct {
 // migration 000014's CASCADE flip; kept LEFT for defensiveness on
 // already-orphaned rows in production). NULL user columns are
 // emitted as empty strings by the proto mapper.
+//
+// patient_email is RESOLVED, not stored (migration 000077, docs/43 §4):
+// the activated account's users.email wins; otherwise the most recent
+// non-revoked invitation's address (identity domain, TTL'd). The
+// kartoteka itself holds no client e-mail. This read of identity-owned
+// tables (users/invitations) is the sanctioned read-only seam — the
+// services share one database; clinical never writes those tables.
 //
 // INNER JOIN on modalities — patient_files.modality_id is NOT NULL
 // (migration 000005), so an INNER JOIN won't drop any rows but does
@@ -257,12 +262,10 @@ func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (Get
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.IdempotencyKey,
-		&i.PatientEmail,
 		&i.LifecycleStatus,
 		&i.AvatarConfig,
-		&i.PatientFirstName,
-		&i.PatientLastName,
 		&i.PatientLanguageCode,
+		&i.PatientEmail,
 		&i.ModalityCode,
 	)
 	return i, err
@@ -292,7 +295,7 @@ func (q *Queries) HardDeletePatientFile(ctx context.Context, arg HardDeletePatie
 }
 
 const listPatientFilesByTherapist = `-- name: ListPatientFilesByTherapist :many
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, lifecycle_status, avatar_config FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -331,7 +334,6 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.IdempotencyKey,
-			&i.PatientEmail,
 			&i.LifecycleStatus,
 			&i.AvatarConfig,
 		); err != nil {
@@ -347,10 +349,13 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 
 const listPatientFilesByTherapistWithUser = `-- name: ListPatientFilesByTherapistWithUser :many
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email, pf.lifecycle_status, pf.avatar_config,
-  u.first_name  AS patient_first_name,
-  u.last_name   AS patient_last_name,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.lifecycle_status, pf.avatar_config,
   u.ui_language AS patient_language_code,
+  COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email,
   m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
@@ -384,12 +389,10 @@ type ListPatientFilesByTherapistWithUserRow struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	IdempotencyKey        *string            `json:"idempotency_key"`
-	PatientEmail          *string            `json:"patient_email"`
 	LifecycleStatus       string             `json:"lifecycle_status"`
 	AvatarConfig          []byte             `json:"avatar_config"`
-	PatientFirstName      *string            `json:"patient_first_name"`
-	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
+	PatientEmail          *string            `json:"patient_email"`
 	ModalityCode          string             `json:"modality_code"`
 }
 
@@ -422,12 +425,10 @@ func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg L
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.IdempotencyKey,
-			&i.PatientEmail,
 			&i.LifecycleStatus,
 			&i.AvatarConfig,
-			&i.PatientFirstName,
-			&i.PatientLastName,
 			&i.PatientLanguageCode,
+			&i.PatientEmail,
 			&i.ModalityCode,
 		); err != nil {
 			return nil, err
@@ -468,6 +469,28 @@ func (q *Queries) ListSessionIDsForPatientFile(ctx context.Context, patientFileI
 	return items, nil
 }
 
+const resolvePatientEmail = `-- name: ResolvePatientEmail :one
+SELECT COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email
+FROM patient_files pf
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.id = $1 AND pf.deleted_at IS NULL
+`
+
+// Send-time resolution of the client's e-mail (docs/43 §4 — no stored
+// copy in the clinical domain since migration 000077). Activated
+// account first, then the latest non-revoked invitation. NULL = no
+// address on file; callers surface that as "invite the client first".
+func (q *Queries) ResolvePatientEmail(ctx context.Context, id uuid.UUID) (*string, error) {
+	row := q.db.QueryRow(ctx, resolvePatientEmail, id)
+	var patient_email *string
+	err := row.Scan(&patient_email)
+	return patient_email, err
+}
+
 const setAvatarConfig = `-- name: SetAvatarConfig :exec
 UPDATE patient_files SET
   avatar_config = CASE
@@ -490,28 +513,6 @@ type SetAvatarConfigParams struct {
 // The therapist_id predicate is the authz guard at the SQL layer.
 func (q *Queries) SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams) error {
 	_, err := q.db.Exec(ctx, setAvatarConfig, arg.AvatarConfig, arg.ID, arg.TherapistID)
-	return err
-}
-
-const setPatientEmail = `-- name: SetPatientEmail :exec
-UPDATE patient_files SET
-  patient_email = NULLIF($1::text, ''),
-  updated_at = now()
-WHERE id = $2 AND deleted_at IS NULL
-`
-
-type SetPatientEmailParams struct {
-	PatientEmail string    `json:"patient_email"`
-	ID           uuid.UUID `json:"id"`
-}
-
-// Sets (or clears) the patient's contact e-mail on the kartoteka
-// (migration 000040). Plaintext contact PII, consistent with
-// working_alias. An empty string from the caller is normalized to NULL
-// so "no e-mail" is a single canonical representation. Authz
-// (therapist ownership) is enforced in the handler before this runs.
-func (q *Queries) SetPatientEmail(ctx context.Context, arg SetPatientEmailParams) error {
-	_, err := q.db.Exec(ctx, setPatientEmail, arg.PatientEmail, arg.ID)
 	return err
 }
 
@@ -545,7 +546,7 @@ UPDATE patient_files SET
   lifecycle_status = COALESCE(NULLIF($6::text, ''), lifecycle_status),
   updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, lifecycle_status, avatar_config
 `
 
 type UpdatePatientFileParams struct {
@@ -597,7 +598,6 @@ func (q *Queries) UpdatePatientFile(ctx context.Context, arg UpdatePatientFilePa
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.IdempotencyKey,
-		&i.PatientEmail,
 		&i.LifecycleStatus,
 		&i.AvatarConfig,
 	)

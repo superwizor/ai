@@ -221,9 +221,10 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	if req.WorkingAlias == "" || req.ModalityCode == "" {
 		return nil, status.Error(codes.InvalidArgument, "working_alias and modality_code required")
 	}
-	if req.PatientFirstName == "" {
-		return nil, status.Error(codes.InvalidArgument, "patient_first_name required")
-	}
+	// patient_first_name/last_name/patient_email are accepted for wire
+	// compat with older app builds but IGNORED (docs/43 §4: working_alias
+	// is the kartoteka's only identifier; the client's e-mail lives in
+	// the identity domain — invitations/users — never on the kartoteka).
 
 	// Idempotency pre-check (migration 000017). Empty key opts out —
 	// legacy clients keep their current "always create" semantics.
@@ -297,11 +298,7 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	defer func() { _ = tx.Rollback(ctx) }() // no-op on commit
 	qtx := tx.Queries()
 
-	patientUserID, err := qtx.CreatePatientUser(ctx, db.CreatePatientUserParams{
-		FirstName:  req.PatientFirstName,
-		LastName:   req.PatientLastName,
-		UiLanguage: patientLang,
-	})
+	patientUserID, err := qtx.CreatePatientUser(ctx, patientLang)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create patient user: %v", err)
 	}
@@ -356,19 +353,6 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		return nil, status.Errorf(codes.Internal, "create patient_file: %v", err)
 	}
 
-	// patient_email lives on patient_files (migration 000040). Persist it
-	// in the SAME transaction so the address entered on the create form is
-	// captured at creation time (it was previously dropped — the create
-	// path never wrote it, so an edit afterwards showed an empty field).
-	if req.PatientEmail != "" {
-		if err := qtx.SetPatientEmail(ctx, db.SetPatientEmailParams{
-			ID:           pf.ID,
-			PatientEmail: req.PatientEmail,
-		}); err != nil {
-			return nil, status.Errorf(codes.Internal, "set patient email: %v", err)
-		}
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
@@ -393,10 +377,11 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		Source: "server",
 	})
 
-	// Audit log (async w produkcji; synchroniczne w MVP)
+	// Audit log (async w produkcji; synchroniczne w MVP). No working_alias
+	// here: audit metadata stays free of client identifiers (docs/43 §4) —
+	// the resource UUID is enough to correlate.
 	auditMeta, _ := json.Marshal(map[string]any{
 		"modality_code": modality.SystemCode,
-		"alias":         req.WorkingAlias,
 	})
 	_ = s.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
 		ActorUserID:  pgtype.UUID{Bytes: therapistID, Valid: true},
@@ -411,10 +396,7 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	// the insert didn't set it. ConsentGivenAt is set by the SQL CASE
 	// when has_recording_consent=true and emitted by the mapper.
 	resp := toProtoPatientFile(pf, modality.SystemCode)
-	resp.PatientFirstName = req.PatientFirstName
-	resp.PatientLastName = req.PatientLastName
 	resp.PatientLanguageCode = patientLang
-	resp.PatientEmail = req.PatientEmail
 	return resp, nil
 }
 
@@ -572,29 +554,16 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 	if pf.TherapistID != therapistID {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
-	// patient_email lives on patient_files (migration 000040), independent
-	// of the paired users row — so persist it even for a pseudonymous
-	// kartoteka that has no patient user attached (patient_id NULL, which
-	// is the common case). Empty string clears the column (SetPatientEmail
-	// NULLIFs ''); a concrete value sets it. Previously this whole handler
-	// bailed with FailedPrecondition when there was no paired user, so the
-	// e-mail edit was silently dropped for pseudonymous patients and the
-	// "send action plan" gate never saw an address.
-	if err := s.queries.SetPatientEmail(ctx, db.SetPatientEmailParams{
-		ID:           pfID,
-		PatientEmail: req.PatientEmail,
-	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "set patient email: %v", err)
-	}
-
-	// Name / language live on the paired users row. Only update them when a
-	// patient user exists; a pseudonymous kartoteka has none — that's not
-	// an error, the e-mail edit above still applied.
+	// Since migration 000077 the kartoteka stores NO client e-mail and
+	// the users row stores NO client names (docs/43 §4) — first_name/
+	// last_name/patient_email in the request are accepted for wire compat
+	// with older app builds and IGNORED. The kartoteka's identifier
+	// (working_alias) is edited via UpdatePatientFile; the client's
+	// e-mail lives in the identity domain (invitations/users). Only the
+	// patient's UI language remains editable here.
 	if pf.PatientID.Valid {
 		if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
 			ID:           uuid.UUID(pf.PatientID.Bytes),
-			FirstName:    req.FirstName,
-			LastName:     req.LastName,
 			LanguageCode: req.LanguageCode,
 		}); err != nil {
 			return nil, status.Errorf(codes.Internal, "update patient user: %v", err)
@@ -795,9 +764,12 @@ func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePa
 //   - toProtoPatientFile           — from the bare db.PatientFile (no user JOIN)
 //   - toProtoPatientFileFromJoinRow      — from GetPatientFileWithUserRow
 //   - toProtoPatientFileFromListJoinRow  — from ListPatientFilesByTherapistWithUserRow
-// The two With-User variants extract patient_first_name / last_name /
-// language_code from the LEFT JOINed nullable columns; empty strings
-// when the user row was deleted (FK SET NULL after DeletePatientUser).
+// The two With-User variants extract language_code + the RESOLVED
+// patient_email (users.email → latest non-revoked invitation, see
+// migration 000077) from the LEFT JOINed nullable columns; empty
+// strings when absent. patient_first_name/last_name are deprecated
+// proto fields left at their zero value (docs/43 §4 — the kartoteka's
+// only identifier is working_alias).
 
 // toProtoPatientFileFromJoinRow emits a Modality system_code resolved
 // from the modalities JOIN. The `modalityCodeOverride` argument is
@@ -830,17 +802,11 @@ func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCod
 	if row.PrivateTherapistNotes != nil {
 		resp.PrivateTherapistNotes = *row.PrivateTherapistNotes
 	}
-	if row.PatientFirstName != nil {
-		resp.PatientFirstName = *row.PatientFirstName
-	}
-	if row.PatientLastName != nil {
-		resp.PatientLastName = *row.PatientLastName
-	}
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
-	// patient_email (migration 000040): nullable contact PII. *string is
-	// nil for pseudonymous kartoteki — emit "".
+	// patient_email is RESOLVED (users.email → latest invitation,
+	// migration 000077), never stored on the kartoteka. nil → "".
 	if row.PatientEmail != nil {
 		resp.PatientEmail = *row.PatientEmail
 	}
@@ -890,12 +856,6 @@ func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUse
 	if row.PrivateTherapistNotes != nil {
 		resp.PrivateTherapistNotes = *row.PrivateTherapistNotes
 	}
-	if row.PatientFirstName != nil {
-		resp.PatientFirstName = *row.PatientFirstName
-	}
-	if row.PatientLastName != nil {
-		resp.PatientLastName = *row.PatientLastName
-	}
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
@@ -937,9 +897,6 @@ func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.Pati
 	}
 	if pf.PrivateTherapistNotes != nil {
 		resp.PrivateTherapistNotes = *pf.PrivateTherapistNotes
-	}
-	if pf.PatientEmail != nil {
-		resp.PatientEmail = *pf.PatientEmail
 	}
 	// See toProtoPatientFileFromJoinRow for the Valid-check rationale.
 	if pf.ConsentGivenAt.Valid {

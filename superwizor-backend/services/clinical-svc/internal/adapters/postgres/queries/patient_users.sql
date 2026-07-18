@@ -9,26 +9,29 @@
 -- Inserts a fresh PATIENT row. firebase_uid + email stay NULL (patient
 -- has no account yet); the partial CHECK constraints in migration 000013
 -- allow that for role='PATIENT'.
+--
+-- first_name/last_name are deliberately blank (docs/43 §4: the client's
+-- only direct identifier is the e-mail; the kartoteka identifies the
+-- client by patient_files.working_alias). Columns stay NOT NULL for the
+-- therapist rows, so we write ''.
 INSERT INTO users (role, first_name, last_name, ui_language)
-VALUES ('PATIENT', $1, $2, $3)
+VALUES ('PATIENT', '', '', $1)
 RETURNING id;
 
 -- name: GetPatientUser :one
-SELECT id, first_name, last_name, ui_language
+SELECT id, ui_language
 FROM users
 WHERE id = $1 AND role = 'PATIENT' AND deleted_at IS NULL;
 
 -- name: UpdatePatientUser :one
 -- COALESCE/NULLIF pattern: empty string from the caller means "leave
--- this field alone". Concrete value (even a single character) replaces
--- the column. Returns the refreshed row so the handler can re-emit the
--- PatientFile proto with fresh user fields.
+-- this field alone". Names are no longer editable here (docs/43 §4 —
+-- the kartoteka's identifier is working_alias, edited via
+-- UpdatePatientFile); only the patient's UI language remains.
 UPDATE users SET
-  first_name  = COALESCE(NULLIF(sqlc.arg(first_name)::text, ''), first_name),
-  last_name   = COALESCE(NULLIF(sqlc.arg(last_name)::text, ''), last_name),
   ui_language = COALESCE(NULLIF(sqlc.arg(language_code)::text, ''), ui_language)
 WHERE id = sqlc.arg(id) AND role = 'PATIENT' AND deleted_at IS NULL
-RETURNING id, first_name, last_name, ui_language;
+RETURNING id, ui_language;
 
 -- name: DeletePatientUser :execrows
 -- Hard delete. patient_files.patient_id FK is SET NULL (migration

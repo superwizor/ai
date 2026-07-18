@@ -121,8 +121,6 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 
 	q := &fakeQuerier{
 		getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
-			fn := "Jan"
-			ln := "Kowalski"
 			lang := "pl"
 			return db.GetPatientFileWithUserRow{
 				ID:                  pfID,
@@ -133,8 +131,6 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 				ConsentGivenAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
 				ModalityCode:        "CBT",
 				PatientID:           pgtype.UUID{Bytes: patientID, Valid: true},
-				PatientFirstName:    &fn,
-				PatientLastName:     &ln,
 				PatientLanguageCode: &lang,
 			}, nil
 		},
@@ -213,8 +209,13 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 	if resp.PatientFile.Id != pfID.String() {
 		t.Errorf("expected patient file ID %s, got %s", pfID, resp.PatientFile.Id)
 	}
-	if resp.PatientFile.PatientFirstName != "Jan" {
-		t.Errorf("expected PatientFirstName Jan, got %s", resp.PatientFile.PatientFirstName)
+	// docs/43 §4: the export identifies the kartoteka by its alias only;
+	// deprecated name fields must stay empty.
+	if resp.PatientFile.WorkingAlias != "alias-test" {
+		t.Errorf("expected WorkingAlias alias-test, got %s", resp.PatientFile.WorkingAlias)
+	}
+	if resp.PatientFile.PatientFirstName != "" {
+		t.Errorf("deprecated PatientFirstName must be empty, got %s", resp.PatientFile.PatientFirstName)
 	}
 
 	// Verify Note mapping & decryption

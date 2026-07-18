@@ -890,7 +890,10 @@ type Invitation struct {
 	InvitedFirstName *string            `json:"invited_first_name"`
 	InvitedLastName  *string            `json:"invited_last_name"`
 	// Kartoteka a PATIENT invite belongs to (docs/39). NULL for THERAPIST/ORG_ADMIN invites.
-	PatientFileID pgtype.UUID `json:"patient_file_id"`
+	PatientFileID   pgtype.UUID        `json:"patient_file_id"`
+	PairingCodeHash []byte             `json:"pairing_code_hash"`
+	CodeAttempts    int32              `json:"code_attempts"`
+	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type Invoice struct {
@@ -989,23 +992,23 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
-	PatientEmail   *string `json:"patient_email"`
 	// Therapist-managed patient file lifecycle: ACTIVE | COMPLETED | PAUSED. COMPLETED replaces is_process_closed=true. Default ACTIVE.
 	LifecycleStatus string `json:"lifecycle_status"`
 	AvatarConfig    []byte `json:"avatar_config"`
 }
 
 type PatientNote struct {
-	ID                 uuid.UUID          `json:"id"`
-	PatientFileID      uuid.UUID          `json:"patient_file_id"`
-	TherapistID        uuid.UUID          `json:"therapist_id"`
-	Kind               string             `json:"kind"`
-	SourceSessionID    pgtype.UUID        `json:"source_session_id"`
-	TitleCiphertext    []byte             `json:"title_ciphertext"`
-	TitleEncryptedDek  []byte             `json:"title_encrypted_dek"`
-	TextCiphertext     []byte             `json:"text_ciphertext"`
-	TextEncryptedDek   []byte             `json:"text_encrypted_dek"`
-	SentToPatientAt    pgtype.Timestamptz `json:"sent_to_patient_at"`
+	ID                uuid.UUID          `json:"id"`
+	PatientFileID     uuid.UUID          `json:"patient_file_id"`
+	TherapistID       uuid.UUID          `json:"therapist_id"`
+	Kind              string             `json:"kind"`
+	SourceSessionID   pgtype.UUID        `json:"source_session_id"`
+	TitleCiphertext   []byte             `json:"title_ciphertext"`
+	TitleEncryptedDek []byte             `json:"title_encrypted_dek"`
+	TextCiphertext    []byte             `json:"text_ciphertext"`
+	TextEncryptedDek  []byte             `json:"text_encrypted_dek"`
+	SentToPatientAt   pgtype.Timestamptz `json:"sent_to_patient_at"`
+	// MASKED recipient of the action-plan e-mail (e.g. p***@example.com). Full address is resolved at send time and never persisted (000077).
 	SentToEmail        *string            `json:"sent_to_email"`
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
@@ -1174,6 +1177,9 @@ type SttOperation struct {
 	FinalizeError         *string            `json:"finalize_error"`
 	RetryCount            int32              `json:"retry_count"`
 	SourceAudioUri        string             `json:"source_audio_uri"`
+	Provider              string             `json:"provider"`
+	RequestID             *string            `json:"request_id"`
+	FallbackAttempted     bool               `json:"fallback_attempted"`
 }
 
 type Subscription struct {

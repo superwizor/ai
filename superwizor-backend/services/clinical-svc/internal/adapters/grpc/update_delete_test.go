@@ -102,9 +102,7 @@ func withUserRowFixture(id, therapist uuid.UUID, patient *uuid.UUID) db.GetPatie
 	}
 	if patient != nil {
 		row.PatientID = pgtype.UUID{Bytes: *patient, Valid: true}
-		fn, ln, lang := "Anna", "Nowak", "pl"
-		row.PatientFirstName = &fn
-		row.PatientLastName = &ln
+		lang := "pl"
 		row.PatientLanguageCode = &lang
 	}
 	return row
@@ -239,8 +237,11 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 	if !resp.HasRecordingConsent {
 		t.Errorf("has_recording_consent must come through as true")
 	}
-	if resp.PatientFirstName != "Anna" {
-		t.Errorf("patient_first_name: want Anna, got %q", resp.PatientFirstName)
+	if resp.PatientFirstName != "" {
+		t.Errorf("deprecated patient_first_name must stay empty (docs/43 §4), got %q", resp.PatientFirstName)
+	}
+	if resp.WorkingAlias != "alias-after-update" {
+		t.Errorf("working_alias: want alias-after-update (from refetch), got %q", resp.WorkingAlias)
 	}
 	if receivedParams.IsProcessClosed != true {
 		t.Errorf("is_process_closed must propagate; got %v", receivedParams.IsProcessClosed)
@@ -354,13 +355,11 @@ func TestUpdatePatientUser_WrongTherapistReturnsNotFound(t *testing.T) {
 	}
 }
 
-// patient_id NULL means a pseudonymous kartoteka (no paired user). The
-// patient e-mail lives on patient_files, independent of the users row, so
-// UpdatePatientUser must STILL persist the e-mail and succeed — not bail.
-// The name/language update is simply skipped (no user row to touch). This
-// is the fix for the "send action plan" gate never seeing an address for
-// pseudonymous patients.
-func TestUpdatePatientUser_NullPatientIDPersistsEmail(t *testing.T) {
+// patient_id NULL means a pseudonymous kartoteka (no paired user).
+// UpdatePatientUser must succeed as a no-op: since migration 000077
+// there is no stored e-mail to persist (deprecated patient_email in the
+// request is ignored) and the user update is skipped (no row to touch).
+func TestUpdatePatientUser_NullPatientIDIsNoop(t *testing.T) {
 	therapistID := uuid.New()
 	pfID := uuid.New()
 	userUpdated := false
@@ -384,11 +383,8 @@ func TestUpdatePatientUser_NullPatientIDPersistsEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("want success for pseudonymous kartoteka, got %v", err)
 	}
-	if len(q.setPatientEmailCalls) != 1 || q.setPatientEmailCalls[0].PatientEmail != "liniana@example.com" {
-		t.Fatalf("expected SetPatientEmail called once with the e-mail, got %+v", q.setPatientEmailCalls)
-	}
 	if userUpdated {
-		t.Fatalf("UpdatePatientUser (name/language) must be skipped when patient_id is NULL")
+		t.Fatalf("UpdatePatientUser (language) must be skipped when patient_id is NULL")
 	}
 }
 
@@ -448,13 +444,16 @@ func TestUpdatePatientUser_HappyPath(t *testing.T) {
 		},
 		updatePatientUserFn: func(ctx context.Context, arg db.UpdatePatientUserParams) (db.UpdatePatientUserRow, error) {
 			receivedParams = arg
-			return db.UpdatePatientUserRow{ID: arg.ID, FirstName: arg.FirstName}, nil
+			return db.UpdatePatientUserRow{ID: arg.ID}, nil
 		},
 		getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
 			return withUserRowFixture(id, therapistID, &patientID), nil
 		},
 	}
 	srv := newTestServer(q, nil, nil)
+	// FirstName/LastName are deprecated wire-compat fields (docs/43 §4):
+	// an older app build sending them must succeed, but the values must
+	// NOT reach the users row nor come back in the response.
 	resp, err := srv.UpdatePatientUser(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: pfID.String(),
 		FirstName:     "Anna",
@@ -467,11 +466,12 @@ func TestUpdatePatientUser_HappyPath(t *testing.T) {
 	if receivedParams.ID != patientID {
 		t.Errorf("update must target the joined patient_id, got %v want %v", receivedParams.ID, patientID)
 	}
-	if receivedParams.FirstName != "Anna" || receivedParams.LastName != "Nowak" || receivedParams.LanguageCode != "pl" {
-		t.Errorf("params didn't propagate; got %+v", receivedParams)
+	if receivedParams.LanguageCode != "pl" {
+		t.Errorf("language must propagate; got %+v", receivedParams)
 	}
-	if resp.PatientFirstName != "Anna" {
-		t.Errorf("response patient_first_name: want Anna, got %q", resp.PatientFirstName)
+	if resp.PatientFirstName != "" || resp.PatientLastName != "" {
+		t.Errorf("deprecated name fields must stay empty, got %q %q",
+			resp.PatientFirstName, resp.PatientLastName)
 	}
 }
 

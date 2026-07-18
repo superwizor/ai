@@ -53,6 +53,13 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- already-orphaned rows in production). NULL user columns are
 -- emitted as empty strings by the proto mapper.
 --
+-- patient_email is RESOLVED, not stored (migration 000077, docs/43 §4):
+-- the activated account's users.email wins; otherwise the most recent
+-- non-revoked invitation's address (identity domain, TTL'd). The
+-- kartoteka itself holds no client e-mail. This read of identity-owned
+-- tables (users/invitations) is the sanctioned read-only seam — the
+-- services share one database; clinical never writes those tables.
+--
 -- INNER JOIN on modalities — patient_files.modality_id is NOT NULL
 -- (migration 000005), so an INNER JOIN won't drop any rows but does
 -- give us a non-null `modality_code` to populate the proto response
@@ -60,9 +67,12 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- create" gap surfaced by the previous Faza 2 TODO.
 SELECT
   pf.*,
-  u.first_name  AS patient_first_name,
-  u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
+  COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email,
   m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
@@ -80,9 +90,12 @@ LIMIT $2 OFFSET $3;
 -- shape, just the WHERE switches to therapist_id + paged.
 SELECT
   pf.*,
-  u.first_name  AS patient_first_name,
-  u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
+  COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email,
   m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
@@ -144,16 +157,19 @@ DELETE FROM patient_files WHERE id = $1 AND therapist_id = $2;
 -- rows are gone and we'd have nothing to publish.
 SELECT id FROM sessions WHERE patient_file_id = $1 AND deleted_at IS NULL;
 
--- name: SetPatientEmail :exec
--- Sets (or clears) the patient's contact e-mail on the kartoteka
--- (migration 000040). Plaintext contact PII, consistent with
--- working_alias. An empty string from the caller is normalized to NULL
--- so "no e-mail" is a single canonical representation. Authz
--- (therapist ownership) is enforced in the handler before this runs.
-UPDATE patient_files SET
-  patient_email = NULLIF(sqlc.arg(patient_email)::text, ''),
-  updated_at = now()
-WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
+-- name: ResolvePatientEmail :one
+-- Send-time resolution of the client's e-mail (docs/43 §4 — no stored
+-- copy in the clinical domain since migration 000077). Activated
+-- account first, then the latest non-revoked invitation. NULL = no
+-- address on file; callers surface that as "invite the client first".
+SELECT COALESCE(u.email, (
+    SELECT i.email FROM invitations i
+    WHERE i.patient_file_id = pf.id AND i.revoked_at IS NULL
+    ORDER BY i.created_at DESC LIMIT 1
+  )) AS patient_email
+FROM patient_files pf
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.id = $1 AND pf.deleted_at IS NULL;
 
 -- name: SetAvatarConfig :exec
 -- Sets or clears the avatar customization on a kartoteka.
