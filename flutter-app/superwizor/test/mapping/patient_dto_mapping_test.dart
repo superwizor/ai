@@ -2,27 +2,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:superwizor/cache/dto/patient_dto.dart';
 import 'package:superwizor/generated/clinical/v1/clinical.pb.dart' as pb;
 
-// Guards the proto -> DTO -> model -> cache mapping for every editable
+// Guards the proto -> DTO -> model -> cache mapping for every consumed
 // PatientFile field. The patient e-mail "doesn't save" bug class is exactly
 // a dropped field here: the value persists server-side but the client mapping
-// loses it, so the edit form reopens empty.
+// loses it, so the UI reopens empty.
+//
+// docs/43 §4: the kartoteka is pseudonymous — working_alias is the only
+// client identifier; the deprecated name fields are a last-resort fallback.
 void main() {
   pb.PatientFile buildProto() => pb.PatientFile(
         id: 'pf-1',
-        patientFirstName: 'Anna',
-        patientLastName: 'Nowak',
+        workingAlias: 'A. Nowak',
         patientLanguageCode: 'pl',
         modalityCode: 'CBT',
         patientEmail: 'anna@example.com',
         lifecycleStatus: 'ACTIVE',
       );
 
-  group('PatientDto.fromProto carries every editable field', () {
+  group('PatientDto.fromProto carries every consumed field', () {
     final dto = PatientDto.fromProto(buildProto());
 
     test('email', () => expect(dto.email, 'anna@example.com'));
-    test('firstName', () => expect(dto.firstName, 'Anna'));
-    test('lastName', () => expect(dto.lastName, 'Nowak'));
+    test('workingAlias', () => expect(dto.workingAlias, 'A. Nowak'));
     test('languageCode', () => expect(dto.languageCode, 'pl'));
     test('modalityCode', () => expect(dto.modalityCode, 'CBT'));
     test('lifecycleStatus', () => expect(dto.lifecycleStatus, 'ACTIVE'));
@@ -31,10 +32,9 @@ void main() {
   group('toModel propagates every field', () {
     final model = PatientDto.fromProto(buildProto()).toModel();
 
-    test('email reaches the Patient model (edit form reads patient.email)',
+    test('email reaches the Patient model (read-only display)',
         () => expect(model.email, 'anna@example.com'));
-    test('firstName', () => expect(model.firstName, 'Anna'));
-    test('lastName', () => expect(model.lastName, 'Nowak'));
+    test('workingAlias', () => expect(model.workingAlias, 'A. Nowak'));
     test('lifecycleStatus reaches the Patient model',
         () => expect(model.lifecycleStatus, 'ACTIVE'));
   });
@@ -44,14 +44,39 @@ void main() {
     final restored = PatientDto.fromJson(dto.toJson());
     expect(restored.email, 'anna@example.com',
         reason: 'cache serialization must not drop the e-mail');
-    expect(restored.firstName, 'Anna');
-    expect(restored.lastName, 'Nowak');
+    expect(restored.workingAlias, 'A. Nowak');
+  });
+
+  test('legacy cache rows (firstName/lastName) fall back to a joined alias',
+      () {
+    // Pre docs/43 §4 cache entries stored firstName/lastName instead of
+    // workingAlias — they must keep rendering until the next refresh.
+    final json = {
+      'id': 'pf-legacy',
+      'firstName': 'Anna',
+      'lastName': 'Nowak',
+      'modalityCode': 'CBT',
+      'languageCode': 'pl',
+      'sessionCount': 2,
+    };
+    final dto = PatientDto.fromJson(json);
+    expect(dto.workingAlias, 'Anna Nowak');
+  });
+
+  test('empty working_alias falls back to the deprecated name fields', () {
+    final dto = PatientDto.fromProto(pb.PatientFile(
+      id: 'pf-old',
+      patientFirstName: 'Old',
+      patientLastName: 'Record',
+      modalityCode: 'CBT',
+    ));
+    expect(dto.workingAlias, 'Old Record');
   });
 
   test('empty patient_email maps to empty (cleared), not a crash', () {
     final dto = PatientDto.fromProto(pb.PatientFile(
       id: 'pf-2',
-      patientFirstName: 'Bez',
+      workingAlias: 'Bez',
       modalityCode: 'CBT',
     ));
     expect(dto.email, '');
@@ -64,7 +89,7 @@ void main() {
     test('COMPLETED flows through proto -> DTO -> model -> JSON -> model', () {
       final proto = pb.PatientFile(
         id: 'pf-lifecycle-1',
-        patientFirstName: 'Test',
+        workingAlias: 'Test',
         modalityCode: 'CBT',
         lifecycleStatus: 'COMPLETED',
       );
@@ -83,7 +108,7 @@ void main() {
     test('PAUSED flows through proto -> DTO -> model -> JSON -> model', () {
       final proto = pb.PatientFile(
         id: 'pf-lifecycle-2',
-        patientFirstName: 'Test',
+        workingAlias: 'Test',
         modalityCode: 'CBT',
         lifecycleStatus: 'PAUSED',
       );
@@ -98,7 +123,7 @@ void main() {
     test('empty lifecycle_status defaults to ACTIVE', () {
       final proto = pb.PatientFile(
         id: 'pf-lifecycle-3',
-        patientFirstName: 'Legacy',
+        workingAlias: 'Legacy',
         modalityCode: 'CBT',
         // lifecycleStatus intentionally omitted (empty string in proto)
       );
@@ -112,8 +137,7 @@ void main() {
       // Simulates cached data from before migration 000058.
       final json = {
         'id': 'pf-old',
-        'firstName': 'Old',
-        'lastName': 'Cache',
+        'workingAlias': 'Old Cache',
         'modalityCode': 'CBT',
         'languageCode': 'pl',
         'sessionCount': 5,
@@ -128,7 +152,7 @@ void main() {
     test('fromModel round-trip preserves lifecycle', () {
       final dto = PatientDto.fromProto(pb.PatientFile(
         id: 'pf-rt',
-        patientFirstName: 'RT',
+        workingAlias: 'RT',
         modalityCode: 'CBT',
         lifecycleStatus: 'PAUSED',
       ));
@@ -144,9 +168,9 @@ void main() {
   test('PatientDto.toJson has expected field count', () {
     final dto = PatientDto.fromProto(buildProto());
     final json = dto.toJson();
-    // Current fields: id, firstName, lastName, modalityCode, languageCode,
-    // sessionCount, email, lifecycleStatus = 8
-    expect(json.length, 8,
+    // Current fields: id, workingAlias, modalityCode, languageCode,
+    // sessionCount, email, lifecycleStatus = 7
+    expect(json.length, 7,
         reason:
             'If you added a field to PatientDto, update all mapping paths '
             'and bump this count');

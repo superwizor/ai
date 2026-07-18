@@ -21,7 +21,7 @@ enum SortMode {
   /// Clients without a session for the longest time at top.
   leastRecent,
 
-  /// Alphabetical by displayed name (firstName + lastName) A → Z.
+  /// Alphabetical by the displayed working alias A → Z.
   alphabetical,
 
   /// Clients with the most sessions at top.

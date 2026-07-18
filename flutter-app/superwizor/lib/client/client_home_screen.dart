@@ -110,8 +110,9 @@ class _ClientHomeBody extends ConsumerWidget {
     final home = ref.watch(clientHomeProvider);
     final filter = ref.watch(clientFiltersProvider);
     final user = ref.watch(currentUserProvider).value;
-    final displayName =
-        [user?.firstName ?? '', user?.lastName ?? ''].join(' ').trim();
+    // docs/43 §4: client accounts no longer carry names (the backend
+    // returns them empty) — the account e-mail is the identifier.
+    final displayName = user?.email ?? '';
 
     return Scaffold(
       backgroundColor: p.bg,
@@ -165,7 +166,7 @@ class _ClientHomeBody extends ConsumerWidget {
                         ],
                       ),
                       Text(
-                        displayName.isEmpty ? l10n.client_home_title : displayName,
+                        displayName.isEmpty ? l10n.client_panel_title : displayName,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontWeight: FontWeight.w700,

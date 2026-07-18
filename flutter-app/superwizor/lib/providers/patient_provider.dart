@@ -78,19 +78,15 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
         grpc_clinical.ListPatientFilesRequest(therapistId: '', pageSize: 100),
       );
       return res.patientFiles.map((pf) {
-        String firstName = pf.patientFirstName;
-        String lastName = pf.patientLastName;
-        if (firstName.isEmpty && lastName.isEmpty && pf.workingAlias.isNotEmpty) {
-          final names = pf.workingAlias.split(' ');
-          firstName = names.isNotEmpty ? names.first : 'Nieznany';
-          lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-        } else if (firstName.isEmpty) {
-          firstName = 'Nieznany';
-        }
+        // docs/43 §4: working_alias is the only client identifier.
+        // Deprecated name fields serve only as a last-resort fallback
+        // for very old records that predate the alias requirement.
+        final alias = pf.workingAlias.isNotEmpty
+            ? pf.workingAlias
+            : '${pf.patientFirstName} ${pf.patientLastName}'.trim();
         return Patient(
           id: pf.id,
-          firstName: firstName,
-          lastName: lastName,
+          workingAlias: alias,
           modalityCode: pf.modalityCode,
           languageCode: pf.patientLanguageCode,
           sessionCount: 0, // skip the fan-out in the fallback path
@@ -106,24 +102,22 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
 
   Future<void> addPatient({
     required String alias,
-    required String firstName,
-    String lastName = '',
     String modalityCode = 'UNIV',
     String languageCode = 'pl-PL',
-    String email = '',
   }) async {
     final client = ref.read(grpcClientsProvider).clinical;
+    // docs/43 §4: the kartoteka is pseudonymous — no names, no e-mail.
+    // The backend ignores the deprecated patient_first_name /
+    // patient_last_name / patient_email fields, so we no longer send
+    // them. The client e-mail lives exclusively in the invite flow
+    // (client_invite_sheet → InviteClient).
     final req = grpc_clinical.CreatePatientFileRequest(
       therapistId: '', // zdekodowane na backendzie z tokenu
       workingAlias: alias,
       modalityCode: modalityCode,
       processType: grpc_clinical.ProcessType.PROCESS_TYPE_INDIVIDUAL,
       hasRecordingConsent: true,
-      patientFirstName: firstName,
-      patientLastName: lastName,
       patientLanguageCode: languageCode,
-      // Persist the contact e-mail at create time (was previously dropped).
-      patientEmail: email,
     );
 
     state = const AsyncValue.loading();
@@ -136,26 +130,23 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     }
   }
 
-  Future<void> updatePatientUser(
+  /// Renames the kartoteka's working alias (docs/43 §4 — the alias is
+  /// the only editable client identifier). Goes through
+  /// UpdatePatientFile; the server COALESCEs unset fields, so sending
+  /// only working_alias leaves lifecycle_status etc. untouched.
+  Future<void> updatePatientAlias(
     String patientFileId,
-    String firstName,
-    String lastName, {
-    String? email,
-  }) async {
+    String workingAlias,
+  ) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
-      await client.updatePatientUser(grpc_clinical.UpdatePatientUserRequest(
+      await client.updatePatientFile(grpc_clinical.UpdatePatientFileRequest(
         patientFileId: patientFileId,
-        firstName: firstName,
-        lastName: lastName,
-        // Only set patient_email when the caller provided one. An empty
-        // string clears it server-side (intentional when the field was
-        // emptied); a null caller means "leave the e-mail alone".
-        patientEmail: email,
+        workingAlias: workingAlias,
       ));
       await _refreshAndPublish();
     } catch (e) {
-      debugPrint('Error updating patient: $e');
+      debugPrint('Error updating patient alias: $e');
       rethrow;
     }
   }

@@ -135,16 +135,14 @@ void main() {
     await pBox.put(CacheKeys.patientsKey('th-1'), [
       const PatientDto(
         id: 'pf-1',
-        firstName: 'Anna',
-        lastName: 'A',
+        workingAlias: 'Anna A',
         modalityCode: '',
         languageCode: '',
         sessionCount: 0,
       ),
       const PatientDto(
         id: 'pf-2',
-        firstName: 'Bart',
-        lastName: 'B',
+        workingAlias: 'Bart B',
         modalityCode: '',
         languageCode: '',
         sessionCount: 0,

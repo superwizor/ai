@@ -643,7 +643,7 @@ class _DebugSheet extends StatelessWidget {
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
-                                              'Cel: ${firstPatient.firstName} ${firstPatient.lastName}',
+                                              'Cel: ${firstPatient.workingAlias}',
                                               style: TextStyle(
                                                 fontFamily: 'Montserrat',
                                                 fontSize: 11,
@@ -1432,8 +1432,7 @@ class _DebugSheet extends StatelessWidget {
                                     builder: (_) => RecordingScreen(
                                       patientFileId: p.id,
                                       therapistId: therapistId,
-                                      patientAlias:
-                                          '${p.firstName} ${p.lastName}'.trim(),
+                                      patientAlias: p.workingAlias,
                                       reportLanguage: p.languageCode.isNotEmpty
                                           ? p.languageCode
                                           : 'pl-PL',

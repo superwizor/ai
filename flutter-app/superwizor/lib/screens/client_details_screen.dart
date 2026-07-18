@@ -212,10 +212,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
         ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
     final patient = patientsState.firstWhere(
       (p) => p.id == widget.patientId,
-      orElse: () =>
-          Patient(id: widget.patientId, firstName: 'Brak', lastName: ''),
+      orElse: () => Patient(id: widget.patientId, workingAlias: 'Brak'),
     );
-    final alias = '${patient.firstName} ${patient.lastName}'.trim();
+    final alias = patient.workingAlias;
     // BCP47 language code for downstream reportLanguage parameters
     // (2026-05-15 fix: EN-patient → Polish-report regression). Empty
     // string when missing; callers fall back to 'pl-PL'.
@@ -345,10 +344,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             data: (patients) {
               final patient = patients.firstWhere(
                 (p) => p.id == widget.patientId,
-                orElse: () =>
-                    Patient(id: widget.patientId, firstName: '', lastName: ''),
+                orElse: () => Patient(id: widget.patientId, workingAlias: ''),
               );
-              if (patient.firstName.isEmpty) return const SizedBox.shrink();
+              if (patient.workingAlias.isEmpty) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(right: 4, top: 2),
                 child: Row(
@@ -395,8 +393,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             (p) => p.id == widget.patientId,
             orElse: () => Patient(
               id: widget.patientId,
-              firstName: l.common_not_found,
-              lastName: '',
+              workingAlias: l.common_not_found,
             ),
           );
 
@@ -413,8 +410,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                         // ── Patient name header (matches home screen style) ──
                         Text.rich(
                           TextSpan(
-                            text: '${patient.firstName} ${patient.lastName}'
-                                .trim(),
+                            text: patient.workingAlias,
                             style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 28,

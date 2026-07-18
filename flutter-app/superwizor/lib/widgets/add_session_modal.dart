@@ -90,9 +90,7 @@ class AddSessionModal extends ConsumerWidget {
                     final patient = patientsState.firstWhere(
                       (p) => p.id == patientId,
                       orElse: () => Patient(
-                          id: patientId,
-                          firstName: t.common_not_found,
-                          lastName: ''),
+                          id: patientId, workingAlias: t.common_not_found),
                     );
 
                     Navigator.pop(context);
@@ -104,9 +102,7 @@ class AddSessionModal extends ConsumerWidget {
                         builder: (_) => NewSessionScreen(
                           patientFileId: patientId,
                           therapistId: therapistId,
-                          patientAlias:
-                              '${patient.firstName} ${patient.lastName}'
-                                  .trim(),
+                          patientAlias: patient.workingAlias,
                           // BCP47 from PatientFile.patientLanguageCode
                           // → CreateAudioUploadRequest.reportLanguage so
                           // EN-patient reports don't silently default

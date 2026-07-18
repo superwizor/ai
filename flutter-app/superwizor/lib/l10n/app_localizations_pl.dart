@@ -203,26 +203,13 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_duplicate_body =>
-      'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.';
+      'Masz już kartotekę z tym pseudonimem. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.';
 
   @override
   String get addPatient_duplicate_header => 'Taki klient już istnieje.';
 
   @override
   String get addPatient_duplicate_primary => 'Poprawię nazwę.';
-
-  @override
-  String get addPatient_email_hint => 'Opcjonalnie (do planu działania)';
-
-  @override
-  String get addPatient_email_label => 'E-mail klienta';
-
-  @override
-  String get addPatient_email_required_error =>
-      'Podaj e-mail lub zmień język klienta.';
-
-  @override
-  String get addPatient_first_name_label => 'Imię (wymagane)';
 
   @override
   String get addPatient_language_label => 'Język raportu';
@@ -253,7 +240,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_step1_next => 'Dalej';
 
   @override
-  String get addPatient_step1_subtitle => 'Uzupełnij podstawowe dane klienta.';
+  String get addPatient_step1_subtitle => 'Nadaj kartotece pseudonim.';
 
   @override
   String get addPatient_step2_subtitle => 'Ustawienia, które trafią do AI.';
@@ -753,6 +740,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get client_home_title => 'Twoje sesje';
 
   @override
+  String get client_panel_title => 'Twój panel';
+
+  @override
   String client_kartoteka_counts(int sessions, int notes) {
     return '$sessions sesji · $notes notatek';
   }
@@ -1003,6 +993,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get editPatient_erase_destructive => 'Usuń kartotekę bezpowrotnie';
 
   @override
+  String get editPatient_email_readonly_hint =>
+      'E-mail zmienisz, wysyłając nowe zaproszenie do panelu klienta.';
+
+  @override
   String editPatient_error(String error) {
     return 'Błąd: $error';
   }
@@ -1186,13 +1180,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get home_menu_edit_data => 'Edytuj dane';
 
   @override
-  String get home_menu_edit_data_desc => 'Zmień imię, nazwisko, email';
+  String get home_menu_edit_data_desc => 'Zmień pseudonim';
 
   @override
   String get home_menu_field_email => 'E-mail klienta';
-
-  @override
-  String get home_menu_field_first_name => 'Imię (wymagane)';
 
   @override
   String get home_menu_field_last_name => 'Inicjał lub pseudonim';

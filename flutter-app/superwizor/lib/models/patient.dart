@@ -1,7 +1,11 @@
 class Patient {
   final String id;
-  final String firstName;
-  final String lastName;
+  // Pseudonymous client label (PatientFile.workingAlias, docs/43 §4).
+  // The kartoteka never carries real names — the working alias is the
+  // ONLY therapist-facing identifier. The backend ignores the deprecated
+  // patient_first_name/patient_last_name fields, so all display, sorting
+  // and filtering must go through this value.
+  final String workingAlias;
   final String modalityCode;
   // BCP47-tagged audio/report language for this patient. Mirrors
   // PatientFile.patientLanguageCode from the gRPC proto (which itself
@@ -14,9 +18,10 @@ class Patient {
   // to a safe value (e.g. 'pl-PL') in that case.
   final String languageCode;
   final int sessionCount;
-  // Patient contact e-mail (PatientFile.patientEmail, docs/22). Empty
-  // when none is on file. Drives the "send action plan / note" e-mail
-  // gate. Persisted server-side via UpdatePatientUser(patient_email).
+  // Client account e-mail as RESOLVED by the backend (from the linked
+  // account or a pending invitation — docs/43 §4). Read-only in the
+  // kartoteka; it changes only by sending a new client-panel invitation
+  // (client_invite_sheet). Empty when none is on file.
   final String email;
   // 3-state lifecycle (ACTIVE/COMPLETED/PAUSED). Persisted server-side
   // in patient_files.lifecycle_status (migration 000058). The Flutter
@@ -26,8 +31,7 @@ class Patient {
 
   Patient({
     required this.id,
-    required this.firstName,
-    required this.lastName,
+    required this.workingAlias,
     this.modalityCode = '',
     this.languageCode = '',
     this.sessionCount = 0,
@@ -37,8 +41,7 @@ class Patient {
 
   Patient copyWith({
     String? id,
-    String? firstName,
-    String? lastName,
+    String? workingAlias,
     String? modalityCode,
     String? languageCode,
     int? sessionCount,
@@ -47,8 +50,7 @@ class Patient {
   }) {
     return Patient(
       id: id ?? this.id,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
+      workingAlias: workingAlias ?? this.workingAlias,
       modalityCode: modalityCode ?? this.modalityCode,
       languageCode: languageCode ?? this.languageCode,
       sessionCount: sessionCount ?? this.sessionCount,

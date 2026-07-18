@@ -4,9 +4,14 @@
 // screen, eliminating the keyboard-occlusion bug. Uses CupertinoPageRoute
 // for the premium slide-in-from-right transition.
 //
-// Krok 1: "Kim jest Twój klient?" — first name, last name, email, language
-// Krok 2: "Dopasuj do Twojej pracy" — modality (expanded), DPA consent, save
-// Krok 3: "Spersonalizuj oznaczenie" — optional avatar label + color (post-creation)
+// docs/43 §4: the kartoteka is pseudonymous — the working alias is the
+// ONLY client identifier collected here. The client e-mail is entered
+// exclusively in the invite flow (client_invite_sheet).
+//
+// Krok 1: "Kim jest Twój klient?" — working alias ("Pseudonim")
+// Krok 2: "Dodatkowe dane" — client language
+// Krok 3: "Dopasuj do Twojej pracy" — modality (expanded), DPA consent, save
+// Krok 4: "Spersonalizuj oznaczenie" — optional avatar label + color (post-creation)
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -50,12 +55,10 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   final _scrollController4 = ScrollController();
 
   // ── Step 1 fields ──
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _firstNameFocus = FocusNode();
-  final _lastNameFocus = FocusNode();
-  final _emailFocus = FocusNode();
+  // The alias field value goes directly to CreatePatientFile.working_alias
+  // — no derivation from real names (docs/43 §4).
+  final _aliasController = TextEditingController();
+  final _aliasFocus = FocusNode();
   String _languageCode = 'pl-PL';
   bool _duplicateError = false;
 
@@ -73,25 +76,14 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   void initState() {
     super.initState();
     _modalityCode = ref.read(selectedModalityProvider);
-    _firstNameController.addListener(_onNameChanged);
-    _lastNameController.addListener(_onNameChanged);
+    _aliasController.addListener(_onAliasChanged);
   }
 
-  void _onNameChanged() {
+  void _onAliasChanged() {
     if (_duplicateError) {
       setState(() => _duplicateError = false);
     }
     setState(() {});
-  }
-
-  String _buildAutoAlias() {
-    final first = _firstNameController.text.trim();
-    final last = _lastNameController.text.trim();
-    if (first.isEmpty && last.isEmpty) return '';
-    if (last.isNotEmpty) {
-      return '$first ${last.characters.first}.'.trim();
-    }
-    return first;
   }
 
   @override
@@ -100,14 +92,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     _scrollController2.dispose();
     _scrollController3.dispose();
     _scrollController4.dispose();
-    _firstNameController.removeListener(_onNameChanged);
-    _lastNameController.removeListener(_onNameChanged);
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _firstNameFocus.dispose();
-    _lastNameFocus.dispose();
-    _emailFocus.dispose();
+    _aliasController.removeListener(_onAliasChanged);
+    _aliasController.dispose();
+    _aliasFocus.dispose();
     _avatarLabelController.dispose();
     _pageController.dispose();
     super.dispose();
@@ -120,12 +107,15 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   }
 
   String get _defaultInitials {
-    final f = _firstNameController.text.trim();
-    final l = _lastNameController.text.trim();
-    if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
-    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
-    return '$first$last'.trim();
+    // Derive up-to-two initials from the working alias words.
+    final words = _aliasController.text
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2);
+    final initials =
+        words.map((w) => w.characters.first.toUpperCase()).join();
+    return initials.isEmpty ? '?' : initials;
   }
 
   String _modalityDisplayName(BuildContext context, String code) {
@@ -174,7 +164,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         if (_currentPage == 3) {
           // On step 4, just go back means "skip"
           Navigator.of(context).pop();
-        } else if (_firstNameController.text.trim().isNotEmpty) {
+        } else if (_aliasController.text.trim().isNotEmpty) {
           _showDiscardDialog(t);
         } else {
           Navigator.of(context).pop();
@@ -295,7 +285,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   // ── Step 1: "Kim jest Twój klient?" ──
 
   Widget _buildStep1(AppLocalizations t) {
-    final canProceed = _firstNameController.text.trim().isNotEmpty;
+    final canProceed = _aliasController.text.trim().isNotEmpty;
 
     return Column(
       children: [
@@ -361,31 +351,20 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // ── First Name ──
+                  // ── Working alias ("Pseudonim") — the ONLY client
+                  // identifier the kartoteka carries (docs/43 §4). ──
                   GlassTextField(
-                    controller: _firstNameController,
-                    label: t.addPatient_first_name_label,
+                    controller: _aliasController,
+                    label: t.addPatient_last_name_label,
                     errorText: _duplicateError
                         ? t.addPatient_duplicate_header
                         : null,
                     autofocus: true,
                     maxLength: 50,
-                    focusNode: _firstNameFocus,
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) => _lastNameFocus.requestFocus(),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── Last Name ──
-                  GlassTextField(
-                    controller: _lastNameController,
-                    label: t.addPatient_last_name_label,
-                    errorText: _duplicateError ? '' : null,
-                    maxLength: 50,
-                    focusNode: _lastNameFocus,
+                    focusNode: _aliasFocus,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) {
-                      if (_firstNameController.text.trim().isNotEmpty) {
+                      if (_aliasController.text.trim().isNotEmpty) {
                         _goToPage(1);
                       }
                     },
@@ -449,57 +428,29 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
-                          Icons.contact_mail_rounded,
+                          Icons.language_rounded,
                           color: EuphireColors.ember,
                           size: 24,
                         ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t.addPatient_additional_data_title,
-                              style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: EuphireColors.frostWhite,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              t.addPatient_email_required_error,
-                              style: TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 13,
-                                color: EuphireColors.mist.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          t.addPatient_additional_data_title,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.frostWhite,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 28),
 
-                  // ── Email (optional) ──
-                  GlassTextField(
-                    controller: _emailController,
-                    label: t.addPatient_email_label,
-                    hint: t.addPatient_email_hint,
-                    keyboardType: TextInputType.emailAddress,
-                    focusNode: _emailFocus,
-                    autofocus: true,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) {
-                      _goToPage(2);
-                    },
-                  ),
-                  const SizedBox(height: 20),
+                  // docs/43 §4: no e-mail field here — the client e-mail
+                  // is entered only in the invite flow (client_invite_sheet).
 
                   // ── Language Dropdown ──
                   FormSectionLabel(text: t.addPatient_language_label),
@@ -1028,18 +979,16 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       _showNoConsentSheet(t);
       return;
     }
-    final firstName = _firstNameController.text.trim();
-    final lastName = _lastNameController.text.trim();
-    final alias = _buildAutoAlias();
-    if (firstName.isEmpty) return;
+    // The alias field IS the working alias — no derivation (docs/43 §4).
+    final alias = _aliasController.text.trim();
+    if (alias.isEmpty) return;
 
     // ── Client-side duplicate detection ──
     final existingPatients =
         ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
-    final isDuplicate = existingPatients.any((p) {
-      final existingName = '${p.firstName} ${p.lastName}'.trim().toLowerCase();
-      return existingName == '$firstName $lastName'.trim().toLowerCase();
-    });
+    final isDuplicate = existingPatients.any(
+      (p) => p.workingAlias.trim().toLowerCase() == alias.toLowerCase(),
+    );
     if (isDuplicate) {
       _goToPage(0);
       _showDuplicateSheet(t);
@@ -1050,24 +999,15 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     try {
       final notifier = ref.read(patientsProvider.notifier);
       await notifier.addPatient(
-        alias: alias.isNotEmpty ? alias : firstName,
-        firstName: firstName,
-        lastName: lastName,
+        alias: alias,
         modalityCode: _modalityCode,
         languageCode: _languageCode,
-        email: _emailController.text.trim(),
       );
 
       final list =
           ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
       final created =
-          list
-              .where(
-                (p) =>
-                    '${p.firstName} ${p.lastName}'.trim() ==
-                    '$firstName $lastName'.trim(),
-              )
-              .firstOrNull ??
+          list.where((p) => p.workingAlias.trim() == alias).firstOrNull ??
           (list.isNotEmpty ? list.first : null);
 
       if (created != null) {

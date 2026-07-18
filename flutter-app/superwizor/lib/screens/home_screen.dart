@@ -406,8 +406,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
         if (ref.read(appSettingsProvider).soundEnabled) {
           _playSuccessSound();
         }
-        // Celebratory toast with patient name
-        final name = '${p.firstName} ${p.lastName}'.trim();
+        // Celebratory toast with the patient's working alias
+        final name = p.workingAlias;
         final l = AppLocalizations.of(context);
         EuphireToast.success(context, message: l.home_report_ready_toast(name));
       }
@@ -622,15 +622,15 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
         });
       case SortMode.alphabetical:
         activePatients.sort((a, b) {
-          final aName = '${a.firstName} ${a.lastName}'.trim().toLowerCase();
-          final bName = '${b.firstName} ${b.lastName}'.trim().toLowerCase();
+          final aName = a.workingAlias.trim().toLowerCase();
+          final bName = b.workingAlias.trim().toLowerCase();
           return aName.compareTo(bName);
         });
       case SortMode.mostSessions:
         activePatients.sort((a, b) => b.sessionCount.compareTo(a.sessionCount));
     }
-    completedPatients.sort((a, b) => a.firstName.compareTo(b.firstName));
-    pausedPatients.sort((a, b) => a.firstName.compareTo(b.firstName));
+    completedPatients.sort((a, b) => a.workingAlias.compareTo(b.workingAlias));
+    pausedPatients.sort((a, b) => a.workingAlias.compareTo(b.workingAlias));
 
     // Filter by search query + sort/filter provider state
     List<Patient> applyFilters(List<Patient> list, {bool applyExtras = false}) {
@@ -638,7 +638,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
       // Text search
       if (_query.isNotEmpty) {
         result = result.where((p) {
-          final name = '${p.firstName} ${p.lastName}'.trim().toLowerCase();
+          final name = p.workingAlias.trim().toLowerCase();
           return name.contains(_query.toLowerCase());
         }).toList();
       }
@@ -1063,16 +1063,18 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
   late Animation<double> _pulseAnimation;
 
   String get _initials {
-    final f = widget.patient.firstName;
-    final l = widget.patient.lastName;
-    if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
-    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
-    return '$first$last'.trim();
+    // Up-to-two initials derived from the working alias words.
+    final words = widget.patient.workingAlias
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2);
+    final initials =
+        words.map((w) => w.characters.first.toUpperCase()).join();
+    return initials.isEmpty ? '?' : initials;
   }
 
-  String get _name =>
-      '${widget.patient.firstName} ${widget.patient.lastName}'.trim();
+  String get _name => widget.patient.workingAlias;
 
   // Returns a list of InlineSpans for the subtitle with the date part
   // rendered in a slightly bolder weight for visual emphasis.
@@ -1442,9 +1444,11 @@ class _PatientOptionsMenu extends ConsumerStatefulWidget {
 class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
   bool _editing = false;
   bool _saving = false;
-  late TextEditingController _firstNameCtrl;
-  late TextEditingController _lastNameCtrl;
-  late TextEditingController _emailCtrl;
+  // docs/43 §4: the working alias is the only editable client
+  // identifier. The e-mail is displayed read-only — it changes only by
+  // sending a new client-panel invitation.
+  late TextEditingController _aliasCtrl;
+  String _email = '';
 
   @override
   void initState() {
@@ -1454,19 +1458,26 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     try {
       patient = patients.firstWhere((p) => p.id == widget.patientId);
     } catch (_) {}
-    _firstNameCtrl = TextEditingController(text: patient?.firstName ?? '');
-    _lastNameCtrl = TextEditingController(text: patient?.lastName ?? '');
-    // Pre-fill the e-mail from the patient (was empty before — so this sheet
-    // showed a blank e-mail AND, on save, sent "" which CLEARED the address).
-    _emailCtrl = TextEditingController(text: patient?.email ?? '');
+    _aliasCtrl = TextEditingController(text: patient?.workingAlias ?? '');
+    _email = patient?.email ?? '';
   }
 
   @override
   void dispose() {
-    _firstNameCtrl.dispose();
-    _lastNameCtrl.dispose();
-    _emailCtrl.dispose();
+    _aliasCtrl.dispose();
     super.dispose();
+  }
+
+  /// Up-to-two initials derived from the working alias words.
+  static String _aliasInitials(String alias) {
+    final words = alias
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2);
+    final initials =
+        words.map((w) => w.characters.first.toUpperCase()).join();
+    return initials.isEmpty ? '?' : initials;
   }
 
   void _deleteWarning() {
@@ -1499,21 +1510,16 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
   }
 
   Future<void> _onSave() async {
-    final firstName = _firstNameCtrl.text.trim();
-    final lastName = _lastNameCtrl.text.trim();
-    if (firstName.isEmpty) return;
+    final alias = _aliasCtrl.text.trim();
+    if (alias.isEmpty) return;
 
     setState(() => _saving = true);
     try {
+      // UpdatePatientFile.working_alias — the server COALESCEs the
+      // other fields, so only the alias changes (docs/43 §4).
       await ref
           .read(patientsProvider.notifier)
-          .updatePatientUser(
-            widget.patientId,
-            firstName,
-            lastName,
-            // Must pass the e-mail — omitting it sent "" and wiped the address.
-            email: _emailCtrl.text.trim(),
-          );
+          .updatePatientAlias(widget.patientId, alias);
       if (mounted) {
         AppHapticFeedback.mediumImpact();
         Navigator.of(context).pop();
@@ -1572,11 +1578,8 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                       try {
                         patient = patients.firstWhere((p) => p.id == widget.patientId);
                       } catch (_) {}
-                      final f = patient?.firstName ?? '';
-                      final l = patient?.lastName ?? '';
-                      final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
-                      final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
-                      final initials = '$first$last'.trim();
+                      final initials =
+                          _aliasInitials(patient?.workingAlias ?? '');
 
                       showModalBottomSheet(
                         context: context,
@@ -1584,7 +1587,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                         isScrollControlled: true,
                         builder: (_) => AvatarCustomizeSheet(
                           patientId: widget.patientId,
-                          defaultInitials: initials.isEmpty ? '?' : initials,
+                          defaultInitials: initials,
                         ),
                       );
                     },
@@ -1602,12 +1605,9 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                             try {
                               patient = patients.firstWhere((p) => p.id == widget.patientId);
                             } catch (_) {}
-                            final f = patient?.firstName ?? '';
-                            final l = patient?.lastName ?? '';
-                            final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
-                            final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
-                            final initials = '$first$last'.trim();
-                            final label = avatarConfig.customLabel ?? (initials.isEmpty ? '?' : initials);
+                            final initials =
+                                _aliasInitials(patient?.workingAlias ?? '');
+                            final label = avatarConfig.customLabel ?? initials;
 
                             return Container(
                               width: 72,
@@ -1945,27 +1945,41 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
   }
 
   Widget _buildEditView(AppLocalizations t) {
-    final canSave = !_saving && _firstNameCtrl.text.trim().isNotEmpty;
+    final canSave = !_saving && _aliasCtrl.text.trim().isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── First Name ──
+        // ── Working alias ("Pseudonim") — the only editable client
+        // identifier (docs/43 §4). ──
         _GlassField(
-          controller: _firstNameCtrl,
-          label: t.home_menu_field_first_name,
+          controller: _aliasCtrl,
+          label: t.home_menu_field_last_name,
           onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 12),
-        // ── Last Name / Alias ──
-        _GlassField(controller: _lastNameCtrl, label: t.home_menu_field_last_name),
-        const SizedBox(height: 12),
-        // ── Email ──
-        _GlassField(
-          controller: _emailCtrl,
-          label: t.home_menu_field_email,
-          keyboardType: TextInputType.emailAddress,
-        ),
+        // ── E-mail (read-only, resolved server-side; changes only via
+        // a new client-panel invitation). ──
+        if (_email.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '${t.home_menu_field_email}: $_email',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: EuphireColors.mist.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            t.editPatient_email_readonly_hint,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 11,
+              color: EuphireColors.mist.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
 
         Row(
@@ -2048,13 +2062,11 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
 class _GlassField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
 
   const _GlassField({
     required this.controller,
     required this.label,
-    this.keyboardType = TextInputType.text,
     this.onChanged,
   });
 
@@ -2062,7 +2074,6 @@ class _GlassField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      keyboardType: keyboardType,
       onChanged: onChanged,
       style: const TextStyle(
         fontFamily: 'Montserrat',

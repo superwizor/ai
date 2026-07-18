@@ -160,32 +160,13 @@ Future<List<PatientDto>> _grpcFetch(
     eagerError: false,
   );
 
-  return List<PatientDto>.generate(res.patientFiles.length, (i) {
-    final pf = res.patientFiles[i];
-    // Apply the same Polish-language fallback the legacy provider used:
-    // patient-user fields can be empty when DeletePatientUser ran but
-    // the patient_file survives. Fall back to workingAlias → split.
-    String firstName = pf.patientFirstName;
-    String lastName = pf.patientLastName;
-    if (firstName.isEmpty && lastName.isEmpty && pf.workingAlias.isNotEmpty) {
-      final names = pf.workingAlias.split(' ');
-      firstName = names.isNotEmpty ? names.first : 'Nieznany';
-      lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-    } else if (firstName.isEmpty) {
-      firstName = 'Nieznany';
-    }
-
-    return PatientDto(
-      id: pf.id,
-      firstName: firstName,
-      lastName: lastName,
-      modalityCode: pf.modalityCode,
-      languageCode: pf.patientLanguageCode,
-      sessionCount: counts[i],
-      email: pf.patientEmail,
-      lifecycleStatus: pf.lifecycleStatus.isNotEmpty ? pf.lifecycleStatus : 'ACTIVE',
-    );
-  });
+  // docs/43 §4: working_alias is the only client identifier the app
+  // consumes — the deprecated name fields are handled (as a last-resort
+  // fallback for very old records) inside PatientDto.fromProto.
+  return List<PatientDto>.generate(
+    res.patientFiles.length,
+    (i) => PatientDto.fromProto(res.patientFiles[i], sessionCount: counts[i]),
+  );
 }
 
 /// Riverpod-wrapped repository. Returns null while the user is

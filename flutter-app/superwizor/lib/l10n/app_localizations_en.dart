@@ -203,26 +203,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_duplicate_body =>
-      'You already have a record with this name combination. Add an initial or alias to avoid confusion.';
+      'You already have a record with this alias. Add an initial or nickname to avoid confusion.';
 
   @override
   String get addPatient_duplicate_header => 'This client already exists.';
 
   @override
   String get addPatient_duplicate_primary => 'I\'ll fix the name.';
-
-  @override
-  String get addPatient_email_hint => 'Optional (for the action plan)';
-
-  @override
-  String get addPatient_email_label => 'Client email';
-
-  @override
-  String get addPatient_email_required_error =>
-      'Please provide email or change client language.';
-
-  @override
-  String get addPatient_first_name_label => 'First name (required)';
 
   @override
   String get addPatient_language_label => 'Report language';
@@ -253,7 +240,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_step1_next => 'Next';
 
   @override
-  String get addPatient_step1_subtitle => 'Fill in the basic client details.';
+  String get addPatient_step1_subtitle => 'Give the record an alias.';
 
   @override
   String get addPatient_step2_subtitle => 'Settings that guide the AI.';
@@ -741,6 +728,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get client_home_title => 'Your sessions';
 
   @override
+  String get client_panel_title => 'Your panel';
+
+  @override
   String client_kartoteka_counts(int sessions, int notes) {
     return '$sessions sessions · $notes notes';
   }
@@ -990,6 +980,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editPatient_erase_destructive => 'Erase client file permanently';
 
   @override
+  String get editPatient_email_readonly_hint =>
+      'To change the e-mail, send a new client panel invitation.';
+
+  @override
   String editPatient_error(String error) {
     return 'Error: $error';
   }
@@ -1175,13 +1169,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_menu_edit_data => 'Edit details';
 
   @override
-  String get home_menu_edit_data_desc => 'Change name, alias, or email';
+  String get home_menu_edit_data_desc => 'Change the alias';
 
   @override
   String get home_menu_field_email => 'Client email';
-
-  @override
-  String get home_menu_field_first_name => 'First name (required)';
 
   @override
   String get home_menu_field_last_name => 'Initial or alias';

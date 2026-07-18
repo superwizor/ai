@@ -425,7 +425,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_duplicate_body.
   ///
   /// In pl, this message translates to:
-  /// **'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.'**
+  /// **'Masz już kartotekę z tym pseudonimem. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.'**
   String get addPatient_duplicate_body;
 
   /// No description provided for @addPatient_duplicate_header.
@@ -439,30 +439,6 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Poprawię nazwę.'**
   String get addPatient_duplicate_primary;
-
-  /// No description provided for @addPatient_email_hint.
-  ///
-  /// In pl, this message translates to:
-  /// **'Opcjonalnie (do planu działania)'**
-  String get addPatient_email_hint;
-
-  /// No description provided for @addPatient_email_label.
-  ///
-  /// In pl, this message translates to:
-  /// **'E-mail klienta'**
-  String get addPatient_email_label;
-
-  /// No description provided for @addPatient_email_required_error.
-  ///
-  /// In pl, this message translates to:
-  /// **'Podaj e-mail lub zmień język klienta.'**
-  String get addPatient_email_required_error;
-
-  /// No description provided for @addPatient_first_name_label.
-  ///
-  /// In pl, this message translates to:
-  /// **'Imię (wymagane)'**
-  String get addPatient_first_name_label;
 
   /// No description provided for @addPatient_language_label.
   ///
@@ -521,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_step1_subtitle.
   ///
   /// In pl, this message translates to:
-  /// **'Uzupełnij podstawowe dane klienta.'**
+  /// **'Nadaj kartotece pseudonim.'**
   String get addPatient_step1_subtitle;
 
   /// No description provided for @addPatient_step2_subtitle.
@@ -1368,6 +1344,12 @@ abstract class AppLocalizations {
   /// **'Twoje sesje'**
   String get client_home_title;
 
+  /// No description provided for @client_panel_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój panel'**
+  String get client_panel_title;
+
   /// No description provided for @client_kartoteka_counts.
   ///
   /// In pl, this message translates to:
@@ -1830,6 +1812,12 @@ abstract class AppLocalizations {
   /// **'Usuń kartotekę bezpowrotnie'**
   String get editPatient_erase_destructive;
 
+  /// No description provided for @editPatient_email_readonly_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'E-mail zmienisz, wysyłając nowe zaproszenie do panelu klienta.'**
+  String get editPatient_email_readonly_hint;
+
   /// No description provided for @editPatient_error.
   ///
   /// In pl, this message translates to:
@@ -2163,7 +2151,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_menu_edit_data_desc.
   ///
   /// In pl, this message translates to:
-  /// **'Zmień imię, nazwisko, email'**
+  /// **'Zmień pseudonim'**
   String get home_menu_edit_data_desc;
 
   /// No description provided for @home_menu_field_email.
@@ -2171,12 +2159,6 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'E-mail klienta'**
   String get home_menu_field_email;
-
-  /// No description provided for @home_menu_field_first_name.
-  ///
-  /// In pl, this message translates to:
-  /// **'Imię (wymagane)'**
-  String get home_menu_field_first_name;
 
   /// No description provided for @home_menu_field_last_name.
   ///

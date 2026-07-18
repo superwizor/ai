@@ -81,16 +81,14 @@ void main() {
       fetcher: () async => const [
         PatientDto(
           id: 'pf-1',
-          firstName: 'A',
-          lastName: '',
+          workingAlias: 'A',
           modalityCode: '',
           languageCode: '',
           sessionCount: 0,
         ),
         PatientDto(
           id: 'pf-2',
-          firstName: 'B',
-          lastName: '',
+          workingAlias: 'B',
           modalityCode: '',
           languageCode: '',
           sessionCount: 0,

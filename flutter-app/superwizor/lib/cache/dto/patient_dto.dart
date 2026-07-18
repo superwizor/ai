@@ -15,13 +15,14 @@ import '../../models/patient.dart';
 
 class PatientDto {
   final String id;
-  final String firstName;
-  final String lastName;
+  // Pseudonymous client label (docs/43 §4) — the only identifier the
+  // kartoteka carries. Real names are never stored client-side.
+  final String workingAlias;
   final String modalityCode;
   final String languageCode;
   final int sessionCount;
-  // Patient contact e-mail (PatientFile.patientEmail, docs/22). Empty
-  // when none on file.
+  // Client account e-mail resolved server-side (account/invitation).
+  // Read-only in the kartoteka. Empty when none on file.
   final String email;
   // 3-state lifecycle (ACTIVE/COMPLETED/PAUSED). Stored in
   // patient_files.lifecycle_status (migration 000058).
@@ -29,8 +30,7 @@ class PatientDto {
 
   const PatientDto({
     required this.id,
-    required this.firstName,
-    required this.lastName,
+    required this.workingAlias,
     required this.modalityCode,
     required this.languageCode,
     required this.sessionCount,
@@ -40,8 +40,7 @@ class PatientDto {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'firstName': firstName,
-        'lastName': lastName,
+        'workingAlias': workingAlias,
         'modalityCode': modalityCode,
         'languageCode': languageCode,
         'sessionCount': sessionCount,
@@ -49,16 +48,23 @@ class PatientDto {
         'lifecycleStatus': lifecycleStatus,
       };
 
-  factory PatientDto.fromJson(Map<String, dynamic> j) => PatientDto(
-        id: j['id'] as String,
-        firstName: j['firstName'] as String? ?? '',
-        lastName: j['lastName'] as String? ?? '',
-        modalityCode: j['modalityCode'] as String? ?? '',
-        languageCode: j['languageCode'] as String? ?? '',
-        sessionCount: (j['sessionCount'] as num?)?.toInt() ?? 0,
-        email: j['email'] as String? ?? '',
-        lifecycleStatus: j['lifecycleStatus'] as String? ?? 'ACTIVE',
-      );
+  factory PatientDto.fromJson(Map<String, dynamic> j) {
+    // Legacy cache rows (pre docs/43 §4) stored firstName/lastName
+    // instead of workingAlias — join them so an old Hive snapshot keeps
+    // rendering until the next refresh overwrites it.
+    final legacyName =
+        '${j['firstName'] as String? ?? ''} ${j['lastName'] as String? ?? ''}'
+            .trim();
+    return PatientDto(
+      id: j['id'] as String,
+      workingAlias: j['workingAlias'] as String? ?? legacyName,
+      modalityCode: j['modalityCode'] as String? ?? '',
+      languageCode: j['languageCode'] as String? ?? '',
+      sessionCount: (j['sessionCount'] as num?)?.toInt() ?? 0,
+      email: j['email'] as String? ?? '',
+      lifecycleStatus: j['lifecycleStatus'] as String? ?? 'ACTIVE',
+    );
+  }
 
   // sessionCount is not on the proto today; if/when ListPatientFiles
   // starts returning it, source from there. For now consumers populate
@@ -69,19 +75,23 @@ class PatientDto {
   }) =>
       PatientDto(
         id: p.id,
-        firstName: p.patientFirstName,
-        lastName: p.patientLastName,
+        // working_alias is the canonical identifier. Very old records
+        // could in theory miss it — fall back to the (deprecated) name
+        // fields so the row is never blank.
+        workingAlias: p.workingAlias.isNotEmpty
+            ? p.workingAlias
+            : '${p.patientFirstName} ${p.patientLastName}'.trim(),
         modalityCode: p.modalityCode,
         languageCode: p.patientLanguageCode,
         sessionCount: sessionCount,
         email: p.patientEmail,
-        lifecycleStatus: p.lifecycleStatus.isNotEmpty ? p.lifecycleStatus : 'ACTIVE',
+        lifecycleStatus:
+            p.lifecycleStatus.isNotEmpty ? p.lifecycleStatus : 'ACTIVE',
       );
 
   Patient toModel() => Patient(
         id: id,
-        firstName: firstName,
-        lastName: lastName,
+        workingAlias: workingAlias,
         modalityCode: modalityCode,
         languageCode: languageCode,
         sessionCount: sessionCount,
@@ -91,8 +101,7 @@ class PatientDto {
 
   factory PatientDto.fromModel(Patient p) => PatientDto(
         id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
+        workingAlias: p.workingAlias,
         modalityCode: p.modalityCode,
         languageCode: p.languageCode,
         sessionCount: p.sessionCount,

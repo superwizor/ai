@@ -23,16 +23,14 @@ class _StubCipher extends CacheCipher {
 const _samplePatients = [
   PatientDto(
     id: 'pf-1',
-    firstName: 'Anna',
-    lastName: 'K',
+    workingAlias: 'Anna K',
     modalityCode: 'CBT',
     languageCode: 'pl-PL',
     sessionCount: 3,
   ),
   PatientDto(
     id: 'pf-2',
-    firstName: 'Bart',
-    lastName: 'N',
+    workingAlias: 'Bart N',
     modalityCode: 'PSYCHO',
     languageCode: 'en-US',
     sessionCount: 1,
@@ -89,7 +87,7 @@ void main() {
     await r.refresh();
 
     final cached = await r.getCachedAsModels();
-    expect(cached.data!.first.firstName, 'Anna');
+    expect(cached.data!.first.workingAlias, 'Anna K');
     expect(cached.data!.first.sessionCount, 3);
     expect(cached.data!.last.languageCode, 'en-US');
   });
@@ -110,8 +108,7 @@ void main() {
     final r2 = repo(fetcher: () async => const [
           PatientDto(
             id: 'pf-3',
-            firstName: 'Cecylia',
-            lastName: 'Z',
+            workingAlias: 'Cecylia Z',
             modalityCode: 'UNIV',
             languageCode: 'pl-PL',
             sessionCount: 0,

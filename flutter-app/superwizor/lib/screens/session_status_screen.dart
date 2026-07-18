@@ -499,7 +499,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final patientId = effectiveRow?.patientFileId ?? session?.patientId;
     final patient = patients?.where((p) => p.id == patientId).firstOrNull;
     final patientName = patient != null
-        ? '${patient.firstName} ${patient.lastName}'
+        ? patient.workingAlias
         : (AppLocalizations.of(context).pending_uploads_default_patient_name);
 
     final date = session?.date ?? effectiveRow?.queuedAt.toLocal() ?? DateTime.now();

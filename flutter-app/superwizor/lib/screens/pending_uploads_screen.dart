@@ -522,7 +522,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
     // Fetch patient name and session count reactively.
     final patients = ref.watch(patientsProvider).value;
     final patient = patients?.where((p) => p.id == upload.patientFileId).firstOrNull;
-    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : l.pending_uploads_default_patient_name;
+    final patientName = patient != null ? patient.workingAlias : l.pending_uploads_default_patient_name;
     final sessionNumber = (patient?.sessionCount ?? 0) + 1;
 
     // Quota-blocked rows get a special premium card

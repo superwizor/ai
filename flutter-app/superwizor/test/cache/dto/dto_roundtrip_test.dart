@@ -17,8 +17,7 @@ void main() {
     test('JSON round-trip preserves all fields', () {
       const original = PatientDto(
         id: 'pf-1',
-        firstName: 'Anna',
-        lastName: 'Kowalska',
+        workingAlias: 'Anna K.',
         modalityCode: 'CBT',
         languageCode: 'pl-PL',
         sessionCount: 7,
@@ -29,14 +28,13 @@ void main() {
       final decoded = PatientDto.fromJson(
           jsonDecode(encoded) as Map<String, dynamic>);
       expect(decoded.id, original.id);
-      expect(decoded.firstName, original.firstName);
-      expect(decoded.lastName, original.lastName);
+      expect(decoded.workingAlias, original.workingAlias);
       expect(decoded.modalityCode, original.modalityCode);
       expect(decoded.languageCode, original.languageCode);
       expect(decoded.sessionCount, original.sessionCount);
       expect(decoded.email, original.email);
       expect(decoded.lifecycleStatus, original.lifecycleStatus);
-      expect((jsonDecode(encoded) as Map).length, 8,
+      expect((jsonDecode(encoded) as Map).length, 7,
           reason: 'field-count guard — add toJson/fromJson coverage for new fields');
     });
   });

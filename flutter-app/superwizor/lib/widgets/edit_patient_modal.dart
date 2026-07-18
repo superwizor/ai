@@ -21,42 +21,34 @@ class EditPatientModal extends ConsumerStatefulWidget {
 }
 
 class _EditPatientModalState extends ConsumerState<EditPatientModal> {
-  late final TextEditingController _firstNameController;
-  late final TextEditingController _lastNameController;
-  late final TextEditingController _emailController;
+  // docs/43 §4: the working alias is the only editable client
+  // identifier. The e-mail is shown read-only below — it changes only
+  // by sending a new client-panel invitation.
+  late final TextEditingController _aliasController;
   bool _saving = false;
-  String? _emailError;
-
-  // Light e-mail format check. Empty is allowed (optional field); a
-  // non-empty value must look like an address.
-  static final RegExp _emailRegex =
-      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: widget.patient.firstName);
-    _lastNameController = TextEditingController(text: widget.patient.lastName);
-    // Seed from the server-backed patient file e-mail
-    // (PatientFile.patientEmail, docs/22).
-    _emailController = TextEditingController(text: widget.patient.email);
+    _aliasController =
+        TextEditingController(text: widget.patient.workingAlias);
   }
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
+    _aliasController.dispose();
     super.dispose();
   }
 
   String get _initials {
-    final f = widget.patient.firstName;
-    final l = widget.patient.lastName;
-    if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
-    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
-    return '$first$last'.trim();
+    final words = widget.patient.workingAlias
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2);
+    final initials =
+        words.map((w) => w.characters.first.toUpperCase()).join();
+    return initials.isEmpty ? '?' : initials;
   }
 
   Widget _buildAvatarHeader() {
@@ -148,7 +140,7 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final canSave = !_saving && _firstNameController.text.trim().isNotEmpty;
+    final canSave = !_saving && _aliasController.text.trim().isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -181,7 +173,7 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
             ),
             const SizedBox(height: 16),
             Text(
-              '${widget.patient.firstName} ${widget.patient.lastName}'.trim(),
+              widget.patient.workingAlias,
               style: const TextStyle(
                 fontFamily: 'Merriweather',
                 fontStyle: FontStyle.italic,
@@ -204,32 +196,37 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
             ),
             const SizedBox(height: 24),
 
-            // ── First Name ──
+            // ── Working alias ("Pseudonim") — the only editable
+            // client identifier (docs/43 §4). ──
             _GlassTextField(
-              controller: _firstNameController,
-              label: t.addPatient_first_name_label,
+              controller: _aliasController,
+              label: t.addPatient_last_name_label,
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 12),
 
-            // ── Last Name / Alias ──
-            _GlassTextField(
-              controller: _lastNameController,
-              label: t.addPatient_last_name_label,
-            ),
-            const SizedBox(height: 12),
-
-            // ── Email (optional) ──
-            _GlassTextField(
-              controller: _emailController,
-              label: t.addPatient_email_label,
-              hint: t.addPatient_email_hint,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _emailError,
-              onChanged: (_) {
-                if (_emailError != null) setState(() => _emailError = null);
-              },
-            ),
+            // ── E-mail (read-only, resolved server-side from the
+            // account/invitation; changes via a new invite). ──
+            if (widget.patient.email.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                '${t.home_menu_field_email}: ${widget.patient.email}',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: EuphireColors.mist.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                t.editPatient_email_readonly_hint,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 11,
+                  color: EuphireColors.mist.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // ── Save Button ──
@@ -251,30 +248,16 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
   }
 
   Future<void> _onSave() async {
-    final firstName = _firstNameController.text.trim();
-    final lastName = _lastNameController.text.trim();
-    if (firstName.isEmpty) return;
-
-    final email = _emailController.text.trim();
-    // Validate the optional e-mail: empty is fine, but a non-empty value
-    // must be a plausible address.
-    if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
-      final t = AppLocalizations.of(context);
-      setState(() => _emailError = t.auth_error_invalid_email);
-      return;
-    }
+    final alias = _aliasController.text.trim();
+    if (alias.isEmpty) return;
 
     setState(() => _saving = true);
     try {
-      // Persist first/last name + e-mail in one UpdatePatientUser call.
-      // The e-mail goes to PatientFile.patient_email (docs/22); an empty
-      // string clears it server-side.
-      await ref.read(patientsProvider.notifier).updatePatientUser(
-            widget.patient.id,
-            firstName,
-            lastName,
-            email: email,
-          );
+      // Persist the alias via UpdatePatientFile.working_alias — the
+      // server COALESCEs the other fields (docs/43 §4).
+      await ref
+          .read(patientsProvider.notifier)
+          .updatePatientAlias(widget.patient.id, alias);
 
       if (mounted) {
         AppHapticFeedback.mediumImpact();
@@ -298,17 +281,11 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
 class _GlassTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String? hint;
-  final String? errorText;
-  final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
 
   const _GlassTextField({
     required this.controller,
     required this.label,
-    this.hint,
-    this.errorText,
-    this.keyboardType = TextInputType.text,
     this.onChanged,
   });
 
@@ -316,7 +293,6 @@ class _GlassTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      keyboardType: keyboardType,
       onChanged: onChanged,
       style: const TextStyle(
         fontFamily: 'Montserrat',
@@ -326,7 +302,7 @@ class _GlassTextField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         isDense: true,
-        hintText: hint ?? label,
+        hintText: label,
         hintStyle: TextStyle(
           fontFamily: 'Montserrat',
           fontSize: 15,
@@ -348,7 +324,6 @@ class _GlassTextField extends StatelessWidget {
           color: EuphireColors.ember.withValues(alpha: 0.9),
           height: 1.1,
         ),
-        errorText: errorText,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),
         border: OutlineInputBorder(
