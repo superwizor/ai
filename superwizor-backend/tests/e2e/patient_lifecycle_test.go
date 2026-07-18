@@ -142,10 +142,11 @@ func (e *lifecycleEnv) createTestPatient(suffix string) *clinicalv1.PatientFile 
 }
 
 // =================================================================
-//   TestPatientLifecycle_CreateAndRead — verifies the new user fields
-//   added in c74fa9d (patient_first_name, last_name, language_code)
-//   AND the modality_code JOIN fix from 662b9db survive a Create → Get
-//   → List round-trip against real clinical-svc.
+//   TestPatientLifecycle_CreateAndRead — docs/43 §4 guard: the fixture
+//   still SENDS PatientFirstName/LastName (simulating an older app
+//   build), and every read path must come back with EMPTY names —
+//   working_alias is the kartoteka's only identifier. Also keeps the
+//   modality_code JOIN + consent_given_at assertions.
 // =================================================================
 func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 	env := setupLifecycleEnv(t)
@@ -162,10 +163,11 @@ func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 		})
 	})
 
-	// The Create response carries the new fields directly (no JOIN needed —
-	// the handler emits them from the inputs it just inserted).
-	assert.Equal(t, "Anna", created.PatientFirstName, "patient_first_name from Create")
-	assert.Equal(t, "Nowak", created.PatientLastName, "patient_last_name from Create")
+	// docs/43 §4: names sent by an older build must be ACCEPTED (no
+	// error) and IGNORED — the response carries empty name fields.
+	assert.Empty(t, created.PatientFirstName, "deprecated patient_first_name must not round-trip")
+	assert.Empty(t, created.PatientLastName, "deprecated patient_last_name must not round-trip")
+	assert.NotEmpty(t, created.WorkingAlias, "working_alias is the kartoteka's identifier")
 	assert.Equal(t, "pl", created.PatientLanguageCode, "patient_language_code from Create")
 	assert.Equal(t, "CBT", created.ModalityCode, "modality_code from Create")
 	assert.True(t, created.HasRecordingConsent, "has_recording_consent must round-trip from request")
@@ -190,8 +192,9 @@ func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 	})
 	require.NoError(t, err, "GetPatientFile")
 	assert.Equal(t, created.Id, got.Id)
-	assert.Equal(t, "Anna", got.PatientFirstName, "GetPatientFile must JOIN patient_user")
-	assert.Equal(t, "Nowak", got.PatientLastName)
+	assert.Empty(t, got.PatientFirstName, "names must stay empty on the JOIN read path too")
+	assert.Empty(t, got.PatientLastName)
+	assert.Equal(t, created.WorkingAlias, got.WorkingAlias)
 	assert.Equal(t, "pl", got.PatientLanguageCode)
 	assert.Equal(t, "CBT", got.ModalityCode, "GetPatientFile must JOIN modalities (Faza 2 fix)")
 	require.NotNil(t, got.ConsentGivenAt, "GetPatientFile must surface consent_given_at on read")
@@ -217,7 +220,8 @@ func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 		}
 	}
 	require.NotNil(t, match, "created kartoteka must appear in List response (got %d total)", len(listed.PatientFiles))
-	assert.Equal(t, "Anna", match.PatientFirstName, "List must JOIN patient_user")
+	assert.Empty(t, match.PatientFirstName, "names must stay empty on the List path too")
+	assert.Equal(t, created.WorkingAlias, match.WorkingAlias)
 	assert.Equal(t, "CBT", match.ModalityCode, "List must JOIN modalities")
 	t.Logf("✓ List returns same shape (%d kartoteki total)", len(listed.PatientFiles))
 }
@@ -238,44 +242,41 @@ func TestPatientLifecycle_UpdatePatientUser(t *testing.T) {
 		})
 	})
 
-	t.Log("\n═══ UpdatePatientUser: replace first_name and language ═══")
+	t.Log("\n═══ UpdatePatientUser: language updates, names are ignored ═══")
 	updated, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: created.Id,
-		FirstName:     "Katarzyna", // replace
-		LastName:      "",          // leave alone (server NULLIF)
+		FirstName:     "Katarzyna", // deprecated — must be ignored (docs/43 §4)
 		LanguageCode:  "en",        // replace
 	})
 	require.NoError(t, err, "UpdatePatientUser")
-	assert.Equal(t, "Katarzyna", updated.PatientFirstName, "first_name should be updated")
-	assert.Equal(t, "Nowak", updated.PatientLastName, "last_name should be untouched")
+	assert.Empty(t, updated.PatientFirstName, "deprecated first_name must be ignored, not stored")
 	assert.Equal(t, "en", updated.PatientLanguageCode, "language_code should be updated")
 	assert.Equal(t, "CBT", updated.ModalityCode, "modality_code stays immutable post-create")
-	t.Logf("✓ Update returned refreshed PatientFile with new fields")
+	t.Logf("✓ Update returned refreshed PatientFile (language changed, names empty)")
 
 	// Re-Get to confirm the DB row actually changed (not just the response).
 	got, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
 		PatientFileId: created.Id,
 	})
 	require.NoError(t, err, "GetPatientFile (post-update)")
-	assert.Equal(t, "Katarzyna", got.PatientFirstName, "post-update Get reads the new value")
+	assert.Empty(t, got.PatientFirstName, "post-update Get must still carry no names")
 	assert.Equal(t, "en", got.PatientLanguageCode)
 }
 
 // =================================================================
-//   TestPatientLifecycle_PatientEmailPersistence — patient_email
-//   (migration 000040) must survive both CREATE (CreatePatientFile,
-//   field 11) and UPDATE (UpdatePatientUser → SetPatientEmail), and an
-//   empty value must clear it. Guards the on-device bugs where the
-//   e-mail entered on the create form / edit modal was silently dropped,
-//   leaving the "send action plan" gate with no address.
+//   TestPatientLifecycle_PatientEmailNotStored — docs/43 §4 guard
+//   (migration 000077): the kartoteka stores NO client e-mail. An
+//   older build sending patient_email on Create/Update must succeed,
+//   and every read path must come back empty — the only durable
+//   copies live in the identity domain (invitations / users.email),
+//   which the invite-flow e2e tests (client_panel_test.go) cover.
 // =================================================================
-func TestPatientLifecycle_PatientEmailPersistence(t *testing.T) {
+func TestPatientLifecycle_PatientEmailNotStored(t *testing.T) {
 	env := setupLifecycleEnv(t)
 
 	const createEmail = "anna.create@example.com"
-	const updateEmail = "anna.updated@example.com"
 
-	t.Log("\n═══ Step 1: CreatePatientFile WITH patient_email ═══")
+	t.Log("\n═══ Step 1: CreatePatientFile WITH deprecated patient_email ═══")
 	created, err := env.clinical.CreatePatientFile(env.ctx, &clinicalv1.CreatePatientFileRequest{
 		TherapistId:         env.therapist.Id,
 		ModalityCode:        "CBT",
@@ -283,71 +284,44 @@ func TestPatientLifecycle_PatientEmailPersistence(t *testing.T) {
 		ProcessType:         clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
 		HasRecordingConsent: true,
 		IdempotencyKey:      fmt.Sprintf("e2e-email-%d", env.runID),
-		PatientFirstName:    "Anna",
 		PatientLanguageCode: "pl",
 		PatientEmail:        createEmail,
 	})
-	require.NoError(t, err, "CreatePatientFile")
+	require.NoError(t, err, "CreatePatientFile must accept (and ignore) deprecated patient_email")
 	t.Cleanup(func() {
 		bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		_, _ = env.clinical.DeletePatientFile(bg,
 			&clinicalv1.DeletePatientFileRequest{PatientFileId: created.Id})
 	})
-	assert.Equal(t, createEmail, created.PatientEmail, "Create response must echo patient_email")
+	assert.Empty(t, created.PatientEmail, "no client e-mail may be stored on the kartoteka")
 
-	// Round-trip through the With-User JOIN read path.
+	// All three read paths (Create response, Get JOIN, List JOIN) must
+	// agree: nothing on file until an invitation exists.
 	got, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
 		PatientFileId: created.Id,
 	})
 	require.NoError(t, err, "GetPatientFile")
-	assert.Equal(t, createEmail, got.PatientEmail,
-		"patient_email entered at create time must persist (was previously dropped)")
+	assert.Empty(t, got.PatientEmail, "resolved patient_email must be empty without an invitation")
 
-	t.Log("\n═══ Step 2: UpdatePatientUser changes patient_email ═══")
+	t.Log("\n═══ Step 2: UpdatePatientUser with deprecated patient_email is a no-op ═══")
 	updated, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: created.Id,
-		FirstName:     "Anna",
-		PatientEmail:  updateEmail,
+		PatientEmail:  "anna.updated@example.com",
 	})
-	require.NoError(t, err, "UpdatePatientUser")
-	assert.Equal(t, updateEmail, updated.PatientEmail, "Update response must carry the new e-mail")
+	require.NoError(t, err, "UpdatePatientUser must accept (and ignore) deprecated patient_email")
+	assert.Empty(t, updated.PatientEmail, "deprecated patient_email must not be stored on update")
 
-	got2, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
-		PatientFileId: created.Id,
-	})
-	require.NoError(t, err, "GetPatientFile (post-update)")
-	assert.Equal(t, updateEmail, got2.PatientEmail, "updated patient_email must persist")
-
-	// CRITICAL: the edit modal's `widget.patient` comes from ListPatientFiles,
-	// NOT GetPatientFile. The list mapper (toProtoPatientFileFromListJoinRow)
-	// is a separate code path — assert IT carries patient_email too, otherwise
-	// the modal pre-fills empty on reopen and the e-mail looks "not saved".
-	t.Log("\n═══ Step 2.5: ListPatientFiles ALSO returns patient_email ═══")
 	listed, err := env.clinical.ListPatientFiles(env.ctx, &clinicalv1.ListPatientFilesRequest{
 		TherapistId: env.therapist.Id,
 		PageSize:    50,
 	})
 	require.NoError(t, err, "ListPatientFiles")
-	var fromList *clinicalv1.PatientFile
 	for _, pf := range listed.PatientFiles {
 		if pf.Id == created.Id {
-			fromList = pf
-			break
+			assert.Empty(t, pf.PatientEmail, "List path must not surface a stored e-mail either")
 		}
 	}
-	require.NotNil(t, fromList, "created kartoteka must appear in ListPatientFiles")
-	assert.Equal(t, updateEmail, fromList.PatientEmail,
-		"ListPatientFiles must carry patient_email (the edit modal's data source)")
-
-	t.Log("\n═══ Step 3: empty patient_email clears the column ═══")
-	cleared, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
-		PatientFileId: created.Id,
-		FirstName:     "Anna",
-		PatientEmail:  "",
-	})
-	require.NoError(t, err, "UpdatePatientUser (clear email)")
-	assert.Empty(t, cleared.PatientEmail, "empty patient_email clears the column (SetPatientEmail NULLIF)")
 }
 
 // =================================================================
