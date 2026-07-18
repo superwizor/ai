@@ -251,9 +251,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           child: EuphireSegmentedControl(
             selected: 'report',
             leftValue: 'transcript',
-            leftLabel: '${t.transcript_tab}.',
+            leftLabel: t.transcript_tab,
             rightValue: 'report',
-            rightLabel: '${t.report_tab}.',
+            rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'transcript') {
                 Navigator.of(context).pushReplacement(

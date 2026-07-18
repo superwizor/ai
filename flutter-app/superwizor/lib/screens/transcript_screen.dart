@@ -206,7 +206,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('${t.transcript_tab}.', style: theme.textTheme.titleLarge),
+        title: Text(t.transcript_tab, style: theme.textTheme.titleLarge),
         actions: [
           IconButton(
             tooltip: t.sessionDetails_copy_transcript,
@@ -219,9 +219,9 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
           child: EuphireSegmentedControl(
             selected: 'transcript',
             leftValue: 'transcript',
-            leftLabel: '${t.transcript_tab}.',
+            leftLabel: t.transcript_tab,
             rightValue: 'report',
-            rightLabel: '${t.report_tab}.',
+            rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'report') {
                 Navigator.of(context).pushReplacement(
@@ -416,7 +416,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                             child: Icon(Icons.check_rounded, size: 14, color: EuphireColors.obsidianBlack),
                           ),
                         Text(
-                          f.label.endsWith('.') ? f.label : '${f.label}.',
+                          f.label,
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 13,
@@ -548,7 +548,7 @@ class _SegmentTile extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${(segment.speakerLabel.isNotEmpty ? segment.speakerLabel : t.transcript_segment_unknown_speaker).toUpperCase()}.',
+                            (segment.speakerLabel.isNotEmpty ? segment.speakerLabel : t.transcript_segment_unknown_speaker).toUpperCase(),
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               color: labelColor,

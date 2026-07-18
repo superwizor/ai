@@ -68,7 +68,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get action_plan_sent_toast => 'Plan działania wysłany do klienta';
 
   @override
-  String get activeAnalysis_analyzing => 'Analiza w toku.';
+  String get activeAnalysis_analyzing => 'Analiza w toku';
 
   @override
   String get activeAnalysis_analyzing_desc =>
@@ -78,21 +78,21 @@ class AppLocalizationsPl extends AppLocalizations {
   String get activeAnalysis_check_details => 'Sprawdź szczegóły';
 
   @override
-  String get activeAnalysis_converting => 'Konwertuję plik audio.';
+  String get activeAnalysis_converting => 'Konwertuję plik audio';
 
   @override
   String get activeAnalysis_converting_desc =>
       'Format pliku wymaga konwersji. Potrwa to chwilę.';
 
   @override
-  String get activeAnalysis_preparing => 'Przygotowuję nagranie.';
+  String get activeAnalysis_preparing => 'Przygotowuję nagranie';
 
   @override
   String get activeAnalysis_preparing_desc =>
       'Sesja jest szyfrowana przed przesłaniem na serwer.';
 
   @override
-  String get activeAnalysis_processing => 'Przetwarzanie sesji.';
+  String get activeAnalysis_processing => 'Przetwarzanie sesji';
 
   @override
   String get activeAnalysis_processing_desc =>
@@ -103,7 +103,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.';
 
   @override
-  String get activeAnalysis_upload_attention => 'Przesyłanie wymaga uwagi.';
+  String get activeAnalysis_upload_attention => 'Przesyłanie wymaga uwagi';
 
   @override
   String get activeAnalysis_upload_attention_desc =>
@@ -111,7 +111,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get activeAnalysis_upload_interrupted =>
-      'Przesyłanie zostało przerwane.';
+      'Przesyłanie zostało przerwane';
 
   @override
   String get activeAnalysis_upload_interrupted_desc =>
@@ -184,7 +184,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Klient wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.';
 
   @override
-  String get addPatient_consent_link_label => 'Zobacz DPA.';
+  String get addPatient_consent_link_label => 'Zobacz DPA';
 
   @override
   String get addPatient_customize_label_title => 'Spersonalizuj oznaczenie';
@@ -206,10 +206,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Masz już kartotekę z tym pseudonimem. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.';
 
   @override
-  String get addPatient_duplicate_header => 'Taki klient już istnieje.';
+  String get addPatient_duplicate_header => 'Taki klient już istnieje';
 
   @override
-  String get addPatient_duplicate_primary => 'Poprawię nazwę.';
+  String get addPatient_duplicate_primary => 'Poprawię nazwę';
 
   @override
   String get addPatient_language_label => 'Język raportu';
@@ -225,10 +225,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nie możemy rozpocząć sesji bez wyraźnej zgody klienta. Wymagają tego przepisy o ochronie danych.';
 
   @override
-  String get addPatient_no_consent_header => 'Brak zgody na nagrywanie.';
+  String get addPatient_no_consent_header => 'Brak zgody na nagrywanie';
 
   @override
-  String get addPatient_no_consent_primary => 'Rozumiem.';
+  String get addPatient_no_consent_primary => 'Rozumiem';
 
   @override
   String get addPatient_save_primary => 'Utwórz kartotekę';
@@ -240,7 +240,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_step1_next => 'Dalej';
 
   @override
-  String get addPatient_step1_subtitle => 'Nadaj kartotece pseudonim.';
+  String get addPatient_step1_subtitle => 'Nadaj kartotece pseudonim';
 
   @override
   String get addPatient_step2_subtitle => 'Ustawienia, które trafią do AI.';
@@ -259,7 +259,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addSession_subtitle => 'Wybierz nurt dla tej sesji:';
 
   @override
-  String get addSession_title => 'Nowa sesja.';
+  String get addSession_title => 'Nowa sesja';
 
   @override
   String get appLock_reason =>
@@ -315,13 +315,13 @@ class AppLocalizationsPl extends AppLocalizations {
       'Hasło jest zbyt krótkie. Użyj minimum 6 znaków.';
 
   @override
-  String get auth_forgot_password => 'Nie pamiętam hasła.';
+  String get auth_forgot_password => 'Nie pamiętam hasła';
 
   @override
-  String get auth_login_primary => 'Zaloguj się.';
+  String get auth_login_primary => 'Zaloguj się';
 
   @override
-  String get auth_login_title => 'Zaloguj się.';
+  String get auth_login_title => 'Zaloguj się';
 
   @override
   String get auth_or_use_email => 'Albo użyj adresu e-mail';
@@ -334,10 +334,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wysłaliśmy link do zmiany hasła na Twój e-mail.';
 
   @override
-  String get auth_password_reset_sent_title => 'Link do zmiany hasła wysłany.';
+  String get auth_password_reset_sent_title => 'Link do zmiany hasła wysłany';
 
   @override
-  String get auth_register_primary => 'Załóż konto.';
+  String get auth_register_primary => 'Załóż konto';
 
   @override
   String get auth_shared_machine_warning_body =>
@@ -354,17 +354,17 @@ class AppLocalizationsPl extends AppLocalizations {
   String get auth_sign_in_with_google => 'Kontynuuj z Google';
 
   @override
-  String get auth_social_cancelled => 'Logowanie anulowane.';
+  String get auth_social_cancelled => 'Logowanie anulowane';
 
   @override
   String get auth_social_error =>
       'Logowanie przez konto zewnętrzne nie powiodło się. Spróbuj ponownie.';
 
   @override
-  String get auth_toggle_to_login => 'Masz już konto? Zaloguj się.';
+  String get auth_toggle_to_login => 'Masz już konto? Zaloguj się';
 
   @override
-  String get auth_toggle_to_register => 'Nie masz konta? Załóż.';
+  String get auth_toggle_to_register => 'Nie masz konta? Załóż';
 
   @override
   String get avatar_customize_background_color => 'KOLOR TŁA';
@@ -445,7 +445,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Została Ci ostatnia sesja w pakiecie.';
 
   @override
-  String get billing_quota_exhausted_short => 'Pakiet sesji wyczerpany.';
+  String get billing_quota_exhausted_short => 'Pakiet sesji wyczerpany';
 
   @override
   String get billing_quota_exhausted_subtitle =>
@@ -836,7 +836,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get client_session_transcript_chip => 'Transkrypcja';
 
   @override
-  String get client_sessions_empty => 'Brak udostępnionych sesji.';
+  String get client_sessions_empty => 'Brak udostępnionych sesji';
 
   @override
   String get client_tab_notes => 'Notatki';
@@ -853,16 +853,16 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get common_back => 'Wróć.';
+  String get common_back => 'Wróć';
 
   @override
-  String get common_cancel => 'Anuluj.';
+  String get common_cancel => 'Anuluj';
 
   @override
   String get common_close => 'Zamknij';
 
   @override
-  String get common_continue => 'Kontynuuj.';
+  String get common_continue => 'Kontynuuj';
 
   @override
   String get common_copied_to_clipboard => 'Skopiowano do schowka';
@@ -874,7 +874,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get common_done => 'Gotowe';
 
   @override
-  String get common_error => 'Wystąpił błąd.';
+  String get common_error => 'Wystąpił błąd';
 
   @override
   String get common_got_it => 'Zrozumiałem';
@@ -889,13 +889,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get common_or => 'lub';
 
   @override
-  String get common_retry => 'Spróbuj ponownie.';
+  String get common_retry => 'Spróbuj ponownie';
 
   @override
-  String get common_save => 'Zapisz.';
+  String get common_save => 'Zapisz';
 
   @override
-  String get common_understand => 'Rozumiem.';
+  String get common_understand => 'Rozumiem';
 
   @override
   String get connectivity_offline_banner =>
@@ -937,7 +937,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get delete_account_sheet_button => 'USUWAM KONTO';
 
   @override
-  String get delete_account_sheet_cancel => 'Anuluj.';
+  String get delete_account_sheet_cancel => 'Anuluj';
 
   @override
   String get delete_account_sheet_hint => 'wpisz tutaj…';
@@ -946,7 +946,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get delete_account_sheet_subtitle => 'Aby potwierdzić, wpisz:';
 
   @override
-  String get delete_account_sheet_title => 'Ostatni krok.';
+  String get delete_account_sheet_title => 'Ostatni krok';
 
   @override
   String get delete_account_title => 'Usuń konto';
@@ -965,7 +965,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get drawer_btn_logout => 'Wyloguj się';
 
   @override
-  String get drawer_delete_account => 'Usuń konto.';
+  String get drawer_delete_account => 'Usuń konto';
 
   @override
   String get drawer_fallback_name => 'Terapeuta';
@@ -983,7 +983,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get drawer_legal_terms => 'Regulamin';
 
   @override
-  String get drawer_logout => 'Wyloguj.';
+  String get drawer_logout => 'Wyloguj';
 
   @override
   String get drawer_modalities => 'Nurty terapii';
@@ -1093,7 +1093,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get hard_delete_error => 'Błąd usuwania';
 
   @override
-  String get hard_delete_title => 'Usunięcie konta jest bezpowrotne.';
+  String get hard_delete_title => 'Usunięcie konta jest bezpowrotne';
 
   @override
   String get home_add_patient_fab => 'Dodaj klienta';
@@ -1108,7 +1108,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get home_card_sessions_prefix => 'Sesje: ';
 
   @override
-  String get home_delete_btn_cancel => 'Anuluj.';
+  String get home_delete_btn_cancel => 'Anuluj';
 
   @override
   String get home_delete_btn_confirm => 'Usuń klienta';
@@ -1140,7 +1140,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Cała dokumentacja kliniczna — sesje, notatki AI oraz nagrania audio — zostanie trwale i bezpowrotnie usunięta z baz medycznych.\nZgodnie z RODO (prawo do zapomnienia).';
 
   @override
-  String get home_delete_warning_understand => 'Rozumiem, to nieodwracalne.';
+  String get home_delete_warning_understand => 'Rozumiem, to nieodwracalne';
 
   @override
   String get home_empty_body => 'Dodaj klienta, aby rozpocząć pierwszą sesję.';
@@ -1149,7 +1149,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get home_empty_list => 'Dodaj pierwszego klienta, aby rozpocząć.';
 
   @override
-  String get home_empty_title => 'Nie masz jeszcze żadnych klientów.';
+  String get home_empty_title => 'Nie masz jeszcze żadnych klientów';
 
   @override
   String home_error_loading(String error) {
@@ -1287,7 +1287,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get home_status_uploading => 'Wgrywanie…';
 
   @override
-  String get home_title => 'Twoi klienci.';
+  String get home_title => 'Twoi klienci';
 
   @override
   String get invite_client_desc =>
@@ -1317,7 +1317,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get invite_client_send => 'Wyślij zaproszenie';
 
   @override
-  String get invite_client_sent => 'Zaproszenie wysłane.';
+  String get invite_client_sent => 'Zaproszenie wysłane';
 
   @override
   String get invite_client_status_active => 'Panel klienta jest aktywny.';
@@ -1351,7 +1351,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Obecnie wspieramy w pełni język polski. Przełączyliśmy Twój język docelowy na polski.';
 
   @override
-  String get language_popup_title => 'Język aplikacji.';
+  String get language_popup_title => 'Język aplikacji';
 
   @override
   String get live_activity_info_body =>
@@ -1625,7 +1625,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Twój plik jest szyfrowany i bezpiecznie przesyłany na nasze serwery w Europie. Nikt poza Tobą nie ma dostępu do tych danych.';
 
   @override
-  String get newSession_secure_upload_title => 'Bezpieczne przesyłanie.';
+  String get newSession_secure_upload_title => 'Bezpieczne przesyłanie';
 
   @override
   String get newSession_supported_formats =>
@@ -1731,7 +1731,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get offline_banner_title => 'Brak połączenia';
 
   @override
-  String get patient_no_sessions => 'Brak sesji.';
+  String get patient_no_sessions => 'Brak sesji';
 
   @override
   String patient_session_count(int count) {
@@ -1748,7 +1748,7 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get patient_start_session => 'Rozpocznij nagrywanie sesji.';
+  String get patient_start_session => 'Rozpocznij nagrywanie sesji';
 
   @override
   String pendingUploads_pill_analyzing(int count) {
@@ -1867,8 +1867,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.';
 
   @override
-  String get pending_uploads_quota_card_title =>
-      'Nagranie czeka na wznowienie.';
+  String get pending_uploads_quota_card_title => 'Nagranie czeka na wznowienie';
 
   @override
   String get pending_uploads_quota_dialog_body =>
@@ -1903,7 +1902,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Tytuł zawodowy (np. mgr, Psycholog)';
 
   @override
-  String get profile_edit_title => 'Edytuj profil.';
+  String get profile_edit_title => 'Edytuj profil';
 
   @override
   String get profile_title_suggestion_1 => 'mgr';
@@ -1912,10 +1911,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get profile_title_suggestion_2 => 'dr';
 
   @override
-  String get profile_title_suggestion_3 => 'dr hab.';
+  String get profile_title_suggestion_3 => 'dr hab';
 
   @override
-  String get profile_title_suggestion_4 => 'prof.';
+  String get profile_title_suggestion_4 => 'prof';
 
   @override
   String get profile_title_suggestion_5 => 'Psycholog';
@@ -1944,16 +1943,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recording_btn_back => 'Powrót';
 
   @override
-  String get recording_button_pause => 'Pauza.';
+  String get recording_button_pause => 'Pauza';
 
   @override
-  String get recording_button_resume => 'Wznów.';
+  String get recording_button_resume => 'Wznów';
 
   @override
-  String get recording_button_start => 'Rozpocznij nagrywanie.';
+  String get recording_button_start => 'Rozpocznij nagrywanie';
 
   @override
-  String get recording_button_stop => 'Zakończ.';
+  String get recording_button_stop => 'Zakończ';
 
   @override
   String get recording_confirm_end_body =>
@@ -1961,16 +1960,16 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_confirm_end_destructive =>
-      'Usuń to nagranie bezpowrotnie.';
+      'Usuń to nagranie bezpowrotnie';
 
   @override
-  String get recording_confirm_end_header => 'Zakończenie i analiza sesji.';
+  String get recording_confirm_end_header => 'Zakończenie i analiza sesji';
 
   @override
-  String get recording_confirm_end_primary => 'Rozpocznij analizę sesji.';
+  String get recording_confirm_end_primary => 'Rozpocznij analizę sesji';
 
   @override
-  String get recording_confirm_end_secondary => 'Wróć do nagrywania.';
+  String get recording_confirm_end_secondary => 'Wróć do nagrywania';
 
   @override
   String get recording_consent_grant => 'Tak, wyraził zgodę';
@@ -1996,14 +1995,14 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recording_discard_confirm_cancel => 'Nie, wróć';
 
   @override
-  String get recording_discard_confirm_destructive => 'Wyjdź i usuń nagranie.';
+  String get recording_discard_confirm_destructive => 'Wyjdź i usuń nagranie';
 
   @override
   String get recording_discard_confirm_header =>
       'Czy na pewno chcesz skasować nagranie?';
 
   @override
-  String get recording_discard_confirm_secondary => 'Wróć do nagrywania.';
+  String get recording_discard_confirm_secondary => 'Wróć do nagrywania';
 
   @override
   String get recording_fgs_notification_body =>
@@ -2072,27 +2071,27 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_max_duration_destructive =>
-      'Usuń to nagranie bezpowrotnie.';
+      'Usuń to nagranie bezpowrotnie';
 
   @override
   String get recording_max_duration_header =>
-      'Osiągnięto limit czasu nagrywania.';
+      'Osiągnięto limit czasu nagrywania';
 
   @override
-  String get recording_max_duration_primary => 'Rozpocznij analizę sesji.';
+  String get recording_max_duration_primary => 'Rozpocznij analizę sesji';
 
   @override
   String get recording_mic_denied_body =>
       'Aby nagrywać sesję, włącz dostęp do mikrofonu w ustawieniach systemu. Przejdź do Ustawienia → Superwizor → Mikrofon.';
 
   @override
-  String get recording_mic_denied_cancel => 'Wróć.';
+  String get recording_mic_denied_cancel => 'Wróć';
 
   @override
-  String get recording_mic_denied_header => 'Brak dostępu do mikrofonu.';
+  String get recording_mic_denied_header => 'Brak dostępu do mikrofonu';
 
   @override
-  String get recording_mic_denied_open_settings => 'Otwórz ustawienia.';
+  String get recording_mic_denied_open_settings => 'Otwórz ustawienia';
 
   @override
   String get recording_mic_error_header => 'Błąd mikrofonu';
@@ -2120,14 +2119,14 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_pending_upload_destructive =>
-      'Usuń to nagranie bezpowrotnie.';
+      'Usuń to nagranie bezpowrotnie';
 
   @override
   String get recording_pending_upload_header =>
-      'Mamy Twoje niedokończone nagranie.';
+      'Mamy Twoje niedokończone nagranie';
 
   @override
-  String get recording_pending_upload_primary => 'Przekaż do analizy.';
+  String get recording_pending_upload_primary => 'Przekaż do analizy';
 
   @override
   String recording_reminder_toast(String duration) {
@@ -2151,16 +2150,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recording_saving => 'Zapisuję nagranie...';
 
   @override
-  String get recording_screen_title => 'Sesja w toku.';
+  String get recording_screen_title => 'Sesja w toku';
 
   @override
   String get recording_status_initializing => 'Rozpoczynam nagrywanie…';
 
   @override
-  String get recording_status_paused => 'Nagrywanie wstrzymane.';
+  String get recording_status_paused => 'Nagrywanie wstrzymane';
 
   @override
-  String get recording_status_recording => 'Nagrywanie w toku.';
+  String get recording_status_recording => 'Nagrywanie w toku';
 
   @override
   String recording_too_short_abort_body(String duration) {
@@ -2172,13 +2171,13 @@ class AppLocalizationsPl extends AppLocalizations {
       'Sesja nie może być krótsza niż 5 minut, aby sztuczna inteligencja mogła wyciągnąć wiarygodne wnioski. Nagrywanie trwa nadal.';
 
   @override
-  String get recording_too_short_destructive => 'Zakończ bez zapisu.';
+  String get recording_too_short_destructive => 'Zakończ bez zapisu';
 
   @override
-  String get recording_too_short_header => 'Nagranie jest zbyt krótkie.';
+  String get recording_too_short_header => 'Nagranie jest zbyt krótkie';
 
   @override
-  String get recording_too_short_primary => 'Kontynuuj nagrywanie.';
+  String get recording_too_short_primary => 'Kontynuuj nagrywanie';
 
   @override
   String get recording_upload_error_header => 'Błąd przesyłania';
@@ -2257,7 +2256,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nie zidentyfikowano interwencji terapeutycznych.';
 
   @override
-  String get report_empty_recommendations => 'Brak rekomendacji.';
+  String get report_empty_recommendations => 'Brak rekomendacji';
 
   @override
   String get report_empty_themes =>
@@ -2348,7 +2347,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nie udało się zapisać preferencji. Spróbuj ponownie.';
 
   @override
-  String get report_prefs_saved => 'Zapisano preferencje.';
+  String get report_prefs_saved => 'Zapisano preferencje';
 
   @override
   String get report_prefs_section_case_formulation =>
@@ -2643,10 +2642,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Coś poszło nie tak po stronie analizy. Spróbujemy ponownie automatycznie. Jeśli problem się utrzymuje, skontaktuj się z pomocą techniczną.';
 
   @override
-  String get session_failed_header => 'Nie udało się przygotować raportu.';
+  String get session_failed_header => 'Nie udało się przygotować raportu';
 
   @override
-  String get session_failed_primary => 'Skontaktuj się z pomocą.';
+  String get session_failed_primary => 'Skontaktuj się z pomocą';
 
   @override
   String get session_failed_subscription_body =>
@@ -2660,7 +2659,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Coś nie zadziałało po naszej stronie. Spróbuj ponownie za chwilę.';
 
   @override
-  String get session_load_error_header => 'Nie udało się pobrać sesji.';
+  String get session_load_error_header => 'Nie udało się pobrać sesji';
 
   @override
   String get session_loading =>
@@ -2684,7 +2683,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get session_status_success => 'Gotowe!';
 
   @override
-  String get session_status_title => 'Bezpieczna analiza w toku.';
+  String get session_status_title => 'Bezpieczna analiza w toku';
 
   @override
   String get settings_avatar => 'Zdjęcie profilowe';
@@ -2703,10 +2702,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane klientów.';
 
   @override
-  String get settings_delete_confirm_cancel => 'Anuluj, zachowaj konto.';
+  String get settings_delete_confirm_cancel => 'Anuluj, zachowaj konto';
 
   @override
-  String get settings_delete_confirm_proceed => 'Rozumiem, przejdź dalej.';
+  String get settings_delete_confirm_proceed => 'Rozumiem, przejdź dalej';
 
   @override
   String get settings_delete_confirm_title =>
@@ -2852,7 +2851,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_waitlist => 'Lista oczekujących';
 
   @override
-  String get setup_continue => 'Kontynuuj.';
+  String get setup_continue => 'Kontynuuj';
 
   @override
   String get setup_language_label => 'Język sesji';
@@ -2865,7 +2864,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Powiedz nam jak pracujesz, dostosujemy do tego analizę.';
 
   @override
-  String get setup_title => 'Konfiguracja Twojego profilu.';
+  String get setup_title => 'Konfiguracja Twojego profilu';
 
   @override
   String share_note_shared_at(String date) {
@@ -2882,7 +2881,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get share_toggle_error => 'Nie udało się zmienić udostępniania.';
 
   @override
-  String get share_toggled_off => 'Cofnięto udostępnienie.';
+  String get share_toggled_off => 'Cofnięto udostępnienie';
 
   @override
   String get share_toggled_on => 'Udostępniono w panelu klienta.';
@@ -2954,7 +2953,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get stepper_step1_uploading => 'Ładujemy audio na serwer.';
 
   @override
-  String get stepper_step2_transcribing => 'Tworzymy transkrypcję.';
+  String get stepper_step2_transcribing => 'Tworzymy transkrypcję';
 
   @override
   String get stepper_step3_analyzing =>
@@ -3077,16 +3076,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get suggestion_banner_open_settings => 'Otwórz ustawienia';
 
   @override
-  String get transcript_actions_copy => 'Kopiuj cytat.';
+  String get transcript_actions_copy => 'Kopiuj cytat';
 
   @override
-  String get transcript_actions_copy_with_timestamp => 'Kopiuj cytat z czasem.';
+  String get transcript_actions_copy_with_timestamp => 'Kopiuj cytat z czasem';
 
   @override
-  String get transcript_actions_export => 'Eksportuj transkrypt do PDF.';
+  String get transcript_actions_export => 'Eksportuj transkrypt do PDF';
 
   @override
-  String get transcript_actions_play_from_here => 'Odtwórz od tego miejsca.';
+  String get transcript_actions_play_from_here => 'Odtwórz od tego miejsca';
 
   @override
   String get transcript_default_speaker_label => 'Głos';
@@ -3096,13 +3095,13 @@ class AppLocalizationsPl extends AppLocalizations {
       'Dokument zawiera transkrypcję sesji terapeutycznej. Nie udostępniaj go niezaszyfrowaną pocztą ani komunikatorami bez warstwy E2E.';
 
   @override
-  String get transcript_export_phi_header => 'Eksportujesz dane wrażliwe.';
+  String get transcript_export_phi_header => 'Eksportujesz dane wrażliwe';
 
   @override
-  String get transcript_export_phi_primary => 'Rozumiem, eksportuj.';
+  String get transcript_export_phi_primary => 'Rozumiem, eksportuj';
 
   @override
-  String get transcript_export_phi_secondary => 'Anuluj.';
+  String get transcript_export_phi_secondary => 'Anuluj';
 
   @override
   String get transcript_filter_all => 'Wszyscy';

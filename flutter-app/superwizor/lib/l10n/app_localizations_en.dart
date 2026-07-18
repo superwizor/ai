@@ -68,7 +68,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get action_plan_sent_toast => 'Action plan sent to client';
 
   @override
-  String get activeAnalysis_analyzing => 'Analysis in progress.';
+  String get activeAnalysis_analyzing => 'Analysis in progress';
 
   @override
   String get activeAnalysis_analyzing_desc =>
@@ -78,21 +78,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeAnalysis_check_details => 'Check details';
 
   @override
-  String get activeAnalysis_converting => 'Converting audio file.';
+  String get activeAnalysis_converting => 'Converting audio file';
 
   @override
   String get activeAnalysis_converting_desc =>
       'File format requires conversion. This will take a moment.';
 
   @override
-  String get activeAnalysis_preparing => 'Preparing recording.';
+  String get activeAnalysis_preparing => 'Preparing recording';
 
   @override
   String get activeAnalysis_preparing_desc =>
       'Session is encrypted before uploading to the server.';
 
   @override
-  String get activeAnalysis_processing => 'Processing session.';
+  String get activeAnalysis_processing => 'Processing session';
 
   @override
   String get activeAnalysis_processing_desc =>
@@ -103,15 +103,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Token pool has been exhausted. The session is safely saved and will be processed after the plan renews.';
 
   @override
-  String get activeAnalysis_upload_attention => 'Upload requires attention.';
+  String get activeAnalysis_upload_attention => 'Upload requires attention';
 
   @override
   String get activeAnalysis_upload_attention_desc =>
       'Session could not be uploaded. Check details.';
 
   @override
-  String get activeAnalysis_upload_interrupted =>
-      'Upload has been interrupted.';
+  String get activeAnalysis_upload_interrupted => 'Upload has been interrupted';
 
   @override
   String get activeAnalysis_upload_interrupted_desc =>
@@ -184,7 +183,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The client consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.';
 
   @override
-  String get addPatient_consent_link_label => 'View DPA.';
+  String get addPatient_consent_link_label => 'View DPA';
 
   @override
   String get addPatient_customize_label_title => 'Customize label';
@@ -206,10 +205,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'You already have a record with this alias. Add an initial or nickname to avoid confusion.';
 
   @override
-  String get addPatient_duplicate_header => 'This client already exists.';
+  String get addPatient_duplicate_header => 'This client already exists';
 
   @override
-  String get addPatient_duplicate_primary => 'I\'ll fix the name.';
+  String get addPatient_duplicate_primary => 'I\'ll fix the name';
 
   @override
   String get addPatient_language_label => 'Report language';
@@ -225,10 +224,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'We cannot start a session without explicit patient consent. Data protection laws require this.';
 
   @override
-  String get addPatient_no_consent_header => 'No consent to record.';
+  String get addPatient_no_consent_header => 'No consent to record';
 
   @override
-  String get addPatient_no_consent_primary => 'I understand.';
+  String get addPatient_no_consent_primary => 'I understand';
 
   @override
   String get addPatient_save_primary => 'Create record';
@@ -240,7 +239,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_step1_next => 'Next';
 
   @override
-  String get addPatient_step1_subtitle => 'Give the record an alias.';
+  String get addPatient_step1_subtitle => 'Give the record an alias';
 
   @override
   String get addPatient_step2_subtitle => 'Settings that guide the AI.';
@@ -259,7 +258,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addSession_subtitle => 'Choose modality for this session:';
 
   @override
-  String get addSession_title => 'New Session.';
+  String get addSession_title => 'New Session';
 
   @override
   String get appLock_reason => 'Authenticate to access Superwizor';
@@ -311,13 +310,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Password is too short. Use at least 6 characters.';
 
   @override
-  String get auth_forgot_password => 'Forgot password.';
+  String get auth_forgot_password => 'Forgot password';
 
   @override
-  String get auth_login_primary => 'Sign In.';
+  String get auth_login_primary => 'Sign In';
 
   @override
-  String get auth_login_title => 'Sign In.';
+  String get auth_login_title => 'Sign In';
 
   @override
   String get auth_or_use_email => 'Or use your email';
@@ -330,10 +329,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'We have sent a password reset link to your email.';
 
   @override
-  String get auth_password_reset_sent_title => 'Password reset link sent.';
+  String get auth_password_reset_sent_title => 'Password reset link sent';
 
   @override
-  String get auth_register_primary => 'Create Account.';
+  String get auth_register_primary => 'Create Account';
 
   @override
   String get auth_shared_machine_warning_body =>
@@ -349,17 +348,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_sign_in_with_google => 'Continue with Google';
 
   @override
-  String get auth_social_cancelled => 'Sign-in cancelled.';
+  String get auth_social_cancelled => 'Sign-in cancelled';
 
   @override
   String get auth_social_error =>
       'Sign-in with external account failed. Please try again.';
 
   @override
-  String get auth_toggle_to_login => 'Already have an account? Sign in.';
+  String get auth_toggle_to_login => 'Already have an account? Sign in';
 
   @override
-  String get auth_toggle_to_register => 'No account? Create one.';
+  String get auth_toggle_to_register => 'No account? Create one';
 
   @override
   String get avatar_customize_background_color => 'BACKGROUND COLOR';
@@ -437,7 +436,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billing_quota_critical_short => 'Only 1 token left.';
 
   @override
-  String get billing_quota_exhausted_short => 'Token pool exhausted.';
+  String get billing_quota_exhausted_short => 'Token pool exhausted';
 
   @override
   String get billing_quota_exhausted_subtitle =>
@@ -824,7 +823,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get client_session_transcript_chip => 'Transcript';
 
   @override
-  String get client_sessions_empty => 'No shared sessions yet.';
+  String get client_sessions_empty => 'No shared sessions yet';
 
   @override
   String get client_tab_notes => 'Notes';
@@ -841,16 +840,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get common_back => 'Back.';
+  String get common_back => 'Back';
 
   @override
-  String get common_cancel => 'Cancel.';
+  String get common_cancel => 'Cancel';
 
   @override
   String get common_close => 'Close';
 
   @override
-  String get common_continue => 'Continue.';
+  String get common_continue => 'Continue';
 
   @override
   String get common_copied_to_clipboard => 'Copied to clipboard';
@@ -862,7 +861,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get common_done => 'Done';
 
   @override
-  String get common_error => 'An error occurred.';
+  String get common_error => 'An error occurred';
 
   @override
   String get common_got_it => 'Got it';
@@ -877,13 +876,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get common_or => 'or';
 
   @override
-  String get common_retry => 'Retry.';
+  String get common_retry => 'Retry';
 
   @override
-  String get common_save => 'Save.';
+  String get common_save => 'Save';
 
   @override
-  String get common_understand => 'I understand.';
+  String get common_understand => 'I understand';
 
   @override
   String get connectivity_offline_banner =>
@@ -925,7 +924,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delete_account_sheet_button => 'DELETE ACCOUNT';
 
   @override
-  String get delete_account_sheet_cancel => 'Cancel.';
+  String get delete_account_sheet_cancel => 'Cancel';
 
   @override
   String get delete_account_sheet_hint => 'type here…';
@@ -934,7 +933,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delete_account_sheet_subtitle => 'To confirm, type:';
 
   @override
-  String get delete_account_sheet_title => 'Final step.';
+  String get delete_account_sheet_title => 'Final step';
 
   @override
   String get delete_account_title => 'Delete account';
@@ -953,7 +952,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drawer_btn_logout => 'Sign out';
 
   @override
-  String get drawer_delete_account => 'Delete Account.';
+  String get drawer_delete_account => 'Delete Account';
 
   @override
   String get drawer_fallback_name => 'Therapist';
@@ -971,7 +970,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drawer_legal_terms => 'Terms of Service';
 
   @override
-  String get drawer_logout => 'Sign Out.';
+  String get drawer_logout => 'Sign Out';
 
   @override
   String get drawer_modalities => 'Therapy Modalities';
@@ -1081,7 +1080,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hard_delete_error => 'Deletion error';
 
   @override
-  String get hard_delete_title => 'Account deletion is irreversible.';
+  String get hard_delete_title => 'Account deletion is irreversible';
 
   @override
   String get home_add_patient_fab => 'Add patient';
@@ -1096,7 +1095,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_card_sessions_prefix => 'Sessions: ';
 
   @override
-  String get home_delete_btn_cancel => 'Cancel.';
+  String get home_delete_btn_cancel => 'Cancel';
 
   @override
   String get home_delete_btn_confirm => 'Delete client';
@@ -1129,7 +1128,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home_delete_warning_understand =>
-      'I understand, this is irreversible.';
+      'I understand, this is irreversible';
 
   @override
   String get home_empty_body => 'Add a patient to start your first session.';
@@ -1138,7 +1137,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_empty_list => 'Add your first client to get started.';
 
   @override
-  String get home_empty_title => 'You don\'t have any patients yet.';
+  String get home_empty_title => 'You don\'t have any patients yet';
 
   @override
   String home_error_loading(String error) {
@@ -1276,7 +1275,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_status_uploading => 'Uploading…';
 
   @override
-  String get home_title => 'Your Patients.';
+  String get home_title => 'Your Patients';
 
   @override
   String get invite_client_desc =>
@@ -1306,7 +1305,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invite_client_send => 'Send invitation';
 
   @override
-  String get invite_client_sent => 'Invitation sent.';
+  String get invite_client_sent => 'Invitation sent';
 
   @override
   String get invite_client_status_active => 'Client panel is active.';
@@ -1339,7 +1338,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language_popup_body => 'Language successfully changed.';
 
   @override
-  String get language_popup_title => 'App language.';
+  String get language_popup_title => 'App language';
 
   @override
   String get live_activity_info_body =>
@@ -1611,7 +1610,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your file is encrypted and securely sent to our servers in Europe. No one but you has access to this data.';
 
   @override
-  String get newSession_secure_upload_title => 'Secure upload.';
+  String get newSession_secure_upload_title => 'Secure upload';
 
   @override
   String get newSession_supported_formats =>
@@ -1717,7 +1716,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offline_banner_title => 'No Connection';
 
   @override
-  String get patient_no_sessions => 'No sessions.';
+  String get patient_no_sessions => 'No sessions';
 
   @override
   String patient_session_count(int count) {
@@ -1732,7 +1731,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get patient_start_session => 'Start recording session.';
+  String get patient_start_session => 'Start recording session';
 
   @override
   String pendingUploads_pill_analyzing(int count) {
@@ -1849,7 +1848,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pending_uploads_quota_card_title =>
-      'Recording is waiting to resume.';
+      'Recording is waiting to resume';
 
   @override
   String get pending_uploads_quota_dialog_body =>
@@ -1884,7 +1883,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Professional title (e.g. MA, Psychologist)';
 
   @override
-  String get profile_edit_title => 'Edit profile.';
+  String get profile_edit_title => 'Edit profile';
 
   @override
   String get profile_title_suggestion_1 => 'MA/MS';
@@ -1896,7 +1895,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profile_title_suggestion_3 => 'PhD, ScD';
 
   @override
-  String get profile_title_suggestion_4 => 'Prof.';
+  String get profile_title_suggestion_4 => 'Prof';
 
   @override
   String get profile_title_suggestion_5 => 'Psychologist';
@@ -1925,16 +1924,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_btn_back => 'Go Back';
 
   @override
-  String get recording_button_pause => 'Pause.';
+  String get recording_button_pause => 'Pause';
 
   @override
-  String get recording_button_resume => 'Resume.';
+  String get recording_button_resume => 'Resume';
 
   @override
-  String get recording_button_start => 'Start recording.';
+  String get recording_button_start => 'Start recording';
 
   @override
-  String get recording_button_stop => 'End.';
+  String get recording_button_stop => 'End';
 
   @override
   String get recording_confirm_end_body =>
@@ -1942,16 +1941,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_confirm_end_destructive =>
-      'Delete this recording permanently.';
+      'Delete this recording permanently';
 
   @override
-  String get recording_confirm_end_header => 'End and analyze session.';
+  String get recording_confirm_end_header => 'End and analyze session';
 
   @override
-  String get recording_confirm_end_primary => 'Start session analysis.';
+  String get recording_confirm_end_primary => 'Start session analysis';
 
   @override
-  String get recording_confirm_end_secondary => 'Return to recording.';
+  String get recording_confirm_end_secondary => 'Return to recording';
 
   @override
   String get recording_consent_grant => 'Yes, they consented';
@@ -1978,14 +1977,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_discard_confirm_destructive =>
-      'Exit and delete recording.';
+      'Exit and delete recording';
 
   @override
   String get recording_discard_confirm_header =>
       'Are you sure you want to delete this recording?';
 
   @override
-  String get recording_discard_confirm_secondary => 'Return to recording.';
+  String get recording_discard_confirm_secondary => 'Return to recording';
 
   @override
   String get recording_fgs_notification_body =>
@@ -2055,26 +2054,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_max_duration_destructive =>
-      'Delete this recording permanently.';
+      'Delete this recording permanently';
 
   @override
-  String get recording_max_duration_header => 'Recording time limit reached.';
+  String get recording_max_duration_header => 'Recording time limit reached';
 
   @override
-  String get recording_max_duration_primary => 'Start session analysis.';
+  String get recording_max_duration_primary => 'Start session analysis';
 
   @override
   String get recording_mic_denied_body =>
       'To record a session, enable microphone access in system settings. Go to Settings → Superwizor → Microphone.';
 
   @override
-  String get recording_mic_denied_cancel => 'Back.';
+  String get recording_mic_denied_cancel => 'Back';
 
   @override
-  String get recording_mic_denied_header => 'No microphone access.';
+  String get recording_mic_denied_header => 'No microphone access';
 
   @override
-  String get recording_mic_denied_open_settings => 'Open settings.';
+  String get recording_mic_denied_open_settings => 'Open settings';
 
   @override
   String get recording_mic_error_header => 'Microphone error';
@@ -2102,14 +2101,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_pending_upload_destructive =>
-      'Delete this recording permanently.';
+      'Delete this recording permanently';
 
   @override
   String get recording_pending_upload_header =>
-      'We have your unfinished recording.';
+      'We have your unfinished recording';
 
   @override
-  String get recording_pending_upload_primary => 'Submit for analysis.';
+  String get recording_pending_upload_primary => 'Submit for analysis';
 
   @override
   String recording_reminder_toast(String duration) {
@@ -2133,16 +2132,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_saving => 'Saving recording...';
 
   @override
-  String get recording_screen_title => 'Session in progress.';
+  String get recording_screen_title => 'Session in progress';
 
   @override
   String get recording_status_initializing => 'Starting recording…';
 
   @override
-  String get recording_status_paused => 'Recording paused.';
+  String get recording_status_paused => 'Recording paused';
 
   @override
-  String get recording_status_recording => 'Recording in progress.';
+  String get recording_status_recording => 'Recording in progress';
 
   @override
   String recording_too_short_abort_body(String duration) {
@@ -2154,13 +2153,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'A session cannot be shorter than 5 minutes for the AI to draw reliable conclusions. Recording is still running.';
 
   @override
-  String get recording_too_short_destructive => 'End without saving.';
+  String get recording_too_short_destructive => 'End without saving';
 
   @override
-  String get recording_too_short_header => 'Recording is too short.';
+  String get recording_too_short_header => 'Recording is too short';
 
   @override
-  String get recording_too_short_primary => 'Continue recording.';
+  String get recording_too_short_primary => 'Continue recording';
 
   @override
   String get recording_upload_error_header => 'Upload error';
@@ -2240,7 +2239,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'No therapeutic interventions identified.';
 
   @override
-  String get report_empty_recommendations => 'No recommendations.';
+  String get report_empty_recommendations => 'No recommendations';
 
   @override
   String get report_empty_themes =>
@@ -2331,7 +2330,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not save preferences. Please try again.';
 
   @override
-  String get report_prefs_saved => 'Preferences saved.';
+  String get report_prefs_saved => 'Preferences saved';
 
   @override
   String get report_prefs_section_case_formulation => 'Case formulation';
@@ -2625,10 +2624,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something went wrong during analysis. We will retry automatically. If the problem persists, contact technical support.';
 
   @override
-  String get session_failed_header => 'Failed to prepare report.';
+  String get session_failed_header => 'Failed to prepare report';
 
   @override
-  String get session_failed_primary => 'Contact support.';
+  String get session_failed_primary => 'Contact support';
 
   @override
   String get session_failed_subscription_body =>
@@ -2642,7 +2641,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something failed on our end. Please try again shortly.';
 
   @override
-  String get session_load_error_header => 'Failed to load session.';
+  String get session_load_error_header => 'Failed to load session';
 
   @override
   String get session_loading =>
@@ -2666,7 +2665,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get session_status_success => 'Done!';
 
   @override
-  String get session_status_title => 'Secure analysis in progress.';
+  String get session_status_title => 'Secure analysis in progress';
 
   @override
   String get settings_avatar => 'Profile picture';
@@ -2685,10 +2684,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This action is IRREVERSIBLE.\nYou will lose all clinical documentation and patient data.';
 
   @override
-  String get settings_delete_confirm_cancel => 'Cancel, keep my account.';
+  String get settings_delete_confirm_cancel => 'Cancel, keep my account';
 
   @override
-  String get settings_delete_confirm_proceed => 'I understand, proceed.';
+  String get settings_delete_confirm_proceed => 'I understand, proceed';
 
   @override
   String get settings_delete_confirm_title =>
@@ -2834,7 +2833,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_waitlist => 'Waitlist';
 
   @override
-  String get setup_continue => 'Continue.';
+  String get setup_continue => 'Continue';
 
   @override
   String get setup_language_label => 'Session language';
@@ -2847,7 +2846,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tell us how you work, we\'ll tailor the analysis to it.';
 
   @override
-  String get setup_title => 'Set up your profile.';
+  String get setup_title => 'Set up your profile';
 
   @override
   String share_note_shared_at(String date) {
@@ -2864,7 +2863,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get share_toggle_error => 'Could not change sharing.';
 
   @override
-  String get share_toggled_off => 'Sharing removed.';
+  String get share_toggled_off => 'Sharing removed';
 
   @override
   String get share_toggled_on => 'Shared in the client panel.';
@@ -2936,7 +2935,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepper_step1_uploading => 'Uploading audio to server.';
 
   @override
-  String get stepper_step2_transcribing => 'Creating transcription.';
+  String get stepper_step2_transcribing => 'Creating transcription';
 
   @override
   String get stepper_step3_analyzing => 'AI is preparing clinical insights.';
@@ -3054,17 +3053,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get suggestion_banner_open_settings => 'Open settings';
 
   @override
-  String get transcript_actions_copy => 'Copy quote.';
+  String get transcript_actions_copy => 'Copy quote';
 
   @override
   String get transcript_actions_copy_with_timestamp =>
-      'Copy quote with timestamp.';
+      'Copy quote with timestamp';
 
   @override
-  String get transcript_actions_export => 'Export transcript to PDF.';
+  String get transcript_actions_export => 'Export transcript to PDF';
 
   @override
-  String get transcript_actions_play_from_here => 'Play from here.';
+  String get transcript_actions_play_from_here => 'Play from here';
 
   @override
   String get transcript_default_speaker_label => 'Voice';
@@ -3074,13 +3073,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'This document contains a therapy session transcript. Do not share it via unencrypted email or messengers without an E2E layer.';
 
   @override
-  String get transcript_export_phi_header => 'Exporting sensitive data.';
+  String get transcript_export_phi_header => 'Exporting sensitive data';
 
   @override
-  String get transcript_export_phi_primary => 'I understand, export.';
+  String get transcript_export_phi_primary => 'I understand, export';
 
   @override
-  String get transcript_export_phi_secondary => 'Cancel.';
+  String get transcript_export_phi_secondary => 'Cancel';
 
   @override
   String get transcript_filter_all => 'All';

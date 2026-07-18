@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_analyzing.
   ///
   /// In pl, this message translates to:
-  /// **'Analiza w toku.'**
+  /// **'Analiza w toku'**
   String get activeAnalysis_analyzing;
 
   /// No description provided for @activeAnalysis_analyzing_desc.
@@ -221,7 +221,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_converting.
   ///
   /// In pl, this message translates to:
-  /// **'Konwertuję plik audio.'**
+  /// **'Konwertuję plik audio'**
   String get activeAnalysis_converting;
 
   /// No description provided for @activeAnalysis_converting_desc.
@@ -233,7 +233,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_preparing.
   ///
   /// In pl, this message translates to:
-  /// **'Przygotowuję nagranie.'**
+  /// **'Przygotowuję nagranie'**
   String get activeAnalysis_preparing;
 
   /// No description provided for @activeAnalysis_preparing_desc.
@@ -245,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_processing.
   ///
   /// In pl, this message translates to:
-  /// **'Przetwarzanie sesji.'**
+  /// **'Przetwarzanie sesji'**
   String get activeAnalysis_processing;
 
   /// No description provided for @activeAnalysis_processing_desc.
@@ -263,7 +263,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_upload_attention.
   ///
   /// In pl, this message translates to:
-  /// **'Przesyłanie wymaga uwagi.'**
+  /// **'Przesyłanie wymaga uwagi'**
   String get activeAnalysis_upload_attention;
 
   /// No description provided for @activeAnalysis_upload_attention_desc.
@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeAnalysis_upload_interrupted.
   ///
   /// In pl, this message translates to:
-  /// **'Przesyłanie zostało przerwane.'**
+  /// **'Przesyłanie zostało przerwane'**
   String get activeAnalysis_upload_interrupted;
 
   /// No description provided for @activeAnalysis_upload_interrupted_desc.
@@ -389,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_consent_link_label.
   ///
   /// In pl, this message translates to:
-  /// **'Zobacz DPA.'**
+  /// **'Zobacz DPA'**
   String get addPatient_consent_link_label;
 
   /// No description provided for @addPatient_customize_label_title.
@@ -431,13 +431,13 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_duplicate_header.
   ///
   /// In pl, this message translates to:
-  /// **'Taki klient już istnieje.'**
+  /// **'Taki klient już istnieje'**
   String get addPatient_duplicate_header;
 
   /// No description provided for @addPatient_duplicate_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Poprawię nazwę.'**
+  /// **'Poprawię nazwę'**
   String get addPatient_duplicate_primary;
 
   /// No description provided for @addPatient_language_label.
@@ -467,13 +467,13 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_no_consent_header.
   ///
   /// In pl, this message translates to:
-  /// **'Brak zgody na nagrywanie.'**
+  /// **'Brak zgody na nagrywanie'**
   String get addPatient_no_consent_header;
 
   /// No description provided for @addPatient_no_consent_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem.'**
+  /// **'Rozumiem'**
   String get addPatient_no_consent_primary;
 
   /// No description provided for @addPatient_save_primary.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_step1_subtitle.
   ///
   /// In pl, this message translates to:
-  /// **'Nadaj kartotece pseudonim.'**
+  /// **'Nadaj kartotece pseudonim'**
   String get addPatient_step1_subtitle;
 
   /// No description provided for @addPatient_step2_subtitle.
@@ -533,7 +533,7 @@ abstract class AppLocalizations {
   /// No description provided for @addSession_title.
   ///
   /// In pl, this message translates to:
-  /// **'Nowa sesja.'**
+  /// **'Nowa sesja'**
   String get addSession_title;
 
   /// No description provided for @appLock_reason.
@@ -629,19 +629,19 @@ abstract class AppLocalizations {
   /// No description provided for @auth_forgot_password.
   ///
   /// In pl, this message translates to:
-  /// **'Nie pamiętam hasła.'**
+  /// **'Nie pamiętam hasła'**
   String get auth_forgot_password;
 
   /// No description provided for @auth_login_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Zaloguj się.'**
+  /// **'Zaloguj się'**
   String get auth_login_primary;
 
   /// No description provided for @auth_login_title.
   ///
   /// In pl, this message translates to:
-  /// **'Zaloguj się.'**
+  /// **'Zaloguj się'**
   String get auth_login_title;
 
   /// No description provided for @auth_or_use_email.
@@ -665,13 +665,13 @@ abstract class AppLocalizations {
   /// No description provided for @auth_password_reset_sent_title.
   ///
   /// In pl, this message translates to:
-  /// **'Link do zmiany hasła wysłany.'**
+  /// **'Link do zmiany hasła wysłany'**
   String get auth_password_reset_sent_title;
 
   /// No description provided for @auth_register_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Załóż konto.'**
+  /// **'Załóż konto'**
   String get auth_register_primary;
 
   /// No description provided for @auth_shared_machine_warning_body.
@@ -701,7 +701,7 @@ abstract class AppLocalizations {
   /// No description provided for @auth_social_cancelled.
   ///
   /// In pl, this message translates to:
-  /// **'Logowanie anulowane.'**
+  /// **'Logowanie anulowane'**
   String get auth_social_cancelled;
 
   /// No description provided for @auth_social_error.
@@ -713,13 +713,13 @@ abstract class AppLocalizations {
   /// No description provided for @auth_toggle_to_login.
   ///
   /// In pl, this message translates to:
-  /// **'Masz już konto? Zaloguj się.'**
+  /// **'Masz już konto? Zaloguj się'**
   String get auth_toggle_to_login;
 
   /// No description provided for @auth_toggle_to_register.
   ///
   /// In pl, this message translates to:
-  /// **'Nie masz konta? Załóż.'**
+  /// **'Nie masz konta? Załóż'**
   String get auth_toggle_to_register;
 
   /// No description provided for @avatar_customize_background_color.
@@ -837,7 +837,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_quota_exhausted_short.
   ///
   /// In pl, this message translates to:
-  /// **'Pakiet sesji wyczerpany.'**
+  /// **'Pakiet sesji wyczerpany'**
   String get billing_quota_exhausted_short;
 
   /// No description provided for @billing_quota_exhausted_subtitle.
@@ -1521,7 +1521,7 @@ abstract class AppLocalizations {
   /// No description provided for @client_sessions_empty.
   ///
   /// In pl, this message translates to:
-  /// **'Brak udostępnionych sesji.'**
+  /// **'Brak udostępnionych sesji'**
   String get client_sessions_empty;
 
   /// No description provided for @client_tab_notes.
@@ -1551,13 +1551,13 @@ abstract class AppLocalizations {
   /// No description provided for @common_back.
   ///
   /// In pl, this message translates to:
-  /// **'Wróć.'**
+  /// **'Wróć'**
   String get common_back;
 
   /// No description provided for @common_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj.'**
+  /// **'Anuluj'**
   String get common_cancel;
 
   /// No description provided for @common_close.
@@ -1569,7 +1569,7 @@ abstract class AppLocalizations {
   /// No description provided for @common_continue.
   ///
   /// In pl, this message translates to:
-  /// **'Kontynuuj.'**
+  /// **'Kontynuuj'**
   String get common_continue;
 
   /// No description provided for @common_copied_to_clipboard.
@@ -1593,7 +1593,7 @@ abstract class AppLocalizations {
   /// No description provided for @common_error.
   ///
   /// In pl, this message translates to:
-  /// **'Wystąpił błąd.'**
+  /// **'Wystąpił błąd'**
   String get common_error;
 
   /// No description provided for @common_got_it.
@@ -1623,19 +1623,19 @@ abstract class AppLocalizations {
   /// No description provided for @common_retry.
   ///
   /// In pl, this message translates to:
-  /// **'Spróbuj ponownie.'**
+  /// **'Spróbuj ponownie'**
   String get common_retry;
 
   /// No description provided for @common_save.
   ///
   /// In pl, this message translates to:
-  /// **'Zapisz.'**
+  /// **'Zapisz'**
   String get common_save;
 
   /// No description provided for @common_understand.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem.'**
+  /// **'Rozumiem'**
   String get common_understand;
 
   /// No description provided for @connectivity_offline_banner.
@@ -1707,7 +1707,7 @@ abstract class AppLocalizations {
   /// No description provided for @delete_account_sheet_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj.'**
+  /// **'Anuluj'**
   String get delete_account_sheet_cancel;
 
   /// No description provided for @delete_account_sheet_hint.
@@ -1725,7 +1725,7 @@ abstract class AppLocalizations {
   /// No description provided for @delete_account_sheet_title.
   ///
   /// In pl, this message translates to:
-  /// **'Ostatni krok.'**
+  /// **'Ostatni krok'**
   String get delete_account_sheet_title;
 
   /// No description provided for @delete_account_title.
@@ -1761,7 +1761,7 @@ abstract class AppLocalizations {
   /// No description provided for @drawer_delete_account.
   ///
   /// In pl, this message translates to:
-  /// **'Usuń konto.'**
+  /// **'Usuń konto'**
   String get drawer_delete_account;
 
   /// No description provided for @drawer_fallback_name.
@@ -1797,7 +1797,7 @@ abstract class AppLocalizations {
   /// No description provided for @drawer_logout.
   ///
   /// In pl, this message translates to:
-  /// **'Wyloguj.'**
+  /// **'Wyloguj'**
   String get drawer_logout;
 
   /// No description provided for @drawer_modalities.
@@ -1995,7 +1995,7 @@ abstract class AppLocalizations {
   /// No description provided for @hard_delete_title.
   ///
   /// In pl, this message translates to:
-  /// **'Usunięcie konta jest bezpowrotne.'**
+  /// **'Usunięcie konta jest bezpowrotne'**
   String get hard_delete_title;
 
   /// No description provided for @home_add_patient_fab.
@@ -2025,7 +2025,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_delete_btn_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj.'**
+  /// **'Anuluj'**
   String get home_delete_btn_cancel;
 
   /// No description provided for @home_delete_btn_confirm.
@@ -2079,7 +2079,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_delete_warning_understand.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem, to nieodwracalne.'**
+  /// **'Rozumiem, to nieodwracalne'**
   String get home_delete_warning_understand;
 
   /// No description provided for @home_empty_body.
@@ -2097,7 +2097,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_empty_title.
   ///
   /// In pl, this message translates to:
-  /// **'Nie masz jeszcze żadnych klientów.'**
+  /// **'Nie masz jeszcze żadnych klientów'**
   String get home_empty_title;
 
   /// No description provided for @home_error_loading.
@@ -2343,7 +2343,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_title.
   ///
   /// In pl, this message translates to:
-  /// **'Twoi klienci.'**
+  /// **'Twoi klienci'**
   String get home_title;
 
   /// No description provided for @invite_client_desc.
@@ -2397,7 +2397,7 @@ abstract class AppLocalizations {
   /// No description provided for @invite_client_sent.
   ///
   /// In pl, this message translates to:
-  /// **'Zaproszenie wysłane.'**
+  /// **'Zaproszenie wysłane'**
   String get invite_client_sent;
 
   /// No description provided for @invite_client_status_active.
@@ -2457,7 +2457,7 @@ abstract class AppLocalizations {
   /// No description provided for @language_popup_title.
   ///
   /// In pl, this message translates to:
-  /// **'Język aplikacji.'**
+  /// **'Język aplikacji'**
   String get language_popup_title;
 
   /// No description provided for @live_activity_info_body.
@@ -2949,7 +2949,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSession_secure_upload_title.
   ///
   /// In pl, this message translates to:
-  /// **'Bezpieczne przesyłanie.'**
+  /// **'Bezpieczne przesyłanie'**
   String get newSession_secure_upload_title;
 
   /// No description provided for @newSession_supported_formats.
@@ -3147,7 +3147,7 @@ abstract class AppLocalizations {
   /// No description provided for @patient_no_sessions.
   ///
   /// In pl, this message translates to:
-  /// **'Brak sesji.'**
+  /// **'Brak sesji'**
   String get patient_no_sessions;
 
   /// No description provided for @patient_session_count.
@@ -3159,7 +3159,7 @@ abstract class AppLocalizations {
   /// No description provided for @patient_start_session.
   ///
   /// In pl, this message translates to:
-  /// **'Rozpocznij nagrywanie sesji.'**
+  /// **'Rozpocznij nagrywanie sesji'**
   String get patient_start_session;
 
   /// No description provided for @pendingUploads_pill_analyzing.
@@ -3351,7 +3351,7 @@ abstract class AppLocalizations {
   /// No description provided for @pending_uploads_quota_card_title.
   ///
   /// In pl, this message translates to:
-  /// **'Nagranie czeka na wznowienie.'**
+  /// **'Nagranie czeka na wznowienie'**
   String get pending_uploads_quota_card_title;
 
   /// No description provided for @pending_uploads_quota_dialog_body.
@@ -3411,7 +3411,7 @@ abstract class AppLocalizations {
   /// No description provided for @profile_edit_title.
   ///
   /// In pl, this message translates to:
-  /// **'Edytuj profil.'**
+  /// **'Edytuj profil'**
   String get profile_edit_title;
 
   /// No description provided for @profile_title_suggestion_1.
@@ -3429,13 +3429,13 @@ abstract class AppLocalizations {
   /// No description provided for @profile_title_suggestion_3.
   ///
   /// In pl, this message translates to:
-  /// **'dr hab.'**
+  /// **'dr hab'**
   String get profile_title_suggestion_3;
 
   /// No description provided for @profile_title_suggestion_4.
   ///
   /// In pl, this message translates to:
-  /// **'prof.'**
+  /// **'prof'**
   String get profile_title_suggestion_4;
 
   /// No description provided for @profile_title_suggestion_5.
@@ -3489,25 +3489,25 @@ abstract class AppLocalizations {
   /// No description provided for @recording_button_pause.
   ///
   /// In pl, this message translates to:
-  /// **'Pauza.'**
+  /// **'Pauza'**
   String get recording_button_pause;
 
   /// No description provided for @recording_button_resume.
   ///
   /// In pl, this message translates to:
-  /// **'Wznów.'**
+  /// **'Wznów'**
   String get recording_button_resume;
 
   /// No description provided for @recording_button_start.
   ///
   /// In pl, this message translates to:
-  /// **'Rozpocznij nagrywanie.'**
+  /// **'Rozpocznij nagrywanie'**
   String get recording_button_start;
 
   /// No description provided for @recording_button_stop.
   ///
   /// In pl, this message translates to:
-  /// **'Zakończ.'**
+  /// **'Zakończ'**
   String get recording_button_stop;
 
   /// No description provided for @recording_confirm_end_body.
@@ -3519,25 +3519,25 @@ abstract class AppLocalizations {
   /// No description provided for @recording_confirm_end_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Usuń to nagranie bezpowrotnie.'**
+  /// **'Usuń to nagranie bezpowrotnie'**
   String get recording_confirm_end_destructive;
 
   /// No description provided for @recording_confirm_end_header.
   ///
   /// In pl, this message translates to:
-  /// **'Zakończenie i analiza sesji.'**
+  /// **'Zakończenie i analiza sesji'**
   String get recording_confirm_end_header;
 
   /// No description provided for @recording_confirm_end_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Rozpocznij analizę sesji.'**
+  /// **'Rozpocznij analizę sesji'**
   String get recording_confirm_end_primary;
 
   /// No description provided for @recording_confirm_end_secondary.
   ///
   /// In pl, this message translates to:
-  /// **'Wróć do nagrywania.'**
+  /// **'Wróć do nagrywania'**
   String get recording_confirm_end_secondary;
 
   /// No description provided for @recording_consent_grant.
@@ -3585,7 +3585,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_discard_confirm_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Wyjdź i usuń nagranie.'**
+  /// **'Wyjdź i usuń nagranie'**
   String get recording_discard_confirm_destructive;
 
   /// No description provided for @recording_discard_confirm_header.
@@ -3597,7 +3597,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_discard_confirm_secondary.
   ///
   /// In pl, this message translates to:
-  /// **'Wróć do nagrywania.'**
+  /// **'Wróć do nagrywania'**
   String get recording_discard_confirm_secondary;
 
   /// No description provided for @recording_fgs_notification_body.
@@ -3705,19 +3705,19 @@ abstract class AppLocalizations {
   /// No description provided for @recording_max_duration_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Usuń to nagranie bezpowrotnie.'**
+  /// **'Usuń to nagranie bezpowrotnie'**
   String get recording_max_duration_destructive;
 
   /// No description provided for @recording_max_duration_header.
   ///
   /// In pl, this message translates to:
-  /// **'Osiągnięto limit czasu nagrywania.'**
+  /// **'Osiągnięto limit czasu nagrywania'**
   String get recording_max_duration_header;
 
   /// No description provided for @recording_max_duration_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Rozpocznij analizę sesji.'**
+  /// **'Rozpocznij analizę sesji'**
   String get recording_max_duration_primary;
 
   /// No description provided for @recording_mic_denied_body.
@@ -3729,19 +3729,19 @@ abstract class AppLocalizations {
   /// No description provided for @recording_mic_denied_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Wróć.'**
+  /// **'Wróć'**
   String get recording_mic_denied_cancel;
 
   /// No description provided for @recording_mic_denied_header.
   ///
   /// In pl, this message translates to:
-  /// **'Brak dostępu do mikrofonu.'**
+  /// **'Brak dostępu do mikrofonu'**
   String get recording_mic_denied_header;
 
   /// No description provided for @recording_mic_denied_open_settings.
   ///
   /// In pl, this message translates to:
-  /// **'Otwórz ustawienia.'**
+  /// **'Otwórz ustawienia'**
   String get recording_mic_denied_open_settings;
 
   /// No description provided for @recording_mic_error_header.
@@ -3789,19 +3789,19 @@ abstract class AppLocalizations {
   /// No description provided for @recording_pending_upload_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Usuń to nagranie bezpowrotnie.'**
+  /// **'Usuń to nagranie bezpowrotnie'**
   String get recording_pending_upload_destructive;
 
   /// No description provided for @recording_pending_upload_header.
   ///
   /// In pl, this message translates to:
-  /// **'Mamy Twoje niedokończone nagranie.'**
+  /// **'Mamy Twoje niedokończone nagranie'**
   String get recording_pending_upload_header;
 
   /// No description provided for @recording_pending_upload_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Przekaż do analizy.'**
+  /// **'Przekaż do analizy'**
   String get recording_pending_upload_primary;
 
   /// No description provided for @recording_reminder_toast.
@@ -3843,7 +3843,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_screen_title.
   ///
   /// In pl, this message translates to:
-  /// **'Sesja w toku.'**
+  /// **'Sesja w toku'**
   String get recording_screen_title;
 
   /// No description provided for @recording_status_initializing.
@@ -3855,13 +3855,13 @@ abstract class AppLocalizations {
   /// No description provided for @recording_status_paused.
   ///
   /// In pl, this message translates to:
-  /// **'Nagrywanie wstrzymane.'**
+  /// **'Nagrywanie wstrzymane'**
   String get recording_status_paused;
 
   /// No description provided for @recording_status_recording.
   ///
   /// In pl, this message translates to:
-  /// **'Nagrywanie w toku.'**
+  /// **'Nagrywanie w toku'**
   String get recording_status_recording;
 
   /// No description provided for @recording_too_short_abort_body.
@@ -3879,19 +3879,19 @@ abstract class AppLocalizations {
   /// No description provided for @recording_too_short_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Zakończ bez zapisu.'**
+  /// **'Zakończ bez zapisu'**
   String get recording_too_short_destructive;
 
   /// No description provided for @recording_too_short_header.
   ///
   /// In pl, this message translates to:
-  /// **'Nagranie jest zbyt krótkie.'**
+  /// **'Nagranie jest zbyt krótkie'**
   String get recording_too_short_header;
 
   /// No description provided for @recording_too_short_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Kontynuuj nagrywanie.'**
+  /// **'Kontynuuj nagrywanie'**
   String get recording_too_short_primary;
 
   /// No description provided for @recording_upload_error_header.
@@ -4041,7 +4041,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_empty_recommendations.
   ///
   /// In pl, this message translates to:
-  /// **'Brak rekomendacji.'**
+  /// **'Brak rekomendacji'**
   String get report_empty_recommendations;
 
   /// No description provided for @report_empty_themes.
@@ -4209,7 +4209,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_prefs_saved.
   ///
   /// In pl, this message translates to:
-  /// **'Zapisano preferencje.'**
+  /// **'Zapisano preferencje'**
   String get report_prefs_saved;
 
   /// No description provided for @report_prefs_section_case_formulation.
@@ -4743,13 +4743,13 @@ abstract class AppLocalizations {
   /// No description provided for @session_failed_header.
   ///
   /// In pl, this message translates to:
-  /// **'Nie udało się przygotować raportu.'**
+  /// **'Nie udało się przygotować raportu'**
   String get session_failed_header;
 
   /// No description provided for @session_failed_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Skontaktuj się z pomocą.'**
+  /// **'Skontaktuj się z pomocą'**
   String get session_failed_primary;
 
   /// Failure-view body for an inactive subscription; tells the user to renew.
@@ -4773,7 +4773,7 @@ abstract class AppLocalizations {
   /// No description provided for @session_load_error_header.
   ///
   /// In pl, this message translates to:
-  /// **'Nie udało się pobrać sesji.'**
+  /// **'Nie udało się pobrać sesji'**
   String get session_load_error_header;
 
   /// No description provided for @session_loading.
@@ -4815,7 +4815,7 @@ abstract class AppLocalizations {
   /// No description provided for @session_status_title.
   ///
   /// In pl, this message translates to:
-  /// **'Bezpieczna analiza w toku.'**
+  /// **'Bezpieczna analiza w toku'**
   String get session_status_title;
 
   /// No description provided for @settings_avatar.
@@ -4851,13 +4851,13 @@ abstract class AppLocalizations {
   /// No description provided for @settings_delete_confirm_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj, zachowaj konto.'**
+  /// **'Anuluj, zachowaj konto'**
   String get settings_delete_confirm_cancel;
 
   /// No description provided for @settings_delete_confirm_proceed.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem, przejdź dalej.'**
+  /// **'Rozumiem, przejdź dalej'**
   String get settings_delete_confirm_proceed;
 
   /// No description provided for @settings_delete_confirm_title.
@@ -5127,7 +5127,7 @@ abstract class AppLocalizations {
   /// No description provided for @setup_continue.
   ///
   /// In pl, this message translates to:
-  /// **'Kontynuuj.'**
+  /// **'Kontynuuj'**
   String get setup_continue;
 
   /// No description provided for @setup_language_label.
@@ -5151,7 +5151,7 @@ abstract class AppLocalizations {
   /// No description provided for @setup_title.
   ///
   /// In pl, this message translates to:
-  /// **'Konfiguracja Twojego profilu.'**
+  /// **'Konfiguracja Twojego profilu'**
   String get setup_title;
 
   /// No description provided for @share_note_shared_at.
@@ -5181,7 +5181,7 @@ abstract class AppLocalizations {
   /// No description provided for @share_toggled_off.
   ///
   /// In pl, this message translates to:
-  /// **'Cofnięto udostępnienie.'**
+  /// **'Cofnięto udostępnienie'**
   String get share_toggled_off;
 
   /// No description provided for @share_toggled_on.
@@ -5313,7 +5313,7 @@ abstract class AppLocalizations {
   /// No description provided for @stepper_step2_transcribing.
   ///
   /// In pl, this message translates to:
-  /// **'Tworzymy transkrypcję.'**
+  /// **'Tworzymy transkrypcję'**
   String get stepper_step2_transcribing;
 
   /// No description provided for @stepper_step3_analyzing.
@@ -5486,25 +5486,25 @@ abstract class AppLocalizations {
   /// No description provided for @transcript_actions_copy.
   ///
   /// In pl, this message translates to:
-  /// **'Kopiuj cytat.'**
+  /// **'Kopiuj cytat'**
   String get transcript_actions_copy;
 
   /// No description provided for @transcript_actions_copy_with_timestamp.
   ///
   /// In pl, this message translates to:
-  /// **'Kopiuj cytat z czasem.'**
+  /// **'Kopiuj cytat z czasem'**
   String get transcript_actions_copy_with_timestamp;
 
   /// No description provided for @transcript_actions_export.
   ///
   /// In pl, this message translates to:
-  /// **'Eksportuj transkrypt do PDF.'**
+  /// **'Eksportuj transkrypt do PDF'**
   String get transcript_actions_export;
 
   /// No description provided for @transcript_actions_play_from_here.
   ///
   /// In pl, this message translates to:
-  /// **'Odtwórz od tego miejsca.'**
+  /// **'Odtwórz od tego miejsca'**
   String get transcript_actions_play_from_here;
 
   /// No description provided for @transcript_default_speaker_label.
@@ -5522,19 +5522,19 @@ abstract class AppLocalizations {
   /// No description provided for @transcript_export_phi_header.
   ///
   /// In pl, this message translates to:
-  /// **'Eksportujesz dane wrażliwe.'**
+  /// **'Eksportujesz dane wrażliwe'**
   String get transcript_export_phi_header;
 
   /// No description provided for @transcript_export_phi_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem, eksportuj.'**
+  /// **'Rozumiem, eksportuj'**
   String get transcript_export_phi_primary;
 
   /// No description provided for @transcript_export_phi_secondary.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj.'**
+  /// **'Anuluj'**
   String get transcript_export_phi_secondary;
 
   /// No description provided for @transcript_filter_all.
