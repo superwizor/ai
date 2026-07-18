@@ -237,8 +237,9 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 	if !resp.HasRecordingConsent {
 		t.Errorf("has_recording_consent must come through as true")
 	}
+	//nolint:staticcheck // SA1019: deliberate — this guard asserts the deprecated field stays empty (docs/43 §4)
 	if resp.PatientFirstName != "" {
-		t.Errorf("deprecated patient_first_name must stay empty (docs/43 §4), got %q", resp.PatientFirstName)
+		t.Errorf("deprecated patient_first_name must stay empty (docs/43 §4), got %q", resp.PatientFirstName) //nolint:staticcheck // SA1019: see guard above
 	}
 	if resp.WorkingAlias != "alias-after-update" {
 		t.Errorf("working_alias: want alias-after-update (from refetch), got %q", resp.WorkingAlias)
@@ -469,8 +470,9 @@ func TestUpdatePatientUser_HappyPath(t *testing.T) {
 	if receivedParams.LanguageCode != "pl" {
 		t.Errorf("language must propagate; got %+v", receivedParams)
 	}
+	//nolint:staticcheck // SA1019: deliberate — this guard asserts the deprecated fields stay empty (docs/43 §4)
 	if resp.PatientFirstName != "" || resp.PatientLastName != "" {
-		t.Errorf("deprecated name fields must stay empty, got %q %q",
+		t.Errorf("deprecated name fields must stay empty, got %q %q", //nolint:staticcheck // SA1019: see guard above
 			resp.PatientFirstName, resp.PatientLastName)
 	}
 }

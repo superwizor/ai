@@ -214,8 +214,9 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 	if resp.PatientFile.WorkingAlias != "alias-test" {
 		t.Errorf("expected WorkingAlias alias-test, got %s", resp.PatientFile.WorkingAlias)
 	}
+	//nolint:staticcheck // SA1019: deliberate — this guard asserts the deprecated field stays empty (docs/43 §4)
 	if resp.PatientFile.PatientFirstName != "" {
-		t.Errorf("deprecated PatientFirstName must be empty, got %s", resp.PatientFile.PatientFirstName)
+		t.Errorf("deprecated PatientFirstName must be empty, got %s", resp.PatientFile.PatientFirstName) //nolint:staticcheck // SA1019: see guard above
 	}
 
 	// Verify Note mapping & decryption
