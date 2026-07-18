@@ -516,6 +516,30 @@ func (q *Queries) SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams
 	return err
 }
 
+const setWorkingAlias = `-- name: SetWorkingAlias :exec
+UPDATE patient_files SET
+  working_alias = $2,
+  updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type SetWorkingAliasParams struct {
+	ID           uuid.UUID `json:"id"`
+	WorkingAlias string    `json:"working_alias"`
+}
+
+// Legacy-compat alias edit (docs/43 §4): pre-invariant app builds edit
+// the patient "name" via UpdatePatientUser's deprecated first/last
+// fields; the handler maps that intent onto working_alias through THIS
+// query. Deliberately NOT UpdatePatientFile — its NULLIF semantics
+// would wipe initial_complaint / private notes on empty inputs.
+// Unique index ux_patient_files_therapist_alias may trip; the handler
+// maps it to AlreadyExists.
+func (q *Queries) SetWorkingAlias(ctx context.Context, arg SetWorkingAliasParams) error {
+	_, err := q.db.Exec(ctx, setWorkingAlias, arg.ID, arg.WorkingAlias)
+	return err
+}
+
 const softDeletePatientFile = `-- name: SoftDeletePatientFile :exec
 UPDATE patient_files SET deleted_at = now()
 WHERE id = $1 AND therapist_id = $2

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -555,12 +556,33 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
 	// Since migration 000077 the kartoteka stores NO client e-mail and
-	// the users row stores NO client names (docs/43 §4) — first_name/
-	// last_name/patient_email in the request are accepted for wire compat
-	// with older app builds and IGNORED. The kartoteka's identifier
-	// (working_alias) is edited via UpdatePatientFile; the client's
-	// e-mail lives in the identity domain (invitations/users). Only the
-	// patient's UI language remains editable here.
+	// the users row stores NO client names (docs/43 §4) — patient_email
+	// is accepted for wire compat with older app builds and IGNORED
+	// (the client's e-mail lives in the identity domain).
+	//
+	// Deprecated first_name/last_name are NOT silently dropped though:
+	// pre-invariant builds edit the patient "name" through these fields
+	// and show no error on success, so ignoring them silently loses the
+	// therapist's edit ("Daję zapisz i nic się nie zmienia", 2026-07-18).
+	// Map the legacy intent onto working_alias — the exact string those
+	// builds render after their alias-split display fallback. New builds
+	// never send names here (they edit the alias via UpdatePatientFile),
+	// so this path is inert for them.
+	//nolint:staticcheck // SA1019: deliberate read of the deprecated fields — this IS the legacy-compat path
+	if legacyAlias := strings.TrimSpace(strings.TrimSpace(req.FirstName) + " " + strings.TrimSpace(req.LastName)); legacyAlias != "" {
+		if err := s.queries.SetWorkingAlias(ctx, db.SetWorkingAliasParams{
+			ID:           pfID,
+			WorkingAlias: legacyAlias,
+		}); err != nil {
+			if isUniqueViolation(err) {
+				return nil, status.Errorf(codes.AlreadyExists,
+					"working_alias %q already used by another active kartoteka", legacyAlias)
+			}
+			return nil, status.Errorf(codes.Internal, "set working alias: %v", err)
+		}
+	}
+
+	// Only the patient's UI language remains editable on the users row.
 	if pf.PatientID.Valid {
 		if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
 			ID:           uuid.UUID(pf.PatientID.Bytes),

@@ -137,6 +137,53 @@ func TestInviteClient_OwnerHappyPath_BindsKartotekaAndRole(t *testing.T) {
 	}
 }
 
+// Server-side e-mail format gate: the invitation's address becomes
+// users.email at activation (chk_users_email_format), and app-side
+// validation on old builds was near-absent ("sama litera s", 2026-07-18).
+func TestInviteClient_InvalidEmail_IsRejected(t *testing.T) {
+	therapist := uuid.New()
+	org := uuid.New()
+	pfID := uuid.New()
+
+	q := &clientInviteFakeQuerier{
+		getUserByFirebaseUIDFn: func(_ context.Context, _ *string) (db.User, error) {
+			return therapistRow(therapist, org), nil
+		},
+		getUserByIDFn: func(_ context.Context, id uuid.UUID) (db.User, error) {
+			return therapistRow(therapist, org), nil
+		},
+		getPFForInviteFn: func(_ context.Context, id uuid.UUID) (db.GetPatientFileForInviteRow, error) {
+			return db.GetPatientFileForInviteRow{ID: id, TherapistID: therapist}, nil
+		},
+	}
+	s := newInviteServer(q, "fb-therapist")
+
+	for _, bad := range []string{"s", "a@b", "@example.com", "user@", "user @example.com", "user@example.c"} {
+		_, err := s.InviteClient(authedCtx(), &identityv1.InviteClientRequest{
+			PatientFileId: pfID.String(),
+			Email:         bad,
+		})
+		if st, _ := status.FromError(err); st.Code() != codes.InvalidArgument {
+			t.Errorf("email %q: want InvalidArgument, got %v (err=%v)", bad, st.Code(), err)
+		}
+	}
+	if len(q.createInvitationCalls) != 0 {
+		t.Fatalf("no invitation may be created for an invalid e-mail, got %d", len(q.createInvitationCalls))
+	}
+
+	// Sanity: a proper address still goes through the same fixture.
+	q.createInvitationFn = func(_ context.Context, arg db.CreateInvitationParams) (db.Invitation, error) {
+		return db.Invitation{ID: uuid.New(), Email: arg.Email, ExpiresAt: arg.ExpiresAt,
+			InvitedRole: arg.InvitedRole, PatientFileID: arg.PatientFileID, CreatedAt: time.Now()}, nil
+	}
+	if _, err := s.InviteClient(authedCtx(), &identityv1.InviteClientRequest{
+		PatientFileId: pfID.String(),
+		Email:         "klient@example.com",
+	}); err != nil {
+		t.Fatalf("valid e-mail must pass: %v", err)
+	}
+}
+
 func TestInviteClient_ForeignTherapist_IsNotFound(t *testing.T) {
 	owner := uuid.New()
 	caller := uuid.New()

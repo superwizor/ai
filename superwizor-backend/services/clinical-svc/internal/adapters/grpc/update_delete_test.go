@@ -453,8 +453,10 @@ func TestUpdatePatientUser_HappyPath(t *testing.T) {
 	}
 	srv := newTestServer(q, nil, nil)
 	// FirstName/LastName are deprecated wire-compat fields (docs/43 §4):
-	// an older app build sending them must succeed, but the values must
-	// NOT reach the users row nor come back in the response.
+	// an older app build sending them must succeed, the values must NOT
+	// reach the users row nor come back in the response — but the edit
+	// intent is NOT lost: it maps onto working_alias (legacy-compat,
+	// 2026-07-18 "zapisz i nic się nie zmienia" fix).
 	resp, err := srv.UpdatePatientUser(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: pfID.String(),
 		FirstName:     "Anna",
@@ -470,10 +472,68 @@ func TestUpdatePatientUser_HappyPath(t *testing.T) {
 	if receivedParams.LanguageCode != "pl" {
 		t.Errorf("language must propagate; got %+v", receivedParams)
 	}
+	if len(q.setWorkingAliasCalls) != 1 || q.setWorkingAliasCalls[0].WorkingAlias != "Anna Nowak" {
+		t.Errorf("legacy names must map onto working_alias 'Anna Nowak', got %+v", q.setWorkingAliasCalls)
+	}
 	//nolint:staticcheck // SA1019: deliberate — this guard asserts the deprecated fields stay empty (docs/43 §4)
 	if resp.PatientFirstName != "" || resp.PatientLastName != "" {
 		t.Errorf("deprecated name fields must stay empty, got %q %q", //nolint:staticcheck // SA1019: see guard above
 			resp.PatientFirstName, resp.PatientLastName)
+	}
+}
+
+// New-style callers (post-docs/43 builds) send no names — the legacy
+// alias mapping must stay inert (alias edited only via UpdatePatientFile).
+func TestUpdatePatientUser_NoNamesLeavesAliasAlone(t *testing.T) {
+	therapistID := uuid.New()
+	pfID := uuid.New()
+	patientID := uuid.New()
+	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, &patientID), nil
+		},
+		updatePatientUserFn: func(ctx context.Context, arg db.UpdatePatientUserParams) (db.UpdatePatientUserRow, error) {
+			return db.UpdatePatientUserRow{ID: arg.ID}, nil
+		},
+		getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
+			return withUserRowFixture(id, therapistID, &patientID), nil
+		},
+	}
+	srv := newTestServer(q, nil, nil)
+	_, err := srv.UpdatePatientUser(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientUserRequest{
+		PatientFileId: pfID.String(),
+		LanguageCode:  "en",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(q.setWorkingAliasCalls) != 0 {
+		t.Errorf("no names in request → SetWorkingAlias must not run, got %+v", q.setWorkingAliasCalls)
+	}
+}
+
+// Legacy alias edit hitting ux_patient_files_therapist_alias must map
+// to AlreadyExists so the old UI shows "alias taken", not a 500.
+func TestUpdatePatientUser_LegacyAliasCollision(t *testing.T) {
+	therapistID := uuid.New()
+	pfID := uuid.New()
+	patientID := uuid.New()
+	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, &patientID), nil
+		},
+		setWorkingAliasFn: func(ctx context.Context, arg db.SetWorkingAliasParams) error {
+			return &pgconn.PgError{Code: pgerrcode.UniqueViolation, ConstraintName: "ux_patient_files_therapist_alias"}
+		},
+	}
+	srv := newTestServer(q, nil, nil)
+	_, err := srv.UpdatePatientUser(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientUserRequest{
+		PatientFileId: pfID.String(),
+		FirstName:     "Anna",
+		LastName:      "Nowak",
+	})
+	if got := codeOf(err); got != codes.AlreadyExists {
+		t.Fatalf("want AlreadyExists on alias collision, got %v (err=%v)", got, err)
 	}
 }
 

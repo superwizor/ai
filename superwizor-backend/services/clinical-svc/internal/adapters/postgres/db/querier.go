@@ -414,6 +414,14 @@ type Querier interface {
 	SetNoteSharedWithClient(ctx context.Context, arg SetNoteSharedWithClientParams) (SetNoteSharedWithClientRow, error)
 	// shared=true stamps now() once (idempotent); false clears.
 	SetSessionSharedWithClient(ctx context.Context, arg SetSessionSharedWithClientParams) (SetSessionSharedWithClientRow, error)
+	// Legacy-compat alias edit (docs/43 §4): pre-invariant app builds edit
+	// the patient "name" via UpdatePatientUser's deprecated first/last
+	// fields; the handler maps that intent onto working_alias through THIS
+	// query. Deliberately NOT UpdatePatientFile — its NULLIF semantics
+	// would wipe initial_complaint / private notes on empty inputs.
+	// Unique index ux_patient_files_therapist_alias may trip; the handler
+	// maps it to AlreadyExists.
+	SetWorkingAlias(ctx context.Context, arg SetWorkingAliasParams) error
 	// Kept for backwards compatibility — old gRPC handlers may still call
 	// it. New code (post-000012) uses HardDeletePatientFile to satisfy
 	// RODO right-to-erasure.

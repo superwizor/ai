@@ -242,17 +242,21 @@ func TestPatientLifecycle_UpdatePatientUser(t *testing.T) {
 		})
 	})
 
-	t.Log("\n═══ UpdatePatientUser: language updates, names are ignored ═══")
+	t.Log("\n═══ UpdatePatientUser: names map onto the alias, never onto users ═══")
+	// Legacy-compat (2026-07-18 "zapisz i nic się nie zmienia" fix): an
+	// old build's name edit must not be silently lost — it becomes the
+	// working_alias. The users row still gets no names.
 	updated, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: created.Id,
-		FirstName:     "Katarzyna", // deprecated — must be ignored (docs/43 §4)
+		FirstName:     "Katarzyna", // deprecated — maps to alias, not stored as a name
 		LanguageCode:  "en",        // replace
 	})
 	require.NoError(t, err, "UpdatePatientUser")
-	assert.Empty(t, updated.PatientFirstName, "deprecated first_name must be ignored, not stored")
+	assert.Empty(t, updated.PatientFirstName, "deprecated first_name must not be stored as a name")
+	assert.Equal(t, "Katarzyna", updated.WorkingAlias, "legacy name edit must land on working_alias")
 	assert.Equal(t, "en", updated.PatientLanguageCode, "language_code should be updated")
 	assert.Equal(t, "CBT", updated.ModalityCode, "modality_code stays immutable post-create")
-	t.Logf("✓ Update returned refreshed PatientFile (language changed, names empty)")
+	t.Logf("✓ Update: alias=Katarzyna, language changed, names empty")
 
 	// Re-Get to confirm the DB row actually changed (not just the response).
 	got, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
@@ -260,6 +264,7 @@ func TestPatientLifecycle_UpdatePatientUser(t *testing.T) {
 	})
 	require.NoError(t, err, "GetPatientFile (post-update)")
 	assert.Empty(t, got.PatientFirstName, "post-update Get must still carry no names")
+	assert.Equal(t, "Katarzyna", got.WorkingAlias)
 	assert.Equal(t, "en", got.PatientLanguageCode)
 }
 

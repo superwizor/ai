@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/big"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,6 +31,14 @@ import (
 // kartoteka (invitations.patient_file_id) and acceptance attaches the
 // auth identity to the EXISTING users(role=PATIENT) row (D1) instead
 // of creating one.
+
+// clientEmailRegex mirrors the users table's chk_users_email_format
+// CHECK (migration 000003) — the invitation's address becomes
+// users.email at activation, so anything weaker here would let an
+// invite through that later violates the DB constraint. Also the fix
+// for "sama litera s jako mail klienta": the app-side field used to be
+// the only validation, and old builds barely had any.
+var clientEmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
 // requireKartotekaAccess gates the client-invite RPCs: the caller must
 // be the kartoteka's owning therapist or an ORG_ADMIN of the owner's
@@ -76,8 +85,8 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 	// durable copies of a client e-mail are the invitation row this
 	// call is about to create and users.email after activation.
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	if email != "" && !strings.Contains(email, "@") {
-		return nil, status.Error(codes.InvalidArgument, "invalid email")
+	if email != "" && !clientEmailRegex.MatchString(email) {
+		return nil, status.Error(codes.InvalidArgument, "INVALID_EMAIL: not a valid e-mail address")
 	}
 	if email == "" {
 		if pf.ResolvedEmail != nil {

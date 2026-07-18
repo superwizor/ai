@@ -46,6 +46,7 @@ type fakeQuerier struct {
 	getUserOrganizationIDFn    func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
 	resolvePatientEmailFn func(ctx context.Context, id uuid.UUID) (*string, error)
+	setWorkingAliasFn     func(ctx context.Context, arg db.SetWorkingAliasParams) error
 
 	getModalityDistributionFn func(ctx context.Context) ([]db.GetModalityDistributionRow, error)
 	getAvgSessionDurationFn   func(ctx context.Context) (float64, error)
@@ -74,6 +75,7 @@ type fakeQuerier struct {
 	deletePatientUserCalls    []uuid.UUID
 	hardDeletePatientFileArgs []db.HardDeletePatientFileParams
 	updateSessionStatusCalls  []db.UpdateSessionStatusParams
+	setWorkingAliasCalls      []db.SetWorkingAliasParams
 }
 
 func (f *fakeQuerier) GetPatientFile(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
@@ -132,6 +134,17 @@ func (f *fakeQuerier) UpdateSessionStatus(ctx context.Context, arg db.UpdateSess
 
 func (f *fakeQuerier) GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error) {
 	return f.getUserOrganizationIDFn(ctx, id)
+}
+
+// SetWorkingAlias records the call (legacy-compat alias edit) and
+// defaults to success. Set setWorkingAliasFn to inject an error (e.g.
+// a unique violation).
+func (f *fakeQuerier) SetWorkingAlias(ctx context.Context, arg db.SetWorkingAliasParams) error {
+	f.setWorkingAliasCalls = append(f.setWorkingAliasCalls, arg)
+	if f.setWorkingAliasFn == nil {
+		return nil
+	}
+	return f.setWorkingAliasFn(ctx, arg)
 }
 
 // ResolvePatientEmail defaults to "no address on file" (nil) so tests

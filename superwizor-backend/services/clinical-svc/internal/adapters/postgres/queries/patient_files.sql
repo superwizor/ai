@@ -171,6 +171,19 @@ FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
 WHERE pf.id = $1 AND pf.deleted_at IS NULL;
 
+-- name: SetWorkingAlias :exec
+-- Legacy-compat alias edit (docs/43 §4): pre-invariant app builds edit
+-- the patient "name" via UpdatePatientUser's deprecated first/last
+-- fields; the handler maps that intent onto working_alias through THIS
+-- query. Deliberately NOT UpdatePatientFile — its NULLIF semantics
+-- would wipe initial_complaint / private notes on empty inputs.
+-- Unique index ux_patient_files_therapist_alias may trip; the handler
+-- maps it to AlreadyExists.
+UPDATE patient_files SET
+  working_alias = $2,
+  updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL;
+
 -- name: SetAvatarConfig :exec
 -- Sets or clears the avatar customization on a kartoteka.
 -- Empty string or '{}' from the caller clears it (back to defaults).
