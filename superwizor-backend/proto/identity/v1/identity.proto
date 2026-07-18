@@ -513,6 +513,9 @@ message AcceptInvitationRequest {
   // client calls createUserWithEmailAndPassword first, then sends
   // this RPC to attach the new account to the inviting org.
   string firebase_uid = 2;
+  // For PATIENT invitations these are IGNORED (docs/43 §4: the client
+  // account is pseudonymous — its only direct identifier is the
+  // e-mail). Therapist/manager invitations still use them.
   string first_name = 3;
   string last_name = 4;
   string default_modality_id = 5;  // optional override

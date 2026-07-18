@@ -208,14 +208,15 @@ message PatientFile {
     string private_therapist_notes = 13;
     google.protobuf.Timestamp created_at = 14;
     google.protobuf.Timestamp updated_at = 15;
-    // Patient-user fields — JOIN'd from users(role='PATIENT') via
-    // patient_id (migration 000013). Empty strings when the user row
-    // was deleted via DeletePatientUser (FK SET NULL).
-    string patient_first_name    = 16;
-    string patient_last_name     = 17;
+    // DEPRECATED (docs/43 §4, migration 000077): the kartoteka's only
+    // identifier is working_alias — these always come back empty.
+    string patient_first_name    = 16 [deprecated = true];
+    string patient_last_name     = 17 [deprecated = true];
     string patient_language_code = 18;
-    // Patient contact e-mail (patient_files.patient_email, docs/22). Empty
-    // when none is on file. Drives the "send action plan" e-mail flow.
+    // RESOLVED client e-mail (never stored on the kartoteka since
+    // migration 000077): the activated account's users.email, else the
+    // latest non-revoked invitation's address. Empty when none.
+    // Drives the invite-sheet seed and the "send action plan" gate.
     string patient_email         = 19;
     // Therapist-managed lifecycle: "ACTIVE" | "COMPLETED" | "PAUSED".
     // Persisted in patient_files.lifecycle_status (migration 000058).
@@ -248,16 +249,13 @@ message CreatePatientFileRequest {
     string initial_complaint = 5;
     bool has_recording_consent = 6;
     string idempotency_key = 7;
-    // Patient-user fields written to the paired users(role='PATIENT')
-    // row in the same transaction. patient_first_name is required;
-    // last_name optional; language_code optional (defaults to the
-    // therapist's ui_language when empty).
-    string patient_first_name    = 8;
-    string patient_last_name     = 9;
+    // DEPRECATED (docs/43 §4): accepted for wire compat with older app
+    // builds and IGNORED — the kartoteka identifies the client by
+    // working_alias only and stores no e-mail (invite flow owns it).
+    string patient_first_name    = 8 [deprecated = true];
+    string patient_last_name     = 9 [deprecated = true];
     string patient_language_code = 10;
-    // Patient contact e-mail, persisted on patient_files at create time
-    // (migration 000040). Optional; empty leaves it unset.
-    string patient_email         = 11;
+    string patient_email         = 11 [deprecated = true];
 }
 
 message GetPatientFileRequest {
@@ -306,12 +304,13 @@ message DeletePatientFileRequest {
 // mean "leave alone" (server-side COALESCE/NULLIF).
 message UpdatePatientUserRequest {
     string patient_file_id = 1;
-    string first_name      = 2;
-    string last_name       = 3;
+    // DEPRECATED (docs/43 §4): accepted for wire compat and IGNORED —
+    // client names/e-mail are no longer stored (alias is edited via
+    // UpdatePatientFile; e-mail lives in the identity domain).
+    string first_name      = 2 [deprecated = true];
+    string last_name       = 3 [deprecated = true];
     string language_code   = 4;
-    // Patient contact e-mail (docs/22). Persisted to
-    // patient_files.patient_email. Empty string clears it. Optional.
-    string patient_email   = 5;
+    string patient_email   = 5 [deprecated = true];
 }
 
 // ── Patient notes + action plan (docs/22) ──────────────────────────────
