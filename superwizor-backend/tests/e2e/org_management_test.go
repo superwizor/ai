@@ -10,15 +10,22 @@
 //	DATABASE_URL=postgres://… go test -tags=e2e -timeout=10m -v ./e2e/ -run TestOrgManagement
 //
 // Identity RPCs authenticate as FRESH Firebase test users (created and
-// deleted by the test — never real accounts). Billing admin RPCs use the
-// service-OIDC + x-superwizor-role header path that server-to-server
-// callers use (Cloud Run IAM guards invocation). DB access seeds the
-// org/user rows and asserts counter state.
+// deleted by the test — never real accounts). Billing Admin* and
+// org-admin RPCs go over the CONNECT path (the only one that accepts
+// them since security fix 0365b7b: NativeAuthInterceptor rejects them
+// on native gRPC) with real Firebase tokens of seeded SUPERWIZOR_ADMIN /
+// ORG_ADMIN users — the same route the /admin browser uses. Only the
+// quota ledger (ReserveCredit/CommitUsage) stays on native gRPC,
+// authenticated by the impersonated billing-svc SA OIDC token. DB access
+// seeds the org/user rows and asserts counter state.
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -28,14 +35,37 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 )
+
+// connectPost calls a unary Connect RPC as a browser would: HTTP POST
+// with a JSON body and a Firebase bearer token. billing-svc's Connect
+// handler runs ConnectAuthInterceptor (identity-svc.ValidateToken →
+// x-superwizor-* injected server-side), so this exercises the REAL
+// admin auth path instead of forging role metadata.
+func connectPost(t *testing.T, baseURL, procedure, firebaseIDToken string, in, out proto.Message) {
+	t.Helper()
+	body, err := protojson.Marshal(in)
+	require.NoError(t, err, "marshal %s request", procedure)
+	req, err := http.NewRequest("POST", baseURL+procedure, bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+firebaseIDToken)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "POST %s", procedure)
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+	require.Equalf(t, http.StatusOK, resp.StatusCode,
+		"POST %s → %d: %s", procedure, resp.StatusCode, string(respBody))
+	require.NoError(t, protojson.Unmarshal(respBody, out), "unmarshal %s response", procedure)
+}
 
 func TestOrgManagement_FullFlow(t *testing.T) {
 	if os.Getenv("DATABASE_URL") == "" {
@@ -77,15 +107,20 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 	t.Cleanup(func() { _ = thSession.cleanup() })
 	therapistID := mustSeedUser(t, ctx, pool, orgID, thSession.UID, thSession.Email, "THERAPIST")
 
-	t.Logf("seeded org=%s manager=%s therapist=%s", orgID, mgrID, therapistID)
+	// SUPERWIZOR_ADMIN with a real Firebase session — the Connect
+	// interceptor resolves the role from the users row, nothing is forged.
+	admSession, err := mintFirebaseSession(ctx, projectID, apiKey,
+		"e2e-orgadm-"+suffix, "e2e-orgadm-"+suffix+"@example.com")
+	require.NoError(t, err, "mint superwizor-admin firebase session")
+	t.Cleanup(func() { _ = admSession.cleanup() })
+	admID := mustSeedUser(t, ctx, pool, orgID, admSession.UID, admSession.Email, "SUPERWIZOR_ADMIN")
 
-	// ── 2. AdminSetSeatAllocations (service OIDC + admin headers) ──
+	t.Logf("seeded org=%s manager=%s therapist=%s admin=%s", orgID, mgrID, therapistID, admID)
+
+	// ── 2. AdminSetSeatAllocations (Connect + Firebase admin token) ──
 	billingConn := dial(t, benv.billingURL, benv.idToken)
 	defer billingConn.Close()
 	billing := billingv1.NewBillingServiceClient(billingConn)
-
-	adminCtx := metadata.AppendToOutgoingContext(ctx,
-		"x-superwizor-role", "SUPERWIZOR_ADMIN")
 
 	var soloPlanID uuid.UUID
 	var tokensPerSeat int32
@@ -94,14 +129,15 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 		WHERE is_active = TRUE ORDER BY tokens_per_period DESC LIMIT 1`).
 		Scan(&soloPlanID, &tokensPerSeat), "pick a plan")
 
-	summary, err := billing.AdminSetSeatAllocations(adminCtx, &billingv1.AdminSetSeatAllocationsRequest{
-		OrganizationId: orgID.String(),
-		Allocations: []*billingv1.SeatAllocationSpec{
-			{PlanId: soloPlanID.String(), Seats: 2, PriceGrossPerSeat: "79.99"},
-		},
-		Reason: "E2E org management provisioning " + suffix,
-	})
-	require.NoError(t, err, "AdminSetSeatAllocations")
+	summary := &billingv1.OrgSeatSummary{}
+	connectPost(t, benv.billingURL, "/billing.v1.BillingService/AdminSetSeatAllocations",
+		admSession.IDToken, &billingv1.AdminSetSeatAllocationsRequest{
+			OrganizationId: orgID.String(),
+			Allocations: []*billingv1.SeatAllocationSpec{
+				{PlanId: soloPlanID.String(), Seats: 2, PriceGrossPerSeat: "79.99"},
+			},
+			Reason: "E2E org management provisioning " + suffix,
+		}, summary)
 	require.Len(t, summary.Allocations, 1)
 	require.EqualValues(t, 2, summary.Allocations[0].Seats)
 	allocationID := summary.Allocations[0].AllocationId
@@ -147,8 +183,10 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 	t.Logf("✓ SEATS_EXHAUSTED on overbooking (2/2 incl. pending invite)")
 
 	// ── 5. Per-therapist counters on the debit path ──
+	// Native gRPC is the legitimate route here (nativeInternalMethods);
+	// auth = the impersonated billing-svc SA OIDC token on the dial.
 	sessionID := uuid.New()
-	res, err := billing.ReserveCredit(adminCtx, &billingv1.ReserveCreditRequest{
+	res, err := billing.ReserveCredit(ctx, &billingv1.ReserveCreditRequest{
 		SessionId:      sessionID.String(),
 		OrganizationId: orgID.String(),
 		TherapistId:    therapistID.String(),
@@ -172,7 +210,7 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 	require.Equal(t, therapistID, resTherapist)
 	t.Logf("✓ ReserveCredit lazily minted the therapist counter and recorded scope")
 
-	_, err = billing.CommitUsage(adminCtx, &billingv1.CommitUsageRequest{
+	_, err = billing.CommitUsage(ctx, &billingv1.CommitUsageRequest{
 		SessionId:      sessionID.String(),
 		OrganizationId: orgID.String(),
 		TherapistId:    therapistID.String(),
@@ -187,12 +225,12 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 	require.EqualValues(t, 1, used, "commit lands on the SAME therapist counter")
 	t.Logf("✓ CommitUsage debited the therapist's own counter (used=%d)", used)
 
-	// ── 6. GetMyOrgSeatUsage as ORG_ADMIN ──
-	orgCtx := metadata.AppendToOutgoingContext(ctx,
-		"x-superwizor-role", "ORG_ADMIN",
-		"x-superwizor-organization-id", orgID.String())
-	usage, err := billing.GetMyOrgSeatUsage(orgCtx, &emptypb.Empty{})
-	require.NoError(t, err, "GetMyOrgSeatUsage")
+	// ── 6. GetMyOrgSeatUsage over Connect as the REAL ORG_ADMIN ──
+	// (browser-only RPC — rejected on native gRPC since 0365b7b; the org
+	// scope comes from the manager's own users row via ValidateToken).
+	usage := &billingv1.OrgSeatSummary{}
+	connectPost(t, benv.billingURL, "/billing.v1.BillingService/GetMyOrgSeatUsage",
+		mgrSession.IDToken, &emptypb.Empty{}, usage)
 	require.Len(t, usage.Allocations, 1)
 	require.EqualValues(t, 1, usage.Allocations[0].SeatsAssigned)
 	require.EqualValues(t, 1, usage.Allocations[0].SeatsPending)
