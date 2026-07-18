@@ -25,7 +25,11 @@ import { create } from "@bufbuild/protobuf";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { FirebaseError } from "firebase/app";
 
-import { acceptInviteSchema, type AcceptInviteForm } from "@/lib/register/schema";
+import {
+  acceptInviteSchema,
+  clientAcceptInviteSchema,
+  type AcceptInviteForm,
+} from "@/lib/register/schema";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
 import {
@@ -131,7 +135,12 @@ export function AcceptInviteForm({ token }: { token: string }) {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<AcceptInviteForm>({
-    resolver: zodResolver(acceptInviteSchema),
+    // PATIENT invites redirect to /register/client above, but if one
+    // ever renders here the pseudonymous variant applies — no names
+    // required (docs/43 §4). Staff invites keep the strict schema.
+    resolver: zodResolver(
+      isPatientInvite ? clientAcceptInviteSchema : acceptInviteSchema,
+    ),
     defaultValues: {
       uiLanguage: locale === "en" ? "en" : "pl",
       hasMarketingConsent: false,
@@ -227,8 +236,11 @@ export function AcceptInviteForm({ token }: { token: string }) {
         token,
         pairingCode: pairingCode.replace(/\s+/g, ""),
         firebaseUid: user.uid,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        // PATIENT accounts are pseudonymous (docs/43 §4) — never send
+        // names for them; the backend ignores the fields anyway.
+        ...(isPatientInvite
+          ? {}
+          : { firstName: data.firstName ?? "", lastName: data.lastName ?? "" }),
         defaultModalityId: data.modalityId,
         uiLanguage: data.uiLanguage,
         timezone: tz,
@@ -407,14 +419,17 @@ export function AcceptInviteForm({ token }: { token: string }) {
           </FieldShell>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
-            <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
-          </FieldShell>
-          <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
-            <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
-          </FieldShell>
-        </div>
+        {/* Pseudonymous PATIENT accounts have no names (docs/43 §4). */}
+        {!isPatientInvite && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
+              <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
+            </FieldShell>
+            <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
+              <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
+            </FieldShell>
+          </div>
+        )}
 
         {preview?.requiresPairingCode && (
           <FieldShell

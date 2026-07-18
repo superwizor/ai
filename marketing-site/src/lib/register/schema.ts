@@ -147,11 +147,9 @@ export type OrganizationEmailForm = z.infer<typeof organizationEmailSchema>;
 // surface it from the token client-side; the backend cross-checks
 // it against the invitations row by hashing the token. If they
 // mismatch the AcceptInvitation RPC returns an error.
-export const acceptInviteSchema = z.object({
+const acceptInviteBase = z.object({
   email: z.string().email(),
   password,
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
   // Required for THERAPIST invites, hidden+absent for PATIENT invites
   // (docs/39) — the form enforces per invited_role from
   // GetInvitationPreview; the schema stays permissive.
@@ -165,7 +163,25 @@ export const acceptInviteSchema = z.object({
   hasMarketingConsent: z.boolean().optional(),
 });
 
-export type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
+// THERAPIST / ORG_ADMIN invites: first/last name stay required.
+export const acceptInviteSchema = acceptInviteBase.extend({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+});
+
+// PATIENT invites (docs/43 §4): the client account is pseudonymous —
+// e-mail is the only identifier, so names are neither collected nor
+// required. The backend ignores first_name/last_name for PATIENT
+// acceptances; the proto fields remain for wire compatibility only.
+export const clientAcceptInviteSchema = acceptInviteBase.extend({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
+
+// The form type uses the permissive (client) variant so one
+// react-hook-form instance can swap resolvers per invited_role;
+// the strict schema still rejects missing names for staff invites.
+export type AcceptInviteForm = z.infer<typeof clientAcceptInviteSchema>;
 
 // "Finish profile" schemas — used by the social-login paths where
 // Firebase Auth has already given us email + name, but Superwizor-

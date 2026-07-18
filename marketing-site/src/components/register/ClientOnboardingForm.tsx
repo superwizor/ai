@@ -3,8 +3,7 @@
 // for invited_role=PATIENT.
 //
 // Flow:
-//   1. Social login (Google / Apple) → a short "you're connected" step
-//      confirming first/last name → AcceptInvitation → SSO handoff
+//   1. Social login (Google / Apple) → AcceptInvitation → SSO handoff
 //      straight into the client panel on the app origin.
 //   2. Or e-mail + password (mirrors the therapist registration): a
 //      new account is created; when the e-mail already has one, the
@@ -15,6 +14,11 @@
 // The invited e-mail comes from GetInvitationPreview and is shown
 // read-only — InviteClient guarantees it exists, and AcceptInvitation
 // binds the account by token, not by whatever e-mail is typed here.
+//
+// docs/43 §4: the client account is pseudonymous — the e-mail is its
+// only identifier. No first/last name is collected here, and the
+// backend ignores AcceptInvitationRequest.first_name/last_name for
+// PATIENT invitations anyway.
 
 "use client";
 
@@ -37,11 +41,6 @@ import {
 import { openAppWithSso } from "@/lib/auth/open-app-sso";
 import { FieldShell, TextInput } from "@/components/forms/Field";
 
-// "auth" collects credentials only (social OR e-mail+password — two
-// clearly separated options); "name" confirms first/last name and is
-// shared by BOTH paths, then AcceptInvitation fires.
-type Step = "auth" | "name";
-
 export function ClientOnboardingForm({ token }: { token: string }) {
   const t = useTranslations("register.clientOnboarding");
   const tFields = useTranslations("register.fields");
@@ -59,8 +58,6 @@ export function ClientOnboardingForm({ token }: { token: string }) {
       .then((p) => {
         if (cancelled) return;
         setPreview(p);
-        if (p.firstName) setFirstName((v) => v || p.firstName);
-        if (p.lastName) setLastName((v) => v || p.lastName);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -81,21 +78,15 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     (preview?.invitedRole as unknown) === "USER_ROLE_PATIENT";
   const invitedEmail = preview?.email ?? "";
 
-  const [step, setStep] = useState<Step>("auth");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const passwordRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  // Authenticated Firebase user (either path), carried into the
-  // name-confirmation step — names live on the NEXT screen, not here.
-  const [authUid, setAuthUid] = useState<string | null>(null);
-  const [authEmail, setAuthEmail] = useState<string>("");
 
   // Shared tail: exchange the token for the PATIENT account and hand
-  // off to the client panel (app origin) via SSO.
+  // off to the client panel (app origin) via SSO. No names — the
+  // client account is pseudonymous (docs/43 §4).
   const acceptAndEnter = async (uid: string, ssoEmail: string) => {
     const tz =
       Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
@@ -103,8 +94,6 @@ export function ClientOnboardingForm({ token }: { token: string }) {
       create(AcceptInvitationRequestSchema, {
         token,
         firebaseUid: uid,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
         uiLanguage: locale === "en" ? "en" : "pl",
         timezone: tz,
         hasAcceptedTos: true,
@@ -127,51 +116,28 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     return tErr("unknown");
   };
 
-  const requireNames = (): boolean => {
-    if (!firstName.trim() || !lastName.trim()) {
-      setError(t("namesRequired"));
-      return false;
-    }
-    return true;
-  };
-
-  // ── Social path ────────────────────────────────────────────────
+  // ── Social path: sign in, then exchange the token right away ──
   const onSocial = async (kind: "google" | "apple") => {
     setBusy(true);
     setError(null);
+    let user;
     try {
-      const user =
+      user =
         kind === "google"
           ? await auth.signInWithGoogle()
           : await auth.signInWithApple();
-      // Prefill names from the provider when the invite had none.
-      // (Apple only supplies displayName on the FIRST sign-in.)
-      const dn = user.displayName ?? "";
-      const [dnFirst = "", ...dnRest] = dn.split(" ");
-      setFirstName((v) => v || dnFirst);
-      setLastName((v) => v || dnRest.join(" "));
-      setAuthUid(user.uid);
-      setAuthEmail(user.email ?? invitedEmail);
-      setStep("name");
     } catch (e) {
+      setBusy(false);
       if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
         return;
       }
       console.error("[client-onboarding] social sign-in failed", e);
       setError(tErr("unknown"));
-    } finally {
-      setBusy(false);
+      return;
     }
-  };
-
-  // Shared finish for BOTH paths: names confirmed on this (second)
-  // screen, then the token is exchanged.
-  const onNameFinish = async () => {
-    if (!authUid || !requireNames()) return;
-    setBusy(true);
-    setError(null);
     try {
-      await acceptAndEnter(authUid, authEmail || invitedEmail);
+      // Stay busy through the SSO handoff — we navigate away on success.
+      await acceptAndEnter(user.uid, user.email ?? invitedEmail);
     } catch (e) {
       console.error("[client-onboarding] accept failed", e);
       setError(mapAcceptError(e));
@@ -179,7 +145,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     }
   };
 
-  // ── Password path: credentials only — names come on the next step ──
+  // ── Password path: credentials only ──
   const onPasswordSubmit = async () => {
     setError(null);
     setInfo(null);
@@ -217,10 +183,8 @@ export function ClientOnboardingForm({ token }: { token: string }) {
           throw e;
         }
       }
-      setAuthUid(user.uid);
-      setAuthEmail(invitedEmail);
-      setStep("name");
-      setBusy(false);
+      // Stay busy through the SSO handoff — we navigate away on success.
+      await acceptAndEnter(user.uid, invitedEmail);
     } catch (e) {
       console.error("[client-onboarding] password sign-in failed", e);
       setError(mapAcceptError(e));
@@ -290,50 +254,6 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     </>
   );
 
-  if (step === "name") {
-    // Shared second screen (both auth paths): confirm names, enter panel.
-    return (
-      <div className="grid gap-5">
-        <div className="rounded-button border border-aurora/30 bg-aurora/5 px-4 py-3">
-          <p className="font-sans text-sm text-frost font-semibold">
-            {t("socialConnectedTitle")}
-          </p>
-          <p className="font-sans text-xs text-mist mt-1">
-            {t("socialConnectedBody", { email: authEmail || invitedEmail })}
-          </p>
-        </div>
-        <FieldShell id="cl-first" label={tFields("firstName")} required>
-          <TextInput
-            id="cl-first"
-            value={firstName}
-            autoComplete="given-name"
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-        </FieldShell>
-        <FieldShell id="cl-last" label={tFields("lastName")} required>
-          <TextInput
-            id="cl-last"
-            value={lastName}
-            autoComplete="family-name"
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </FieldShell>
-        {alertBox}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onNameFinish}
-          className="rounded-button bg-ember text-evergreen font-display text-sm font-semibold px-4 py-3 hover:brightness-110 transition disabled:opacity-50"
-        >
-          {busy ? tCommon("submitting") : t("enterPanel")}
-        </button>
-        <p className="font-sans text-[11px] text-mist/70 text-center">
-          {t("tosNote")}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="grid gap-6">
       {/* ── Option 1: social login — the simplest path ── */}
@@ -380,8 +300,8 @@ export function ClientOnboardingForm({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* ── Option 2: e-mail + password (credentials only — the name
-             is confirmed on the next screen, same as social) ── */}
+      {/* ── Option 2: e-mail + password (credentials only — no name;
+             the client account is pseudonymous, docs/43 §4) ── */}
       <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
         <h2 className="font-display text-frost text-sm font-semibold">
           {t("option2Title")}
