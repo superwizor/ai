@@ -1,9 +1,18 @@
 # 43 — Companion app B2C: model dwóch domen danych
 
-**Status:** design zaakceptowany kierunkowo (2026-07-18). Brak kodu.
-Warunek startu implementacji: rozstrzygnięcia prawne z §10 (rola
-administratora + nagrywanie osób trzecich — jedyne kwestie zdolne
-zatrzymać produkt).
+**Status:** design zaakceptowany kierunkowo (2026-07-18).
+**Inwariant §4 WDROŻONY w istniejącej platformie** (2026-07-18,
+staging + main): klient bez imion/nazwisk w całym systemie (formularze,
+rejestracja, aktywacja — serwer przyjmuje i ignoruje deprecated pola
+starych buildów), jedyny identyfikator = e-mail przechowywany wyłącznie
+w domenie tożsamości (zaproszenie z TTL → users.email po aktywacji;
+migracja 000077 usunęła patient_files.patient_email, ślad wysyłek
+action-planów maskowany, audit bez aliasu, serwerowa walidacja formatu
+e-maila w InviteClient). Czyszczenie danych zastanych (imiona sprzed
+inwariantu) — osobna, jeszcze niepodjęta decyzja. Reszta dokumentu
+(domeny A/B, zgody, parowanie odwrotne): brak kodu; warunek startu —
+rozstrzygnięcia prawne z §10 (rola administratora + nagrywanie osób
+trzecich).
 
 ## 1. Cel produktowy
 

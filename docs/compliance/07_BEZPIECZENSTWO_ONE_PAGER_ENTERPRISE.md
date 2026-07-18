@@ -23,7 +23,7 @@ Plik audio jest usuwany automatycznie natychmiast po transkrypcji — najpóźni
 
 ### Pseudonimizacja wbudowana w produkt
 
-Raporty z sesji, ich podsumowania i pamięć kontekstowa AI są automatycznie pseudonimizowane: nazwiska, adresy, numery telefonów i dokumentów, nazwy pracodawców, szkół i miejscowości są zastępowane neutralnymi oznaczeniami. Imiona pozostają — raport ma być czytelny klinicznie. Kartoteka pacjenta od początku działa na pseudonimie, nie na nazwisku. Jakość pseudonimizacji jest kontrolowana automatycznymi testami przy każdej zmianie systemu.
+Raporty z sesji, ich podsumowania i pamięć kontekstowa AI są automatycznie pseudonimizowane: nazwiska, adresy, numery telefonów i dokumentów, nazwy pracodawców, szkół i miejscowości są zastępowane neutralnymi oznaczeniami. Imiona pozostają — raport ma być czytelny klinicznie. Kartoteka pacjenta działa na pseudonimie, nie na nazwisku — **system w ogóle nie zbiera imion ani nazwisk klientów; jedynym identyfikatorem konta klienta jest adres e-mail**. Jakość pseudonimizacji jest kontrolowana automatycznymi testami przy każdej zmianie systemu.
 
 Terapeuta zachowuje przy tym pełny wgląd w oryginalny zapis własnej sesji — świadomie nie cenzurujemy dokumentacji, którą specjalista musi móc zweryfikować. Chronimy dane wszędzie tam, gdzie wykraczają poza relację terapeuta–pacjent.
 

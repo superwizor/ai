@@ -1,9 +1,16 @@
 # 41 — Pseudonimizacja danych identyfikujących w raportach (call-2)
 
-**Status:** design (2026-07-17; rewizja zakresu tego samego dnia —
-imiona zostają, pracodawcy/szkoły i miejscowości do tokenów, §1/§1.1/§3.1).
-Brak kodu. Branch implementacyjny: `feat/llm-pseudonymize`.
-Flaga `LLM_PSEUDONYMIZE`, default `off`.
+**Status: WDROŻONE** (implementacja zmergowana do main 2026-07-17;
+staging pracuje w trybie `all`, utrwalonym jako default w
+`infra/environments/staging/variables.tf`; default w module terraform
+pozostaje `off`). Bramka jakości: `cmd/pii-eval` (GATE PASS ×3,
+2026-07-17) + e2e `TestPseudonymize_E2E` (strict, leaks=[]). Reguły
+promptu żyją WYŁĄCZNIE w stałej `pseudonymize.PIIPromptRules` — każdą
+zmianę przepuścić przez pii-eval. Rewizja zakresu 2026-07-17: imiona
+zostają, pracodawcy/szkoły i miejscowości do tokenów (§1/§1.1/§3.1).
+Uzupełnienie 2026-07-18: minimalizacja u źródła domknięta inwariantem
+docs/43 §4 (klient bez imion/nazwisk w całym systemie, jedyny
+identyfikator = e-mail).
 
 ## 1. Cel i rama prawna
 
@@ -164,11 +171,18 @@ krótsze niż nazwiska).
 | `call2` | zamiana tylko w tekście do call-2 (etap przejściowy do A/B) |
 | `all` (docelowo) | call-2 + Title/Summary + RAG |
 
-Rollout: implementacja za flagą → eval offline (`cmd/llm-eval`) →
-staging `all` → produkcja. Rollback = flip env, zero zmian w DB
-(wzorzec `STT_PROVIDER`).
+Rollout: implementacja za flagą → eval offline (`cmd/pii-eval` —
+dedykowana bramka, nie matryca llm-eval) → staging `all` → produkcja.
+Rollback = flip env, zero zmian w DB (wzorzec `STT_PROVIDER`).
+[Wykonane do etapu staging `all`, 2026-07-17.]
 
 ## 7. Ewaluacja jakości (bramka przed włączeniem)
+
+[Zrealizowane jako `cmd/pii-eval`: 5 fixture PL, temp 0.1,
+gemini-2.5-flash-lite; GATE PASS ×3 po kalibracji PIIPromptRules
+(jawne przypadki gramatyczne, duże miasta, zakaz zdrobnień imion,
+byli pracodawcy/marki). Dodatkowo e2e `TestPseudonymize_E2E`
+(PII_E2E=strict) na żywym stagingu — leaks=[].]
 
 Zestaw syntetycznych transkryptów PL (generowane dialogi z wstrzykniętą
 PII: odmiana przez wszystkie przypadki, zdrobnienia, przekręcone

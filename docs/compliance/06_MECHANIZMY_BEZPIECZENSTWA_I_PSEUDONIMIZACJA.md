@@ -2,7 +2,8 @@
 
 **Dokument dla działu prawnego i sprzedaży**
 
-**Wersja:** 1.0
+**Wersja:** 1.1 (1.1: wdrożony inwariant „jedyny identyfikator
+klienta = e-mail" — §5.1, §8, §9 pkt 6)
 **Data:** 2026-07-18
 **Odpowiedzialny:** Euphire sp. z o.o., ul. Odrzańska 10a/48, Kraków
 **Kontakt:** kontakt@superwizor.ai
@@ -141,11 +142,23 @@ staging od 2026-07-17 (tryb pełny), po przejściu bramek jakości (§6).
 
 ### 5.1 Warstwa 1: minimalizacja u źródła
 
-- Kartoteka pacjenta w aplikacji terapeuty nie prosi o nazwisko —
-  pole nazywa się **„Pseudonim"**; system nie potrzebuje i nie zbiera
-  formalnej tożsamości pacjenta.
-- Pseudonim (working alias) **nie jest przekazywany do modeli AI** —
-  utrzymywane jako inwariant (zweryfikowane w kodzie 2026-07-17).
+Od 2026-07-18 (wdrożenie inwariantu docs/43 §4) minimalizacja jest
+egzekwowana **serwerowo, na całej długości systemu** — nie jest już
+tylko konwencją formularza:
+
+- **System nie zbiera imion ani nazwisk klienta w żadnym punkcie**:
+  kartoteka ma wyłącznie pole **„Pseudonim"**, rejestracja klienta nie
+  pyta o dane osobowe, a serwer ignoruje pola imion nadesłane przez
+  starsze wersje aplikacji (zgodność wsteczna bez utrwalania danych).
+- **Jedynym bezpośrednim identyfikatorem klienta jest adres e-mail**,
+  przechowywany wyłącznie w domenie tożsamości: w zaproszeniu (z
+  ograniczonym czasem życia) i na koncie po aktywacji. Kartoteka
+  kliniczna nie przechowuje adresu; zapis „dokąd wysłano" materiały
+  jest utrwalany wyłącznie w postaci zamaskowanej (p***@domena);
+  format adresu jest walidowany serwerowo.
+- Pseudonim (working alias) **nie jest przekazywany do modeli AI**
+  ani zapisywany w dzienniku audytowym — utrzymywane jako inwarianty
+  (zweryfikowane w kodzie 2026-07-17/18).
 - Etykiety mówców w transkrypcji są neutralne lub rolowe
   („Terapeuta"/„Klient") — nigdy imienne.
 
@@ -307,6 +320,9 @@ zawodowa.**
   testowymi przy każdej zmianie."
 - „Aktywacja konta pacjenta wymaga dwóch niezależnych czynników:
   linku e-mail ORAZ kodu przekazanego osobiście przez terapeutę."
+- „Nie zbieramy imion ani nazwisk klientów — jedynym identyfikatorem
+  konta klienta jest adres e-mail, a kartoteka działa na pseudonimie
+  nadanym przez terapeutę." (od 2026-07-18, egzekwowane serwerowo)
 - „Usunięcie danych jest zautomatyzowane i nieodwracalne (30 dni od
   usunięcia następuje trwały purge, również z kopii zapasowych przez
   wygaśnięcie kluczy)."
@@ -357,6 +373,17 @@ jeszcze odzwierciedlone w RCP (dok. 02) i DPIA (dok. 03):
 5. Decyzja świadoma do odnotowania w DPIA: transkrypt kanoniczny
    pozostaje niepseudonimizowany dla terapeuty-administratora —
    uzasadnienie w §7 niniejszego dokumentu.
+6. **Inwariant „jedyny identyfikator klienta = e-mail"** (docs/43 §4,
+   wdrożony 2026-07-18): zawęzić w RCP B-3 kategorie danych klienta —
+   system NIE przechowuje imion i nazwisk klientów (pola istnieją
+   tylko na wire dla zgodności wstecznej i są ignorowane); e-mail
+   klienta wyłącznie w domenie tożsamości (zaproszenia z TTL +
+   users.email po aktywacji), usunięty z kartoteki klinicznej
+   (migracja 000077); adres wysyłki materiałów utrwalany wyłącznie
+   zamaskowany; dziennik audytowy bez pseudonimu kartoteki. Do DPIA:
+   istotna redukcja powierzchni danych identyfikujących klienta.
+   Otwarte: czyszczenie danych zastanych (imiona wpisane przed
+   inwariantem) — decyzja operacyjna do podjęcia.
 
 ---
 
