@@ -660,7 +660,6 @@ func TestClientInvite_Revoke(t *testing.T) {
 		ProcessType:  clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
 		HasRecordingConsent: true,
 		IdempotencyKey:      "e2e-rv-" + suffix,
-		PatientFirstName:    "Klient", PatientLastName: "Revoke",
 	})
 	require.NoError(t, err)
 	pfID := uuid.MustParse(pf.Id)
@@ -702,9 +701,24 @@ func TestClientInvite_Revoke(t *testing.T) {
 	clIdentity := identityv1.NewIdentityServiceClient(clConn)
 	_, err = clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
 		Token: token, PairingCode: inv.PairingCode, FirebaseUid: clSession.UID,
-		FirstName: "Klient", LastName: "Revoke",
 		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
 	})
 	require.Error(t, err, "revoked token must be dead")
-	t.Log("✓ revoke: token martwy, status NONE, idempotentne")
+
+	// Re-invite AFTER revoke must succeed (regression guard, migration
+	// 000078): the revoked row must not block a fresh invitation via
+	// uq_invitations_patient_file_pending. This is the "Cofnij + Zaproś
+	// ponownie zwraca błąd" bug reported 2026-07-18.
+	reinv, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
+		PatientFileId: pfID.String(), Email: clientEmail,
+	})
+	require.NoError(t, err, "re-invite after revoke must succeed (migration 000078)")
+	require.Len(t, reinv.PairingCode, 6, "fresh pairing code on re-invite")
+
+	st3, err := thIdentity.GetClientInviteStatus(ctx, &identityv1.GetClientInviteStatusRequest{
+		PatientFileId: pfID.String(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "PENDING", st3.Status, "kartoteka back to PENDING after re-invite")
+	t.Log("✓ revoke: token martwy, status NONE, idempotentne; re-invite po revoke działa (000078)")
 }
