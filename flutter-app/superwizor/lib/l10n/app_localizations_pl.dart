@@ -613,6 +613,19 @@ class AppLocalizationsPl extends AppLocalizations {
   String get clientDetails_start_work => 'Rozpocznij pracę';
 
   @override
+  String get clientDetails_filter_sessions => 'Sesje';
+
+  @override
+  String get clientDetails_filter_client_notes => 'Notatki od klienta';
+
+  @override
+  String get clientDetails_filter_own_notes => 'Moje notatki';
+
+  @override
+  String get clientDetails_filter_empty =>
+      'Brak pozycji dla wybranych filtrów.';
+
+  @override
   String get clientDetails_start_work_desc =>
       'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.';
 

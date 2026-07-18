@@ -600,6 +600,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clientDetails_start_work => 'Start work';
 
   @override
+  String get clientDetails_filter_sessions => 'Sessions';
+
+  @override
+  String get clientDetails_filter_client_notes => 'Client notes';
+
+  @override
+  String get clientDetails_filter_own_notes => 'My notes';
+
+  @override
+  String get clientDetails_filter_empty =>
+      'Nothing matches the selected filters.';
+
+  @override
   String get clientDetails_start_work_desc =>
       'Start recording and the system will take care of secure transcription and prepare a clinical report.';
 

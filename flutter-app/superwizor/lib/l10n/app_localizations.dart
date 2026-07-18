@@ -1104,6 +1104,30 @@ abstract class AppLocalizations {
   /// **'Rozpocznij pracę'**
   String get clientDetails_start_work;
 
+  /// No description provided for @clientDetails_filter_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesje'**
+  String get clientDetails_filter_sessions;
+
+  /// No description provided for @clientDetails_filter_client_notes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatki od klienta'**
+  String get clientDetails_filter_client_notes;
+
+  /// No description provided for @clientDetails_filter_own_notes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Moje notatki'**
+  String get clientDetails_filter_own_notes;
+
+  /// No description provided for @clientDetails_filter_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak pozycji dla wybranych filtrów.'**
+  String get clientDetails_filter_empty;
+
   /// No description provided for @clientDetails_start_work_desc.
   ///
   /// In pl, this message translates to:

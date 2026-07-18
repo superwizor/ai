@@ -18,6 +18,7 @@ import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/kartoteka_filters_provider.dart';
 import '../providers/patient_notes_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
@@ -606,17 +607,79 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               (a, b) => b.sortDate.compareTo(a.sortDate),
                             );
 
+                            // Kartoteka filters (Companion-app mirror):
+                            // applied AFTER numbering so session numbers
+                            // stay stable regardless of active chips.
+                            // Pending uploads + the live-recording card
+                            // count as sessions-in-the-making.
+                            final kartFilters = ref.watch(
+                              kartotekaFiltersProvider(widget.patientId),
+                            );
+                            final sessionsVisible = kartFilters.isEmpty ||
+                                kartFilters
+                                    .contains(KartotekaFilter.sessions);
+                            final visibleTimeline = _applyKartotekaFilter(
+                              timeline,
+                              kartFilters,
+                            );
+                            final shownPending = sessionsVisible
+                                ? visiblePending
+                                : visiblePending
+                                    .where((_) => false)
+                                    .toList(growable: false);
+                            final showRecording =
+                                hasActiveRecording && sessionsVisible;
+
                             final totalCount =
-                                (hasActiveRecording ? 1 : 0) +
-                                visiblePending.length +
-                                timeline.length;
-                            return ListView.builder(
+                                (showRecording ? 1 : 0) +
+                                shownPending.length +
+                                visibleTimeline.length;
+
+                            final filterBar = Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: 16.0),
+                              child: _KartotekaFilterBar(
+                                patientId: widget.patientId,
+                                selected: kartFilters,
+                              ),
+                            );
+
+                            if (totalCount == 0) {
+                              // Everything hidden by the active chips —
+                              // keep the bar visible so the user can
+                              // un-toggle, and say why the list is empty.
+                              return Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  filterBar,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 48.0,
+                                      horizontal: 32.0,
+                                    ),
+                                    child: Text(
+                                      l.clientDetails_filter_empty,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 14,
+                                        color: EuphireColors.mist,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            final list = ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: totalCount,
                               itemBuilder: (context, index) {
                                 int offset = 0;
-                                if (hasActiveRecording) {
+                                if (showRecording) {
                                   if (index == 0) {
                                     return _ActiveRecordingCard(
                                       patientId: widget.patientId,
@@ -647,14 +710,14 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   offset = 1;
                                 }
                                 final adjustedIdx = index - offset;
-                                if (adjustedIdx < visiblePending.length) {
+                                if (adjustedIdx < shownPending.length) {
                                   return _PendingUploadCard(
-                                    upload: visiblePending[adjustedIdx],
+                                    upload: shownPending[adjustedIdx],
                                   );
                                 }
                                 final timelineIdx =
-                                    adjustedIdx - visiblePending.length;
-                                final item = timeline[timelineIdx];
+                                    adjustedIdx - shownPending.length;
+                                final item = visibleTimeline[timelineIdx];
 
                                 if (item.isNote) {
                                   return Dismissible(
@@ -868,6 +931,11 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   sessionNumber: item.sessionNumber,
                                 );
                               },
+                            );
+                            return Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                              children: [filterBar, list],
                             );
                           },
                         ),
@@ -2388,6 +2456,104 @@ class _TimelineItem {
   bool get isNote => note != null;
 
   DateTime get sortDate => isNote ? note!.createdAt : session!.date;
+}
+
+/// Companion-app filter semantics (client_home_screen._applyFilter):
+/// empty set = show everything; otherwise an item is visible iff its
+/// category chip is active. Client notes are PatientNote rows authored
+/// by the PATIENT (sent from the client panel); everything else note-
+/// shaped is the therapist's own (free notes + action plans).
+List<_TimelineItem> _applyKartotekaFilter(
+    List<_TimelineItem> items, Set<KartotekaFilter> active) {
+  if (active.isEmpty) return items;
+  return items.where((i) {
+    if (!i.isNote) return active.contains(KartotekaFilter.sessions);
+    return i.note!.isClientNote
+        ? active.contains(KartotekaFilter.clientNotes)
+        : active.contains(KartotekaFilter.ownNotes);
+  }).toList();
+}
+
+// ─── Kartoteka filter bar ─────────────────────────────────────────────
+// Visual mirror of the Companion app's _FilterBar (pill chips, single
+// horizontal row), restyled with the therapist palette.
+
+class _KartotekaFilterBar extends ConsumerWidget {
+  const _KartotekaFilterBar({required this.patientId, required this.selected});
+  final String patientId;
+  final Set<KartotekaFilter> selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final labels = {
+      KartotekaFilter.sessions: l.clientDetails_filter_sessions,
+      KartotekaFilter.clientNotes: l.clientDetails_filter_client_notes,
+      KartotekaFilter.ownNotes: l.clientDetails_filter_own_notes,
+    };
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final f in KartotekaFilter.values) ...[
+            _KartotekaFilterChip(
+              label: labels[f]!,
+              active: selected.contains(f),
+              onTap: () => ref
+                  .read(kartotekaFiltersProvider(patientId).notifier)
+                  .toggle(f),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _KartotekaFilterChip extends StatelessWidget {
+  const _KartotekaFilterChip(
+      {required this.label, required this.active, required this.onTap});
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active
+          ? EuphireColors.frostWhite.withValues(alpha: 0.14)
+          : EuphireColors.frostWhite.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: active
+                  ? EuphireColors.frostWhite.withValues(alpha: 0.5)
+                  : EuphireColors.frostWhite.withValues(alpha: 0.12),
+              width: 1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: active ? EuphireColors.frostWhite : EuphireColors.mist,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Note Card ────────────────────────────────────────────────────────
