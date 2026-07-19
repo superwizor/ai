@@ -415,11 +415,19 @@ func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv
 // SYNCHRONOUS by design (2026-07-19): this used to run in a goroutine
 // detached from the request ("so a slow notification-svc can't leak
 // goroutines") — but Cloud Run throttles CPU the moment the response
-// returns, so the detached HTTP/2 stream died mid-flight with
-// RST_STREAM/PROTOCOL_ERROR on EVERY call and the therapist's live
-// note refresh (inbox + FCM) never fired. Best-effort semantics stay:
+// returns, killing the in-flight stream. Best-effort semantics stay:
 // failures are logged, never surfaced; the timeout caps the added
 // request latency instead of the goroutine's lifetime.
+//
+// Metadata: forward ONLY the trace header, never the whole incoming
+// md. Client-panel RPCs arrive over CONNECT (web) and the HTTP→gRPC
+// adapter copies the browser's HTTP/1 headers (connection, te, …)
+// into the incoming metadata; replaying those on the outbound native
+// HTTP/2 call makes gRPC reset the stream with RST_STREAM/
+// PROTOCOL_ERROR — which is why notes sent from the web-app never
+// produced an inbox write while iOS-originated ITEM_SHARED did
+// (root-caused 2026-07-19; the outbound OIDC auth is injected by the
+// client interceptor, so nothing else from the incoming md is needed).
 func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, event, itemKind, recipientUserID, patientFileID string) {
 	if s.notification == nil || email == "" {
 		return
@@ -427,7 +435,10 @@ func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, even
 	sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		sendCtx = metadata.NewOutgoingContext(sendCtx, md)
+		if vals := md.Get("x-cloud-trace-context"); len(vals) > 0 {
+			sendCtx = metadata.AppendToOutgoingContext(sendCtx,
+				"x-cloud-trace-context", vals[0])
+		}
 	}
 	if _, err := s.notification.SendClientPanelEvent(sendCtx, &notificationv1.SendClientPanelEventRequest{
 		RecipientEmail:  email,

@@ -526,11 +526,17 @@ func (s *Server) sendActionPlan(ctx context.Context, therapistID uuid.UUID, note
 		}
 	}
 
-	// Forward incoming metadata (tracing); the OIDC token for
-	// notification-svc is injected by the outbound client.
+	// Forward ONLY the trace header — never the whole incoming md. A
+	// Connect-origin (web) request carries copied HTTP/1 headers in its
+	// metadata, and replaying those on a native HTTP/2 call resets the
+	// stream with RST_STREAM/PROTOCOL_ERROR (see notifyClientPanelEvent,
+	// root-caused 2026-07-19). OIDC auth is injected by the client.
 	outCtx := ctx
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		outCtx = metadata.NewOutgoingContext(ctx, md)
+		if vals := md.Get("x-cloud-trace-context"); len(vals) > 0 {
+			outCtx = metadata.AppendToOutgoingContext(ctx,
+				"x-cloud-trace-context", vals[0])
+		}
 	}
 
 	if _, serr := s.notification.SendActionPlanEmail(outCtx, &notificationv1.SendActionPlanEmailRequest{

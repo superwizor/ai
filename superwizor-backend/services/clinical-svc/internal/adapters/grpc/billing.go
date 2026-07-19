@@ -74,12 +74,17 @@ func (s *Server) GetMyBillingState(ctx context.Context, _ *emptypb.Empty) (*bill
 		return nil, status.Error(codes.Unavailable, "billing client not wired")
 	}
 
-	// Forward the caller's incoming gRPC metadata so any tracing /
-	// debugging headers propagate. The OIDC token for billing-svc is
-	// injected by the BillingServiceClient itself (interceptor on the
-	// outbound channel — same pattern as ingestion-svc).
+	// Forward ONLY the trace header — never the whole incoming md. A
+	// Connect-origin (web) request carries copied HTTP/1 headers in its
+	// metadata, and replaying those on a native HTTP/2 call resets the
+	// stream with RST_STREAM/PROTOCOL_ERROR (root-caused 2026-07-19 on
+	// the client-note path; same trap here). The OIDC token for
+	// billing-svc is injected by the outbound client interceptor.
 	if md, mdOK := metadata.FromIncomingContext(ctx); mdOK {
-		ctx = metadata.NewOutgoingContext(ctx, md)
+		if vals := md.Get("x-cloud-trace-context"); len(vals) > 0 {
+			ctx = metadata.AppendToOutgoingContext(ctx,
+				"x-cloud-trace-context", vals[0])
+		}
 	}
 
 	sub, err := s.billing.GetSubscription(ctx, &billingv1.GetSubscriptionRequest{
