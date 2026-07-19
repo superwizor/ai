@@ -1605,6 +1605,8 @@
       "inviteSend": "Send invitation",
       "inviteSending": "Sending…",
       "inviteSent": "Invitation sent. The seat is reserved for 7 days.",
+      "inviteEmailInOrg": "This person already has an account in your organisation — no invitation needed.",
+      "inviteEmailTaken": "This e-mail address already has a Superwizor AI account (one account can hold only one role and organisation). Ask the invitee for a different e-mail address.",
       "cancel": "Cancel",
       "orgLegalName": "Legal name",
       "orgTaxId": "Tax ID",

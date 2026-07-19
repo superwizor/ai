@@ -50,6 +50,15 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 		return nil, status.Error(codes.InvalidArgument, "email required")
 	}
 
+	// Guard: the invited e-mail must not already own an account
+	// (single-role/single-org MVP). Without this the manager sends an
+	// invite the recipient can never accept — AcceptInvitation rejects
+	// only AFTER a successful social login, which reads as "connected ✓"
+	// followed by a contradictory error (live-feedback 2026-07-19).
+	if code := s.staffInviteEmailConflict(ctx, email, *caller.organizationID); code != "" {
+		return nil, status.Error(codes.FailedPrecondition, code)
+	}
+
 	// Optional seat pinning (docs/38 §3): when the org uses seat
 	// allocations the invite names one, and the pending invitation
 	// reserves a seat there. Orgs without allocations (self-serve,
@@ -235,6 +244,31 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 	})
 
 	return toProtoInvitation(inv), nil
+}
+
+// staffInviteEmailConflict pre-checks a therapist/manager invite
+// against existing accounts (single-role/single-org MVP). Returns a
+// stable error code ("" = no conflict):
+//   - EMAIL_ALREADY_IN_ORG        — the e-mail belongs to a member of
+//     the inviter's own organisation (the invite is pointless);
+//   - EMAIL_ALREADY_REGISTERED    — the e-mail owns an account
+//     elsewhere (any role, incl. PATIENT), so accepting would be
+//     rejected at CreateUser anyway.
+//
+// Best-effort: a lookup error (other than no-rows) does NOT block the
+// invite — AcceptInvitation's unique-violation path stays the backstop,
+// same pattern as the CLIENT_EMAIL_TAKEN guard in client_invites.go.
+// PENDING invitations are unaffected: their e-mail has no users row
+// until acceptance, so "Zaproś ponownie" keeps working.
+func (s *Server) staffInviteEmailConflict(ctx context.Context, email string, orgID uuid.UUID) string {
+	existing, err := s.queries.GetUserByEmail(ctx, &email)
+	if err != nil {
+		return ""
+	}
+	if existing.OrganizationID.Valid && uuid.UUID(existing.OrganizationID.Bytes) == orgID {
+		return "EMAIL_ALREADY_IN_ORG: this e-mail already belongs to a member of your organisation"
+	}
+	return "EMAIL_ALREADY_REGISTERED: this e-mail already has a Superwizor account — a staff invitation needs a different e-mail address"
 }
 
 // AcceptInvitation is the invitee-side endpoint. Public — the caller

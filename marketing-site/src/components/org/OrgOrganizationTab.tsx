@@ -116,7 +116,14 @@ export function OrgOrganizationTab({
       setMgrFlash(t("managerInvited"));
       await reloadManagers();
     } catch (err) {
-      setMgrError(translateError(err, tErrors));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("EMAIL_ALREADY_IN_ORG")) {
+        setMgrError(t("inviteEmailInOrg"));
+      } else if (msg.includes("EMAIL_ALREADY_REGISTERED")) {
+        setMgrError(t("inviteEmailTaken"));
+      } else {
+        setMgrError(translateError(err, tErrors));
+      }
     } finally {
       setInvBusy(false);
     }

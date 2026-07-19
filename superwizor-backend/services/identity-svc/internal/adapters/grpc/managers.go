@@ -79,6 +79,11 @@ func (s *Server) InviteMyOrgManager(ctx context.Context, req *identityv1.InviteM
 		return nil, status.Error(codes.InvalidArgument, "valid email required")
 	}
 
+	// Same pre-check as InviteTherapist — see staffInviteEmailConflict.
+	if code := s.staffInviteEmailConflict(ctx, email, *caller.organizationID); code != "" {
+		return nil, status.Error(codes.FailedPrecondition, code)
+	}
+
 	token, tokenHash, err := generateInvitationToken()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "generate token: %v", err)

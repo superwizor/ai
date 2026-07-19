@@ -1605,6 +1605,8 @@
       "inviteSend": "Wyślij zaproszenie",
       "inviteSending": "Wysyłanie…",
       "inviteSent": "Zaproszenie wysłane. Miejsce zostało zarezerwowane na 7 dni.",
+      "inviteEmailInOrg": "Ta osoba ma już konto w Twojej organizacji — zaproszenie nie jest potrzebne.",
+      "inviteEmailTaken": "Ten adres e-mail ma już konto w Superwizor AI (jedno konto może mieć tylko jedną rolę i organizację). Poproś zapraszaną osobę o inny adres e-mail.",
       "cancel": "Anuluj",
       "orgLegalName": "Nazwa prawna",
       "orgTaxId": "NIP",

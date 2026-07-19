@@ -174,10 +174,13 @@ export function OrgPanel() {
     }
   };
 
-  // SEATS_EXHAUSTED gets a dedicated, human message.
+  // Stable backend codes get dedicated, human messages.
   const seatsError = (err: unknown): string | null => {
     const msg = err instanceof Error ? err.message : String(err);
-    return msg.includes("SEATS_EXHAUSTED") ? t("seatsExhausted") : null;
+    if (msg.includes("SEATS_EXHAUSTED")) return t("seatsExhausted");
+    if (msg.includes("EMAIL_ALREADY_IN_ORG")) return t("inviteEmailInOrg");
+    if (msg.includes("EMAIL_ALREADY_REGISTERED")) return t("inviteEmailTaken");
+    return null;
   };
 
   const fmtDate = (d: Date) =>

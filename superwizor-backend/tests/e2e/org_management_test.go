@@ -182,6 +182,29 @@ func TestOrgManagement_FullFlow(t *testing.T) {
 	require.Contains(t, st.Message(), "SEATS_EXHAUSTED")
 	t.Logf("✓ SEATS_EXHAUSTED on overbooking (2/2 incl. pending invite)")
 
+	// ── 4b. Pre-flight e-mail guard (live-feedback 2026-07-19): an
+	// invite to an address that already owns an account must fail at
+	// SEND time, not at AcceptInvitation after a successful social
+	// login. Both staff-invite endpoints share the guard. Fires before
+	// any seat logic, so occupancy stays 2/2.
+	_, err = identity.InviteTherapist(ctx, &identityv1.InviteTherapistRequest{
+		Email:        thSession.Email,
+		AllocationId: allocationID,
+	})
+	require.Error(t, err, "inviting an existing org member must fail")
+	st, _ = status.FromError(err)
+	require.Equal(t, codes.FailedPrecondition, st.Code())
+	require.Contains(t, st.Message(), "EMAIL_ALREADY_IN_ORG")
+
+	_, err = identity.InviteMyOrgManager(ctx, &identityv1.InviteMyOrgManagerRequest{
+		Email: mgrSession.Email,
+	})
+	require.Error(t, err, "manager invite shares the pre-flight guard")
+	st, _ = status.FromError(err)
+	require.Equal(t, codes.FailedPrecondition, st.Code())
+	require.Contains(t, st.Message(), "EMAIL_ALREADY_IN_ORG")
+	t.Logf("✓ EMAIL_ALREADY_IN_ORG pre-flight on both invite endpoints")
+
 	// ── 5. Per-therapist counters on the debit path ──
 	// Native gRPC is the legitimate route here (nativeInternalMethods);
 	// auth = the impersonated billing-svc SA OIDC token on the dial.
