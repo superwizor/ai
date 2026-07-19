@@ -1657,7 +1657,7 @@ class _SessionCard extends ConsumerWidget {
 
     final isCompleted = session.status == SessionStatus.completed;
     final viewedReports = ref.watch(viewedReportsProvider).value ?? <String>{};
-    final isViewed = viewedReports.contains(session.id);
+    final isViewed = session.reportViewedAt != null || viewedReports.contains(session.id);
 
     // Contextual status — Euphire palette only
     final isInProgress = session.status == SessionStatus.inProgress;

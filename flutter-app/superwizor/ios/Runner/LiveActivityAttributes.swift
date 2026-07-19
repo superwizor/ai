@@ -28,5 +28,8 @@ struct LiveActivityAttributes: ActivityAttributes {
         /// When > 1, widget shows "Nowe raporty czekają" with count
         /// instead of a single patient name.
         var readyReportCount: Int?
+        /// Absolute start date of the recording. Used by the widget to 
+        /// render a drift-free stopwatch timer. Nil when paused.
+        var recordingStartDate: Date?
     }
 }

@@ -321,6 +321,20 @@ func (s *Server) SplitTranscriptSegment(ctx context.Context, req *clinicalv1.Spl
 
 	// Part 1
 	part1Text := strings.Join(turnWords[:splitIndex], " ")
+	part1SpeakerTag := lines[foundIdx].SpeakerTag
+	if req.FirstPartSpeakerTag != 0 {
+		tag := req.FirstPartSpeakerTag
+		part1SpeakerTag = &tag
+	}
+	var part1SpeakerLabel *string
+	if part1SpeakerTag != nil {
+		lbl := speakerLabelMapping[fmt.Sprintf("%d", *part1SpeakerTag)]
+		if lbl == "" {
+			lbl = fmt.Sprintf("Osoba %d", *part1SpeakerTag)
+		}
+		part1SpeakerLabel = &lbl
+	}
+
 	part1Line := transcriptBlobLine{
 		ChunkIdx:     lines[foundIdx].ChunkIdx,
 		Text:         part1Text,
@@ -328,8 +342,8 @@ func (s *Server) SplitTranscriptSegment(ctx context.Context, req *clinicalv1.Spl
 		EndMS:        splitTime,
 		WordCount:    splitIndex,
 		Confidence:   lines[foundIdx].Confidence,
-		SpeakerTag:   lines[foundIdx].SpeakerTag,
-		SpeakerLabel: lines[foundIdx].SpeakerLabel,
+		SpeakerTag:   part1SpeakerTag,
+		SpeakerLabel: part1SpeakerLabel,
 	}
 
 	// Part 2

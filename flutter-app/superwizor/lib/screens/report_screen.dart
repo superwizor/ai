@@ -18,11 +18,9 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:superwizor/utils/pdf_exporter.dart';
 import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -236,11 +234,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             onPressed: _data == null ? null : _onSendActionPlan,
           ),
           IconButton(
-            tooltip: t.transcript_actions_export,
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: _data == null ? null : _onExportPdf,
-          ),
-          IconButton(
             tooltip: t.report_tooltip_copy_reports,
             icon: const Icon(Icons.copy),
             onPressed: _data == null ? null : _onCopyPressed,
@@ -416,22 +409,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _onExportPdf() {
-    final data = _data;
-    if (data == null || data.reports.isEmpty) return;
-
-    final t = AppLocalizations.of(context);
-    final reportMarkdown = _ReportPayload.parse(data.reports.first).reportMarkdown;
-
-    PdfExporter.exportReportAsPdf(
-      title: t.transcript_pdf_title,
-      subtitle: t.transcript_pdf_meta_date(
-        DateFormat('d MMM yyyy, HH:mm').format(data.session.createdAt.toLocal()),
-      ),
-      markdownContent: reportMarkdown,
     );
   }
 

@@ -63,7 +63,7 @@ struct SessionActivityWidget: Widget {
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
                                 .foregroundColor(.white)
                         } else {
-                            Text(Date(timeIntervalSinceNow: -Double(context.state.elapsedSeconds)), style: .timer)
+                            Text(context.state.recordingStartDate ?? Date(), style: .timer)
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
                                 .foregroundColor(.white)
                         }
@@ -84,18 +84,23 @@ struct SessionActivityWidget: Widget {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(Color.white.opacity(0.6))
 
-                    if let sessionId = context.state.reportSessionId {
-                        let buttonLabel = hasMultipleReports(context) ? "Otwórz kartotekę" : "Pokaż raport"
-                        Link(destination: URL(string: "superwizor://report/\(sessionId)")!) {
-                            Text(buttonLabel)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(WidgetTheme.gold)
-                                .clipShape(Capsule())
+                    if hasReport(context) || isProcessing(context) {
+                        let targetId = context.state.reportSessionId ?? "active"
+                        let buttonLabel = hasReport(context)
+                            ? (hasMultipleReports(context) ? "Otwórz kartotekę" : "Pokaż raport")
+                            : "Zobacz status"
+                        if let url = URL(string: "superwizor://report/\(targetId)") {
+                            Link(destination: url) {
+                                Text(buttonLabel)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(WidgetTheme.gold)
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.top, 4)
                         }
-                        .padding(.top, 4)
                     }
 
                     if context.state.isPaused {
@@ -172,7 +177,7 @@ struct SessionActivityWidget: Widget {
                                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white)
                         } else {
-                            Text(Date(timeIntervalSinceNow: -Double(context.state.elapsedSeconds)), style: .timer)
+                            Text(context.state.recordingStartDate ?? Date(), style: .timer)
                                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white)
                         }
@@ -209,7 +214,7 @@ private struct LockScreenView: View {
     let context: ActivityViewContext<LiveActivityAttributes>
 
     private var isReport: Bool {
-        context.state.reportSessionId != nil
+        context.state.processingPhase == nil && context.state.reportSessionId != nil
     }
 
     private var isPaused: Bool {
@@ -221,7 +226,7 @@ private struct LockScreenView: View {
     }
 
     private var isRecordingState: Bool {
-        !isReport && !isPaused && !isProcessingState
+        context.state.processingPhase == nil && context.state.reportSessionId == nil && !context.state.isPaused
     }
 
     private var multiReport: Bool {
@@ -394,10 +399,11 @@ private struct LockScreenView: View {
 
     @ViewBuilder
     private func lockScreenTrailing() -> some View {
-        if isReport {
-            if let sessionId = context.state.reportSessionId {
-                let label = multiReport ? "Otwórz" : "Pokaż"
-                Link(destination: URL(string: "superwizor://report/\(sessionId)")!) {
+        if isReport || isProcessingState {
+            let label = isReport ? (multiReport ? "Otwórz" : "Pokaż") : "Zobacz"
+            let targetId = context.state.reportSessionId ?? "active"
+            if let url = URL(string: "superwizor://report/\(targetId)") {
+                Link(destination: url) {
                     Text(label)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
@@ -407,37 +413,13 @@ private struct LockScreenView: View {
                         .clipShape(Capsule())
                 }
             }
-        } else if isProcessingState {
-            // Animated three dots — cycles through ·, ··, ··· to convey
-            // active work. Uses TimelineView for smooth iOS 17+ animation.
-            let color = context.state.processingPhase == "uploading"
-                ? WidgetTheme.processingBlue
-                : WidgetTheme.processingPurple
-            if #available(iOSApplicationExtension 17.0, *) {
-                TimelineView(.periodic(from: .now, by: 0.6)) { timeline in
-                    let t = timeline.date.timeIntervalSinceReferenceDate
-                    let step = Int(t / 0.6) % 3
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { i in
-                            Circle()
-                                .fill(color.opacity(i <= step ? 1.0 : 0.25))
-                                .frame(width: 6, height: 6)
-                        }
-                    }
-                }
-            } else {
-                // iOS 16 fallback — static ellipsis
-                Text("···")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(color)
-            }
         } else {
             if context.state.isPaused {
                 Text(timerString(context.state.elapsedSeconds))
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             } else {
-                Text(Date(timeIntervalSinceNow: -Double(context.state.elapsedSeconds)), style: .timer)
+                Text(context.state.recordingStartDate ?? Date(), style: .timer)
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             }
@@ -449,9 +431,9 @@ private struct LockScreenView: View {
 
 @available(iOSApplicationExtension 16.2, *)
 private func isRecording(_ context: ActivityViewContext<LiveActivityAttributes>) -> Bool {
-    context.state.reportSessionId == nil
+    context.state.processingPhase == nil
+        && context.state.reportSessionId == nil
         && !context.state.isPaused
-        && context.state.processingPhase == nil
 }
 
 @available(iOSApplicationExtension 16.2, *)
@@ -461,7 +443,7 @@ private func isProcessing(_ context: ActivityViewContext<LiveActivityAttributes>
 
 @available(iOSApplicationExtension 16.2, *)
 private func hasReport(_ context: ActivityViewContext<LiveActivityAttributes>) -> Bool {
-    context.state.reportSessionId != nil
+    context.state.processingPhase == nil && context.state.reportSessionId != nil
 }
 
 @available(iOSApplicationExtension 16.2, *)

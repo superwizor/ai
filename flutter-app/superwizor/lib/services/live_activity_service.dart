@@ -76,11 +76,13 @@ class LiveActivityService {
   Future<void> update({
     required LiveActivityStatus status,
     required int elapsedSeconds,
+    String? sessionId,
   }) async {
     try {
       await _channel.invokeMethod('update', {
         'status': status.name,
         'elapsedSeconds': elapsedSeconds,
+        'sessionId': sessionId,
       });
     } catch (e) {
       debugPrint('[live-activity] update failed (ignored): $e');

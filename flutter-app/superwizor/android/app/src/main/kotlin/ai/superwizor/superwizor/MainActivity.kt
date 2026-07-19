@@ -85,8 +85,8 @@ class MainActivity : FlutterFragmentActivity() {
                         "recording" -> "Sesja w toku"
                         "paused" -> "Pauza"
                         "interrupted" -> "Wstrzymane (połączenie)"
-                        "uploading" -> "Wgrywanie nagrania..."
-                        "analyzing" -> "Analizowanie sesji..."
+                        "uploading" -> "AI opracowuje wnioski z sesji..."
+                        "analyzing" -> "AI opracowuje wnioski z sesji..."
                         "reportReady" -> "Nowy raport czeka w kartotece"
                         else -> status
                     }

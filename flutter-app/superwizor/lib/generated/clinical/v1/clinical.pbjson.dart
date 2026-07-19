@@ -3213,6 +3213,13 @@ const SplitTranscriptSegmentRequest$json = {
       '5': 5,
       '10': 'secondPartSpeakerTag'
     },
+    {
+      '1': 'first_part_speaker_tag',
+      '3': 5,
+      '4': 1,
+      '5': 5,
+      '10': 'firstPartSpeakerTag'
+    },
   ],
 };
 
@@ -3221,7 +3228,8 @@ final $typed_data.Uint8List splitTranscriptSegmentRequestDescriptor = $convert.b
     'Ch1TcGxpdFRyYW5zY3JpcHRTZWdtZW50UmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZX'
     'NzaW9uSWQSJgoPc3RhcnRfb2Zmc2V0X21zGAIgASgDUg1zdGFydE9mZnNldE1zEigKEHNwbGl0'
     'X3dvcmRfaW5kZXgYAyABKAVSDnNwbGl0V29yZEluZGV4EjUKF3NlY29uZF9wYXJ0X3NwZWFrZX'
-    'JfdGFnGAQgASgFUhRzZWNvbmRQYXJ0U3BlYWtlclRhZw==');
+    'JfdGFnGAQgASgFUhRzZWNvbmRQYXJ0U3BlYWtlclRhZxIzChZmaXJzdF9wYXJ0X3NwZWFrZXJf'
+    'dGFnGAUgASgFUhNmaXJzdFBhcnRTcGVha2VyVGFn');
 
 @$core.Deprecated('Use splitTranscriptSegmentResponseDescriptor instead')
 const SplitTranscriptSegmentResponse$json = {

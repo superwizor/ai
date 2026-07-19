@@ -236,4 +236,20 @@ void main() {
     // Verify the interrupted update sent the right status string.
     expect(log[2].arguments['status'], 'interrupted');
   });
+
+  test('update accepts and forwards sessionId when provided', () async {
+    await service.update(
+      status: LiveActivityStatus.uploading,
+      elapsedSeconds: 15,
+      sessionId: 'test-session-id-456',
+    );
+
+    expect(log, hasLength(1));
+    expect(log.first.method, 'update');
+    expect(log.first.arguments, {
+      'status': 'uploading',
+      'elapsedSeconds': 15,
+      'sessionId': 'test-session-id-456',
+    });
+  });
 }

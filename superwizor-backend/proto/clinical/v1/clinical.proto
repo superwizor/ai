@@ -1316,6 +1316,7 @@ message SplitTranscriptSegmentRequest {
   int64 start_offset_ms = 2;
   int32 split_word_index = 3; // Word index where the split should happen
   int32 second_part_speaker_tag = 4;
+  int32 first_part_speaker_tag = 5;
 }
 
 message SplitTranscriptSegmentResponse {

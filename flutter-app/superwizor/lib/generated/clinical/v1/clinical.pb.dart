@@ -11036,6 +11036,7 @@ class SplitTranscriptSegmentRequest extends $pb.GeneratedMessage {
     $fixnum.Int64? startOffsetMs,
     $core.int? splitWordIndex,
     $core.int? secondPartSpeakerTag,
+    $core.int? firstPartSpeakerTag,
   }) {
     final result = create();
     if (sessionId != null) result.sessionId = sessionId;
@@ -11043,6 +11044,8 @@ class SplitTranscriptSegmentRequest extends $pb.GeneratedMessage {
     if (splitWordIndex != null) result.splitWordIndex = splitWordIndex;
     if (secondPartSpeakerTag != null)
       result.secondPartSpeakerTag = secondPartSpeakerTag;
+    if (firstPartSpeakerTag != null)
+      result.firstPartSpeakerTag = firstPartSpeakerTag;
     return result;
   }
 
@@ -11063,6 +11066,7 @@ class SplitTranscriptSegmentRequest extends $pb.GeneratedMessage {
     ..aInt64(2, _omitFieldNames ? '' : 'startOffsetMs')
     ..aI(3, _omitFieldNames ? '' : 'splitWordIndex')
     ..aI(4, _omitFieldNames ? '' : 'secondPartSpeakerTag')
+    ..aI(5, _omitFieldNames ? '' : 'firstPartSpeakerTag')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -11122,6 +11126,15 @@ class SplitTranscriptSegmentRequest extends $pb.GeneratedMessage {
   $core.bool hasSecondPartSpeakerTag() => $_has(3);
   @$pb.TagNumber(4)
   void clearSecondPartSpeakerTag() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get firstPartSpeakerTag => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set firstPartSpeakerTag($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFirstPartSpeakerTag() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFirstPartSpeakerTag() => $_clearField(5);
 }
 
 class SplitTranscriptSegmentResponse extends $pb.GeneratedMessage {

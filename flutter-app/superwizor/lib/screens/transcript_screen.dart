@@ -263,8 +263,12 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       // - repetitions of y, e, a, o of length >= 2 (e.g. yyy, eee, aaa)
       // - single letters y, e at word boundaries
       // - hyphenated/spaced fillers like e-e, y-y, e myślnik e, e, myślnik e
+      const plLetters = 'a-zA-ZęćłńóśźżĄĘĆŁŃÓŚŹŻ';
       final fillerRegex = RegExp(
-        r'\b(?:yhm|mhm|ehm|uhm|yhy|ehe|oho)\b|\b(?:[yYeEaAoO]{2,})\b|\b(?:[yYeE])\b|\b[yYeE](?:\s*(?:-|myślnik|,?\s*myślnik|,?\s*-)\s*[yYeE])+\b',
+        '(?<![$plLetters])(?:yhm|mhm|ehm|uhm|yhy|ehe|oho)(?![$plLetters])|'
+        '(?<![$plLetters])(?:[yYeEaAoO]{2,})(?![$plLetters])|'
+        '(?<![$plLetters])[yYeE](?:\\s*(?:-|myślnik|,?\\s*myślnik|,?\\\\s*-)\\s*[yYeE])+(?![$plLetters])|'
+        '(?<![$plLetters])(?:[yYeE])(?![$plLetters])',
         caseSensitive: false,
       );
       var newText = s.text.replaceAll(fillerRegex, '');
@@ -1025,8 +1029,10 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     for (final t in turns) {
       speakers[t.speakerTag] = t.speakerLabel;
     }
-    if (speakers.isEmpty) {
+    if (!speakers.containsKey(1)) {
       speakers[1] = "Osoba 1";
+    }
+    if (!speakers.containsKey(2)) {
       speakers[2] = "Osoba 2";
     }
 
@@ -1245,13 +1251,6 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Mówca: ${speakers[firstPartSpeakerTag] ?? 'Osoba $firstPartSpeakerTag'}",
-                                    style: const TextStyle(color: Colors.white38, fontSize: 12),
-                                  ),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -1262,6 +1261,26 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                                 fontSize: 14,
                                 height: 1.4,
                               ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Kto wypowiada Część 1?",
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: Colors.white54,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            buildSpeakerSelector(
+                              selectedTag: firstPartSpeakerTag,
+                              speakers: speakers,
+                              onSelected: (tag) {
+                                setSheetState(() {
+                                  firstPartSpeakerTag = tag;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -1390,39 +1409,44 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                     ],
                     
                     const SizedBox(height: 24),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text(
-                              "Anuluj",
-                              style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
+                        ElevatedButton(
+                          onPressed: selectedSplitIndex == null
+                              ? null
+                              : () async {
+                                  Navigator.of(ctx).pop();
+                                  await _executeSplit(
+                                    segment: segment,
+                                    splitWordIndex: selectedSplitIndex!,
+                                    firstPartSpeakerTag: firstPartSpeakerTag,
+                                    secondPartSpeakerTag: secondPartSpeakerTag,
+                                  );
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: EuphireColors.ember,
+                            foregroundColor: EuphireColors.obsidianBlack,
+                            disabledBackgroundColor: Colors.white.withValues(alpha: 0.1),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
+                          child: const Text(
+                            "Podziel wypowiedzi",
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: selectedSplitIndex == null
-                                ? null
-                                : () async {
-                                    Navigator.of(ctx).pop();
-                                    await _executeSplit(segment, selectedSplitIndex!, secondPartSpeakerTag);
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: EuphireColors.ember,
-                              foregroundColor: EuphireColors.obsidianBlack,
-                              disabledBackgroundColor: Colors.white.withValues(alpha: 0.1),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              "Podziel wypowiedzi",
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                            ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text(
+                            "Anuluj",
+                            style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600, fontSize: 15),
                           ),
                         ),
                       ],
@@ -1478,7 +1502,12 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     }
   }
 
-  Future<void> _executeSplit(SpeakerTurnDto segment, int splitWordIndex, int secondPartSpeakerTag) async {
+  Future<void> _executeSplit({
+    required SpeakerTurnDto segment,
+    required int splitWordIndex,
+    required int firstPartSpeakerTag,
+    required int secondPartSpeakerTag,
+  }) async {
     _showLoadingDialog();
 
     try {
@@ -1488,6 +1517,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
           sessionId: widget.sessionId,
           startOffsetMs: Int64(segment.startOffsetMs),
           splitWordIndex: splitWordIndex,
+          firstPartSpeakerTag: firstPartSpeakerTag,
           secondPartSpeakerTag: secondPartSpeakerTag,
         ),
       );

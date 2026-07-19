@@ -29,6 +29,7 @@ import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/session_status_screen.dart';
 import 'services/inbox_refresh_listener.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
@@ -188,6 +189,34 @@ class SuperWizorApp extends ConsumerWidget {
       supportedLocales: const [Locale('pl'), Locale('en')],
       locale: locale,
       home: const _AuthGate(),
+      onGenerateRoute: (settings) {
+        final uri = Uri.tryParse(settings.name ?? '');
+        if (uri == null) return null;
+
+        // Handle /session route (used by FCM push handler)
+        if (settings.name == '/session') {
+          final sessionId = settings.arguments as String?;
+          if (sessionId != null) {
+            return MaterialPageRoute(
+              builder: (_) => SessionStatusScreen(sessionId: sessionId),
+              settings: settings,
+            );
+          }
+        }
+
+        // Handle /report/:id or /report?id=... (from widget deep link)
+        if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'report') {
+          final sessionId = uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+          if (sessionId != null && sessionId.isNotEmpty) {
+            return MaterialPageRoute(
+              builder: (_) => SessionStatusScreen(sessionId: sessionId),
+              settings: settings,
+            );
+          }
+        }
+
+        return null;
+      },
       builder: (context, child) {
         return DebugTestOverlay(child: ActiveRecordingOverlay(child: child!));
       },

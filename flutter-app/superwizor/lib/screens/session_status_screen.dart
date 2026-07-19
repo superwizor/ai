@@ -260,6 +260,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       ref.read(liveActivityServiceProvider).update(
         status: LiveActivityStatus.uploading,
         elapsedSeconds: 0,
+        sessionId: row.sessionId ?? _resolvedSessionId,
       );
     }
     // Android foreground notification: update to uploading status.
@@ -307,6 +308,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         ref.read(liveActivityServiceProvider).update(
           status: LiveActivityStatus.analyzing,
           elapsedSeconds: 0,
+          sessionId: _resolvedSessionId,
         );
       }
     }

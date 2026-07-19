@@ -774,36 +774,38 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
   Future<void> _showConfirmEndSheet() async {
     final t = AppLocalizations.of(context);
-    await showEuphireBottomSheet<void>(
+    final action = await showEuphireBottomSheet<String>(
       context: context,
-      isDismissible: false,
+      isDismissible: true,
       builder: (ctx) => EuphireActionSheet(
         topIcon: Icons.cloud_upload_outlined,
         header: t.recording_confirm_end_header,
         body: t.recording_confirm_end_body,
         primary: EuphireSheetAction(
           label: t.recording_confirm_end_primary,
-          onPressed: () async {
-            Navigator.of(ctx).pop();
-            await _finishAndUpload();
-          },
+          onPressed: () => Navigator.of(ctx).pop('finish'),
         ),
         secondary: EuphireSheetAction(
           label: t.recording_confirm_end_secondary,
-          onPressed: () async {
-            Navigator.of(ctx).pop();
-            await _onResumeTap();
-          },
+          onPressed: () => Navigator.of(ctx).pop('resume'),
         ),
         destructive: EuphireSheetAction(
           label: t.recording_confirm_end_destructive,
-          onPressed: () async {
-            Navigator.of(ctx).pop();
-            await _discardAndPop();
-          },
+          onPressed: () => Navigator.of(ctx).pop('discard'),
         ),
       ),
     );
+
+    if (!mounted) return;
+
+    if (action == 'finish') {
+      await _finishAndUpload();
+    } else if (action == 'discard') {
+      await _discardAndPop();
+    } else {
+      // action == 'resume' or action == null (dismissed/minimized)
+      await _onResumeTap();
+    }
   }
 
   /// Single handler for every duration tick (start + resume paths share it):
@@ -1025,6 +1027,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             .update(
               status: LiveActivityStatus.uploading,
               elapsedSeconds: capturedDuration.inSeconds,
+              sessionId: sessionId,
             );
       }
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');

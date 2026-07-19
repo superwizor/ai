@@ -52,7 +52,8 @@ class LiveActivityManager {
             let isPaused = status == "paused" || status == "interrupted"
             let statusText = localizedStatus(status)
             let phase = processingPhase(status)
-            update(statusText: statusText, isPaused: isPaused, elapsedSeconds: elapsed, processingPhase: phase)
+            let sessionId = args["sessionId"] as? String
+            update(statusText: statusText, isPaused: isPaused, elapsedSeconds: elapsed, processingPhase: phase, sessionId: sessionId)
             result(true)
 
         case "reportReady":
@@ -85,11 +86,11 @@ class LiveActivityManager {
 
         case "isReportReady":
             // Returns true if the current Live Activity is showing
-            // a completed report (reportSessionId is set). Used by
+            // a completed report (reportSessionId is set AND processingPhase is nil). Used by
             // the Dart-side resume observer to decide whether to
             // dismiss the widget on app resume.
             if let activity = currentActivity {
-                result(activity.content.state.reportSessionId != nil)
+                result(activity.content.state.reportSessionId != nil && activity.content.state.processingPhase == nil)
             } else {
                 result(false) // No active LA → nothing to dismiss
             }
@@ -116,7 +117,8 @@ class LiveActivityManager {
             elapsedSeconds: elapsedSeconds,
             reportSessionId: nil,
             processingPhase: nil,
-            readyReportCount: nil
+            readyReportCount: nil,
+            recordingStartDate: Date().addingTimeInterval(TimeInterval(-elapsedSeconds))
         )
 
         do {
@@ -135,15 +137,24 @@ class LiveActivityManager {
         }
     }
 
-    private func update(statusText: String, isPaused: Bool, elapsedSeconds: Int, processingPhase: String?) {
+    private func update(statusText: String, isPaused: Bool, elapsedSeconds: Int, processingPhase: String?, sessionId: String? = nil) {
         guard let activity = currentActivity else { return }
+        
+        let recordingStartDate: Date?
+        if isPaused {
+            recordingStartDate = nil
+        } else {
+            recordingStartDate = Date().addingTimeInterval(TimeInterval(-elapsedSeconds))
+        }
+        
         let state = LiveActivityAttributes.ContentState(
             statusText: statusText,
             isPaused: isPaused,
             elapsedSeconds: elapsedSeconds,
-            reportSessionId: nil,
+            reportSessionId: sessionId ?? activity.content.state.reportSessionId,
             processingPhase: processingPhase,
-            readyReportCount: nil
+            readyReportCount: nil,
+            recordingStartDate: recordingStartDate
         )
         Task {
             // 15-minute stale date: safety net so the widget dims if
@@ -165,7 +176,8 @@ class LiveActivityManager {
             elapsedSeconds: 0,
             reportSessionId: sessionId,
             processingPhase: nil,
-            readyReportCount: reportCount > 1 ? reportCount : nil
+            readyReportCount: reportCount > 1 ? reportCount : nil,
+            recordingStartDate: nil
         )
         Task {
             // Report-ready can linger longer — 4 hours before iOS dims it.
@@ -239,8 +251,8 @@ class LiveActivityManager {
         case "recording": return "Sesja w toku"
         case "paused":    return "Pauza"
         case "interrupted": return "Wstrzymane (połączenie)"
-        case "uploading": return "Przesyłamy nagranie…"
-        case "analyzing": return "Pracujemy nad raportem"
+        case "uploading": return "AI opracowuje wnioski z sesji…"
+        case "analyzing": return "AI opracowuje wnioski z sesji…"
         case "reportReady": return "Nowy raport czeka w kartotece"
         default: return status
         }
