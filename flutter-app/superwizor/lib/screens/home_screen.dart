@@ -665,15 +665,15 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           if (aAction && !bAction) return -1;
           if (!aAction && bAction) return 1;
 
-          // Patients without sessions sort to the BOTTOM (far past date)
-          // so newly added clients don't clutter the top of the list.
-          // Once they have a session, they sort by its date.
+          // Patients without sessions sort to the TOP (far future date, but below action items)
+          // so newly added clients are immediately visible. Once they
+          // have a session, they sort by its date.
           final aDate = aSessions.isNotEmpty
               ? aSessions.first.date
-              : DateTime(0);
+              : DateTime(9999);
           final bDate = bSessions.isNotEmpty
               ? bSessions.first.date
-              : DateTime(0);
+              : DateTime(9999);
           return bDate.compareTo(aDate);
         });
       case SortMode.leastRecent:
