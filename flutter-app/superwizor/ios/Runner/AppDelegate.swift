@@ -95,5 +95,10 @@ import UIKit
         }
       }
     }
+    
+    // Background-safe timer for session reminders (bypasses Flutter MethodChannel freeze).
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ReminderManager") {
+      ReminderManager.register(with: registrar.messenger())
+    }
   }
 }

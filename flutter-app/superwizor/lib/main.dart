@@ -119,17 +119,21 @@ void main() async {
             .catchError((_) {});
       }
     }
-    // Report ready while app is in foreground: DON'T stop the Live
-    // Activity here — SessionStatusScreen has its own success cascade
-    // with animation + sound that calls showReportReady() + stop().
-    // Stopping here would kill the cascade's presentation. If the user
-    // is NOT on SessionStatusScreen, the resume observer or native
-    // cold-start cleanup handles it.
-    //
-    // But DO mark the flag so the resume observer knows it can dismiss
-    // next time the user leaves and comes back.
-    if (!kIsWeb && Platform.isIOS && msg.data['notification_type'] == 'report_ready') {
-      LiveActivityService.markReportReady();
+    // Report ready while app is in foreground.
+    // If the user is ALREADY on SessionStatusScreen for this exact session,
+    // we do nothing (the screen has its own Firestore listener and cascade).
+    // If they are anywhere else in the app (e.g. MenuScreen, HomeScreen),
+    // we automatically route them to the success screen so they don't
+    // miss the satisfying cascade.
+    if (msg.data['notification_type'] == 'report_ready') {
+      if (!kIsWeb && Platform.isIOS) LiveActivityService.markReportReady();
+      final sessionId = msg.data['session_id'];
+      if (sessionId is String && sessionId.isNotEmpty) {
+        if (SessionStatusScreen.currentlyViewedSessionId != sessionId) {
+          if (!kIsWeb && Platform.isIOS) LiveActivityService.stopFromBackground();
+          navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
+        }
+      }
     }
   });
 
@@ -333,5 +337,21 @@ class _LiveActivityResumeObserver extends WidgetsBindingObserver {
     if (shouldDismiss) {
       await LiveActivityService.stopFromBackground();
     }
+  }
+
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
+    final uri = routeInformation.uri;
+    if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'report') {
+      final sessionId = uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+      if (sessionId != null && sessionId.isNotEmpty) {
+        if (SessionStatusScreen.currentlyViewedSessionId != sessionId) {
+          if (!kIsWeb && Platform.isIOS) LiveActivityService.stopFromBackground();
+          navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
+        }
+        return true;
+      }
+    }
+    return super.didPushRouteInformation(routeInformation);
   }
 }

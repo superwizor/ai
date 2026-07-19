@@ -260,6 +260,10 @@ private struct LockScreenView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .padding(3) // Inset for visible border within iOS clip region
+        .widgetURL({
+            let targetId = context.state.reportSessionId ?? "active"
+            return targetId != "active" ? URL(string: "superwizor://report/\(targetId)") : nil
+        }())
         .background(
             ZStack {
                 // Fill background

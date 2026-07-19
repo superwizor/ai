@@ -84,6 +84,11 @@ class SessionStatusScreen extends ConsumerStatefulWidget {
   }) : assert(sessionId != null || localId != null,
             'Either sessionId or localId must be provided');
 
+  /// Tracks the session currently being viewed on this screen to prevent
+  /// pushing duplicate routes from global FCM handlers if the user is
+  /// already here.
+  static String? currentlyViewedSessionId;
+
   @override
   ConsumerState<SessionStatusScreen> createState() =>
       _SessionStatusScreenState();
@@ -115,6 +120,11 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.sessionId != null) {
+      _resolvedSessionId = widget.sessionId;
+      SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
+    }
+    
     _checkScaleAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -129,7 +139,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // queue-based entry point we resolve it lazily as the worker
     // advances; see _onQueueSnapshot.
     if (widget.sessionId != null) {
-      _resolvedSessionId = widget.sessionId;
       _startListeners();
       // Immediate check for sessions that are already terminal (e.g.
       // user tapped a FAILED card from kartoteka). Firestore won't
@@ -149,6 +158,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     _checkScaleAnim.dispose();
     _checkGlowAnim.dispose();
     _successPlayer?.dispose();
+    if (_phase == SessionStepperPhase.done && _resolvedSessionId != null) {
+      if (Platform.isIOS) LiveActivityService.stopFromBackground();
+    }
+    SessionStatusScreen.currentlyViewedSessionId = null;
     super.dispose();
   }
 
@@ -289,6 +302,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final newSid = row.sessionId;
     if (newSid != null && _resolvedSessionId == null) {
       _resolvedSessionId = newSid;
+      SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
       if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploaded);
       }
@@ -375,7 +389,8 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
     // Phase 2: Show the big success icon
     AppHapticFeedback.heavyImpact();
-    if (mounted) setState(() => _showCheck = true);
+    if (!mounted) return;
+    setState(() => _showCheck = true);
     _checkScaleAnim.forward();
     _checkGlowAnim.repeat(reverse: true);
 
@@ -448,6 +463,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_resolvedSessionId != null) {
+      SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
+    }
+
     final t = AppLocalizations.of(context);
     final isFailed = _phase == SessionStepperPhase.failed;
     final errorBucket = isFailed ? _classifyError() : null;

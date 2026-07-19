@@ -5,12 +5,30 @@ import android.os.Build
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.media.MediaPlayer
+import android.media.AudioAttributes
+import android.os.Vibrator
+import android.content.Context
+import android.os.VibrationEffect
+import java.util.Timer
+import java.util.TimerTask
 
 // FlutterFragmentActivity (not FlutterActivity) is required by local_auth's
 // biometric prompt (app-lock). Engine wiring below is unchanged.
 class MainActivity : FlutterFragmentActivity() {
     private val fgsChannel = "superwizor/recording_fgs"
     private val liveActivityChannel = "ai.superwizor/live_activity"
+    private val reminderChannel = "ai.superwizor/reminder_service"
+    
+    private var reminderTimer: Timer? = null
+    private var reminderMediaPlayer: MediaPlayer? = null
+    
+    private var reminderIntervalMinutes: Int = 0
+    private var soundEnabled: Bool = false
+    private var hapticsEnabled: Bool = false
+    private var startTimeMillis: Long = 0
+    private var accumulatedMillis: Long = 0
+    private var expectedRemindersFired: Int = 0
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -107,6 +125,109 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(true)
                 }
                 else -> result.notImplemented()
+            }
+        }
+        
+        // Reminder Service for playing native alarms in the background
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            reminderChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
+                    hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
+                    accumulatedMillis = (call.argument<Int>("elapsedMillis") ?: 0).toLong()
+                    expectedRemindersFired = if (reminderIntervalMinutes > 0) (accumulatedMillis / (reminderIntervalMinutes * 60000)).toInt() else 0
+                    
+                    startReminderTimer()
+                    result.success(true)
+                }
+                "pause" -> {
+                    accumulatedMillis = (call.argument<Int>("elapsedMillis") ?: 0).toLong()
+                    stopReminderTimer()
+                    result.success(true)
+                }
+                "resume" -> {
+                    reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
+                    hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
+                    accumulatedMillis = (call.argument<Int>("elapsedMillis") ?: 0).toLong()
+                    expectedRemindersFired = if (reminderIntervalMinutes > 0) (accumulatedMillis / (reminderIntervalMinutes * 60000)).toInt() else 0
+                    
+                    startReminderTimer()
+                    result.success(true)
+                }
+                "update" -> {
+                    reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
+                    hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
+                    result.success(true)
+                }
+                "stop" -> {
+                    stopReminderTimer()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+    
+    private fun startReminderTimer() {
+        stopReminderTimer()
+        if (reminderMediaPlayer == null) {
+            val resId = resources.getIdentifier("sfx_session_end", "raw", packageName)
+            if (resId != 0) {
+                reminderMediaPlayer = MediaPlayer.create(this, resId).apply {
+                    setAudioAttributes(AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build())
+                }
+            }
+        }
+        
+        startTimeMillis = System.currentTimeMillis()
+        reminderTimer = Timer()
+        reminderTimer?.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                checkReminder()
+            }
+        }, 500, 500)
+    }
+    
+    private fun stopReminderTimer() {
+        reminderTimer?.cancel()
+        reminderTimer = null
+        startTimeMillis = 0
+    }
+    
+    private fun checkReminder() {
+        if (reminderIntervalMinutes <= 0 || startTimeMillis == 0L) return
+        val elapsedNowMillis = accumulatedMillis + (System.currentTimeMillis() - startTimeMillis)
+        val expected = (elapsedNowMillis / (reminderIntervalMinutes * 60000)).toInt()
+        
+        if (expected > expectedRemindersFired) {
+            expectedRemindersFired = expected
+            playReminder()
+        }
+    }
+    
+    private fun playReminder() {
+        if (soundEnabled) {
+            reminderMediaPlayer?.apply {
+                seekTo(0)
+                start()
+            }
+        }
+        if (hapticsEnabled) {
+            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(500)
             }
         }
     }

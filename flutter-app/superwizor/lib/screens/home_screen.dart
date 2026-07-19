@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import '../utils/debug_flags.dart';
@@ -37,10 +39,12 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import '../widgets/quota_warning_banner.dart';
 import '../widgets/recording_recovery_prompt.dart';
+import '../services/live_activity_service.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
+import 'session_status_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -345,7 +349,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
   }
 
   /// Previous status per patient — used to detect analyzing → hasNewReport.
-  final Map<String, _PatientStatus> _prevStatuses = {};
+  /// Made static so it survives pull-to-refresh (which destroys the widget state).
+  static final Map<String, _PatientStatus> _prevStatuses = {};
 
   /// Patients that just transitioned to hasNewReport — triggers pill animation.
   final Set<String> _justCompletedIds = {};
@@ -354,12 +359,21 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
   /// haven't been loaded yet. This ensures badges ("Nowy raport"),
   /// "Ostatnio: X" dates, and session counts are visible immediately
   /// after a cold restart instead of only after tapping into a card.
-  void _ensureSessionsFetched() {
+  void _ensureSessionsFetched() async {
+    try {
+      await ref.read(sessionsProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+
+    final sessionsMap = ref.read(sessionsProvider).value ?? {};
     final notifier = ref.read(sessionsProvider.notifier);
+    
     for (final p in widget.patients) {
-      if (!_fetchedPatients.contains(p.id)) {
+      if (!sessionsMap.containsKey(p.id) && !_fetchedPatients.contains(p.id)) {
         _fetchedPatients.add(p.id);
-        unawaited(notifier.fetchSessions(p.id));
+        notifier.fetchSessions(p.id).whenComplete(() {
+          if (mounted) _fetchedPatients.remove(p.id);
+        });
       }
     }
   }
@@ -401,15 +415,29 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           newStatus == _PatientStatus.hasNewReport) {
         // 🎉 Session just completed!
         _justCompletedIds.add(p.id);
-        AppHapticFeedback.heavyImpact();
-        // Play success sound (respects user preference)
-        if (ref.read(appSettingsProvider).soundEnabled) {
-          _playSuccessSound();
+        
+        Session? completedSession;
+        for (final s in sessions) {
+          if (s.status == SessionStatus.completed && !viewedReports.contains(s.id)) {
+            completedSession = s;
+            break;
+          }
         }
-        // Celebratory toast with the patient's working alias
-        final name = p.workingAlias;
-        final l = AppLocalizations.of(context);
-        EuphireToast.success(context, message: l.home_report_ready_toast(name));
+
+        if (completedSession != null && SessionStatusScreen.currentlyViewedSessionId != completedSession.id) {
+          if (!kIsWeb && Platform.isIOS) LiveActivityService.stopFromBackground();
+          if (context.mounted) {
+            Navigator.of(context).pushNamed('/session', arguments: completedSession.id);
+          }
+        } else {
+          // Fallback if we couldn't route
+          AppHapticFeedback.heavyImpact();
+          if (ref.read(appSettingsProvider).soundEnabled) {
+            _playSuccessSound();
+          }
+          final l = AppLocalizations.of(context);
+          EuphireToast.success(context, message: l.home_report_ready_toast(p.workingAlias));
+        }
       }
     }
   }
@@ -580,6 +608,22 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           pendingUploads,
           recordingPatientId: recordingPatientId,
         );
+        
+        // Global Live Activity cleanup: if there are no sessions currently
+        // recording, uploading, or analyzing, ensure the Live Activity is stopped.
+        // This prevents the widget from hanging if the user pulls to refresh
+        // on the HomeScreen and the session finishes silently.
+        bool hasActiveLiveActivity = false;
+        for (final p in widget.patients) {
+          final status = _statusFor(p, sessionsMap[p.id] ?? [], viewedReports, pendingUploads: pendingUploads, recordingPatientId: recordingPatientId);
+          if (status == _PatientStatus.recording || status == _PatientStatus.uploading || status == _PatientStatus.analyzing) {
+            hasActiveLiveActivity = true;
+            break;
+          }
+        }
+        if (!hasActiveLiveActivity && !kIsWeb && Platform.isIOS) {
+          LiveActivityService.stopFromBackground();
+        }
       }
     });
 
@@ -610,15 +654,26 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     switch (sortFilter.sortMode) {
       case SortMode.lastActivity:
         activePatients.sort((a, b) {
-          // Patients without sessions sort to the TOP (far future date)
-          // so newly added clients are immediately visible. Once they
-          // have a session, they sort by its date.
-          final aDate = (sessionsMap[a.id] ?? []).isNotEmpty
-              ? sessionsMap[a.id]!.first.date
-              : DateTime(9999);
-          final bDate = (sessionsMap[b.id] ?? []).isNotEmpty
-              ? sessionsMap[b.id]!.first.date
-              : DateTime(9999);
+          final aSessions = sessionsMap[a.id] ?? [];
+          final bSessions = sessionsMap[b.id] ?? [];
+          
+          final aStatus = _statusFor(a, aSessions, viewedReports, pendingUploads: pendingUploads, recordingPatientId: recordingPatientId);
+          final bStatus = _statusFor(b, bSessions, viewedReports, pendingUploads: pendingUploads, recordingPatientId: recordingPatientId);
+          
+          final aAction = aStatus == _PatientStatus.hasNewReport || aStatus == _PatientStatus.recording;
+          final bAction = bStatus == _PatientStatus.hasNewReport || bStatus == _PatientStatus.recording;
+          if (aAction && !bAction) return -1;
+          if (!aAction && bAction) return 1;
+
+          // Patients without sessions sort to the BOTTOM (far past date)
+          // so newly added clients don't clutter the top of the list.
+          // Once they have a session, they sort by its date.
+          final aDate = aSessions.isNotEmpty
+              ? aSessions.first.date
+              : DateTime(0);
+          final bDate = bSessions.isNotEmpty
+              ? bSessions.first.date
+              : DateTime(0);
           return bDate.compareTo(aDate);
         });
       case SortMode.leastRecent:
@@ -820,7 +875,20 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               itemCount: activeFiltered.length,
-              separatorBuilder: (ctx, idx) => const SizedBox(height: 6),
+              separatorBuilder: (ctx, idx) {
+                final current = activeFiltered[idx];
+                final next = activeFiltered[idx + 1];
+                final currentEmpty = current.sessionCount == 0 && (sessionsMap[current.id] ?? []).isEmpty;
+                final nextEmpty = next.sessionCount == 0 && (sessionsMap[next.id] ?? []).isEmpty;
+                
+                if (currentEmpty != nextEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Divider(color: EuphireColors.mist.withValues(alpha: 0.1), thickness: 1),
+                  );
+                }
+                return const SizedBox(height: 6);
+              },
               itemBuilder: (context, index) {
                 final patient = activeFiltered[index];
                 final sessions = sessionsMap[patient.id] ?? [];

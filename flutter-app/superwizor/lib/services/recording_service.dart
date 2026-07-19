@@ -46,8 +46,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:flutter/services.dart';
+import 'reminder_service.dart';
+
 import 'audio_session_helper.dart';
 import 'recording_foreground_service.dart';
+
 
 enum RecordingState { idle, recording, paused, interrupted, stopped, error }
 
@@ -122,6 +126,10 @@ class RecordingService {
   DateTime? _segmentStart;
   Duration _accumulated = Duration.zero;
 
+  int _currentReminderInterval = 0;
+  bool _soundEnabled = false;
+  bool _hapticsEnabled = false;
+
   /// Latches true the moment an OS interruption (phone call, alarm, Siri,
   /// audio-focus loss) pauses the recorder, and STAYS true even after a
   /// successful resume. The `record` plugin's native pause/resume on a
@@ -173,6 +181,20 @@ class RecordingService {
     return base;
   }
 
+  /// Called by `services_provider` when the AppSettings change mid-session.
+  void updateSettings(int reminderIntervalMinutes, bool soundEnabled, bool hapticsEnabled) {
+    _currentReminderInterval = reminderIntervalMinutes;
+    _soundEnabled = soundEnabled;
+    _hapticsEnabled = hapticsEnabled;
+    if (_state == RecordingState.recording) {
+      unawaited(ReminderService.update(
+        intervalMinutes: reminderIntervalMinutes,
+        soundEnabled: soundEnabled,
+        hapticsEnabled: hapticsEnabled,
+      ));
+    }
+  }
+
   /// Begins a fresh recording for [sessionId]. The FLAC file lands at
   /// `<docs>/sessions/<sessionId>/raw.flac`. Throws if a recording is
   /// already in progress.
@@ -188,6 +210,7 @@ class RecordingService {
     String reportLanguage = '',
     String? fgsTitle,
     String? fgsBody,
+    int reminderIntervalMinutes = 0,
   }) async {
     if (_state != RecordingState.idle &&
         _state != RecordingState.stopped &&
@@ -255,6 +278,16 @@ class RecordingService {
     _hadResumeCycle = false;
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
+    
+    _currentReminderInterval = reminderIntervalMinutes;
+    
+    unawaited(ReminderService.start(
+      intervalMinutes: _currentReminderInterval,
+      soundEnabled: _soundEnabled,
+      hapticsEnabled: _hapticsEnabled,
+      elapsedMillis: 0,
+    ));
+
     _startTicker();
   }
 
@@ -264,6 +297,7 @@ class RecordingService {
     await _recorder.pause();
     _foldSegment();
     _setState(RecordingState.paused);
+    unawaited(ReminderService.pause(elapsedMillis: _accumulated.inMilliseconds));
   }
 
   /// Resumes a paused or interrupted recording. Returns true iff capture
@@ -316,6 +350,12 @@ class RecordingService {
 
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
+    unawaited(ReminderService.resume(
+      intervalMinutes: _currentReminderInterval,
+      soundEnabled: _soundEnabled,
+      hapticsEnabled: _hapticsEnabled,
+      elapsedMillis: _accumulated.inMilliseconds,
+    ));
     return true;
   }
 
@@ -355,6 +395,7 @@ class RecordingService {
     _arm(RecordState.stop);
     final returnedPath = await _recorder.stop();
     _foldSegment();
+    unawaited(ReminderService.stop());
     _ticker?.cancel();
     _ticker = null;
     await _setWakelock(false);
@@ -375,6 +416,7 @@ class RecordingService {
   Future<void> cancel() async {
     _arm(RecordState.stop);
     final path = await _recorder.stop();
+    unawaited(ReminderService.stop());
     _ticker?.cancel();
     _ticker = null;
     _segmentStart = null;

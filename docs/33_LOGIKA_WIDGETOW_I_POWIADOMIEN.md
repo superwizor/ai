@@ -225,16 +225,26 @@ flutter install -d <DEVICE_ID> --profile
 
 ### 6.7 Live Activity & FCM Background Pushes (Lipiec 2026 - Faza 4)
 
-Podczas integracji powiadomień FCM z Live Activities napotkano krytyczne błędy architektoniczne:
+Podczas integracji powiadomień FCM z Live Activities napotkano krytyczne błędy architektoniczne, które wymusiły uproszczenie logiki zamykania widgetów:
 
 1. **MethodChannel w Background Isolate**: Dart background FCM handler (`_firebaseMessagingBackgroundHandler`) działa w odizolowanym headless `FlutterEngine`, na którym nie są zarejestrowane kanały MethodChannel głównej aplikacji. Wywołania MethodChannel z tła rzucają ciche wyjątki `MissingPluginException`. 
    * **Rozwiązanie**: Przechwytywanie powiadomień FCM dla Live Activities natywnie po stronie iOS w `AppDelegate.swift` (`application(_:didReceiveRemoteNotification:)`) i wywoływanie `LiveActivityManager` bezpośrednio z pominięciem Darta.
 
-2. **Resume Observer i Przypadkowe Zabijanie LA**: Nasłuchiwanie na `AppLifecycleState.resumed` i zamykanie LA w ciemno (aby pozbyć się widgetu po przejściu z tła) powodowało zamykanie LA przy każdym przełączeniu aplikacji (np. w celu przeczytania SMSa) podczas *trwania* aktywnego nagrywania.
-   * **Rozwiązanie**: Wprowadzenie asynchronicznej metody `LiveActivityService.shouldDismissOnResume()`, która weryfikuje intencję zamknięcia. Sprawdza ona zarówno flagę po stronie Dart (ustawianą w UI) jak i odpytuje natywny `LiveActivityManager` (przez nowe wywołanie `isReportReady`), aby zamykać LA tylko gdy raport jest rzeczywiście gotowy.
+2. **Zacinający się Widget (Hanging Widget) i Zgubiony Dźwięk Sukcesu**: 
+   * Opieranie zamykania widgetu wyłącznie na natywnym stanie (odpytywanie `isReportReady` przez `shouldDismissOnResume`) okazało się zawodne. Jeśli powiadomienie FCM "zginęło" w sieci, widget natywny zostawał w stanie "analizowanie". Po wznowieniu aplikacji (warm start), aplikacja nie potrafiła go zamknąć, ponieważ natywny stan twierdził, że sesja nadal trwa.
+   * Równocześnie, jeśli użytkownik powrócił do aplikacji i odświeżył listę (pull-to-refresh), stan widgetów ulegał zniszczeniu, co gubiło informację o poprzednim statusie i uniemożliwiało odtworzenie dźwięku sukcesu na ekranie głównym. Jeśli użytkownik zamknął `SessionStatusScreen` zanim stoper kaskady sukcesu dobił do końca, wyjątki związane z przerwaniem animacji powodowały trwałe zawieszenie widgetu.
+   * **Rozwiązanie (Obecna Architektura)**: Logika zamykania widgetów została drastycznie uproszczona w oparciu o absolutny stan aplikacji w Dart:
+     * **Global Cleanup w HomeScreen**: Przy każdym zbudowaniu ekranu kartoteki sprawdzamy, czy w całej aplikacji istnieje *jakakolwiek* sesja w fazie nagrywania, wgrywania lub analizy. Jeśli nie – `LiveActivityService.stopFromBackground()` jest wywoływane w ciemno, gwarantując sprzątnięcie starych/zawieszonych widgetów.
+     * **Defensywny Dispose**: W `SessionStatusScreen` upewniono się, że zamknięcie ekranu (`dispose`) w stanie `done` bezwzględnie zamyka widget (nawet jeśli kaskada animacji/dźwięków została przerwana przez niecierpliwego użytkownika).
+     * **Statyczny Stan Sukcesu**: Flaga poprzedniego statusu (`_prevStatuses`) w `HomeScreen` została podniesiona do zmiennej statycznej, aby przetrwać niszczenie obiektu `State` podczas pull-to-refresh, dzięki czemu dźwięk sukcesu zawsze zostanie odtworzony po powrocie do aplikacji.
 
-3. **Foreground Handlery vs Kaskada UI**: Otrzymanie powiadomienia `report_ready` na pierwszym planie (`FirebaseMessaging.onMessage`) nie powinno od razu wywoływać `stop()`, ponieważ przerywa to kaskadę animacji i odtwarzanie dźwięków w `SessionStatusScreen`. 
-   * **Rozwiązanie**: Na pierwszym planie ustawiana jest tylko flaga przez `markReportReady()`, a zarządzanie zamknięciem LA pozostawione jest naturalnemu cyklowi życia kaskady UI wewnątrz `SessionStatusScreen`.
+3. **Brak Głębokiego Linkowania (Deep Linking) i Wznawianie w Menu**:
+   * **Problem**: Kliknięcie głównego obszaru powiadomienia Live Activity na zablokowanym ekranie zazwyczaj tylko "wznawiało" aplikację bez kontekstu, lądując na `HomeScreen` lub w ustawieniach, jeśli tam została zamrożona. Widget zostawał zawieszony bez wywołania ekranu sukcesu.
+   * **Rozwiązanie**: Dodano modyfikator `.widgetURL` do głównego widoku `LockScreenView` w `SessionActivityWidget.swift`. Teraz kliknięcie *dowolnego* miejsca w banerze przekazuje systemowi URL `superwizor://report/ID`, który Flutter przechwytuje przez `onGenerateRoute` (lub z pomocą pakietu app_links) i płynnie przenosi bezpośrednio na `SessionStatusScreen`.
+
+4. **Kaskada Sukcesu w Tle (Auto-Routing wewnątrz aplikacji)**:
+   * **Problem**: Jeśli użytkownik nawigował po aplikacji (np. po menu Ustawień) i przetwarzanie AI dobiegło końca, aplikacja odbierała push FCM w pierwszym planie, ale użytkownik musiał ręcznie wrócić do sesji, żeby zobaczyć powiadomienie.
+   * **Rozwiązanie**: W `main.dart` w handlerze `FirebaseMessaging.onMessage.listen` dodano logikę automatycznego wypychania trasy `pushNamed('/session', arguments: sessionId)`, pod warunkiem, że użytkownik nie jest już na tym ekranie. Przenosi to użytkownika automatycznie na kaskadę sukcesu. Aby uniknąć duplikowania tras przy wielokrotnych odświeżeniach, `SessionStatusScreen` rejestruje `currentlyViewedSessionId` jako flagę globalną.
 
 ---
-*Dokumentacja stworzona w czerwcu 2026 r. w ramach wdrożenia stabilizacji widgetów i Dynamic Island. Zaktualizowana 19 lipca 2026 r. o lekcje z sesji integracji FCM (Faza 4).*
+*Dokumentacja stworzona w czerwcu 2026 r. w ramach wdrożenia stabilizacji widgetów i Dynamic Island. Zaktualizowana 19 lipca 2026 r. o lekcje z sesji integracji FCM i uproszczenia architektury czyszczenia (Faza 4).*

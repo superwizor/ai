@@ -40,7 +40,6 @@ import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../services/live_activity_service.dart';
 import '../providers/settings_provider.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -97,9 +96,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   StreamSubscription<RecordingState>? _stateSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
-  // Number of "still recording" reminder intervals already fired this session,
-  // so each interval boundary triggers exactly once.
-  int _remindersFired = 0;
   // DEBUG: alarm-stress fire count (seconds-based), see widget.debugAlarmStress.
   int _stressAlarmsFired = 0;
   // Guards double-taps on the post-interruption resume button while the
@@ -822,18 +818,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       final fired = d.inSeconds ~/ widget.debugAlarmIntervalSeconds;
       if (fired > _stressAlarmsFired) {
         _stressAlarmsFired = fired;
-        debugPrint('[recording] DEBUG alarm-stress fire #$fired at $d');
-        _fireReminder(s, d);
-      }
-    }
-
-    // ── Periodic "still recording" reminder ──
-    final interval = s.reminderIntervalMinutes;
-    if (interval > 0 && d.inMinutes > 0) {
-      final fired = d.inMinutes ~/ interval;
-      if (fired > _remindersFired) {
-        _remindersFired = fired;
-        _fireReminder(s, d);
+        debugPrint('[recording] DEBUG alarm-stress fire #$fired at $d (legacy bell removed, using NotificationService for production)');
       }
     }
 
@@ -850,69 +835,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  /// Reminds the therapist the session is still recording: haptic + a brief
-  /// visual toast + an audible bell (see _playReminderBell).
-  ///
-  /// History: the 2026-07-02 "bell corrupts recordings" verdict was
-  /// CONFOUNDED — every upload was failing regardless (billing
-  /// QUOTA_COUNTER_MISSING outage since Jul 1), so the +22 bell removal was
-  /// based on bad evidence. Restored with the mix-safe audio session for a
-  /// clean re-test.
-  void _fireReminder(AppSettings s, Duration d) {
-    if (s.hapticsEnabled) {
-      HapticFeedback.heavyImpact();
-    }
-    unawaited(_playReminderBell());
-    if (mounted) {
-      final t = AppLocalizations.of(context);
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(t.recording_reminder_toast(_formatDuration(d))),
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  /// Plays the reminder bell on an audio session that MIXES with the live
-  /// recording: iOS `playAndRecord` + `mixWithOthers` + `defaultToSpeaker`
-  /// instead of the audioplayers default (`.playback`), which would
-  /// deactivate the capture session. Android uses sonification with no
-  /// audio-focus grab. Best-effort; never throws.
-  Future<void> _playReminderBell() async {
-    try {
-      final player = AudioPlayer();
-      await player.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playAndRecord,
-            options: const {
-              AVAudioSessionOptions.mixWithOthers,
-              AVAudioSessionOptions.defaultToSpeaker,
-            },
-          ),
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: false,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.assistanceSonification,
-            audioFocus: AndroidAudioFocus.none,
-          ),
-        ),
-      );
-      await player.play(AssetSource('sounds/SFX_session_end.mp3'));
-      // Dispose player after playback completes to avoid native resource leak.
-      player.onPlayerComplete.first.then((_) {
-        player.dispose();
-      }).catchError((_) {
-        player.dispose();
-      });
-    } catch (e) {
-      debugPrint('[recording] reminder bell play failed: $e');
-      /* best-effort — never disrupt the recording */
-    }
-  }
 
   Future<void> _onMaxDurationReached() async {
     debugPrint(

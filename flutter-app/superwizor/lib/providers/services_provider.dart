@@ -16,6 +16,7 @@ import '../services/session_state_listener.dart';
 import '../services/transcript_pdf_exporter.dart';
 import '../services/upload_service.dart';
 import 'grpc_provider.dart';
+import 'settings_provider.dart';
 
 final firebaseAuthProvider = Provider<fb_auth.FirebaseAuth>(
   (ref) => fb_auth.FirebaseAuth.instance,
@@ -40,6 +41,20 @@ final secureAudioStorageProvider = Provider<SecureAudioStorageService>(
 
 final recordingServiceProvider = Provider<RecordingService>((ref) {
   final svc = RecordingService();
+  
+  // Listen to setting changes dynamically (mid-session rescheduling)
+  ref.listen<AppSettings>(
+    appSettingsProvider,
+    (previous, next) {
+      svc.updateSettings(
+        next.reminderIntervalMinutes,
+        next.soundEnabled,
+        next.hapticsEnabled,
+      );
+    },
+    fireImmediately: true,
+  );
+
   ref.onDispose(svc.dispose);
   return svc;
 });
