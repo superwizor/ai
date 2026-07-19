@@ -66,14 +66,21 @@ func (s *Server) SendClientPanelEvent(ctx context.Context, req *notificationv1.S
 	}
 	htmlBody := wrapWithGenericTemplate(req.GetLocale(), subject, subject, body, req.GetPanelUrl(), ctaText)
 
-	if err := s.emailer.Send(ctx, email.Message{
-		To:       req.GetRecipientEmail(),
-		Subject:  subject,
-		HTMLBody: htmlBody,
-		TextBody: body,
-		From:     tpl.From,
-	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "send email: %v", err)
+	// CHANNEL ORDER MATTERS: the Firestore inbox write and the FCM push
+	// are the LIVE in-app channels; the e-mail is the closed-app channel.
+	// They must not depend on each other — the previous shape returned on
+	// e-mail failure BEFORE the inbox write, so any Resend rejection
+	// (rate limit, disposable-domain bounce) silently killed the live
+	// refresh and the therapist saw the note only after an app restart
+	// (reported 2026-07-19). In-app channels run first, each best-effort.
+
+	// docs/39 PR12: mirror the event into the recipient's Firestore inbox
+	// (user_notifications/{firebaseUid}/inbox). The therapist iOS app and
+	// the web client panel already subscribe to that collection, so this
+	// write is what makes a sent note / newly shared item appear LIVE —
+	// no dependence on iOS foreground-push quirks or web-push setup.
+	if s.fsWriter != nil && req.GetRecipientUserId() != "" {
+		s.writeClientPanelInbox(ctx, req)
 	}
 
 	// docs/39 PR11: for a delivered client note, ALSO push FCM to the
@@ -85,14 +92,16 @@ func (s *Server) SendClientPanelEvent(ctx context.Context, req *notificationv1.S
 		s.pushClientNoteReceived(ctx, req)
 	}
 
-	// docs/39 PR12: mirror the event into the recipient's Firestore inbox
-	// (user_notifications/{firebaseUid}/inbox). The therapist iOS app and
-	// the web client panel already subscribe to that collection, so this
-	// write is what makes a sent note / newly shared item appear LIVE —
-	// no dependence on iOS foreground-push quirks or web-push setup. The
-	// e-mail (and, for notes, the FCM push) remain the closed-app channel.
-	if s.fsWriter != nil && req.GetRecipientUserId() != "" {
-		s.writeClientPanelInbox(ctx, req)
+	if err := s.emailer.Send(ctx, email.Message{
+		To:       req.GetRecipientEmail(),
+		Subject:  subject,
+		HTMLBody: htmlBody,
+		TextBody: body,
+		From:     tpl.From,
+	}); err != nil {
+		// In-app channels already delivered; surface the e-mail failure
+		// to the caller's log without having gated the live path on it.
+		return nil, status.Errorf(codes.Internal, "send email: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
@@ -136,7 +145,15 @@ func (s *Server) writeClientPanelInbox(ctx context.Context, req *notificationv1.
 	}); err != nil {
 		slog.WarnContext(ctx, "client-panel inbox write failed",
 			"event", req.GetEvent(), "recipient_user_id", uid, "error", err)
+		return
 	}
+	// Success breadcrumb — makes "did the live channel fire?" a one-line
+	// log query next time a stale-notes report comes in.
+	slog.InfoContext(ctx, "analytics",
+		"ae", "client_panel.inbox_written",
+		"event", req.GetEvent(),
+		"recipient_user_id", uid.String(),
+		"patient_file_id", req.GetPatientFileId())
 }
 
 // localizeItemShared — PHI-free inbox copy for the client's web panel when

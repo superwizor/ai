@@ -1022,6 +1022,10 @@ Wskazówki dot. klastrowania:
 - Pacjent: opisuje odczucia, odpowiada, ma dłuższe wypowiedzi.
 
 JĘZYK RAPORTU: %s
+KRYTYCZNE — pola Title, Summary, RAG_Summary i KAŻDA linia RAG_Theme MUSZĄ
+być napisane W CAŁOŚCI w JĘZYKU RAPORTU wskazanym powyżej — niezależnie od
+języka transkryptu i od tego, że niniejsza instrukcja jest po polsku.
+(Sekcje # Speakers i # PII pozostają w formacie technicznym bez zmian.)
 
 TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
@@ -1096,6 +1100,10 @@ Role: therapist, patient, couple_partner, family_member_parent,
 family_member_child, family_member_sibling, third_party, filler, unknown.
 
 JĘZYK RAPORTU: %s
+KRYTYCZNE — pola Title, Summary, RAG_Summary i KAŻDA linia RAG_Theme MUSZĄ
+być napisane W CAŁOŚCI w JĘZYKU RAPORTU wskazanym powyżej — niezależnie od
+języka transkryptu i od tego, że niniejsza instrukcja jest po polsku.
+(Sekcje # Speakers i # PII pozostają w formacie technicznym bez zmian.)
 
 TRANSKRYPT (pogrupowany po mówcach):
 %s
@@ -1153,6 +1161,10 @@ Role: therapist, patient, couple_partner, family_member_parent,
 family_member_child, family_member_sibling, third_party, filler, unknown.
 
 JĘZYK RAPORTU: %s
+KRYTYCZNE — pola Title, Summary, RAG_Summary i KAŻDA linia RAG_Theme MUSZĄ
+być napisane W CAŁOŚCI w JĘZYKU RAPORTU wskazanym powyżej — niezależnie od
+języka transkryptu i od tego, że niniejsza instrukcja jest po polsku.
+(Sekcje # Speakers i # PII pozostają w formacie technicznym bez zmian.)
 
 TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
