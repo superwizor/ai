@@ -88,19 +88,19 @@ class FcmTokenService {
   }
 
   Future<notif_pb.Platform> _detectPlatform() async {
-    if (Platform.isIOS) return notif_pb.Platform.PLATFORM_IOS;
-    if (Platform.isAndroid) return notif_pb.Platform.PLATFORM_ANDROID;
+    if (!kIsWeb && Platform.isIOS) return notif_pb.Platform.PLATFORM_IOS;
+    if (!kIsWeb && Platform.isAndroid) return notif_pb.Platform.PLATFORM_ANDROID;
     return notif_pb.Platform.PLATFORM_WEB;
   }
 
   Future<String> _deviceModel() async {
     final info = DeviceInfoPlugin();
     try {
-      if (Platform.isIOS) {
+      if (!kIsWeb && Platform.isIOS) {
         final i = await info.iosInfo;
         return i.utsname.machine;
       }
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         final a = await info.androidInfo;
         return '${a.manufacturer} ${a.model}';
       }

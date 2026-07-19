@@ -287,7 +287,7 @@ class AudioConverterService {
     String inputPath, {
     void Function(double progress)? onProgress,
   }) async {
-    if (!Platform.isIOS) {
+    if (kIsWeb || !Platform.isIOS) {
       // Android equivalent (Kotlin + MediaCodec) is deferred.
       // Throwing here pushes the caller into the server-side fallback.
       throw UnsupportedError(

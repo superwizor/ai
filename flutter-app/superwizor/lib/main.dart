@@ -10,6 +10,7 @@ import 'services/live_activity_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -82,7 +83,7 @@ void main() async {
   // Covers: (1) report finished while app was killed, (2) offline
   // scenario where FCM push arrived late, (3) user just wants to use
   // the app and the widget is redundant. On Android this is a no-op.
-  if (Platform.isIOS) {
+  if (!kIsWeb && Platform.isIOS) {
     WidgetsBinding.instance.addObserver(_LiveActivityResumeObserver());
   }
 
@@ -126,7 +127,7 @@ void main() async {
     //
     // But DO mark the flag so the resume observer knows it can dismiss
     // next time the user leaves and comes back.
-    if (Platform.isIOS && msg.data['notification_type'] == 'report_ready') {
+    if (!kIsWeb && Platform.isIOS && msg.data['notification_type'] == 'report_ready') {
       LiveActivityService.markReportReady();
     }
   });
@@ -138,7 +139,7 @@ void main() async {
     if (type == 'report_ready' && sessionId is String && sessionId.isNotEmpty) {
       // User tapped the push → they're about to see the report.
       // Dismiss the Live Activity widget so it doesn't linger.
-      if (Platform.isIOS) LiveActivityService.stopFromBackground();
+      if (!kIsWeb && Platform.isIOS) LiveActivityService.stopFromBackground();
       // Routes via the global navigator; SessionStatusScreen will
       // pick up `done` immediately and run the cascade.
       navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
