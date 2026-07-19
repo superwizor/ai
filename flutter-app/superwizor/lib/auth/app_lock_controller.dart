@@ -83,6 +83,11 @@ class AppLockController extends Notifier<bool> {
     if (state) return; // already locked
     if (since != null &&
         DateTime.now().difference(since) >= inactivityTimeout) {
+      // Breadcrumb for "Face ID out of nowhere" reports: says exactly
+      // when and why the mid-session relock engaged.
+      debugPrint('[app-lock] relock on resume — backgrounded '
+          '${DateTime.now().difference(since).inSeconds}s '
+          '(threshold ${inactivityTimeout.inSeconds}s)');
       state = true;
     }
   }

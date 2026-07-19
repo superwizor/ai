@@ -306,6 +306,23 @@ class _LockGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Mid-session relock (60 s+ backgrounded — incl. iOS auto-locking the
+    // screen while the therapist reads without touching) can engage while
+    // the user is deep in the navigator stack (kartoteka, transcript…).
+    // This gate only swaps the ROOT route, so without the collapse below
+    // the LockScreen mounts INVISIBLY under the pushed route: its
+    // auto-prompt fires "out of nowhere" over patient data (or gets
+    // swallowed by the resume race), the PHI stays visible despite the
+    // locked state, and the lock UI only surfaces when the user happens
+    // to pop back — reported 2026-07-19 as "Face ID przy przejściu
+    // kartoteka → lista, bez wygaszania ekranu". Collapsing to root the
+    // moment the lock engages hides PHI instantly and guarantees the
+    // prompt only ever fires with the LockScreen actually on screen.
+    ref.listen<bool>(appLockProvider, (prev, next) {
+      if (next && !(prev ?? false)) {
+        navigatorKey.currentState?.popUntil((r) => r.isFirst);
+      }
+    });
     final locked = ref.watch(appLockProvider);
     return locked ? const LockScreen() : const HomeScreen();
   }
