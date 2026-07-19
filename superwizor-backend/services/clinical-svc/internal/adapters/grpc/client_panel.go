@@ -411,32 +411,36 @@ func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv
 // recipientUserID + patientFileID are used only by CLIENT_NOTE_RECEIVED
 // (PR11) to fan a live FCM refresh push out to the therapist; empty for
 // ITEM_SHARED (the client panel is web and pulls on focus).
+//
+// SYNCHRONOUS by design (2026-07-19): this used to run in a goroutine
+// detached from the request ("so a slow notification-svc can't leak
+// goroutines") — but Cloud Run throttles CPU the moment the response
+// returns, so the detached HTTP/2 stream died mid-flight with
+// RST_STREAM/PROTOCOL_ERROR on EVERY call and the therapist's live
+// note refresh (inbox + FCM) never fired. Best-effort semantics stay:
+// failures are logged, never surfaced; the timeout caps the added
+// request latency instead of the goroutine's lifetime.
 func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, event, itemKind, recipientUserID, patientFileID string) {
 	if s.notification == nil || email == "" {
 		return
 	}
-	// Detach from the request lifecycle but keep tracing metadata and
-	// bound the send so a slow notification-svc can't leak goroutines.
-	base := context.WithoutCancel(ctx)
+	sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		base = metadata.NewOutgoingContext(base, md)
+		sendCtx = metadata.NewOutgoingContext(sendCtx, md)
 	}
-	go func() {
-		sendCtx, cancel := context.WithTimeout(base, 15*time.Second)
-		defer cancel()
-		if _, err := s.notification.SendClientPanelEvent(sendCtx, &notificationv1.SendClientPanelEventRequest{
-			RecipientEmail:  email,
-			Event:           event,
-			ItemKind:        itemKind,
-			Locale:          locale,
-			PanelUrl:        s.panelURL,
-			RecipientUserId: recipientUserID,
-			PatientFileId:   patientFileID,
-		}); err != nil {
-			slog.Warn("client panel event notification failed",
-				"event", event, "item_kind", itemKind, "error", err)
-		}
-	}()
+	if _, err := s.notification.SendClientPanelEvent(sendCtx, &notificationv1.SendClientPanelEventRequest{
+		RecipientEmail:  email,
+		Event:           event,
+		ItemKind:        itemKind,
+		Locale:          locale,
+		PanelUrl:        s.panelURL,
+		RecipientUserId: recipientUserID,
+		PatientFileId:   patientFileID,
+	}); err != nil {
+		slog.Warn("client panel event notification failed",
+			"event", event, "item_kind", itemKind, "error", err)
+	}
 }
 
 // notifyKartotekaClient resolves the kartoteka's client account and, if
