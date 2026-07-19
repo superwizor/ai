@@ -15,6 +15,7 @@ import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
+import '../services/pairing_code_store.dart';
 import '../theme/euphire_theme.dart';
 
 /// Live invite status for a kartoteka. autoDispose so re-opening the
@@ -53,9 +54,15 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   bool _sending = false;
   String? _error;
   bool _sent = false;
-  // docs/42 O1: kod parowania z odpowiedzi InviteClient — pokazywany
-  // terapeucie JEDEN raz (ponowne wyświetlenie = re-invite z nowym kodem).
+  // docs/42 O1: kod parowania z odpowiedzi InviteClient — serwer zna
+  // tylko hash, plaintext żyje w odpowiedzi (tu) i w Keychain tego
+  // urządzenia (PairingCodeStore), żeby dało się go pokazać ponownie
+  // po powrocie na ekran PENDING (fix 2026-07-19).
   String? _pairingCode;
+  // Kod przypomniany z Keychain dla bieżącego PENDING zaproszenia
+  // (+ e-mail, na który był wystawiony — do cross-checku ze statusem).
+  String? _storedCode;
+  String? _storedCodeEmail;
   bool _revoking = false;
 
   static final RegExp _emailRegex =
@@ -65,6 +72,14 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   void initState() {
     super.initState();
     _emailCtrl = TextEditingController(text: widget.patient.email);
+    PairingCodeStore.read(widget.patient.id).then((stored) {
+      if (mounted && stored != null) {
+        setState(() {
+          _storedCode = stored.code;
+          _storedCodeEmail = stored.email;
+        });
+      }
+    });
   }
 
   @override
@@ -104,11 +119,19 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
         email: email,
       ));
       ref.invalidate(clientInviteStatusProvider(widget.patient.id));
+      // Zapamiętaj kod na TYM urządzeniu (Keychain), żeby dało się go
+      // pokazać ponownie po wyjściu z arkusza. Re-invite nadpisuje.
+      if (inv.pairingCode.isNotEmpty) {
+        await PairingCodeStore.save(widget.patient.id,
+            code: inv.pairingCode, email: email);
+      }
       if (mounted) {
         setState(() {
           _sending = false;
           _sent = true;
           _pairingCode = inv.pairingCode.isEmpty ? null : inv.pairingCode;
+          _storedCode = inv.pairingCode.isEmpty ? null : inv.pairingCode;
+          _storedCodeEmail = email;
         });
       }
     } on GrpcError catch (e) {
@@ -227,6 +250,8 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
   Widget _buildBody(AppLocalizations l, identity_pb.ClientInviteStatus s) {
     switch (s.status) {
       case 'ACTIVE':
+        // Zaakceptowane — kod zużyty; sprzątnij ewentualny wpis Keychain.
+        PairingCodeStore.delete(widget.patient.id);
         return _statusChip(
           icon: Icons.verified_rounded,
           color: const Color(0xFF81C784),
@@ -239,6 +264,16 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
           text: l.invite_client_status_inactive,
         );
       case 'PENDING':
+        // Kod z Keychain pokazujemy tylko, gdy pasuje do BIEŻĄCEGO
+        // zaproszenia (ten sam e-mail); zaproszenie wysłane z innego
+        // urządzenia zrotowało kod — wtedy nie mamy czego pokazać.
+        final rememberedCode = (!_sent &&
+                _storedCode != null &&
+                (_storedCodeEmail == null ||
+                    _storedCodeEmail!.toLowerCase() ==
+                        s.email.toLowerCase()))
+            ? _storedCode
+            : null;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -253,6 +288,10 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
                     : '—',
               ),
             ),
+            if (rememberedCode != null) ...[
+              const SizedBox(height: 16),
+              _codePanel(l, rememberedCode),
+            ],
             const SizedBox(height: 16),
             _buildEmailField(l),
             const SizedBox(height: 16),
@@ -484,11 +523,15 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
         patientFileId: widget.patient.id,
       ));
       ref.invalidate(clientInviteStatusProvider(widget.patient.id));
+      // Cofnięte zaproszenie = martwy kod — usuń go z Keychain.
+      await PairingCodeStore.delete(widget.patient.id);
       if (mounted) {
         setState(() {
           _revoking = false;
           _sent = false;
           _pairingCode = null;
+          _storedCode = null;
+          _storedCodeEmail = null;
         });
       }
     } catch (_) {
@@ -498,6 +541,71 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
         _error = AppLocalizations.of(context).invite_client_error;
       });
     }
+  }
+
+  /// Panel z 6-cyfrowym kodem parowania (kopiowanie + hint). Używany
+  /// świeżo po InviteClient oraz na widoku PENDING z kodu z Keychain.
+  Widget _codePanel(AppLocalizations l, String code) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: EuphireColors.ember.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: EuphireColors.ember.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            l.invite_client_code_title,
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: EuphireColors.frostWhite,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${code.substring(0, 3)} ${code.substring(3)}',
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 4,
+                  color: EuphireColors.ember,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: l.invite_client_code_copied,
+                icon: const Icon(Icons.copy_rounded,
+                    size: 20, color: EuphireColors.mist),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l.invite_client_code_copied)),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l.invite_client_code_hint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 12,
+              height: 1.5,
+              color: EuphireColors.mist.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _sendButton(AppLocalizations l, {required bool resend}) {
@@ -530,72 +638,10 @@ class _ClientInviteSheetState extends ConsumerState<ClientInviteSheet> {
           const SizedBox(height: 12),
         ],
         if (_sent && _pairingCode != null) ...[
-          // docs/42 O1: kod parowania — pokazywany raz; pacjent musi go
-          // wpisać przy aktywacji. NIE wysyłać e-mailem.
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: EuphireColors.ember.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: EuphireColors.ember.withValues(alpha: 0.4)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  l.invite_client_code_title,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: EuphireColors.frostWhite,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${_pairingCode!.substring(0, 3)} ${_pairingCode!.substring(3)}',
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 4,
-                        color: EuphireColors.ember,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip: l.invite_client_code_copied,
-                      icon: const Icon(Icons.copy_rounded,
-                          size: 20, color: EuphireColors.mist),
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: _pairingCode!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                                  Text(l.invite_client_code_copied)),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l.invite_client_code_hint,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 12,
-                    height: 1.5,
-                    color: EuphireColors.mist.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // docs/42 O1: kod parowania — pacjent musi go wpisać przy
+          // aktywacji. NIE wysyłać e-mailem. Panel wraca też na widoku
+          // PENDING z kodu zapamiętanego w Keychain (PairingCodeStore).
+          _codePanel(l, _pairingCode!),
           const SizedBox(height: 16),
         ],
         ElevatedButton(
