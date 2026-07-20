@@ -247,8 +247,10 @@ DB/KMS (raport nie jest jeszcze utrwalony, więc retry niczego nie
 duplikuje).
 
 Flaga: `LLM_PSEUDONYMIZE_CANONICAL` ∈ {off, on} — osobny kill-switch,
-bo zmienia dane at-rest, nie tylko wejście modeli. Staging: `on`
-(utrwalone w `staging/variables.tf`). Rollback flagi zatrzymuje
+bo zmienia dane at-rest, nie tylko wejście modeli. **Default ON**
+(kod i moduł terraform, decyzja 2026-07-20): brak/pusta zmienna =
+pseudonimizacja at-rest; wyłącza wyłącznie jawne `off`. Staging: `on`
+utrwalone także w `staging/variables.tf`. Rollback flagi zatrzymuje
 nadpisywanie nowych sesji; nadpisanych nie odzyskamy (by design).
 
 Zakres ryzyka zaakceptowany 2026-07-20: między zapisem STT a

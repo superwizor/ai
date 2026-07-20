@@ -1992,10 +1992,11 @@ func pseudonymizeCanonicalTranscript(ctx context.Context, transcriptID string, r
 // canonicalPseudonymizeEnabled gates the destructive canonical rewrite
 // behind its own kill-switch, separate from LLM_PSEUDONYMIZE: the LLM
 // modes only shape what models see, this one overwrites stored data.
-// Values: "on" | anything else = off. Default off — staging opts in via
-// terraform (LLM_PSEUDONYMIZE_CANONICAL=on).
+// Default ON (decyzja 2026-07-20): unset/empty env means pseudonymize
+// at rest; only an explicit "off" disables the rewrite. Kill-switch:
+// LLM_PSEUDONYMIZE_CANONICAL=off + redeploy.
 func canonicalPseudonymizeEnabled() bool {
-	return strings.TrimSpace(strings.ToLower(os.Getenv("LLM_PSEUDONYMIZE_CANONICAL"))) == "on"
+	return strings.TrimSpace(strings.ToLower(os.Getenv("LLM_PSEUDONYMIZE_CANONICAL"))) != "off"
 }
 
 // generateEmbedding calls Vertex AI's text-embedding-005 to produce a

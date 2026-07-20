@@ -141,9 +141,11 @@ variable "llm_pseudonymize" {
 
 variable "llm_pseudonymize_canonical" {
   type = string
-  # docs/41 §10: "on" → llm-worker nadpisuje kanoniczny blob transkrypcji
+  # docs/41 §10: llm-worker nadpisuje kanoniczny blob transkrypcji
   # + transcript_segments zredagowaną wersją (nieodwracalne). Osobny
   # kill-switch, bo w odróznieniu od LLM_PSEUDONYMIZE ta flaga zmienia
-  # dane at-rest, nie tylko wejscie modeli. Default off.
-  default = "off"
+  # dane at-rest, nie tylko wejscie modeli. Default ON (decyzja
+  # 2026-07-20): pseudonimizacja at-rest domyslnie; wylaczenie tylko
+  # jawnym "off".
+  default = "on"
 }
