@@ -18,7 +18,7 @@ Do the following every time:
    - **Connect-RPC features**: require an httptest round-trip log proving the wire works end-to-end (not just unit tests of business logic).
    - **DB changes**: require a `go test ./...` log AND visible sqlc-regenerated code in the diff (no hand-edited queries.sql.go).
    - **Web UI** (Next.js / Flutter Web): require a Playwright screenshot at the relevant breakpoint(s) + a console-log capture showing no errors.
-   - **i18n**: no hard-coded Polish in components — strings must route through translation keys (`docs/18_WEB_APP_DESIGN.md` §14).
+   - **i18n**: no hard-coded Polish in components — strings must route through translation keys (`docs/19_WEB_APP_DESIGN.md` §14).
    - **Branch hygiene**: work should be on `feat/web-app-slice-N` off `feat/web-app`. A diff against `main` instead of `feat/web-app` is suspicious.
 4. Decide.
 

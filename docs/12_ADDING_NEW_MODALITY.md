@@ -169,7 +169,7 @@ name + abbreviation:
 "modality_abbr_ifs": "IFS",
 ```
 
-**`docs/03_DATA_MODEL.md`** — refresh the `system_code` enum comment in the
+**`docs/02_DATA_MODEL.md`** — refresh the `system_code` enum comment in the
 modalities table block.
 
 Then regenerate l10n and verify:
@@ -189,7 +189,7 @@ git add superwizor-backend/migrations/modality_prompts/ifs.json \
         flutter-app/superwizor/lib/constants/modalities.dart \
         flutter-app/superwizor/lib/widgets/modality_sheet.dart \
         flutter-app/superwizor/lib/l10n/ \
-        docs/03_DATA_MODEL.md
+        docs/02_DATA_MODEL.md
 git commit -m "feat(modalities): add IFS modality"
 git push origin main
 ```

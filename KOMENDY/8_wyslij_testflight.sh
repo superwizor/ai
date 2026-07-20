@@ -12,7 +12,7 @@ echo "📦 2. Budowanie paczki IPA dla iOS..."
 flutter build ipa
 
 # Wczytanie konfiguracji z credentials.env jeśli istnieje
-ENV_FILE="$(dirname "$0")/../../credentials.env"
+ENV_FILE="$(dirname "$0")/../credentials.env"
 if [ -f "$ENV_FILE" ]; then
     APP_STORE_ISSUER_ID=$(grep APP_STORE_ISSUER_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
     APP_STORE_KEY_ID=$(grep APP_STORE_KEY_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')

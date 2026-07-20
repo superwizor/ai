@@ -60,7 +60,7 @@ service IdentityService {
 
 `UserContext` is propagated by callers in gRPC metadata (`x-superwizor-user-id`, `x-superwizor-org-id`, `x-superwizor-role`) on every downstream call.
 
-> Source: `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.2 (lines 803–2056) — full task-by-task spec.
+> Source: `docs/04_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.2 (lines 803–2056) — full task-by-task spec.
 
 ## Tables owned (Identity domain)
 
@@ -71,7 +71,7 @@ service IdentityService {
 | `addresses` | Postal addresses (1:1 with `organizations`) |
 | `user_roles` | Reserved for future multi-role support; today `users.role` enum is the truth |
 
-> Source: `docs/03_DATA_MODEL.md` §4.3 (lines 1057–1200).
+> Source: `docs/02_DATA_MODEL.md` §4.3 (lines 1057–1200).
 
 ## Auth model
 
@@ -349,8 +349,8 @@ unset — using MockSender").
 
 ## Source-doc pointers
 
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` lines 803–2056 — full Phase 1 task list (proto def, sqlc, Firebase adapter, gRPC handler, deploy, smoke tests, troubleshooting).
-- `docs/03_DATA_MODEL.md` §4.3 (lines 1057–1200) — DDL.
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.1 (lines 359–400) — service responsibility.
-- `docs/18_WEB_APP_DESIGN.md` — full Slice 1+ design + form catalogue + i18n contract.
-- `docs/19_WEB_SLICE_1_PLAN.md` — the 8-commit Slice 1 plan that introduces the new RPCs (RegisterOrganization, InviteTherapist, AcceptInvitation, Admin*).
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` lines 803–2056 — full Phase 1 task list (proto def, sqlc, Firebase adapter, gRPC handler, deploy, smoke tests, troubleshooting).
+- `docs/02_DATA_MODEL.md` §4.3 (lines 1057–1200) — DDL.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.1 (lines 359–400) — service responsibility.
+- `docs/19_WEB_APP_DESIGN.md` — full Slice 1+ design + form catalogue + i18n contract.
+- `docs/20_WEB_SLICE_1_PLAN.md` — the 8-commit Slice 1 plan that introduces the new RPCs (RegisterOrganization, InviteTherapist, AcceptInvitation, Admin*).

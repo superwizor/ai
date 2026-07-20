@@ -237,4 +237,4 @@ Na dzień sporządzenia niniejszego Rejestru, Podmiot Przetwarzający korzysta z
 
 ---
 
-*Dokument wygenerowany na podstawie analizy kodu źródłowego, konfiguracji infrastruktury (Terraform), modelu danych (docs/03_DATA_MODEL.md), oraz dokumentacji architektury SuperWizor AI w wersji z dnia 24.06.2026.*
+*Dokument wygenerowany na podstawie analizy kodu źródłowego, konfiguracji infrastruktury (Terraform), modelu danych (docs/02_DATA_MODEL.md), oraz dokumentacji architektury SuperWizor AI w wersji z dnia 24.06.2026.*

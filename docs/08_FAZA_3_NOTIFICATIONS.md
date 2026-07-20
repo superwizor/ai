@@ -11,7 +11,7 @@ timestamp: 2026-05-08T10:07:36+02:00
 
 > **Cel:** Doprowadzić `notification-svc` z dzisiejszego stubu (`go.mod` + 28-bajtowy `main.go`) do działającego serwisu, który (a) odbiera Pub/Sub eventy z pipeline'u AI, (b) wysyła FCM push do terapeuty, (c) lustruje status sesji do Firestore tak, by aplikacja Flutter dostawała live update bez pollowania.
 >
-> Bazuje na: [`02_ARCHITEKTURA_TECHNICZNA.md`](./02_ARCHITEKTURA_TECHNICZNA.md) §4.2.7 + §6, [`03_DATA_MODEL.md`](./03_DATA_MODEL.md), oraz wzorcach ustabilizowanych w Fazie 2 (Cloud Functions Gen2 workery + KMS envelope encryption + DLQ).
+> Bazuje na: [`01_ARCHITEKTURA_TECHNICZNA.md`](./01_ARCHITEKTURA_TECHNICZNA.md) §4.2.7 + §6, [`02_DATA_MODEL.md`](./02_DATA_MODEL.md), oraz wzorcach ustabilizowanych w Fazie 2 (Cloud Functions Gen2 workery + KMS envelope encryption + DLQ).
 
 ---
 
@@ -495,21 +495,21 @@ terragrunt apply
 ### Sprint 3.2 Smoke test
 
 ```bash
-# 1. SA exists
+# 08. SA exists
 gcloud iam service-accounts describe \
   notification-svc@superwizor-ai-25ecd.iam.gserviceaccount.com \
   --project=superwizor-ai-25ecd
 
-# 2. Bindings present
+# 08. Bindings present
 gcloud projects get-iam-policy superwizor-ai-25ecd \
   --flatten="bindings[].members" \
   --filter="bindings.members:notification-svc@" \
   --format="table(bindings.role)"
 
-# 3. Firestore rules deployed
+# 08. Firestore rules deployed
 firebase firestore:rules:get --project=superwizor-ai-25ecd
 
-# 4. Proto stubs generated
+# 08. Proto stubs generated
 ls superwizor-backend/gen/go/notification/v1/
 ```
 
@@ -737,21 +737,21 @@ Add input vars: `notification_worker_sa_email`, `report_generated_topic`.
 ### Sprint 3.3 Smoke test
 
 ```bash
-# 1. Manually publish a report.generated message
+# 08. Manually publish a report.generated message
 gcloud pubsub topics publish report.generated \
   --message='{"session_id":"<existing_session_uuid>","report_id":"<existing_report_uuid>"}' \
   --project=superwizor-ai-25ecd
 
-# 2. Watch worker logs — should see "processing report.generated"
+# 08. Watch worker logs — should see "processing report.generated"
 gcloud logging read \
   'resource.labels.service_name="notification-worker"' \
   --project=superwizor-ai-25ecd --limit=20
 
-# 3. Check Firestore — should have session_states/{sessionId} doc
+# 08. Check Firestore — should have session_states/{sessionId} doc
 gcloud firestore documents describe \
   "projects/superwizor-ai-25ecd/databases/(default)/documents/session_states/<session_id>"
 
-# 4. notification_deliveries row exists
+# 08. notification_deliveries row exists
 psql ... -c "SELECT * FROM notification_deliveries WHERE session_id = '<sessionID>';"
 ```
 
@@ -878,20 +878,20 @@ TOKEN=$(./tests/e2e/get_test_user.sh | head -1)  # mints Firebase ID token
 NOTIFICATION_URL=$(gcloud run services describe notification-svc \
   --region=europe-central2 --project=superwizor-ai-25ecd --format='value(status.url)')
 
-# 1. Register a fake token
+# 08. Register a fake token
 grpcurl -H "authorization: Bearer ${TOKEN}" \
   -d '{"token":"fake_test_token_xyz","platform":"PLATFORM_IOS","app_version":"0.1.0"}' \
   ${NOTIFICATION_URL#https://}:443 \
   notification.v1.NotificationService/RegisterFCMToken
 
-# 2. Verify in PG
+# 08. Verify in PG
 psql ... -c "SELECT user_id, platform FROM fcm_tokens WHERE token = 'fake_test_token_xyz';"
 
-# 3. Re-register same token — should return already_registered=true
+# 08. Re-register same token — should return already_registered=true
 grpcurl ... RegisterFCMToken
 # expected: {"tokenId":"<same uuid>","alreadyRegistered":true}
 
-# 4. Remove it
+# 08. Remove it
 grpcurl ... -d '{"token":"fake_test_token_xyz"}' ... RemoveFCMToken
 psql ... -c "SELECT invalidated_at FROM fcm_tokens WHERE token='fake_test_token_xyz';"
 # invalidated_at should be set
@@ -1077,8 +1077,8 @@ Cloud Monitoring alerting policies (terraform):
 
 ## Sources
 
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (notification-svc spec), §6 (Firestore as sync layer).
-- `docs/03_DATA_MODEL.md` §1.1 (no domain ownership listed for notifications — implicitly here).
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (notification-svc spec), §6 (Firestore as sync layer).
+- `docs/02_DATA_MODEL.md` §1.1 (no domain ownership listed for notifications — implicitly here).
 - `docs/agents/00_GLOBAL_CONTEXT.md` (P1, P4, encryption pattern, Pub/Sub conventions).
 - `docs/agents/05_ai-pipeline-svc.md` (worker pattern reference).
 - Live state: `infra/modules/pubsub/main.tf` (existing topics: `report.generated` already there); `firestore.rules` (placeholder, expires 2026-05-28).

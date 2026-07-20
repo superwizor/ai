@@ -472,7 +472,7 @@ Build tag `// +build e2e` so it doesn't run in `make test` but does run in a ded
 
 ## Source-doc pointers
 
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §11 (Observability) — what to alert on.
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` lines 3376–3676 — Phase 1 smoke test scripts and observability spec.
-- `docs/06_FAZA_2_INGESTION_AI.md` Sprint 2.2 §"Smoke test" (lines 1466–1485), Sprint 2.5 §"Smoke test" — Phase 2 smoke patterns.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §11 (Observability) — what to alert on.
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` lines 3376–3676 — Phase 1 smoke test scripts and observability spec.
+- `docs/05_FAZA_2_INGESTION_AI.md` Sprint 2.2 §"Smoke test" (lines 1466–1485), Sprint 2.5 §"Smoke test" — Phase 2 smoke patterns.
 - `tests/e2e/*.sh` — actual scripts in repo today.

@@ -28,7 +28,7 @@ The most critical service. Five workloads under one Go module:
 - `ai-pipeline-svc` Cloud Run service — deployed, serves `/health` only.
 - **memory-compactor-worker** (Phase 3 spec) — not built.
 
-> Source for current behavior: `services/ai-pipeline-svc/cmd/{stt-worker,llm-worker}/main.go`. Source for spec: `docs/06_FAZA_2_INGESTION_AI.md` lines 1759–end + ADR-IMPL-001 through 007. Source for the LLM-optimisation refactor: this file (sections below marked **(feat/llm-optimisation)**) + the design plan in the conversation log on that branch.
+> Source for current behavior: `services/ai-pipeline-svc/cmd/{stt-worker,llm-worker}/main.go`. Source for spec: `docs/05_FAZA_2_INGESTION_AI.md` lines 1759–end + ADR-IMPL-001 through 007. Source for the LLM-optimisation refactor: this file (sections below marked **(feat/llm-optimisation)**) + the design plan in the conversation log on that branch.
 
 > **Note on model**: the file historically said "Gemini 2.5 PRO". The production worker actually runs `gemini-2.5-flash-lite` (cheaper, what's available in `europe-west4`). PRO swap is queued as a separate change behind the Markdown rollout per the cost/quality eval.
 
@@ -509,7 +509,7 @@ per session into `rag_memories`, and on the next session retrieves the
 prior threads most relevant to THAT session's own themes. Replaces the
 2026-05-19 whole-session-summary design; the old reader and the
 `LLM_RAG_MODE` flag were removed outright (pre-GA, no rollback path).
-Design + decisions: `docs/30_RAG_THEME_CONTEXT_REFACTOR.md`.
+Design + decisions: `docs/35_RAG_THEME_CONTEXT_REFACTOR.md`.
 
 ### Pipeline order (the key change)
 
@@ -626,7 +626,7 @@ Two call-1 contracts coexist behind `LLM_DIARIZATION_MODE`:
 
 > Research backing the Markdown move (Tam et al., 2024 "Let Me Speak Freely?"): JSON-constrained decoding costs ~10–15% on reasoning tasks; smaller models lose the most. Diarization clustering is a reasoning task. The 3-session probe on `feat/llm-optimisation` validates per-model before the flag flips.
 
-> See `docs/06_FAZA_2_INGESTION_AI.md` ADR-IMPL-007 (lines 245–379) for the full diarization design + UX.
+> See `docs/05_FAZA_2_INGESTION_AI.md` ADR-IMPL-007 (lines 245–379) for the full diarization design + UX.
 
 Migration `000008_modality_prompts_pl.up.sql` populates the Polish prompts. If prompt content changes, write a new migration — don't UPDATE in place outside migrations.
 
@@ -759,7 +759,7 @@ To exercise the full pipeline locally, you'd need:
 
 ## Source-doc pointers
 
-- `docs/06_FAZA_2_INGESTION_AI.md` lines 1759–end — Sprints 2.5 (STT worker), 2.6 (LLM worker), 2.7+ (memory).
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.5 (lines 441–465), §8 (Pipeline AI, lines 835–1023).
-- `docs/03_DATA_MODEL.md` §4.6, §4.7 (RAG), §4.8 (HiTOP).
+- `docs/05_FAZA_2_INGESTION_AI.md` lines 1759–end — Sprints 2.5 (STT worker), 2.6 (LLM worker), 2.7+ (memory).
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.5 (lines 441–465), §8 (Pipeline AI, lines 835–1023).
+- `docs/02_DATA_MODEL.md` §4.6, §4.7 (RAG), §4.8 (HiTOP).
 - ADR-IMPL-001 to 007 (`docs/06_*.md` lines 102–379) — read all of them.

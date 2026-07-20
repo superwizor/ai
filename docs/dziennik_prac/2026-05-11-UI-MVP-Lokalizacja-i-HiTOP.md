@@ -15,7 +15,7 @@ timestamp: 2026-05-11T20:57:40+02:00
 ## 🛠 Zmiany w kodzie i plikach
 
 ### Fala 1 — Lokalizacja i UI unifikacja
-- `docs/HiTOP_plan.md` - Utworzono dokument z zaparkowanym planem integracji i pomiaru symptomów z użyciem standardu HiTOP.
+- `docs/55_HiTOP_plan.md` - Utworzono dokument z zaparkowanym planem integracji i pomiaru symptomów z użyciem standardu HiTOP.
 - `flutter-app/superwizor/lib/l10n/app_en.arb` & `app_localizations_en.dart` - Dodano angielskie tłumaczenia tekstów interfejsu (internacjonalizacja).
 - `flutter-app/superwizor/lib/providers/locale_provider.dart` - Utworzono dostawcę do zarządzania stanem wybranego języka (`Riverpod`) i jego zapisu na urządzeniu (`shared_preferences`).
 - `flutter-app/superwizor/lib/screens/menu_screen.dart` (oraz widgety) - Skrypt `patch_menu.py` zastąpił standardowy `showModalBottomSheet` przez niestandardowy `showEuphireBottomSheet` dla spójności UI (design system Euphire).
@@ -40,7 +40,7 @@ timestamp: 2026-05-11T20:57:40+02:00
 - **Flutter / State Management:** `ModalitySheet` zrefaktorowany z lokalnego `setState` na globalny `selectedModalityProvider` (Riverpod Notifier). Modalność domyślna jest cached in-memory na czas sesji i propagowana do `addPatient()`.
 - **Flutter / Zarządzanie sesjami:** Dodano lokalne (in-memory) usuwanie i zmianę nazwy sesji. Operacje nie są persystowane na backendzie — wystarczające na MVP, bo dane i tak odświeżają się przy restarcie z gRPC.
 - **Backend / LLM Worker:** Podniesienie modelu na `gemini-3.1-flash` (z `flash-lite`) aby poprawić jakość generowanych raportów klinicznych. Podwojenie max tokenów (16k) eliminuje problem z obcinaniem długich raportów wielosekcyjnych. Dodano konfiguralność via env `GEMINI_MODEL`.
-- **Architektura / HiTOP:** Ze względu na pseudonaukowe wyniki dotychczasowego prompta zrezygnowano z szacowania wyników bezpośrednio przez LLM w jednym kroku. Zamiast tego opracowano ustrukturyzowany workflow 3-etapowy, który został szczegółowo zaparkowany w `docs/HiTOP_plan.md` jako praca na później.
+- **Architektura / HiTOP:** Ze względu na pseudonaukowe wyniki dotychczasowego prompta zrezygnowano z szacowania wyników bezpośrednio przez LLM w jednym kroku. Zamiast tego opracowano ustrukturyzowany workflow 3-etapowy, który został szczegółowo zaparkowany w `docs/55_HiTOP_plan.md` jako praca na później.
 - **Bezpieczeństwo/Medyczne:** W tłumaczeniach (`app_en.arb`) uwzględniono etykiety informujące o ryzyku eksportu danych wrażliwych. Konwersja audio odbywa się lokalnie na urządzeniu — żadne dane pacjenta nie trafiają do usług trzecich. 🟢
 
 ## 🚨 Znane problemy i Dług Technologiczny

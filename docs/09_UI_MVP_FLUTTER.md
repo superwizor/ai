@@ -11,7 +11,7 @@ timestamp: 2026-05-10T23:14:54+02:00
 
 > **Cel:** Doprowadzić aplikację Flutter do stanu MVP zdolnego przeprowadzić terapeutę przez pełny flow: login → setup → nagranie sesji → upload → live status → transkrypcja + raport. Backend (Fazy 0-3) jest gotowy i wystawia gRPC + Firestore mirror.
 >
-> Bazuje na: [`02_ARCHITEKTURA_TECHNICZNA.md`](./02_ARCHITEKTURA_TECHNICZNA.md), [`03_DATA_MODEL.md`](./03_DATA_MODEL.md), [`08_FAZA_3_NOTIFICATIONS.md`](./08_FAZA_3_NOTIFICATIONS.md), `B_05_ui_ux_design_system.md`, `B_09_trauma_informed_writing.md`.
+> Bazuje na: [`01_ARCHITEKTURA_TECHNICZNA.md`](./01_ARCHITEKTURA_TECHNICZNA.md), [`02_DATA_MODEL.md`](./02_DATA_MODEL.md), [`08_FAZA_3_NOTIFICATIONS.md`](./08_FAZA_3_NOTIFICATIONS.md), `B_05_ui_ux_design_system.md`, `B_09_trauma_informed_writing.md`.
 
 ---
 
@@ -228,15 +228,15 @@ class SessionStateListener {
 ### Etap 0 — Smoke test
 
 ```bash
-# 1. Zaloguj się w apce; check że FCM token poszedł do PG
+# 09. Zaloguj się w apce; check że FCM token poszedł do PG
 gcloud sql connect superwizor-db-bc4c27de --user=superwizor_app --quiet
 psql> SELECT user_id, platform, app_version FROM fcm_tokens WHERE invalidated_at IS NULL;
 
-# 2. Wyślij ręczny push
+# 09. Wyślij ręczny push
 gcloud pubsub topics publish report.generated \
   --message='{"session_id":"<jakiś istniejący>","report_id":"<jakiś istniejący>"}'
 
-# 3. Apka powinna dostać push w foreground i background; tap → ekran sesji
+# 09. Apka powinna dostać push w foreground i background; tap → ekran sesji
 ```
 
 ---
@@ -1613,16 +1613,16 @@ Format: `{title}` + `{body}` z FCM payload (lokalizowane przez backend, np. "Rap
 ### Walidacja OPUS E2E (kryteria akceptacji przed merge)
 
 ```bash
-# 1. Stwórz fixturę OPUS z istniejącej FLAC-owej:
+# 09. Stwórz fixturę OPUS z istniejącej FLAC-owej:
 ffmpeg -i tests/e2e/testdata/sample.flac \
   -c:a libopus -b:a 64k -ac 1 -ar 48000 \
   tests/e2e/testdata/sample.ogg
 
-# 2. Uruchom E2E test z nową fixturą:
+# 09. Uruchom E2E test z nową fixturą:
 AUDIO_FILE=tests/e2e/testdata/sample.ogg \
   go test -tags=e2e -timeout=15m ./e2e/... -run TestFullSession_HappyPath
 
-# 3. Kryteria pass/fail:
+# 09. Kryteria pass/fail:
 #    - transcript_segments count: ±2 vs FLAC baseline = OK
 #    - average confidence: > 0.85 = OK
 #    - speaker_count: 2 (dokładnie)

@@ -23,8 +23,8 @@ off it (e.g. `feat/web-app-slice-2`). Do NOT merge to `main` without explicit
 user confirmation.
 
 Key design docs:
-- `docs/18_WEB_APP_DESIGN.md` — full web-app design (R1-R9 review rounds).
-- `docs/19_WEB_SLICE_1_PLAN.md` — the 8-commit backend foundation (DONE on
+- `docs/19_WEB_APP_DESIGN.md` — full web-app design (R1-R9 review rounds).
+- `docs/20_WEB_SLICE_1_PLAN.md` — the 8-commit backend foundation (DONE on
   `feat/web-app`, 18 commits).
 
 ## Always start here
@@ -32,7 +32,7 @@ Key design docs:
 Before doing anything else, read `PROGRESS.md` at the project root. It is your
 handoff note from the previous session. If it doesn't exist yet, create it now
 with four sections (`## Done`, `## In progress`, `## Next`, `## Notes`) and
-seed it from `docs/19_WEB_SLICE_1_PLAN.md` so the next slice has context.
+seed it from `docs/20_WEB_SLICE_1_PLAN.md` so the next slice has context.
 
 Then:
 1. `git -C superwizor-backend status && git -C superwizor-backend log --oneline -10`
@@ -128,5 +128,5 @@ thing."
 
 UI strings must go through the i18n pipeline (Polish is primary, English is
 fallback). Do not hard-code Polish in components — use the translation keys
-defined in `docs/18_WEB_APP_DESIGN.md` §14. The harness evaluator will flag
+defined in `docs/19_WEB_APP_DESIGN.md` §14. The harness evaluator will flag
 hard-coded strings.

@@ -367,7 +367,7 @@ These should land as separate work:
   before this fix.
 - Pipeline architecture: `docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md`,
   `docs/15_HYBRID_EVENTARC_FINALIZATION.md`.
-- Session-state contract: `docs/17_BILLING_IMPLEMENTATION_FLOW.md §5`
+- Session-state contract: `docs/18_BILLING_IMPLEMENTATION_FLOW.md §5`
   (post-Phase-D rewrite — the canonical-blob description).
 - Prior diarization-tolerance precedent: 2026-05-18 "Agnieszka
   incident" → relaxed the empty-`Chunks:` line. See

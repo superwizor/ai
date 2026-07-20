@@ -10,8 +10,8 @@ timestamp: 2026-05-29T15:03:30+02:00
 # billing-svc
 
 > Read [`00_GLOBAL_CONTEXT.md`](./00_GLOBAL_CONTEXT.md) first.
-> Canonical design: [`docs/16_BILLING_SERVICE_PHASE_3.md`](../16_BILLING_SERVICE_PHASE_3.md) (with Phase C supersedes — see banner).
-> Current end-to-end flow: [`docs/17_BILLING_IMPLEMENTATION_FLOW.md`](../17_BILLING_IMPLEMENTATION_FLOW.md) v2.0.
+> Canonical design: [`docs/17_BILLING_SERVICE_PHASE_3.md`](../17_BILLING_SERVICE_PHASE_3.md) (with Phase C supersedes — see banner).
+> Current end-to-end flow: [`docs/18_BILLING_IMPLEMENTATION_FLOW.md`](../18_BILLING_IMPLEMENTATION_FLOW.md) v2.0.
 
 ## Mission
 
@@ -273,9 +273,9 @@ services are opaque ("Wystąpił nieznany błąd").
 
 ## Source-doc pointers
 
-- `docs/16_BILLING_SERVICE_PHASE_3.md` — canonical design (with Phase C supersedes inline)
-- `docs/17_BILLING_IMPLEMENTATION_FLOW.md` v2.0 — end-to-end flow, debugging cheat sheet
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.2 — service responsibility
-- `docs/03_DATA_MODEL.md` §4.4 — Phase 3 DDL
+- `docs/17_BILLING_SERVICE_PHASE_3.md` — canonical design (with Phase C supersedes inline)
+- `docs/18_BILLING_IMPLEMENTATION_FLOW.md` v2.0 — end-to-end flow, debugging cheat sheet
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.2 — service responsibility
+- `docs/02_DATA_MODEL.md` §4.4 — Phase 3 DDL
 - ADR-DM-017 — token semantics
 - ADR-BL-001/002/004 — billing-specific ADRs

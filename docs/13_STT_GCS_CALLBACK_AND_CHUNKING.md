@@ -1390,5 +1390,5 @@ in production.
 ### Related design docs
 - `docs/11_IPHONE_AUDIO_CONVERSION.md` — established the ffmpeg-in-
   ingestion-svc pattern that Stage 2 reuses.
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §8 — Pipeline AI (read for context
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §8 — Pipeline AI (read for context
   before editing this surface).

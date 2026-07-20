@@ -290,4 +290,4 @@ DPIA podlega przeglądowi:
 
 ---
 
-*Dokument wygenerowany na podstawie analizy kodu źródłowego (Go, Terraform, SQL), konfiguracji infrastruktury GCP, modelu danych (docs/03_DATA_MODEL.md), dokumentacji architektury (docs/02_ARCHITEKTURA_TECHNICZNA.md), oraz dokumentów prawnych (Regulamin, Polityka Prywatności, DPA) SuperWizor AI w wersji z dnia 24.06.2026.*
+*Dokument wygenerowany na podstawie analizy kodu źródłowego (Go, Terraform, SQL), konfiguracji infrastruktury GCP, modelu danych (docs/02_DATA_MODEL.md), dokumentacji architektury (docs/01_ARCHITEKTURA_TECHNICZNA.md), oraz dokumentów prawnych (Regulamin, Polityka Prywatności, DPA) SuperWizor AI w wersji z dnia 24.06.2026.*

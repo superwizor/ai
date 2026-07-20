@@ -400,9 +400,9 @@ jeszcze odzwierciedlone w RCP (dok. 02) i DPIA (dok. 03):
 | `docs/compliance/01_POLITYKA_RETENCJI_DANYCH.md` | okresy retencji, GDPR Purger, OLM |
 | `docs/compliance/02_REJESTR_CZYNNOSCI_PRZETWARZANIA.md` | RCP art. 30, lista podprocesorów |
 | `docs/compliance/03_DPIA_OCENA_SKUTKOW.md` | ocena skutków dla ochrony danych |
-| `docs/39_DEEPGRAM_STT_MIGRATION.md` | migracja STT, inwarianty EU/mip_opt_out, Faza 0 (DPA) |
-| `docs/41_PSEUDONIMIZACJA_RAPORTOW.md` | pełny design pseudonimizacji, taksonomia tokenów |
-| `docs/42_AUTORYZACJA_ZAPROSZEN_KLIENTA.md` | kod parowania, revoke, model zagrożenia |
+| `docs/46_DEEPGRAM_STT_MIGRATION.md` | migracja STT, inwarianty EU/mip_opt_out, Faza 0 (DPA) |
+| `docs/50_PSEUDONIMIZACJA_RAPORTOW.md` | pełny design pseudonimizacji, taksonomia tokenów |
+| `docs/51_AUTORYZACJA_ZAPROSZEN_KLIENTA.md` | kod parowania, revoke, model zagrożenia |
 
 ---
 

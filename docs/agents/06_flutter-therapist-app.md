@@ -404,8 +404,8 @@ User taps Record
 
 ## Source-doc pointers
 
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.4 (lines 2976–3375) — Flutter project init, Firebase setup, generated proto stubs, minimal app: login + patient files list, smoke test.
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §6 (Firestore as sync layer, lines 631–724).
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.4 (lines 2976–3375) — Flutter project init, Firebase setup, generated proto stubs, minimal app: login + patient files list, smoke test.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §6 (Firestore as sync layer, lines 631–724).
 - `docs/08_FAZA_3_NOTIFICATIONS.md` — Firestore `session_states` doc shape, status transitions, FCM payload (the queue runner subscribes to the same doc).
 - `docs/agents/10_notification-svc.md` — backend writer for `session_states`. Source of truth on which statuses are mirrored (`uploaded`, `analyzing`, `done`); `transcribing` + `failed` deferred per ADR-IMPL-012.
 - `docs/12_ADDING_NEW_MODALITY.md` — how to add a new therapy modality end-to-end (backend seed migration + Flutter constants/widget/i18n wiring). Walks through `kModalities`, `ModalitySheet._modalityDisplayName`, and the ARB key pair.

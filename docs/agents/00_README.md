@@ -31,7 +31,7 @@ timestamp: 2026-06-05T21:15:46+02:00
 | [`11_web_deploy_invoker_drift.md`](./11_web_deploy_invoker_drift.md) | Runbook: browser→backend "unknown error" | Public Cloud Run `allUsers` invoker drift, CORS preflight 403, `Code.Unknown`, deploy/Terraform-apply drift — diagnosis + fix + prevention |
 | [`12_web_file_upload_deferred.md`](./12_web_file_upload_deferred.md) | Deferred: web file upload | Browser upload non-functional; Flutter frontend done, backend TODO (ingestion-svc gRPC-web/Connect refactor + CORS + GCS bucket CORS) |
 
-3. **Source docs** (long-form, 1.7k–4.7k lines each) are at `docs/02_ARCHITEKTURA_TECHNICZNA.md`, `docs/03_DATA_MODEL.md`, `docs/05_FAZA_1_TOZSAMOSC_DANE.md`, `docs/06_FAZA_2_INGESTION_AI.md`. Each per-area file references the relevant sections by line number so you can drill into specifics.
+3. **Source docs** (long-form, 1.7k–4.7k lines each) are at `docs/01_ARCHITEKTURA_TECHNICZNA.md`, `docs/02_DATA_MODEL.md`, `docs/04_FAZA_1_TOZSAMOSC_DANE.md`, `docs/05_FAZA_2_INGESTION_AI.md`. Each per-area file references the relevant sections by line number so you can drill into specifics.
 
 ## Maintenance
 

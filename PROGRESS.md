@@ -4,7 +4,7 @@ Project: Superwizor AI — Polish therapist co-pilot. Web-app build using the
 long-running-agents harness. See `.claude/CLAUDE.md` for orientation.
 
 **Goal (multi-slice):** Implement Slices 2, 3, 4, 5, and 6 per
-`docs/18_WEB_APP_DESIGN.md` and this file. Use the `evaluator` agent after
+`docs/19_WEB_APP_DESIGN.md` and this file. Use the `evaluator` agent after
 each feature to gate progress (PASS / NEEDS_WORK). Each slice merges into
 `feat/web-app` only after evaluator passes every feature.
 
@@ -235,7 +235,7 @@ test on Marcin's iPhone build.
 ### Recording lost on phone call (branch `fix/recording-call-interruption`, 2026-06-09)
 
 Off `main` (83b6e41…). **Not yet merged** — code complete
-(WS1–**WS5** of `docs/28_RECORDING_INTERRUPTION_RESILIENCE.md`), awaiting the
+(WS1–**WS5** of `docs/31_RECORDING_INTERRUPTION_RESILIENCE.md`), awaiting the
 on-device manual matrix (docs/28 §8.3 M1–M10) on physical iPhone **+ Android**;
 phone-call interruptions can't be simulated.
 

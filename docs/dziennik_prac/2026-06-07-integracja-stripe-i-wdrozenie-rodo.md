@@ -22,7 +22,7 @@ timestamp: 2026-06-07T03:19:20+02:00
 *   `superwizor-backend/services/billing-svc/internal/adapters/postgres/db/` - Zregenerowano kod dostępu do bazy danych za pomocą `sqlc generate` (nowe zapytanie i parametry).
 
 ### Dokumentacja i Skrypty Testowe
-*   `docs/27_STRIPE_INTEGRATION_AND_FUTURE_WORK.md` - Utworzono szczegółowy dokument opisujący mechanizmy bilingu, konfigurację webhooków, gwarancje bezpieczeństwa, weryfikację sygnatur oraz plan dalszych prac produkcyjnych (VAT, Customer Portal, B2B).
+*   `docs/29_STRIPE_INTEGRATION_AND_FUTURE_WORK.md` - Utworzono szczegółowy dokument opisujący mechanizmy bilingu, konfigurację webhooków, gwarancje bezpieczeństwa, weryfikację sygnatur oraz plan dalszych prac produkcyjnych (VAT, Customer Portal, B2B).
 *   `superwizor-backend/brain/.../scratch/test_stripe_webhook.go` - Zaktualizowano lokalny skrypt testujący webhooki pod kątem lokalnej instancji serwera (port 8081).
 
 ---

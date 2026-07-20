@@ -221,9 +221,9 @@ In CI, `db-migrator` Cloud Run Job runs `migrate up` on every push to main (befo
 
 ## Source-doc pointers
 
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §10 (Security/IAM/CMEK, lines 1051+), §11 (Observability, lines 1112+), §12 (CI/CD/IaC, lines 1165+).
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.5 — observability + Cloud Monitoring.
-- `docs/06_FAZA_2_INGESTION_AI.md` Sprints 2.1, 2.2, 2.4 — migration DDL, GCS, Pub/Sub.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §10 (Security/IAM/CMEK, lines 1051+), §11 (Observability, lines 1112+), §12 (CI/CD/IaC, lines 1165+).
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.5 — observability + Cloud Monitoring.
+- `docs/05_FAZA_2_INGESTION_AI.md` Sprints 2.1, 2.2, 2.4 — migration DDL, GCS, Pub/Sub.
 - `infra/modules/<module>/main.tf` — actual code is the truth.
 
 

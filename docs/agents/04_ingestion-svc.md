@@ -219,7 +219,7 @@ DLQ on the pull subscription captures poison messages, and Pub/Sub's
 | `audio_chunks` | One row per silence-detect chunk for audio > 19 min. UNIQUE on `(audio_upload_id, chunk_index)`. |
 | `sessions` (writes only) | Creates rows in `PENDING_UPLOAD`; subscriber flips to `CREATED` or `FAILED`. Owned by clinical-svc otherwise. |
 
-> Source: `docs/03_DATA_MODEL.md` §4.6 + migrations `000007`,
+> Source: `docs/02_DATA_MODEL.md` §4.6 + migrations `000007`,
 > `000023` (audio_chunks), `000024` (UNIQUE on sessions.audio_upload_id),
 > `000025` (PENDING_UPLOAD enum value).
 
@@ -273,7 +273,7 @@ that fails to transcribe still gets cleaned up.
 `stt-worker` is responsible for explicit deletion AFTER successful
 transcription (ADR-IMPL-006).
 
-> Source: `docs/02_ARCHITEKTURA_TECHNICZNA.md` §7.2 (lines 737–774).
+> Source: `docs/01_ARCHITEKTURA_TECHNICZNA.md` §7.2 (lines 737–774).
 > Terraform: `infra/modules/storage/`.
 
 ## Constraining ADRs
@@ -375,11 +375,11 @@ see the async finalize path.
 - `docs/15_HYBRID_EVENTARC_FINALIZATION.md` — Option F design.
 - `docs/14_INGESTION_EARLY_SESSION_CREATION.md` — Option E (session
   row at CreateAudioUpload time).
-- `docs/06_FAZA_2_INGESTION_AI.md` Sprint 2.2 — original Phase 2 spec
+- `docs/05_FAZA_2_INGESTION_AI.md` Sprint 2.2 — original Phase 2 spec
   (pre-Option E/F; superseded by 14 + 15 for the upload flow).
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.4 (lines 426–440), §7.2
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.4 (lines 426–440), §7.2
   (lines 737–774), §7.3 (lines 775–834).
-- `docs/03_DATA_MODEL.md` §4.6 (lines 1519–1738) — `audio_uploads`,
+- `docs/02_DATA_MODEL.md` §4.6 (lines 1519–1738) — `audio_uploads`,
   `upload_tickets`.
 - Migrations: `000007` (Phase 2 base), `000023` (audio_chunks),
   `000024` (UNIQUE sessions.audio_upload_id), `000025`

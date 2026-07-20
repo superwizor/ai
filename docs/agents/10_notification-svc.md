@@ -224,8 +224,8 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 ## Source-doc pointers
 
 - `docs/08_FAZA_3_NOTIFICATIONS.md` — full implementation sprint plan (Definition of Done, ADRs, 6 sprints, smoke tests, troubleshooting cookbook).
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (lines 466–475) — service responsibility spec.
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §6 (lines 631–724) — Firestore as sync layer (philosophy, doc shapes, rules, cost).
-- `docs/03_DATA_MODEL.md` — notifications tables in migration 000009.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (lines 466–475) — service responsibility spec.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §6 (lines 631–724) — Firestore as sync layer (philosophy, doc shapes, rules, cost).
+- `docs/02_DATA_MODEL.md` — notifications tables in migration 000009.
 - `infra/modules/pubsub/main.tf` — unified `session.status_changed` topic deployed.
 - `firestore.rules` — production rules (64 lines, per-user read, default deny).

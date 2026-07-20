@@ -249,5 +249,5 @@ Should return a `deadLetterTopic` + `maxDeliveryAttempts` block. If empty, the p
 
 ## Source-doc pointers
 
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §12 (CI/CD and IaC, lines 1165+) — Cloud Build / Cloud Deploy spec (canary deploys are aspirational; we use simple `gcloud run deploy` today).
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §12 (CI/CD and IaC, lines 1165+) — Cloud Build / Cloud Deploy spec (canary deploys are aspirational; we use simple `gcloud run deploy` today).
 - `.github/workflows/ci.yml` — the actual workflow.

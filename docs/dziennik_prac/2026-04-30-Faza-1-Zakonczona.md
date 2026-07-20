@@ -10,10 +10,10 @@ timestamp: 2026-04-30T01:03:55+02:00
 # Sesja: Faza 1 - Tożsamość i dane - Flutter Integration & Polish
 
 **Data:** 2026-04-30
-**Cel sesji:** Ukończenie Fazy 1 (Tożsamość i dane) projektu Superwizor AI. Walidacja implementacji Flutter z wymaganiami systemu projektowego Euphire oraz standardami jakości (quality guard i design checker), upewnienie się o zaliczeniu testów jednostkowych oraz weryfikacja wszystkich checkboxów z dokumentu 05_FAZA_1_TOZSAMOSC_DANE.md.
+**Cel sesji:** Ukończenie Fazy 1 (Tożsamość i dane) projektu Superwizor AI. Walidacja implementacji Flutter z wymaganiami systemu projektowego Euphire oraz standardami jakości (quality guard i design checker), upewnienie się o zaliczeniu testów jednostkowych oraz weryfikacja wszystkich checkboxów z dokumentu 04_FAZA_1_TOZSAMOSC_DANE.md.
 
 ## 🛠 Zmiany w kodzie i plikach
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` - Zaktualizowano wszystkie checkbox'y w Spisie Treści jako zrealizowane. Faza 1 uznana za zakończoną.
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` - Zaktualizowano wszystkie checkbox'y w Spisie Treści jako zrealizowane. Faza 1 uznana za zakończoną.
 - `flutter-app/superwizor/test/widget_test.dart` - Zastąpiono błędny (wygenerowany automatycznie dla licznika) test poprawnym testem dymnym uruchomienia aplikacji.
 - `flutter-app/superwizor/lib/theme/euphire_theme.dart` - Usunięto przestarzałe właściwości z `ColorScheme` (zastąpiono użyciem `surface` z odpowiednimi mapowaniami wg wytycznych) w celu naprawienia lint warnings i zachowania czystego środowiska (zero warnings w `flutter analyze`).
 - `flutter-app/superwizor/test/components_test.dart` - Dodano jednostkowe testy UI weryfikujące renderowanie uniwersalnych komponentów z `B_05_ui_ux_design_system.md` (`EuphireButton`, `EuphireHeader`), z zapewnieniem poprawnego wsparcia na warstwie testów. 

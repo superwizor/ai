@@ -30,7 +30,7 @@ A clinical session co-pilot for psychotherapists in Poland. A therapist records 
 | **P4** | **Flutter is read-only on AI reports** | Firestore rules + IAM + gRPC contracts enforce no-write of reports from mobile |
 | **P5** | **Readability > DB micro-optimization** | Normalized PostgreSQL schema; separate `therapist_view` and `patient_view` tables |
 
-> Source: `docs/02_ARCHITEKTURA_TECHNICZNA.md` §1.1, lines 33–41.
+> Source: `docs/01_ARCHITEKTURA_TECHNICZNA.md` §1.1, lines 33–41.
 
 ## Architectural decision baseline (ADRs)
 
@@ -134,7 +134,7 @@ superwizor_v2/
 | **Feedback** | `report_feedback`, `feedback_categories`, `report_feedback_categories` | `clinical-svc` |
 | **Audit & Ops** | `audit_events`, `idempotency_keys` | shared (every service writes audit). The `outbox_events` shared infrastructure table was retired with billing-svc Phase C; nothing remaining uses it. |
 
-> Source: `docs/03_DATA_MODEL.md` §1.1.
+> Source: `docs/02_DATA_MODEL.md` §1.1.
 
 ## Cross-cutting: encryption (envelope pattern)
 
@@ -183,7 +183,7 @@ SELECT status FROM sessions WHERE id = $1 FOR UPDATE SKIP LOCKED;
 >
 > If a new service needs transactional Pub/Sub, the original pattern is still valid and ADR-DM-009 remains the reference design — just recreate the table fresh with whatever schema fits. Don't try to reanimate the dropped table from `git log`; the calling code (poller goroutine, AppendOutboxEvent helpers, notification-worker-on-billing CF) has been deleted from the repo.
 >
-> Source: `docs/03_DATA_MODEL.md` §7.5, `docs/17_BILLING_IMPLEMENTATION_FLOW.md` §5.
+> Source: `docs/02_DATA_MODEL.md` §7.5, `docs/18_BILLING_IMPLEMENTATION_FLOW.md` §5.
 
 ## Cross-cutting: auth model
 
@@ -250,7 +250,7 @@ Use [`pkg/errors`](../../superwizor-backend/pkg/errors/) helpers (currently stub
 
 | Question | File |
 |---|---|
-| What's the schema for table X? | `docs/03_DATA_MODEL.md` (search by table name) |
+| What's the schema for table X? | `docs/02_DATA_MODEL.md` (search by table name) |
 | Why was decision Y made? | ADR list above; deeper rationale in `docs/02_*.md` §1.2 / `docs/06_*.md` ADR-IMPL-* |
 | How do I add a new gRPC method? | `proto/<svc>/v1/<svc>.proto` → `buf generate proto/` → implement in `services/<svc>/internal/adapters/grpc/` |
 | How do I add a new DB table? | new SQL file in `migrations/` (sequential prefix); update `docs/03_*.md` §4.x |

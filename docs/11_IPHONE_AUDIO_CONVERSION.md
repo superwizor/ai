@@ -461,7 +461,7 @@ Single branch: `feat/iphone-audio-upload`. Single PR. Ships Phase 1+2+3 together
 
 ## Cross-references
 
-- `docs/06_FAZA_2_INGESTION_AI.md` — upload pipeline architecture (Pub/Sub topology).
+- `docs/05_FAZA_2_INGESTION_AI.md` — upload pipeline architecture (Pub/Sub topology).
 - `docs/agents/04_ingestion-svc.md` — ingestion-svc agent doc (will gain ConvertAudio section).
 - `docs/agents/05_ai-pipeline-svc.md` — stt-worker doc (unchanged by this work; called out for completeness).
 - `services/ai-pipeline-svc/cmd/stt-worker/main.go:355,493-501` — current Chirp rejection site with the explicit codec list.

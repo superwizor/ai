@@ -82,7 +82,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 2. Generate JWT
+	// 2. Load version from pubspec.yaml
+	version, err := loadVersionFromPubspec()
+	if err != nil {
+		fmt.Printf("❌ Błąd odczytu wersji z pubspec.yaml: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("ℹ️ Wykryto wersję aplikacji w pubspec.yaml: %s\n", version)
+
+	// 3. Generate JWT
 	token, err := generateJWT(config.IssuerID, config.KeyID, config.PrivateKeyPath)
 	if err != nil {
 		fmt.Printf("❌ Błąd podczas generowania tokenu JWT: %v\n", err)
@@ -92,12 +100,12 @@ func main() {
 	client := &http.Client{Timeout: 20 * time.Second}
 
 	// ==========================================
-	// KROK 1: Sprawdzenie wersji 1.0.1 (musi istnieć przed modyfikacją kategorii wersji roboczej!)
+	// KROK 1: Sprawdzenie wersji w sklepie (musi istnieć przed modyfikacją kategorii wersji roboczej!)
 	// ==========================================
-	fmt.Println("⚙️ 1. Sprawdzanie i tworzenie wersji 1.0.1...")
-	versionID, err := getOrCreateVersion101(client, token, appID)
+	fmt.Printf("⚙️ 1. Sprawdzanie i tworzenie wersji %s...\n", version)
+	versionID, err := getOrCreateVersion(client, token, appID, version)
 	if err != nil {
-		fmt.Printf("❌ Błąd wersji 1.0.1: %v\n", err)
+		fmt.Printf("❌ Błąd wersji %s: %v\n", version, err)
 		os.Exit(1)
 	}
 
@@ -121,13 +129,55 @@ func main() {
 	// ==========================================
 	// KROK 3: Aktualizacja WhatsNew
 	// ==========================================
-	fmt.Println("\n⚙️ 3. Aktualizacja pola WhatsNew dla wersji 1.0.1...")
+	fmt.Printf("\n⚙️ 3. Aktualizacja pola WhatsNew dla wersji %s...\n", version)
 	err = updateWhatsNew(client, token, versionID)
 	if err != nil {
 		fmt.Printf("❌ Błąd aktualizacji WhatsNew: %v\n", err)
 	} else {
 		fmt.Println("✅ Sukces: Zaktualizowano opisy 'Co nowego w tej wersji' w języku polskim i angielskim!")
 	}
+}
+
+func loadVersionFromPubspec() (string, error) {
+	paths := []string{
+		"../flutter-app/superwizor/pubspec.yaml",
+		"flutter-app/superwizor/pubspec.yaml",
+		"../../flutter-app/superwizor/pubspec.yaml",
+	}
+
+	var pubspecPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			pubspecPath = p
+			break
+		}
+	}
+
+	if pubspecPath == "" {
+		return "", errors.New("nie znaleziono pliku pubspec.yaml")
+	}
+
+	file, err := os.Open(pubspecPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "version:") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			fullVersion := strings.TrimSpace(parts[1])
+			// fullVersion może mieć format "1.0.2+30" - wycinamy wszystko od "+"
+			semver := strings.Split(fullVersion, "+")[0]
+			return strings.Trim(semver, "\"'"), nil
+		}
+	}
+	return "", errors.New("nie znaleziono klucza version w pubspec.yaml")
 }
 
 func fetchDraftAppInfoID(client *http.Client, token, appID string) (string, error) {
@@ -215,7 +265,7 @@ func updateCategories(client *http.Client, token, appInfoID string) error {
 	return nil
 }
 
-func getOrCreateVersion101(client *http.Client, token, appID string) (string, error) {
+func getOrCreateVersion(client *http.Client, token, appID, version string) (string, error) {
 	url := fmt.Sprintf("https://api.appstoreconnect.apple.com/v1/apps/%s/appStoreVersions", appID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -232,20 +282,20 @@ func getOrCreateVersion101(client *http.Client, token, appID string) (string, er
 	}
 
 	for _, ver := range response.Data {
-		if ver.Attributes.VersionString == "1.0.1" {
-			fmt.Printf("ℹ️ Wersja 1.0.1 już istnieje (ID: %s, Status: %s).\n", ver.ID, ver.Attributes.AppStoreState)
+		if ver.Attributes.VersionString == version {
+			fmt.Printf("ℹ️ Wersja %s już istnieje (ID: %s, Status: %s).\n", version, ver.ID, ver.Attributes.AppStoreState)
 			return ver.ID, nil
 		}
 	}
 
-	fmt.Println("ℹ️ Wersja 1.0.1 nie została znaleziona. Tworzenie nowej wersji 1.0.1...")
+	fmt.Printf("ℹ️ Wersja %s nie została znaleziona. Tworzenie nowej wersji %s...\n", version, version)
 	createUrl := "https://api.appstoreconnect.apple.com/v1/appStoreVersions"
 	createBody := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type": "appStoreVersions",
 			"attributes": map[string]interface{}{
 				"platform":      "IOS",
-				"versionString": "1.0.1",
+				"versionString": version,
 			},
 			"relationships": map[string]interface{}{
 				"app": map[string]interface{}{
@@ -279,7 +329,7 @@ func getOrCreateVersion101(client *http.Client, token, appID string) (string, er
 		return "", err
 	}
 
-	fmt.Printf("✅ Pomyślnie utworzono nową wersję 1.0.1 (ID: %s)!\n", createRespData.Data.ID)
+	fmt.Printf("✅ Pomyślnie utworzono nową wersję %s (ID: %s)!\n", version, createRespData.Data.ID)
 	return createRespData.Data.ID, nil
 }
 

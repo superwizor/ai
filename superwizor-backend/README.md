@@ -5,7 +5,7 @@ Production-grade backend for SuperWizor AI — clinical supervision platform for
 
 ### Prerequisites
 - Go 1.23+, Terraform 1.7+, gcloud CLI v521+, buf, golang-migrate
-- See [Faza 0 doc](../../docs/04_FAZA_0_FUNDAMENT.md) for detailed setup
+- See [Faza 0 doc](../../docs/03_FAZA_0_FUNDAMENT.md) for detailed setup
 
 ### Local development
 ```bash
@@ -25,7 +25,7 @@ go run main.go
 ```
 
 ## Repository structure
-See `docs/02_ARCHITEKTURA_TECHNICZNA.md` for full architecture details.
+See `docs/01_ARCHITEKTURA_TECHNICZNA.md` for full architecture details.
 
 ## Documentation
 - Konstytucja projektu

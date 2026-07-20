@@ -19,7 +19,7 @@ The **core of the product**. Owns patient files, sessions, modalities, therapist
 
 - **Phase 1 — DONE.** Patient files, modalities, sessions list/details, deployed at `https://clinical-svc-...run.app`.
 - **Phase 2 — partial.** `UpdateSpeakerLabels` (rebuilds canonical transcript blob with new labels) is wired and lints clean. Report read endpoints implemented.
-- **Feedback domain** (`report_feedback`, `feedback_categories`) — schema in `docs/03_DATA_MODEL.md` §4.9 (v4.2); not yet implemented.
+- **Feedback domain** (`report_feedback`, `feedback_categories`) — schema in `docs/02_DATA_MODEL.md` §4.9 (v4.2); not yet implemented.
 
 ## Repo paths
 
@@ -67,7 +67,7 @@ service ClinicalService {
 }
 ```
 
-> Source: `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.3 (lines 2076–2975) for the Phase 1 surface.
+> Source: `docs/04_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.3 (lines 2076–2975) for the Phase 1 surface.
 
 ## Tables owned
 
@@ -78,7 +78,7 @@ service ClinicalService {
 | **Feedback** | `report_feedback`, `feedback_categories`, `report_feedback_categories` | clinical-svc (not yet implemented) |
 | **Report ratings** | `report_ratings`, `preference_suggestions_log` (since migration 000015) | clinical-svc (since feat/report-customization, 2026-05-18) |
 
-> Source: `docs/03_DATA_MODEL.md` §4.5–4.6 (lines 1385–1738) and §4.9 (lines 2025–2212).
+> Source: `docs/02_DATA_MODEL.md` §4.5–4.6 (lines 1385–1738) and §4.9 (lines 2025–2212).
 
 ### Critical schema notes
 
@@ -209,7 +209,7 @@ Each maps (in `dimensionForChip`) to a preference dimension the suggestion engin
 
 ## Source-doc pointers
 
-- `docs/05_FAZA_1_TOZSAMOSC_DANE.md` lines 2076–2975 — full Phase 1 task list (proto, sqlc, server impl, deploy).
-- `docs/03_DATA_MODEL.md` §4.5 (lines 1385–1518), §4.6 (lines 1519–1738), §4.9 (lines 2025–2212) — DDL for clinical, sessions, feedback.
-- `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.3 (lines 415–425) — service responsibility.
-- `docs/06_FAZA_2_INGESTION_AI.md` ADR-IMPL-002 (lines 116–156) and ADR-IMPL-006 (lines 184–244) — speaker labels and canonical blob rules.
+- `docs/04_FAZA_1_TOZSAMOSC_DANE.md` lines 2076–2975 — full Phase 1 task list (proto, sqlc, server impl, deploy).
+- `docs/02_DATA_MODEL.md` §4.5 (lines 1385–1518), §4.6 (lines 1519–1738), §4.9 (lines 2025–2212) — DDL for clinical, sessions, feedback.
+- `docs/01_ARCHITEKTURA_TECHNICZNA.md` §4.2.3 (lines 415–425) — service responsibility.
+- `docs/05_FAZA_2_INGESTION_AI.md` ADR-IMPL-002 (lines 116–156) and ADR-IMPL-006 (lines 184–244) — speaker labels and canonical blob rules.

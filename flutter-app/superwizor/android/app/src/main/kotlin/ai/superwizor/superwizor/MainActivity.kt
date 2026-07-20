@@ -25,8 +25,8 @@ class MainActivity : FlutterFragmentActivity() {
     
     private var reminderIntervalMinutes: Int = 0
     private var reminderIntervalSeconds: Int = 0
-    private var soundEnabled: Bool = false
-    private var hapticsEnabled: Bool = false
+    private var soundEnabled: Boolean = false
+    private var hapticsEnabled: Boolean = false
     private var startTimeMillis: Long = 0
     private var accumulatedMillis: Long = 0
     private var expectedRemindersFired: Int = 0
