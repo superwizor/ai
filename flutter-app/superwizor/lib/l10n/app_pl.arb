@@ -1112,6 +1112,7 @@
   "report_section_summary": "Podsumowanie sesji",
   "report_section_themes": "Główne wątki sesji",
   "report_tab": "Raport",
+  "report_ai_disclaimer": "Raport został wygenerowany przez sztuczną inteligencję (AI) i nie stanowi porady medycznej ani diagnozy. Wymaga weryfikacji przez wykwalifikowanego specjalistę.",
   "report_toast_reports_copied": "Raporty skopiowane do schowka",
   "report_toast_section_copied": "Sekcja skopiowana do schowka",
   "report_toast_section_updated": "Sekcja zaktualizowana",

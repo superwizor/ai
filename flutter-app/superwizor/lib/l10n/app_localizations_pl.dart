@@ -2523,6 +2523,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get report_tab => 'Raport';
 
   @override
+  String get report_ai_disclaimer =>
+      'Raport został wygenerowany przez sztuczną inteligencję (AI) i nie stanowi porady medycznej ani diagnozy. Wymaga weryfikacji przez wykwalifikowanego specjalistę.';
+
+  @override
   String get report_toast_reports_copied => 'Raporty skopiowane do schowka';
 
   @override

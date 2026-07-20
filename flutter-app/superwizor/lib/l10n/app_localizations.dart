@@ -4524,6 +4524,12 @@ abstract class AppLocalizations {
   /// **'Raport'**
   String get report_tab;
 
+  /// No description provided for @report_ai_disclaimer.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport został wygenerowany przez sztuczną inteligencję (AI) i nie stanowi porady medycznej ani diagnozy. Wymaga weryfikacji przez wykwalifikowanego specjalistę.'**
+  String get report_ai_disclaimer;
+
   /// No description provided for @report_toast_reports_copied.
   ///
   /// In pl, this message translates to:

@@ -403,6 +403,31 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     ),
                   );
                 }),
+                // AI-transparency footer (AI Act): stays pinned under the
+                // report content on every generated report.
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.smart_toy_outlined,
+                          size: 16,
+                          color: EuphireColors.frostWhite.withValues(alpha: 0.45)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          t.report_ai_disclaimer,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            fontStyle: FontStyle.italic,
+                            color: EuphireColors.frostWhite.withValues(alpha: 0.45),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -486,7 +511,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       
       buffer.writeln('\n');
     }
-    
+
+    // AI-transparency (AI Act): the disclaimer travels with every copy of
+    // the report that leaves the app.
+    buffer.writeln(t.report_ai_disclaimer);
+
     await Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
     if (mounted) {
       EuphireToast.success(context, message: t.report_toast_reports_copied);
