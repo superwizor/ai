@@ -355,6 +355,26 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			logger.Warn("pseudonymize: model listed forms absent from text (possible hallucination)",
 				"count", len(pstats.UnmatchedForms))
 		}
+
+		// Pełna pseudonimizacja danych kanonicznych (docs/41 §10): ten sam
+		// plan redakcji nadpisuje transcripts.transcript_ciphertext i
+		// transcript_segments.text_ciphertext — od tej chwili widoki
+		// transkrypcji (terapeuty i klienta) serwują wersję zredagowaną.
+		// Nieodwracalne z założenia; idempotentne (drugi przebieg na już
+		// zredagowanym tekście to no-op). Błąd → NACK i redelivery, jak
+		// przy pozostałych przejściowych błędach DB/KMS w tym torze —
+		// raportu jeszcze nie utrwaliliśmy, więc retry nie duplikuje nic.
+		if canonicalPseudonymizeEnabled() {
+			segs, cerr := pseudonymizeCanonicalTranscript(ctx, ev.TranscriptID, repl)
+			if cerr != nil {
+				logger.Error("canonical pseudonymize (transient — pubsub will retry)", "error", cerr)
+				return fmt.Errorf("canonical pseudonymize: %w", cerr)
+			}
+			slog.InfoContext(ctx, "analytics", "ae", "llm.canonical_pseudonymize_applied",
+				"session_id", ev.SessionID,
+				"transcript_id", ev.TranscriptID,
+				"segments_rewritten", segs)
+		}
 	}
 
 	// Retrieve prior-session context using THIS session's distilled
@@ -1818,6 +1838,164 @@ func rebuildBlobWithRoles(ctx context.Context, tx pgx.Tx, transcriptID uuid.UUID
 		return fmt.Errorf("update transcript: %w", err)
 	}
 	return nil
+}
+
+// pseudonymizeCanonicalTranscript overwrites the canonical transcript
+// blob AND every transcript_segments row with the redacted text produced
+// by the docs/41 replacer. After this commit the original wording is
+// gone from the database — the therapist/client transcript views serve
+// the pseudonymized version with no UI changes.
+//
+// Same read-modify-write shape as rebuildBlobWithRoles (single KMS
+// decrypt+encrypt for the blob, per-row for segments). Segments whose
+// text the replacer left untouched are skipped — no pointless KMS
+// round-trips or row churn on redelivery, which also makes the whole
+// operation idempotent. word_count/confidence stay as STT wrote them:
+// they describe the original utterance and nothing consumes them for
+// display.
+//
+// Returns the number of segment rows rewritten.
+func pseudonymizeCanonicalTranscript(ctx context.Context, transcriptID string, repl *pseudonymize.Replacer) (int, error) {
+	id, err := uuid.Parse(transcriptID)
+	if err != nil {
+		return 0, fmt.Errorf("parse transcript id: %w", err)
+	}
+
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("tx begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// ── 1. Canonical blob ──
+	var ciphertext, encryptedDEK []byte
+	if err := tx.QueryRow(ctx,
+		"SELECT transcript_ciphertext, transcript_encrypted_dek FROM transcripts WHERE id = $1 FOR UPDATE",
+		id).Scan(&ciphertext, &encryptedDEK); err != nil {
+		return 0, fmt.Errorf("read transcript: %w", err)
+	}
+	if len(ciphertext) > 0 {
+		plain, err := crypto.Decrypt(ctx, ciphertext, encryptedDEK)
+		if err != nil {
+			return 0, fmt.Errorf("decrypt blob: %w", err)
+		}
+		// stt-worker BlobLine schema — keep every field, redact Text only.
+		type blobLine struct {
+			ChunkIdx     int     `json:"chunk_idx"`
+			Text         string  `json:"text"`
+			StartMS      int64   `json:"start_ms"`
+			EndMS        int64   `json:"end_ms"`
+			WordCount    int     `json:"word_count"`
+			Confidence   float32 `json:"confidence"`
+			SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+			SpeakerLabel *string `json:"speaker_label,omitempty"`
+		}
+		var lines []blobLine
+		if err := json.Unmarshal(plain, &lines); err != nil {
+			return 0, fmt.Errorf("unmarshal blob: %w", err)
+		}
+		changed := false
+		for i := range lines {
+			redacted, _ := repl.Apply(lines[i].Text)
+			if redacted != lines[i].Text {
+				lines[i].Text = redacted
+				changed = true
+			}
+		}
+		if changed {
+			newJSON, err := json.Marshal(lines)
+			if err != nil {
+				return 0, fmt.Errorf("marshal blob: %w", err)
+			}
+			newCiphertext, newDEK, err := crypto.Encrypt(ctx, newJSON)
+			if err != nil {
+				return 0, fmt.Errorf("encrypt blob: %w", err)
+			}
+			if _, err := tx.Exec(ctx,
+				`UPDATE transcripts
+				   SET transcript_ciphertext    = $1,
+				       transcript_encrypted_dek = $2
+				 WHERE id = $3`,
+				newCiphertext, newDEK, id); err != nil {
+				return 0, fmt.Errorf("update transcript: %w", err)
+			}
+		}
+	}
+
+	// ── 2. Per-segment rows (what the transcript views actually render) ──
+	rows, err := tx.Query(ctx,
+		"SELECT id, text_ciphertext, text_encrypted_dek FROM transcript_segments WHERE transcript_id = $1 FOR UPDATE",
+		id)
+	if err != nil {
+		return 0, fmt.Errorf("read segments: %w", err)
+	}
+	type segUpdate struct {
+		id         uuid.UUID
+		ciphertext []byte
+		dek        []byte
+	}
+	// Collect first, write after — pgx forbids Exec while rows are open.
+	var pending []struct {
+		id    uuid.UUID
+		plain string
+	}
+	for rows.Next() {
+		var segID uuid.UUID
+		var segCipher, segDEK []byte
+		if err := rows.Scan(&segID, &segCipher, &segDEK); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scan segment: %w", err)
+		}
+		segPlain, err := crypto.Decrypt(ctx, segCipher, segDEK)
+		if err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("decrypt segment %s: %w", segID, err)
+		}
+		redacted, _ := repl.Apply(string(segPlain))
+		if redacted != string(segPlain) {
+			pending = append(pending, struct {
+				id    uuid.UUID
+				plain string
+			}{segID, redacted})
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("iterate segments: %w", err)
+	}
+
+	updates := make([]segUpdate, 0, len(pending))
+	for _, p := range pending {
+		cipher, dek, err := crypto.Encrypt(ctx, []byte(p.plain))
+		if err != nil {
+			return 0, fmt.Errorf("encrypt segment %s: %w", p.id, err)
+		}
+		updates = append(updates, segUpdate{id: p.id, ciphertext: cipher, dek: dek})
+	}
+	for _, u := range updates {
+		if _, err := tx.Exec(ctx,
+			`UPDATE transcript_segments
+			   SET text_ciphertext    = $1,
+			       text_encrypted_dek = $2
+			 WHERE id = $3`,
+			u.ciphertext, u.dek, u.id); err != nil {
+			return 0, fmt.Errorf("update segment %s: %w", u.id, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return len(updates), nil
+}
+
+// canonicalPseudonymizeEnabled gates the destructive canonical rewrite
+// behind its own kill-switch, separate from LLM_PSEUDONYMIZE: the LLM
+// modes only shape what models see, this one overwrites stored data.
+// Values: "on" | anything else = off. Default off — staging opts in via
+// terraform (LLM_PSEUDONYMIZE_CANONICAL=on).
+func canonicalPseudonymizeEnabled() bool {
+	return strings.TrimSpace(strings.ToLower(os.Getenv("LLM_PSEUDONYMIZE_CANONICAL"))) == "on"
 }
 
 // generateEmbedding calls Vertex AI's text-embedding-005 to produce a

@@ -318,6 +318,11 @@ resource "google_cloudfunctions2_function" "llm_worker" {
       # pipeline bajt w bajt jak przed featurą; call2 → redakcja tylko
       # tekstu do call-2; all → także Title/Summary/RAG. Rollback = flip.
       LLM_PSEUDONYMIZE = var.llm_pseudonymize
+      # docs/41 §10: "on" → kanoniczny blob + segmenty nadpisywane
+      # zredagowana wersja po zbudowaniu planu redakcji z call-1.
+      # Rollback flagi zatrzymuje nadpisywanie NOWYCH sesji; juz
+      # nadpisanych nie da sie odzyskac (by design).
+      LLM_PSEUDONYMIZE_CANONICAL = var.llm_pseudonymize_canonical
     }
 
     secret_environment_variables {

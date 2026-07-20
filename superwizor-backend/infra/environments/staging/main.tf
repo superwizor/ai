@@ -93,6 +93,7 @@ module "cloud_functions" {
   stt_provider_allowlist         = var.stt_provider_allowlist
   stt_order_gate                 = var.stt_order_gate
   llm_pseudonymize               = var.llm_pseudonymize
+  llm_pseudonymize_canonical     = var.llm_pseudonymize_canonical
   stt_order_gate_max_wait_h      = var.stt_order_gate_max_wait_h
   audio_uploaded_dlq_topic       = module.pubsub.audio_uploaded_dlq_topic
   transcript_completed_dlq_topic = module.pubsub.transcript_completed_dlq_topic

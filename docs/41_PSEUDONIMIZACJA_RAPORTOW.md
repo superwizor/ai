@@ -226,7 +226,44 @@ nazwiska). Metryki:
 | **Razem** | **~3,5–4,5 dnia** |
 | Runtime | +300–500 tokenów wyjścia call-1 (~grosze), zero dodatkowej latencji na ścieżce Deepgram |
 
+## 10. Pełna pseudonimizacja danych kanonicznych (2026-07-20)
+
+Decyzja produktowa: pseudonimizacja przestaje być wyłącznie warstwą
+wejścia do LLM — **kanoniczna transkrypcja w bazie również jest
+redagowana**, a terapeuta i klient widzą transkrypcję i raport po
+pseudonimizacji. Imiona nadal zostają (reguły §3 bez zmian).
+
+Mechanika: po zbudowaniu planu redakcji (sekcja `# PII` call-1 albo
+mini-call fallbacku) llm-worker — przed call-2 — nadpisuje
+`transcripts.transcript_ciphertext` i wszystkie
+`transcript_segments.text_ciphertext` zredagowaną wersją
+(`pseudonymizeCanonicalTranscript`, jedna transakcja, ten sam wzorzec
+KMS co `rebuildBlobWithRoles`). Oryginalne brzmienie znika z bazy
+bezpowrotnie; widoki transkrypcji (`GetSessionDetails`,
+`ClientGetTranscript`) serwują wersję zredagowaną bez żadnych zmian w
+UI. Operacja jest idempotentna (drugi przebieg na zredagowanym tekście
+to no-op), a błąd → NACK/redelivery jak pozostałe przejściowe błędy
+DB/KMS (raport nie jest jeszcze utrwalony, więc retry niczego nie
+duplikuje).
+
+Flaga: `LLM_PSEUDONYMIZE_CANONICAL` ∈ {off, on} — osobny kill-switch,
+bo zmienia dane at-rest, nie tylko wejście modeli. Staging: `on`
+(utrwalone w `staging/variables.tf`). Rollback flagi zatrzymuje
+nadpisywanie nowych sesji; nadpisanych nie odzyskamy (by design).
+
+Zakres ryzyka zaakceptowany 2026-07-20: między zapisem STT a
+przebiegiem llm-workera (zwykle minuty) transkrypcja leży w oryginale.
+Edycje segmentów (`EditTranscriptSegment`/`Split`) operują już na
+wersji zredagowanej. Migracja historyczna (sesje sprzed flagi + raporty
+sprzed trybu `all`) — **odłożona, wymaga osobnej zgody** (nieodwracalne
+przepisanie zastanych danych; stare sesje nie mają zapisanych encji,
+więc plan PII musiałby powstać z mini-calla per sesja).
+
+E2E: `TestPseudonymize_E2E` dodatkowo asertuje brak czarnej listy w
+turach i segmentach transkrypcji; bramka `PII_CANON_E2E=strict`.
+
 Dokumenty powiązane: docs/39 (provider STT, Faza 4 — usunięcie
 gramatyki klastrującej), docs/30 (RAG — dlaczego twarda ochrona
 tematów), docs/37 (zgodność/DPIA), docs/agents/05 (flagi, budżety
-tokenów, konwencje gramatyk Markdown).
+tokenów, konwencje gramatyk Markdown), docs/compliance/06 (§5/§7 —
+wymaga aktualizacji: transkrypcja w bazie jest teraz redagowana).

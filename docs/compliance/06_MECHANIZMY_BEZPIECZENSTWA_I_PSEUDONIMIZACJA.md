@@ -2,9 +2,11 @@
 
 **Dokument dla działu prawnego i sprzedaży**
 
-**Wersja:** 1.1 (1.1: wdrożony inwariant „jedyny identyfikator
+**Wersja:** 1.2 (1.2: pełna pseudonimizacja danych kanonicznych —
+transkrypcja w bazie również redagowana; ODWRÓCONA decyzja z dawnego
+§7 — §5.2, §7, §8. 1.1: wdrożony inwariant „jedyny identyfikator
 klienta = e-mail" — §5.1, §8, §9 pkt 6)
-**Data:** 2026-07-18
+**Data:** 2026-07-20
 **Odpowiedzialny:** Euphire sp. z o.o., ul. Odrzańska 10a/48, Kraków
 **Kontakt:** kontakt@superwizor.ai
 **Status:** DRAFT — do weryfikacji przez radcę prawnego
@@ -162,12 +164,19 @@ tylko konwencją formularza:
 - Etykiety mówców w transkrypcji są neutralne lub rolowe
   („Terapeuta"/„Klient") — nigdy imienne.
 
-### 5.2 Warstwa 2: pseudonimizacja treści generowanych przez AI
+### 5.2 Warstwa 2: pseudonimizacja treści sesji
 
-Wszystko, co powstaje **na wyjściu** analizy AI — raport z sesji, jego
-tytuł i skrót (widoczne na listach w aplikacji), pamięć kontekstowa RAG
-(długoterminowa pamięć procesu terapeutycznego) — przechodzi przez
-deterministyczny silnik redakcji **zanim zostanie zapisane**:
+Od 2026-07-20 redakcja obejmuje nie tylko treści generowane przez AI,
+ale i **kanoniczny zapis transkrypcji w bazie danych**. Wszystko, co
+system trwale przechowuje z treści sesji — transkrypcja (blob i
+segmenty, które renderują widoki terapeuty i klienta), raport z sesji,
+jego tytuł i skrót (widoczne na listach w aplikacji), pamięć
+kontekstowa RAG (długoterminowa pamięć procesu terapeutycznego) —
+przechodzi przez ten sam deterministyczny silnik redakcji. Jedyny
+wyjątek czasowy: między zapisem surowej transkrypcji a przebiegiem
+analizy (zwykle pojedyncze minuty) transkrypcja leży w oryginale,
+zaszyfrowana; po zbudowaniu planu redakcji zostaje nieodwracalnie
+nadpisana wersją zredagowaną. Zakres redakcji:
 
 | Kategoria | Decyzja | Efekt w raporcie |
 |---|---|---|
@@ -253,50 +262,45 @@ nie jednorazowy audyt.
 
 ---
 
-## 7. Dlaczego celowo NIE redagujemy transkryptu dla terapeuty
+## 7. Zakres redakcji transkryptu — decyzja odwrócona 2026-07-20
 
-Pytanie, które padnie od klientów i prawników: „skoro pseudonimizujecie
-raporty, czemu terapeuta widzi transkrypt w oryginale?". To decyzja
-projektowa (ADR-IMPL-006), nie przeoczenie. Uzasadnienie:
+Do 2026-07-20 transkrypcja w bazie pozostawała w oryginale, a redakcja
+obejmowała wyłącznie treści generowane przez AI (uzasadnienie ówczesnej
+decyzji zachowane w historii tego dokumentu, wersja 1.1). **Decyzją
+produktową z 2026-07-20 redakcja objęła również kanoniczny zapis
+transkrypcji** — terapeuta i klient widzą transkrypcję i raport w tej
+samej, pseudonimizowanej postaci. Uzasadnienie nowej decyzji:
 
-1. **Terapeuta jest administratorem danych i właścicielem dokumentacji
-   procesu.** Transkrypt to jego zapis źródłowy sesji — odpowiednik
-   notatek z gabinetu. Podmiot przetwarzający (my) nie powinien
-   nieodwracalnie modyfikować dokumentacji administratora; to
-   administrator decyduje o jej treści i zakresie.
-2. **Raport AI wymaga weryfikowalności źródłem.** Raport jest
-   wytworem modelu językowego — narzędziem, nie prawdą objawioną.
-   Standard odpowiedzialnego użycia AI w kontekście klinicznym wymaga,
-   by profesjonalista mógł skonfrontować każde zdanie raportu z tym,
-   co faktycznie padło na sesji. Zredagowany transkrypt zrywa tę
-   ścieżkę weryfikacji („kto powiedział, że problem był z Kowalskim,
-   skoro w transkrypcie jest tylko [NAZWISKO-1]?").
-3. **Redakcja u źródła jest nieodwracalna i omylna jednocześnie** —
-   najgorsza możliwa kombinacja. Wykrywanie PII jest best-effort
-   (§5.4); fałszywe trafienie w transkrypcie (np. usunięcie nazwy
-   leku pomylonego z nazwiskiem) trwale zniszczyłoby klinicznie
-   istotną treść zapisu źródłowego. W raporcie ten sam błąd jest
-   naprawialny — raport można wygenerować ponownie, transkryptu nie
-   da się odtworzyć (audio jest usuwane w 48 h — właśnie ze względu
-   na minimalizację).
-4. **Ryzyko, które adresuje pseudonimizacja, nie dotyczy widoku
-   terapeuty.** Terapeuta i tak zna tożsamość pacjenta — redakcja
-   raportu niczego przed nim nie ukrywa i nie ma ukrywać. Realne
-   powierzchnie ryzyka to: treść wysyłana do podprocesora LLM,
-   kumulacja PII w pamięci długoterminowej RAG, tytuły/skróty widoczne
-   na listach (ekran przez ramię), panel pacjenta. Wszystkie te
-   powierzchnie SĄ objęte pseudonimizacją. Transkrypt oryginalny
-   istnieje wyłącznie za uwierzytelnieniem właściciela kartoteki,
-   zaszyfrowany envelope encryption w spoczynku.
-5. **Spójność z minimalizacją, nie jej brak.** Chronimy dane tam,
-   gdzie wychodzą poza relację terapeuta–pacjent (podprocesorzy,
-   pamięć, listy, panel klienta), a nie wewnątrz tej relacji, która
-   jest istotą usługi i odpowiedzialnością administratora.
+1. **Jednolita powierzchnia ochrony.** Po zmianie w bazie danych nie
+   ma ŻADNEJ trwałej kopii treści sesji z nazwiskami, adresami,
+   pracodawcami czy miejscowościami (imiona zostają — §5.2). Incydent
+   bezpieczeństwa, żądanie dostępu, kopia zapasowa, eksport DSAR —
+   każda ścieżka wyjścia danych operuje wyłącznie na wersji
+   zredagowanej. To istotnie silniejsze twierdzenie w DPIA niż
+   „redagujemy wyjścia AI, ale źródło leży w oryginale".
+2. **Weryfikowalność raportu źródłem zostaje zachowana** — a wręcz
+   staje się spójniejsza. Raport i transkrypcja przechodzą przez TEN
+   SAM plan redakcji z tej samej sesji: token `[NAZWISKO-1]` w
+   raporcie odpowiada `[NAZWISKO-1]` w transkrypcji, a imiona
+   (klinicznie nośne) pozostają w obu. Terapeuta konfrontuje każde
+   zdanie raportu z zapisem sesji dokładnie tak jak dotąd.
+3. **Ryzyko omylności redakcji jest kontrolowane bramkami** (§6):
+   0% przecieków na formach bazowych, <5% na odmienionych, testy przy
+   każdej zmianie. Fałszywe trafienie (np. nazwa leku wzięta za
+   nazwisko) pozostaje ryzykiem — przyjętym świadomie; zapis kliniczny
+   pozostaje czytelny, bo zamiana jest tokenem pozycyjnym, nie
+   wycięciem treści.
+4. **Okno czasowe**: surowa transkrypcja istnieje w bazie (wyłącznie
+   zaszyfrowana) od zapisu STT do przebiegu analizy — zwykle minuty.
+   Audio znika najpóźniej po 48 h. Sesje przetworzone przed
+   2026-07-20 pozostają w oryginale do czasu osobno zatwierdzonej
+   migracji historycznej.
 
-Jednym zdaniem dla sprzedaży: **pseudonimizujemy wszystko, co system
-wytwarza i pamięta; nie cenzurujemy tego, co terapeuta musi móc
-zweryfikować — bo to jego dokumentacja i jego odpowiedzialność
-zawodowa.**
+Jednym zdaniem dla sprzedaży: **wszystko, co system trwale przechowuje
+z treści sesji — transkrypcja, raport, pamięć AI — jest
+pseudonimizowane; imiona zostają dla czytelności klinicznej, a
+terapeuta zachowuje pełną możliwość weryfikacji raportu zapisem
+sesji.**
 
 ---
 
@@ -313,9 +317,11 @@ zawodowa.**
 - „Nagranie audio jest usuwane automatycznie najpóźniej po 48 godzinach."
 - „Wszystkie dane szczególnej kategorii są szyfrowane w spoczynku
   (envelope encryption z rotacją kluczy) i w tranzycie."
-- „Raporty, ich tytuły i pamięć długoterminowa AI są pseudonimizowane:
-  nazwiska, identyfikatory, adresy, pracodawcy, szkoły i miejscowości
-  są zastępowane tokenami; imiona pozostają dla czytelności klinicznej."
+- „Transkrypcje, raporty, ich tytuły i pamięć długoterminowa AI są
+  pseudonimizowane: nazwiska, identyfikatory, adresy, pracodawcy,
+  szkoły i miejscowości są zastępowane tokenami; imiona pozostają dla
+  czytelności klinicznej." (transkrypcje od 2026-07-20; sesje sprzed
+  tej daty — po migracji historycznej)
 - „Jakość pseudonimizacji jest kontrolowana automatycznymi bramkami
   testowymi przy każdej zmianie."
 - „Aktywacja konta pacjenta wymaga dwóch niezależnych czynników:

@@ -85,3 +85,11 @@ variable "llm_pseudonymize" {
   # apply bez TF_VAR nie cofnal pseudonimizacji na off.
   default = "all"
 }
+
+variable "llm_pseudonymize_canonical" {
+  type = string
+  # "on" od 2026-07-20 (docs/41 §10): pelna pseudonimizacja danych
+  # kanonicznych — llm-worker nadpisuje blob transkrypcji + segmenty
+  # zredagowana wersja. Default utrwalony z tego samego powodu co wyzej.
+  default = "on"
+}

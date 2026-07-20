@@ -141,4 +141,39 @@ func TestPseudonymize_E2E(t *testing.T) {
 	} else {
 		t.Logf("✓ no injected PII in report/title/summary (tokens present: %v)", hasTokens)
 	}
+
+	// ── Kanoniczna transkrypcja (pełna pseudonimizacja) ──
+	// Przy LLM_PSEUDONYMIZE_CANONICAL=on llm-worker nadpisuje blob +
+	// transcript_segments zredagowaną wersją, więc widok transkrypcji
+	// (ten sam, który renderują aplikacje) nie może zawierać czarnej
+	// listy. Osobna bramka PII_CANON_E2E=strict — suite zostaje zielona
+	// zanim flaga trafi na staging.
+	canonStrict := os.Getenv("PII_CANON_E2E") == "strict"
+	var tleaks []string
+	if details.Transcript != nil {
+		var sb strings.Builder
+		for _, turn := range details.Transcript.Turns {
+			sb.WriteString(turn.Text)
+			sb.WriteString("\n")
+		}
+		for _, seg := range details.Transcript.Segments {
+			sb.WriteString(seg.Text)
+			sb.WriteString("\n")
+		}
+		ttext := strings.ToLower(sb.String())
+		for _, b := range blacklist {
+			if strings.Contains(ttext, b) {
+				tleaks = append(tleaks, b)
+			}
+		}
+	}
+	if len(tleaks) > 0 {
+		msg := fmt.Sprintf("PII present in canonical transcript view: %v", tleaks)
+		if canonStrict {
+			t.Fatal(msg)
+		}
+		t.Logf("⚠ (non-strict) %s — is LLM_PSEUDONYMIZE_CANONICAL=on deployed?", msg)
+	} else {
+		t.Logf("✓ no injected PII in canonical transcript (turns+segments)")
+	}
 }
