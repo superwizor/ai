@@ -204,15 +204,27 @@ func decodeLastRune(s string) rune {
 
 var (
 	reEmail = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
-	// PESEL: exactly 11 digits, not embedded in a longer digit run.
-	rePESEL = regexp.MustCompile(`(^|\D)(\d{11})(\D|$)`)
+	// PESEL: exactly 11 digits, optionally split by single spaces/dashes
+	// — STT writes a dictated PESEL in groups ("85 01 02 123 45",
+	// "850102 12345"), which the old contiguous-only rule missed
+	// (live leak 2026-07-20). Boundaries stay non-digit so we never
+	// match inside a longer digit run. A +48 phone in full spaced form
+	// also counts 11 digits and may match here first — harmless, both
+	// redact to the same token.
+	rePESEL = regexp.MustCompile(`(^|[^\d])(\d(?:[ \-]?\d){10})([^\d]|$)`)
 	// Polish phone: optional +48 / 0048, then 9 digits with optional
 	// separators (spaces/dashes) in common 3-3-3 / 2-3-2-2 groupings.
 	rePhone = regexp.MustCompile(`(?:\+?48[\s\-]?)?\d{3}[\s\-]?\d{3}[\s\-]?\d{3}(^|\b)`)
 	// Postal code dd-ddd.
 	rePostal = regexp.MustCompile(`\b\d{2}-\d{3}\b`)
-	// Polish ID documents: dowód AAA######, paszport AA#######.
-	reDocNum = regexp.MustCompile(`\b[A-Z]{2,3}[\s]?\d{6,7}\b`)
+	// Polish ID documents. Dowód AAA######: case-insensitive letters and
+	// an optional space/dash inside the digit block ("abc 123 456") —
+	// STT lowercases dictated series and groups digits (live leak
+	// 2026-07-20). Paszport AA#######: kept UPPERCASE-only — lowercase
+	// two-letter words followed by numbers ("po 1234567") are common
+	// speech, the false-positive risk outweighs the gain.
+	reDocNum      = regexp.MustCompile(`\b[A-Za-z]{3}[ \-]?\d{3}[ \-]?\d{3}\b`)
+	rePassportNum = regexp.MustCompile(`\b[A-Z]{2}[ \-]?\d{7}\b`)
 )
 
 // applyRegexLayer redacts structural identifiers to a generic token.
@@ -236,6 +248,7 @@ func applyRegexLayer(text string) (string, int) {
 	count(rePhone, "[IDENTYFIKATOR]")
 	count(rePostal, "[ADRES]")
 	count(reDocNum, "[IDENTYFIKATOR]")
+	count(rePassportNum, "[IDENTYFIKATOR]")
 	return text, n
 }
 

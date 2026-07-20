@@ -82,6 +82,32 @@ func TestRegexLayer_AlwaysOn(t *testing.T) {
 	}
 }
 
+// STT zapisuje dyktowane identyfikatory w grupach i małymi literami —
+// warstwa regex musi je łapać także w tych formach (live leak
+// 2026-07-20: PESEL z przerwami i dowód małymi literami przeszły).
+func TestRegexLayer_SpacedAndLowercaseIdentifiers(t *testing.T) {
+	cases := []struct{ name, in, leak string }{
+		{"pesel spaced 2-2-2-3-2", "Mój PESEL to 85 01 02 123 45, tak.", "85 01 02 123 45"},
+		{"pesel spaced 6-5", "PESEL 850102 12345 się zgadza.", "850102 12345"},
+		{"pesel dashed", "numer 85-01-02-123-45 proszę", "85-01-02-123-45"},
+		{"dowod lowercase", "dowód abc 123456, tak myślę.", "abc 123456"},
+		{"dowod spaced digits", "seria ABC 123 456 chyba.", "ABC 123 456"},
+		{"passport", "paszport EK 1234567 ważny.", "EK 1234567"},
+	}
+	for _, c := range cases {
+		out, _ := apply(t, nil, c.in)
+		if strings.Contains(out, c.leak) {
+			t.Errorf("%s: leaked %q in %q", c.name, c.leak, out)
+		}
+	}
+	// Guard przeciw nadgorliwości: 10-cyfrowe kwoty i NIP-y w typowych
+	// zapisach nie są PESEL-em; krótkie liczby zostają nietknięte.
+	out, _ := apply(t, nil, "To kosztowało 1 500 000 zł w 2026 roku.")
+	if !strings.Contains(out, "1 500 000") || !strings.Contains(out, "2026") {
+		t.Errorf("false positive on amounts: %q", out)
+	}
+}
+
 func TestLongestMatchFirst(t *testing.T) {
 	entities := []Entity{
 		{Placeholder: "[PRACODAWCA]", Forms: []string{"Bank Polski", "Banku Polskim"}},
