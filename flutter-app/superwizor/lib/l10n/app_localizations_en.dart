@@ -630,7 +630,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clientDetails_start_work_desc =>
-      'Start recording and the system will take care of secure transcription and prepare a clinical report.';
+      'Start recording and the system will take care of secure transcription and prepare a report.';
 
   @override
   String get clientDetails_status_analyzing => 'AI analyzing…';

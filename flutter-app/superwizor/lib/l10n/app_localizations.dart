@@ -1161,7 +1161,7 @@ abstract class AppLocalizations {
   /// No description provided for @clientDetails_start_work_desc.
   ///
   /// In pl, this message translates to:
-  /// **'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.'**
+  /// **'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport.'**
   String get clientDetails_start_work_desc;
 
   /// No description provided for @clientDetails_status_analyzing.

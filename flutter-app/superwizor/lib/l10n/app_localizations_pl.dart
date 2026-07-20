@@ -646,7 +646,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get clientDetails_start_work_desc =>
-      'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.';
+      'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport.';
 
   @override
   String get clientDetails_status_analyzing => 'AI analizuje…';
