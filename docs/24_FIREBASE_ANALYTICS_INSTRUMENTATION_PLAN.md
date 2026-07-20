@@ -3,7 +3,7 @@ type: Technical Design
 title: "Plan: Firebase Analytics instrumentation of the Flutter app"
 description: "Goal: understand how therapists use the app — which screens they visit, in what order, where they drop off, and which actions they take — by capturing screen..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/24_FIREBASE_ANALYTICS_INSTRUMENTATION_PLAN.md
-tags: []
+tags: [ai, analytics, crm, frontend, identity, ingestion, notifications, security, testing]
 timestamp: 2026-06-04T13:26:56+02:00
 ---
 

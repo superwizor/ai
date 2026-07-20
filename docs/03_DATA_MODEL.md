@@ -3,7 +3,7 @@ type: System Documentation
 title: "️ SuperWizor AI — Data Model v4.3"
 description: "Version: 4.3 (English, Stripe-ready, pgvector RAG, HiTOP closed ontology, Report Feedback domain, Invoicing extracted to external system) Database: PostgreSQ..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/03_DATA_MODEL.md
-tags: []
+tags: [ai, analytics, architecture, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, security, testing]
 timestamp: 2026-05-27T14:25:11+02:00
 ---
 

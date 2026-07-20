@@ -3,7 +3,7 @@ type: System Documentation
 title: "🆔 Faza 1 --- Tożsamość i dane (Tygodnie 3-4)"
 description: "Wersja: 1.0 Status: Implementation guide. Zgodne z architekturą 02ARCHITEKTURATECHNICZNA.md, modelem danych 03DATAMODEL.md v4.3, oraz fundamentem z 04FAZA0FU..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/05_FAZA_1_TOZSAMOSC_DANE.md
-tags: []
+tags: [ai, analytics, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, phase-1, security, testing]
 timestamp: 2026-05-02T15:37:35+02:00
 ---
 

@@ -3,7 +3,7 @@ type: Technical Design
 title: "38 — Zarządzanie organizacją (panel org managera + provisioning przez admina)"
 description: "Status: DESIGN (2026-07-03). Buduje na istniejących fundamentach — to jest delta, nie budowa od zera. Audyt stanu: organizations + rola ORGADMIN (migracja 00..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/38_ORG_MANAGEMENT_DESIGN.md
-tags: []
+tags: [ai, analytics, architecture, billing, crm, database, frontend, identity, notifications, security, testing]
 timestamp: 2026-07-03T18:37:20+02:00
 ---
 

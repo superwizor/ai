@@ -3,7 +3,7 @@ type: Technical Design
 title: "18. Web App — Design Spec"
 description: "Version: 0.2 (2026-05-27) — incorporates Antigravity design-review notes Owner: Dariusz + backend agent Related: 02ARCHITEKTURATECHNICZNA.md, agents/00GLOBAL..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/18_WEB_APP_DESIGN.md
-tags: []
+tags: [ai, analytics, architecture, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, security, testing]
 timestamp: 2026-05-27T15:58:39+02:00
 ---
 

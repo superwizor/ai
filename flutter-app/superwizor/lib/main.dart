@@ -35,6 +35,8 @@ import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
 import 'widgets/debug_test_overlay.dart';
 import 'widgets/minimized_recording_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/debug_flags.dart';
 
 /// Top-level handler for FCM messages while the app is in the
 /// background or terminated. Must be a top-level function (or static)
@@ -97,6 +99,15 @@ void main() async {
 
   // Date formatting (Polish month names in PDF + UI).
   await initializeDateFormatting('pl_PL');
+
+  // Load debug reminder interval seconds if present
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    DebugFlags.debugReminderIntervalSeconds =
+        prefs.getInt('debug_reminder_interval_seconds') ?? 0;
+  } catch (e) {
+    debugPrint('Error loading debug reminder seconds: $e');
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 

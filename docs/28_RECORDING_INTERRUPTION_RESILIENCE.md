@@ -3,7 +3,7 @@ type: System Documentation
 title: "28 — Recording Interruption Resilience (phone-call loss bug)"
 description: "---"
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/28_RECORDING_INTERRUPTION_RESILIENCE.md
-tags: []
+tags: [ai, analytics, billing, database, frontend, identity, ingestion, notifications, security, testing]
 timestamp: 2026-06-10T09:38:07+02:00
 ---
 

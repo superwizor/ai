@@ -24,6 +24,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var reminderMediaPlayer: MediaPlayer? = null
     
     private var reminderIntervalMinutes: Int = 0
+    private var reminderIntervalSeconds: Int = 0
     private var soundEnabled: Bool = false
     private var hapticsEnabled: Bool = false
     private var startTimeMillis: Long = 0
@@ -136,10 +137,13 @@ class MainActivity : FlutterFragmentActivity() {
             when (call.method) {
                 "start" -> {
                     reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    reminderIntervalSeconds = call.argument<Int>("intervalSeconds") ?: 0
                     soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
                     hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
                     accumulatedMillis = (call.argument<Int>("elapsedMillis") ?: 0).toLong()
-                    expectedRemindersFired = if (reminderIntervalMinutes > 0) (accumulatedMillis / (reminderIntervalMinutes * 60000)).toInt() else 0
+                    
+                    val intervalMillis = if (reminderIntervalSeconds > 0) reminderIntervalSeconds * 1000L else reminderIntervalMinutes * 60000L
+                    expectedRemindersFired = if (intervalMillis > 0) (accumulatedMillis / intervalMillis).toInt() else 0
                     
                     startReminderTimer()
                     result.success(true)
@@ -151,16 +155,20 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 "resume" -> {
                     reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    reminderIntervalSeconds = call.argument<Int>("intervalSeconds") ?: 0
                     soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
                     hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
                     accumulatedMillis = (call.argument<Int>("elapsedMillis") ?: 0).toLong()
-                    expectedRemindersFired = if (reminderIntervalMinutes > 0) (accumulatedMillis / (reminderIntervalMinutes * 60000)).toInt() else 0
+                    
+                    val intervalMillis = if (reminderIntervalSeconds > 0) reminderIntervalSeconds * 1000L else reminderIntervalMinutes * 60000L
+                    expectedRemindersFired = if (intervalMillis > 0) (accumulatedMillis / intervalMillis).toInt() else 0
                     
                     startReminderTimer()
                     result.success(true)
                 }
                 "update" -> {
                     reminderIntervalMinutes = call.argument<Int>("intervalMinutes") ?: 0
+                    reminderIntervalSeconds = call.argument<Int>("intervalSeconds") ?: 0
                     soundEnabled = call.argument<Boolean>("soundEnabled") ?: false
                     hapticsEnabled = call.argument<Boolean>("hapticsEnabled") ?: false
                     result.success(true)
@@ -177,7 +185,10 @@ class MainActivity : FlutterFragmentActivity() {
     private fun startReminderTimer() {
         stopReminderTimer()
         if (reminderMediaPlayer == null) {
-            val resId = resources.getIdentifier("sfx_session_end", "raw", packageName)
+            var resId = resources.getIdentifier("sfx_session_end_2", "raw", packageName)
+            if (resId == 0) {
+                resId = resources.getIdentifier("sfx_session_end", "raw", packageName)
+            }
             if (resId != 0) {
                 reminderMediaPlayer = MediaPlayer.create(this, resId).apply {
                     setAudioAttributes(AudioAttributes.Builder()
@@ -204,9 +215,10 @@ class MainActivity : FlutterFragmentActivity() {
     }
     
     private fun checkReminder() {
-        if (reminderIntervalMinutes <= 0 || startTimeMillis == 0L) return
+        val intervalMillis = if (reminderIntervalSeconds > 0) reminderIntervalSeconds * 1000L else reminderIntervalMinutes * 60000L
+        if (intervalMillis <= 0L || startTimeMillis == 0L) return
         val elapsedNowMillis = accumulatedMillis + (System.currentTimeMillis() - startTimeMillis)
-        val expected = (elapsedNowMillis / (reminderIntervalMinutes * 60000)).toInt()
+        val expected = (elapsedNowMillis / intervalMillis).toInt()
         
         if (expected > expectedRemindersFired) {
             expectedRemindersFired = expected

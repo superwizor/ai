@@ -14,4 +14,8 @@ class DebugFlags {
   /// Whether debug simulation methods (debugInjectRow, debugInjectSession,
   /// etc.) should execute. Toggled by the 7-tap logo gesture.
   static bool simulationsEnabled = false;
+
+  /// Custom reminder interval in seconds for debugging/testing.
+  /// If > 0, overrides the normal minutes-based reminder interval.
+  static int debugReminderIntervalSeconds = 0;
 }

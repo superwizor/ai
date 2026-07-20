@@ -3,7 +3,7 @@ type: System Documentation
 title: "Faza UI — Superwizor AI Flutter MVP"
 description: "---"
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/09_UI_MVP_FLUTTER.md
-tags: []
+tags: [ai, analytics, crm, database, frontend, identity, ingestion, notifications, security, testing]
 timestamp: 2026-05-10T23:14:54+02:00
 ---
 

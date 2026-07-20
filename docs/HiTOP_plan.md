@@ -3,7 +3,7 @@ type: Technical Design
 title: "HiTOP — Plan implementacji (NA PÓŹNIEJ)"
 description: "W audycie pipeline LLM (2026-05-11) ustaliliśmy, że obecna implementacja HiTOP jest pseudonaukowa — LLM dostaje 1 linijkę \"Wskaż wymiary HiTOP\" i wymyśla sco..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/HiTOP_plan.md
-tags: []
+tags: [ai, analytics, database, frontend, identity, ingestion, security, testing]
 timestamp: 2026-05-11T04:31:05+02:00
 ---
 

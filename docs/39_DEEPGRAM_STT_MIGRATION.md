@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "39 — Migracja STT: Chirp 3  Deepgram Nova-3"
+description: "1. Brak natywnej diaryzacji dla polskiego (ADR-IMPL-007) — diaryzację robi"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/39_DEEPGRAM_STT_MIGRATION.md
+tags: [ai, analytics, billing, database, frontend, identity, infrastructure, ingestion, security, testing]
+timestamp: 2026-07-17T13:34:21.794441
+---
+
 # 39 — Migracja STT: Chirp 3 → Deepgram Nova-3
 
 **Status:** design (2026-07-16). Brak kodu. Branch implementacyjny:

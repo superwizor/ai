@@ -15,9 +15,11 @@ You are working on **SuperWizor AI**, a clinical session co-pilot for psychother
 
 2. The focused per-area file in `docs/agents/` matching the code you're editing — see the path-globbed rules in `.antigravity/rules/` for the right one.
 
-3. The actual code in the repo. Source-of-truth ordering when docs and code disagree:
+3. **OKF Scan**: Scan the YAML frontmatter (the top ~10 lines) of the Polish phase and architecture documents (`docs/[0-9][0-9]_*.md`) to check if the requested task is already described or planned.
+
+4. The actual code in the repo. Source-of-truth ordering when docs and code disagree:
    1. Code in the repo (what runs)
-   2. `docs/0[2,3,5,6]_*.md` (canonical Polish architecture docs)
+   2. `docs/[0-9][0-9]_*.md` (canonical Polish architecture and phase docs - scan frontmatter first for relevance)
    3. `docs/agents/*.md` (curated context, may lag)
 
 ## Hard constraints — NEVER violate without explicit user approval
@@ -53,6 +55,7 @@ Any new or modified markdown document (`*.md`) in the `docs/` directory (or its 
 
 ## When making changes
 
+- **Scan OKF frontmatter.** Every phase/architecture document in `docs/[0-9][0-9]_*.md` follows the Open Knowledge Format (OKF) v0.1. Before starting a task, scan the YAML frontmatter/headers of these files to find relevant sections, and read the relevant files if a match is found.
 - **Don't break the contract.** Changing a `.proto` field number, removing a gRPC method, or renaming a DB column requires coordinated client/migration updates.
 - **Migrations are append-only.** Never edit a migration that's been applied. Write a new one.
 - **Idempotency keys.** Every mutating gRPC call accepts `idempotency_key` (≤128 chars). Workers use `SELECT ... FOR UPDATE SKIP LOCKED` on `sessions.status`.

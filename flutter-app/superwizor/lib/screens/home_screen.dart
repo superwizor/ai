@@ -2686,7 +2686,7 @@ class _DebugTapLogoState extends ConsumerState<_DebugTapLogo> {
       }
       final newPlayer = AudioPlayer();
       _player = newPlayer;
-      await newPlayer.play(AssetSource('sounds/SFX_debug_mode.mp3'));
+      await newPlayer.play(AssetSource('sounds/SFX_session_end_2.mp3'));
       newPlayer.onPlayerComplete.first.then((_) {
         if (mounted && _player == newPlayer) {
           newPlayer.dispose();

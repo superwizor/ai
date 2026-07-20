@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "40 — Ordering gate: serializacja sesji per kartoteka (wariant serwerowy)"
+description: "Flaga `STT_ORDER_GATE` domyślnie off."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/40_STT_ORDERING_GATE.md
+tags: [ai, analytics, database, identity, infrastructure, ingestion, testing]
+timestamp: 2026-07-18T23:26:24.735379
+---
+
 # 40 — Ordering gate: serializacja sesji per kartoteka (wariant serwerowy)
 
 **Status:** implemented (2026-07-17), branch `feat/stt-ordering-gate`.

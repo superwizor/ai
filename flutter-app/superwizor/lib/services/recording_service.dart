@@ -48,6 +48,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:flutter/services.dart';
 import 'reminder_service.dart';
+import '../utils/debug_flags.dart';
 
 import 'audio_session_helper.dart';
 import 'recording_foreground_service.dart';
@@ -189,6 +190,7 @@ class RecordingService {
     if (_state == RecordingState.recording) {
       unawaited(ReminderService.update(
         intervalMinutes: reminderIntervalMinutes,
+        intervalSeconds: DebugFlags.debugReminderIntervalSeconds,
         soundEnabled: soundEnabled,
         hapticsEnabled: hapticsEnabled,
       ));
@@ -210,7 +212,6 @@ class RecordingService {
     String reportLanguage = '',
     String? fgsTitle,
     String? fgsBody,
-    int reminderIntervalMinutes = 0,
   }) async {
     if (_state != RecordingState.idle &&
         _state != RecordingState.stopped &&
@@ -279,10 +280,16 @@ class RecordingService {
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     
-    _currentReminderInterval = reminderIntervalMinutes;
+    // _currentReminderInterval is already set by updateSettings()
+    // via services_provider's fireImmediately listener. Don't overwrite
+    // it here — the old parameter default was 0, which caused the
+    // native ReminderManager to silently skip all reminders.
     
+    debugPrint('[recording] 📤 ReminderService.start() — intervalMin=$_currentReminderInterval, intervalSec=${DebugFlags.debugReminderIntervalSeconds}, sound=$_soundEnabled, haptics=$_hapticsEnabled');
+
     unawaited(ReminderService.start(
       intervalMinutes: _currentReminderInterval,
+      intervalSeconds: DebugFlags.debugReminderIntervalSeconds,
       soundEnabled: _soundEnabled,
       hapticsEnabled: _hapticsEnabled,
       elapsedMillis: 0,
@@ -352,6 +359,7 @@ class RecordingService {
     _setState(RecordingState.recording);
     unawaited(ReminderService.resume(
       intervalMinutes: _currentReminderInterval,
+      intervalSeconds: DebugFlags.debugReminderIntervalSeconds,
       soundEnabled: _soundEnabled,
       hapticsEnabled: _hapticsEnabled,
       elapsedMillis: _accumulated.inMilliseconds,

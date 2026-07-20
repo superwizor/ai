@@ -3,7 +3,7 @@ type: System Documentation
 title: "35. Wydanie aplikacji w sklepach (App Store & Google Play)"
 description: "Dokument zawiera kompletną konfigurację, teksty marketingowe, dane konta testowego oraz procedury związane z wydaniem aplikacji SuperWizor AI w sklepach mobi..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/35_APLIKACJA_WYDANIE_I_SKLEPY.md
-tags: []
+tags: [ai, analytics, crm, database, frontend, identity, infrastructure, ingestion, notifications, security, testing]
 timestamp: 2026-06-26T18:05:07+02:00
 ---
 

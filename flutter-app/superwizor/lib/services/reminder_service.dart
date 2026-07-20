@@ -11,9 +11,11 @@ class ReminderService {
     required bool soundEnabled,
     required bool hapticsEnabled,
     required int elapsedMillis,
+    int intervalSeconds = 0,
   }) async {
     await _channel.invokeMethod('start', {
       'intervalMinutes': intervalMinutes,
+      'intervalSeconds': intervalSeconds,
       'soundEnabled': soundEnabled,
       'hapticsEnabled': hapticsEnabled,
       'elapsedMillis': elapsedMillis,
@@ -31,9 +33,11 @@ class ReminderService {
     required bool soundEnabled,
     required bool hapticsEnabled,
     required int elapsedMillis,
+    int intervalSeconds = 0,
   }) async {
     await _channel.invokeMethod('resume', {
       'intervalMinutes': intervalMinutes,
+      'intervalSeconds': intervalSeconds,
       'soundEnabled': soundEnabled,
       'hapticsEnabled': hapticsEnabled,
       'elapsedMillis': elapsedMillis,
@@ -44,9 +48,11 @@ class ReminderService {
     required int intervalMinutes,
     required bool soundEnabled,
     required bool hapticsEnabled,
+    int intervalSeconds = 0,
   }) async {
     await _channel.invokeMethod('update', {
       'intervalMinutes': intervalMinutes,
+      'intervalSeconds': intervalSeconds,
       'soundEnabled': soundEnabled,
       'hapticsEnabled': hapticsEnabled,
     });

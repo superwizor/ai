@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "43 — Companion app B2C: model dwóch domen danych"
+description: "staging + main): klient bez imion/nazwisk w całym systemie (formularze,"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/43_COMPANION_DWIE_DOMENY_DANYCH.md
+tags: [ai, analytics, architecture, billing, crm, database, frontend, identity, ingestion, security, testing]
+timestamp: 2026-07-18T23:26:24.735903
+---
+
 # 43 — Companion app B2C: model dwóch domen danych
 
 **Status:** design zaakceptowany kierunkowo (2026-07-18).

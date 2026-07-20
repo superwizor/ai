@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "41 — Pseudonimizacja danych identyfikujących w raportach (call-2)"
+description: "staging pracuje w trybie `all`, utrwalonym jako default w"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/41_PSEUDONIMIZACJA_RAPORTOW.md
+tags: [ai, analytics, database, frontend, infrastructure, ingestion, security, testing]
+timestamp: 2026-07-18T23:26:24.735580
+---
+
 # 41 — Pseudonimizacja danych identyfikujących w raportach (call-2)
 
 **Status: WDROŻONE** (implementacja zmergowana do main 2026-07-17;

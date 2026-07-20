@@ -3,7 +3,7 @@ type: System Documentation
 title: "30 — RAG Theme-Level Session Context (refactor plan)"
 description: "Status: DONE (deployed + verified in prod 2026-06-10 — llm-worker-00092-cop; two-session e2e TestFullSessionRAGTwoSessions green: session 2 retrieved poolsiz..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/30_RAG_THEME_CONTEXT_REFACTOR.md
-tags: []
+tags: [ai, analytics, database, frontend, identity, infrastructure, security, testing]
 timestamp: 2026-06-10T20:20:14+02:00
 ---
 

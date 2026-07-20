@@ -3,7 +3,7 @@ type: Technical Design
 title: "39 — Panel Klienta (pacjenta): design & plan implementacji"
 description: "Status: DESIGN — decyzje D2/D6/PR9 ZATWIERDZONE (2026-07-03). Buduje na fundamentach docs/38 — mechanizm zaproszeń jest tą samą maszynerią co zaproszenie man..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/39_CLIENT_PANEL_DESIGN.md
-tags: []
+tags: [ai, analytics, architecture, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, security, testing]
 timestamp: 2026-07-03T23:30:01+02:00
 ---
 

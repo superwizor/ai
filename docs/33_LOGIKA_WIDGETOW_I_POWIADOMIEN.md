@@ -3,7 +3,7 @@ type: System Documentation
 title: "33. Logika Widgetów, Live Activities i Foreground Services"
 description: "Dokument opisuje architekturę, przepływ danych oraz cykl życia stanów mechanizmów informowania użytkownika o statusie aktywnej sesji poza głównym widokiem ap..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/33_LOGIKA_WIDGETOW_I_POWIADOMIEN.md
-tags: []
+tags: [ai, analytics, database, frontend, identity, infrastructure, ingestion, notifications, security, testing]
 timestamp: 2026-06-23T12:07:22+02:00
 ---
 

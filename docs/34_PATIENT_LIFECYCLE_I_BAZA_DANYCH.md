@@ -3,7 +3,7 @@ type: System Documentation
 title: "34. Statusy Kartotek Pacjentów i Schemat Bazy Danych PostgreSQL"
 description: "Dokument opisuje: 1. System cyklu życia kartotek pacjentów (ACTIVE/COMPLETED/PAUSED) 2. Znane bugi i otwarte problemy 3. Przegląd schematu bazy danych Postgr..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/34_PATIENT_LIFECYCLE_I_BAZA_DANYCH.md
-tags: []
+tags: [ai, analytics, billing, crm, database, frontend, identity, ingestion, notifications, security, testing]
 timestamp: 2026-06-23T12:07:22+02:00
 ---
 

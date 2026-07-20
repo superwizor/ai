@@ -3,7 +3,7 @@ type: Runbook
 title: "Production DNS cutover — superwizor.ai + app.superwizor.ai"
 description: "Status: Runbook. Execute when launching to production traffic. Owner: Operations on call. Estimated downtime: Zero — DNS swap propagates while the existing F..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/DNS_CUTOVER_RUNBOOK.md
-tags: []
+tags: [ai, analytics, crm, frontend, identity, infrastructure, ingestion, notifications, runbook, security, testing]
 timestamp: 2026-05-28T11:15:51+02:00
 ---
 

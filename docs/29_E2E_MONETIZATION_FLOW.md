@@ -3,7 +3,7 @@ type: System Documentation
 title: "29. E2E Monetization Flow — Od Rejestracji do Raportu"
 description: "Dokument opisuje pełny przepływ monetyzacji (end-to-end) jaki zbudowaliśmy w ramach sesji „Łączymy klocki\" — od kliknięcia CTA na stronie marketingowej do wy..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/29_E2E_MONETIZATION_FLOW.md
-tags: []
+tags: [ai, analytics, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, testing]
 timestamp: 2026-06-09T00:28:09+02:00
 ---
 

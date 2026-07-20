@@ -1,3 +1,12 @@
+---
+type: Runbook
+title: "Runbook: Deepgram STT — Faza 2 (deploy  walidacja na stagingu)"
+description: "Wykonanie ręczne kroków z `docs/39_DEEPGRAM_STT_MIGRATION.md` §Faza 2"
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/DEEPGRAM_PHASE2_RUNBOOK.md
+tags: [ai, analytics, database, frontend, identity, infrastructure, ingestion, phase-2, runbook, testing]
+timestamp: 2026-07-17T13:34:21.794574
+---
+
 # Runbook: Deepgram STT — Faza 2 (deploy + walidacja na stagingu)
 
 Wykonanie ręczne kroków z `docs/39_DEEPGRAM_STT_MIGRATION.md` §Faza 2

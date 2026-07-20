@@ -3,7 +3,7 @@ type: System Documentation
 title: "Faza 3 — Notifications & Mobile Sync (Tygodnie 8-10)"
 description: "---"
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/08_FAZA_3_NOTIFICATIONS.md
-tags: []
+tags: [ai, analytics, billing, crm, database, frontend, identity, infrastructure, ingestion, notifications, phase-3, security, testing]
 timestamp: 2026-05-08T10:07:36+02:00
 ---
 

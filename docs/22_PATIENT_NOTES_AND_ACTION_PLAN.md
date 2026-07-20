@@ -3,7 +3,7 @@ type: Technical Design
 title: "22 — Patient Notes + \"Plan działania → Pacjent\""
 description: "Status: Implemented on feat/patient-notes (2026-06-01), not yet deployed. Flutter UX prototype (local Hive, simulated send) + full backend: migrations 000040..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/22_PATIENT_NOTES_AND_ACTION_PLAN.md
-tags: []
+tags: [ai, analytics, crm, database, frontend, identity, infrastructure, notifications, security, testing]
 timestamp: 2026-06-01T13:51:10+02:00
 ---
 

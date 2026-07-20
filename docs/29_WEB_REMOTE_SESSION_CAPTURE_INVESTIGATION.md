@@ -3,7 +3,7 @@ type: System Documentation
 title: "29. Investigation — Capturing Remote Sessions (Meet/Zoom/Teams) in the Web App"
 description: "Status: Investigation / options analysis. No implementation yet. Scenario: Therapist on a desktop opens the Superwizor web app in a Chrome/Safari tab, presse..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/29_WEB_REMOTE_SESSION_CAPTURE_INVESTIGATION.md
-tags: []
+tags: [ai, analytics, database, frontend, identity, infrastructure, ingestion, security, testing]
 timestamp: 2026-06-10T18:50:54+02:00
 ---
 

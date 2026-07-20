@@ -25,12 +25,12 @@ A clinical session co-pilot for psychotherapists. Therapist records a session in
 | `tests/**`, `**/*_test.go`, `**/testdata/**` | [`docs/agents/09_testing.md`](./docs/agents/09_testing.md) |
 | `superwizor-backend/services/notification-svc/**`, `proto/notification/**`, `firestore.rules` | [`docs/agents/10_notification-svc.md`](./docs/agents/10_notification-svc.md) |
 
-3. The actual code in the repo. **When docs and code disagree, code wins.** Agent docs may lag the codebase.
+3. **OKF Scan**: Scan the YAML frontmatter (the top ~10 lines) of the Polish phase and architecture documents (`docs/[0-9][0-9]_*.md`) to check if the requested task is already described or planned in a phase guide.
 
 ## Source-of-truth ordering
 
 1. Code in the repo (what runs)
-2. Canonical Polish architecture docs: `docs/0[2,3,5,6]_*.md`
+2. Canonical Polish architecture and phase docs: `docs/[0-9][0-9]_*.md` (scan frontmatter first to identify relevance)
 3. Curated agent docs: `docs/agents/*.md`
 
 ## Hard rules — never violate without explicit user approval

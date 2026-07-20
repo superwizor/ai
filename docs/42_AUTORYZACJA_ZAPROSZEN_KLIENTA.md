@@ -1,3 +1,12 @@
+---
+type: System Documentation
+title: "42 — Autoryzacja zaproszeń klienta: kod parowania  cofanie (O0O1)"
+description: "(patrz §4: stare zaproszenia grandfathered)."
+resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI/docs/42_AUTORYZACJA_ZAPROSZEN_KLIENTA.md
+tags: [ai, analytics, crm, database, frontend, identity, infrastructure, testing]
+timestamp: 2026-07-18T23:26:24.735737
+---
+
 # 42 — Autoryzacja zaproszeń klienta: kod parowania + cofanie (O0+O1)
 
 **Status:** design + implementacja (2026-07-17). Branch

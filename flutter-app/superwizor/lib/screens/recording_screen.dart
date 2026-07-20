@@ -52,6 +52,7 @@ import 'session_status_screen.dart';
 import '../analytics/analytics_collector.dart';
 
 import '../widgets/minimized_recording_bar.dart';
+import '../utils/debug_flags.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -247,6 +248,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     Future.microtask(() {
       _visibleNotifier.setVisible(false);
     });
+    if (widget.debugAlarmStress) {
+      DebugFlags.debugReminderIntervalSeconds = 0;
+    }
     super.dispose();
   }
 
@@ -453,6 +457,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // setup inside _service.start() blocks the main thread.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
+
+    if (widget.debugAlarmStress) {
+      DebugFlags.debugReminderIntervalSeconds = widget.debugAlarmIntervalSeconds;
+      debugPrint('[recording] 🔧 DEBUG: set debugReminderIntervalSeconds=${widget.debugAlarmIntervalSeconds}');
+    } else {
+      debugPrint('[recording] 🔧 Normal recording (no debugAlarmStress). DebugFlags.debugReminderIntervalSeconds=${DebugFlags.debugReminderIntervalSeconds}');
+    }
 
     try {
       _sessionId = const Uuid().v4();

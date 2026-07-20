@@ -3,7 +3,7 @@ type: System Documentation
 title: "Rama marki dla developera — głos, słownik, jak pisać"
 description: "Co to jest: rama do pisania tekstów Superwizor AI — głos marki, słownik i zasady pisania nagłówków, leadów i CTA. Po to, żeby każda nowa podstrona brzmiała t..."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/32_BRAND_VOICE_GUIDELINES.md
-tags: []
+tags: [ai, analytics, crm, database, frontend, identity, ingestion, security, testing]
 timestamp: 2026-06-16T19:43:54+02:00
 ---
 
