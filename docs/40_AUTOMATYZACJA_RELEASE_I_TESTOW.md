@@ -1,15 +1,15 @@
 ---
 type: System Documentation
 title: "40. Automatyzacja Release i Testów"
-description: "Opis skryptów automatyzujących dystrybucję aplikacji iOS, zarządzanie kontami testerów oraz konfigurację metadanych App Store Connect. Wszystkie operacje wyk..."
+description: "Opis skryptów automatyzujących dystrybucję aplikacji iOS/Android, zarządzanie kontami testerów oraz konfigurację metadanych sklepów z terminala."
 resource: file:///Users/maciekckoklormam91/Desktop/Inne/APP%20-%20Superwizor%20AI/docs/40_AUTOMATYZACJA_RELEASE_I_TESTOW.md
-tags: [ai, analytics, crm, database, frontend, identity, infrastructure, ingestion, notifications, testing]
-timestamp: 2026-07-07T21:57:06+02:00
+tags: [ai, analytics, crm, database, frontend, identity, infrastructure, ingestion, notifications, testing, android, ios, play-store, app-store]
+timestamp: 2026-07-20T16:05:00+02:00
 ---
 
 # 40. Automatyzacja Release i Testów
 
-Opis skryptów automatyzujących dystrybucję aplikacji iOS, zarządzanie kontami testerów oraz konfigurację metadanych App Store Connect. Wszystkie operacje wykonywane z terminala, bez klikania w panelach webowych.
+Opis skryptów automatyzujących dystrybucję aplikacji iOS oraz Android, zarządzanie kontami testerów i konfigurację metadanych w App Store Connect oraz Google Play Console. Wszystkie operacje wykonywane z terminala, bez klikania w panelach webowych (tam, gdzie to możliwe).
 
 ---
 
@@ -31,6 +31,11 @@ Klucz prywatny (`.p8`) musi leżeć w dwóch miejscach:
 
 > **⚠️ Klucz musi mieć rolę Admin**, aby móc zapraszać użytkowników do zespołu Apple i zarządzać wersjami. Klucze z rolą Developer/App Manager nie mają wystarczających uprawnień.
 
+### Poświadczenia Google Play (Google API)
+
+Wysyłka na platformę Android wymaga klucza konta usługowego (Service Account) z rolą administratora wydań w Google Play Console.
+Plik klucza powinien znajdować się w głównym katalogu repozytorium pod nazwą `play-sa-key.json` (lub ścieżka zdefiniowana w `credentials.env` pod zmienną `PLAY_STORE_JSON_KEY_PATH`).
+
 ### Poświadczenia GCP (Firebase + baza danych)
 
 Przed uruchomieniem skryptów dotyczących Firebase/bazy danych:
@@ -50,6 +55,8 @@ Użyj przeglądarki z profilem Chrome powiązanym z kontem `superwizor-ai-25ecd`
 |---|-------|--------|------|
 | 8 | `./KOMENDY/8` | `8_wyslij_testflight.sh` | Build + automatyczna wysyłka `.ipa` do TestFlight |
 | 9 | `./KOMENDY/9` | `9_zarejestruj_stazystow.sh` | Rejestracja testerów w Firebase Auth + PostgreSQL |
+| 10 | `./KOMENDY/10` | `10_wyslij_googleplay.sh` | Build + wysyłka `.aab` do Google Play na tor wewnętrzny (internal) |
+| 11 | `./KOMENDY/11` | `11_wyslij_googleplay_live.sh` | Build + wysyłka `.aab` bezpośrednio na tor produkcyjny (production/LIVE) |
 
 ---
 
@@ -94,7 +101,7 @@ Użyj przeglądarki z profilem Chrome powiązanym z kontem `superwizor-ai-25ecd`
 
 ---
 
-## 2. Wysyłka buildu na TestFlight
+## 2. Wysyłka buildu na TestFlight (iOS)
 
 **Skrypt:** `KOMENDY/8_wyslij_testflight.sh`  
 **Uruchomienie:** `./KOMENDY/8`
@@ -103,7 +110,7 @@ Użyj przeglądarki z profilem Chrome powiązanym z kontem `superwizor-ai-25ecd`
 
 1. `flutter clean` + `flutter pub get`.
 2. `flutter build ipa` — tworzy produkcyjne archiwum `.ipa`.
-3. Wczytuje `APP_STORE_KEY_ID` i `APP_STORE_ISSUER_ID` z `credentials.env`.
+3. Wczytuje `APP_STORE_KEY_ID` and `APP_STORE_ISSUER_ID` z `credentials.env`.
 4. Jeśli klucz API jest dostępny → `xcrun altool --upload-app` wysyła `.ipa` bezpośrednio do TestFlight.
 5. Jeśli brak klucza → otwiera `Runner.xcarchive` w Xcode Organizer jako fallback.
 
@@ -114,7 +121,26 @@ Użyj przeglądarki z profilem Chrome powiązanym z kontem `superwizor-ai-25ecd`
 
 ---
 
-## 3. Dodawanie użytkowników do Apple Developer (Users & Access)
+## 3. Wysyłka buildu na Google Play (Android)
+
+Do wysyłki paczek na Androida służą dwa skrypty. Pod spodem uruchamiają one skrypt Go `superwizor-backend/scripts/upload_to_play.go`.
+
+### A. Tor Wewnętrzny (Internal Testing)
+**Skrypt:** `KOMENDY/10_wyslij_googleplay.sh`  
+**Uruchomienie:** `./KOMENDY/10`  
+Zalecany do codziennych testów. Paczka trafia natychmiast do zdefiniowanej grupy testerów wewnętrznych.
+
+### B. Produkcja bezpośrednia (LIVE)
+**Skrypt:** `KOMENDY/11_wyslij_googleplay_live.sh`  
+**Uruchomienie:** `./KOMENDY/11`  
+Skrypt automatycznie wrzuca paczkę `.aab` na tor produkcyjny (`production`) ze statusem `completed` (100% rollout). 
+
+> **⚠️ Ważna uwaga dotycząca publikacji LIVE na Androidzie:**
+> Nawet po wysyłce na tor produkcyjny skryptem, aplikacja może nie pojawić się od razu w sklepie, jeżeli w Google Play Console włączona jest opcja **Zarządzane publikowanie (Managed Publishing)**. W takim wypadku paczka przechodzi weryfikację Google, ale wdrożenie na produkcję wymaga kliknięcia przycisku "Wyślij zmiany do publikacji" w panelu webowym Google Play Console. Aby publikacja z konsoli była w pełni automatyczna, należy wyłączyć opcję "Managed Publishing" w panelu.
+
+---
+
+## 4. Dodawanie użytkowników do Apple Developer (Users & Access)
 
 Osoby dodane w sekcji **Users and Access** w App Store Connect (z dowolną rolą, np. Customer Support) automatycznie stają się **wewnętrznymi testerami TestFlight** i mogą pobierać buildy bez osobnego zaproszenia.
 
@@ -142,11 +168,11 @@ Endpoint: `POST /v1/userInvitations`
 }
 ```
 
-> **Uwaga:** Klucz API musi mieć rolę **Admin**. Klucz z rolą Developer zwróci `403 FORBIDDEN_ERROR.ROLES_NOT_ALLOWED`.
+> **Uwaga:** Klucz API must mieć rolę **Admin**. Klucz z rolą Developer zwróci `403 FORBIDDEN_ERROR.ROLES_NOT_ALLOWED`.
 
 ---
 
-## 4. Automatyzacja metadanych App Store Connect
+## 5. Automatyzacja metadanych App Store Connect
 
 **Skrypt:** `superwizor-backend/scripts/update_app_metadata.go`  
 **Uruchomienie:** `cd superwizor-backend && go run scripts/update_app_metadata.go`
@@ -155,27 +181,29 @@ Endpoint: `POST /v1/userInvitations`
 
 | Operacja | Endpoint API | Opis |
 |----------|-------------|------|
-| Tworzenie wersji | `POST /v1/appStoreVersions` | Tworzy nową wersję (np. `1.0.1`), jeśli nie istnieje |
-| Zmiana kategorii | `PATCH /v1/appInfos/{id}` | Ustawia kategorie (aktualnie: Productivity + Health & Fitness) |
+| Tworzenie wersji | `POST /v1/appStoreVersions` | Tworzy nową wersję w sklepie, jeśli nie istnieje |
+| Zmiana kategorii | `PATCH /v1/appInfos/{id}` | Ustawia kategorie ( Productivity + Health & Fitness) |
 | WhatsNew (Co nowego) | `PATCH /v1/appStoreVersionLocalizations/{id}` | Aktualizuje opisy zmian per lokalizacja (pl, en-US) |
 
 ### Co jeszcze można zautomatyzować (rozbudowa skryptu)
 
 - Przypisanie buildu z TestFlight do wersji App Store.
 - Wysyłka do Apple Review (`Submit for Review`).
-- Zarządzanie cenami i In-App Purchases.
-- Zarządzanie screenshotami i preview wideo.
 
 ---
 
-## Typowy flow wydania nowej wersji
+## Typowy flow wydania nowej wersji produkcyjnej
 
-```
-1. Podnieś wersję w pubspec.yaml (np. 1.0.1+25 → 1.0.2+26)
-2. ./KOMENDY/8                    ← build + upload do TestFlight
-3. (Opcjonalnie) go run scripts/update_app_metadata.go  ← WhatsNew, kategorie
-4. W App Store Connect: wybierz build, Submit for Review
-```
+### Android (Google Play)
+1. Podnieś wersję w `pubspec.yaml` (np. `1.0.1+25` -> `1.0.2+26`).
+2. `./KOMENDY/11` (buduje AAB i wysyła bezpośrednio na tor produkcyjny).
+3. Jeśli masz wyłączone "Managed Publishing", wersja wejdzie automatycznie do sklepu po przejściu review w Google.
+
+### iOS (App Store)
+1. Podnieś wersję w `pubspec.yaml`.
+2. `./KOMENDY/8` (buduje IPA i wysyła do TestFlight).
+3. Uruchom `go run scripts/update_app_metadata.go` (tworzy nową wersję roboczą i ustawia WhatsNew).
+4. **Krok ręczny:** Ponieważ przetworzenie buildu na serwerach Apple trwa 15-30 minut, podpięcie go pod wersję roboczą i wysłanie do recenzji (`Submit for Review`) aktualnie wymaga kliknięcia w App Store Connect.
 
 ---
 
@@ -184,6 +212,6 @@ Endpoint: `POST /v1/userInvitations`
 ```
 1. Edytuj tablicę interns w seed_interns.go
 2. ./KOMENDY/9                    ← konto Firebase + baza danych
-3. Dodaj osobę w Users & Access   ← panel Apple lub API (sekcja 3)
+3. Dodaj osobę w Users & Access   ← panel Apple lub API (sekcja 4)
 4. Osoba dostaje maila od Apple, pobiera TestFlight, loguje się hasłem z seed_interns.go
 ```
