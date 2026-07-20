@@ -41,11 +41,11 @@ do nich nanieść (nowy podprocesor STT, pseudonimizacja raportów).
 | Dane terapeutów (konto, profil, płatności) | **Euphire sp. z o.o.** | Administrator |
 | Dane klientów/pacjentów (nagrania, transkrypcje, raporty, kartoteki, notatki) | **Terapeuta** (Użytkownik Profesjonalny) — każdy indywidualnie | Podmiot przetwarzający (procesor) na podstawie DPA |
 
-To rozróżnienie jest fundamentem architektury i wraca w §7 (dlaczego nie
-redagujemy transkryptu dla terapeuty): **terapeuta jest administratorem
-danych swojego pacjenta i prowadzi dokumentację procesu** — my
-dostarczamy narzędzie i zabezpieczamy dane, ale nie decydujemy za
-administratora, co z jego dokumentacji zniknie.
+To rozróżnienie jest fundamentem architektury: **terapeuta jest
+administratorem danych swojego pacjenta i prowadzi dokumentację
+procesu** — my dostarczamy narzędzie i zabezpieczamy dane. Zakres
+redakcji transkryptu (od 2026-07-20 obejmującej także zapis kanoniczny)
+omawia §7.
 
 ---
 
@@ -72,9 +72,9 @@ Analiza AI — Vertex AI Gemini, europe-west4 (Holandia)
   ▼
 Zapis — PostgreSQL Cloud SQL, europe-central2
   │  envelope encryption (AEAD + Cloud KMS, rotacja klucza co 90 dni);
-  │  raport, Title/Summary i pamięć RAG zapisywane w wersji
-  │  pseudonimizowanej; transkrypt kanoniczny w oryginale (§7),
-  │  zaszyfrowany jak wszystkie dane szczególnej kategorii
+  │  raport, Title/Summary, pamięć RAG ORAZ (od 2026-07-20) transkrypt
+  │  kanoniczny zapisywane w wersji pseudonimizowanej (§5.2, §7);
+  │  całość zaszyfrowana jak dane szczególnej kategorii
   ▼
 Dostęp — wyłącznie uwierzytelniony terapeuta-właściciel kartoteki
    (oraz pacjent w panelu klienta — widzi wersję pseudonimizowaną)
