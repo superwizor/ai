@@ -11,11 +11,13 @@
 // Krok 1: "Kim jest Twój klient?" — working alias ("Pseudonim")
 // Krok 2: "Dodatkowe dane" — client language
 // Krok 3: "Dopasuj do Twojej pracy" — modality (expanded), DPA consent, save
-// Krok 4: "Spersonalizuj oznaczenie" — optional avatar label + color (post-creation)
+//
+// Po zapisie wizard od razu otwiera nową kartotekę (pushReplacement do
+// ClientDetailsScreen), żeby terapeuta mógł nagrać pierwszą sesję —
+// dawny krok 4 "Spersonalizuj oznaczenie" usunięty (feedback 2026-07-20).
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
 
@@ -23,10 +25,10 @@ import '../utils/haptics.dart';
 
 import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
-import '../providers/patient_avatar_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
+import '../screens/client_details_screen.dart';
 import '../screens/legal_markdown_screen.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
@@ -54,7 +56,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   final _scrollController1 = ScrollController();
   final _scrollController2 = ScrollController();
   final _scrollController3 = ScrollController();
-  final _scrollController4 = ScrollController();
 
   // ── Step 1 fields ──
   // The alias field value goes directly to CreatePatientFile.working_alias
@@ -74,9 +75,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   bool _consentGiven = false;
   bool _saving = false;
 
-  // ── Step 3 fields (avatar customization) ──
-  final _avatarLabelController = TextEditingController();
-  int _selectedColorIndex = 0;
   String? _createdPatientId; // set after successful save
 
   @override
@@ -98,33 +96,13 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     _scrollController1.dispose();
     _scrollController2.dispose();
     _scrollController3.dispose();
-    _scrollController4.dispose();
     _aliasController.removeListener(_onAliasChanged);
     _aliasController.dispose();
     _aliasFocus.dispose();
     _emailController.dispose();
     _emailFocus.dispose();
-    _avatarLabelController.dispose();
     _pageController.dispose();
     super.dispose();
-  }
-
-  String get _avatarPreviewLabel {
-    final custom = _avatarLabelController.text.trim();
-    if (custom.isNotEmpty) return custom;
-    return _defaultInitials;
-  }
-
-  String get _defaultInitials {
-    // Derive up-to-two initials from the working alias words.
-    final words = _aliasController.text
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2);
-    final initials =
-        words.map((w) => w.characters.first.toUpperCase()).join();
-    return initials.isEmpty ? '?' : initials;
   }
 
   String _modalityDisplayName(BuildContext context, String code) {
@@ -171,10 +149,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       canPop: _currentPage == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (_currentPage == 3) {
-          // On step 4, just go back means "skip"
-          Navigator.of(context).pop();
-        } else if (_aliasController.text.trim().isNotEmpty) {
+        if (_aliasController.text.trim().isNotEmpty) {
           _showDiscardDialog(t);
         } else {
           Navigator.of(context).pop();
@@ -206,7 +181,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                           _buildStep1(t),
                           _buildStep2(t),
                           _buildStep3(t),
-                          _buildStep4(t),
                         ],
                       ),
                     ),
@@ -229,10 +203,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         children: [
           TextButton.icon(
             onPressed: () {
-              if (_currentPage == 3) {
-                // Step 4 is post-creation; back = done
-                Navigator.of(context).pop();
-              } else if (_currentPage > 0) {
+              if (_currentPage > 0) {
                 _goToPage(_currentPage - 1);
               } else {
                 Navigator.of(context).pop();
@@ -244,11 +215,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               color: EuphireColors.mist,
             ),
             label: Text(
-              _currentPage == 0
-                  ? t.common_cancel
-                  : _currentPage == 3
-                  ? t.common_done
-                  : t.common_back,
+              _currentPage == 0 ? t.common_cancel : t.common_back,
               style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 15,
@@ -269,7 +236,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(4, (i) {
+        children: List.generate(3, (i) {
           final isActive = i == _currentPage;
           final isCompleted = i < _currentPage;
           return AnimatedContainer(
@@ -820,253 +787,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     );
   }
 
-  // ── Step 4: "Spersonalizuj oznaczenie" — Optional avatar customization ──
-
-  Widget _buildStep4(AppLocalizations t) {
-    return Column(
-      children: [
-        Expanded(
-          child: RawScrollbar(
-            controller: _scrollController3,
-            thumbVisibility: true,
-            thickness: 6,
-            radius: const Radius.circular(10),
-            thumbColor: EuphireColors.mist.withValues(alpha: 0.3),
-            child: SingleChildScrollView(
-              controller: _scrollController3,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  const SizedBox(height: 24),
-
-                  // ── Live preview avatar ──
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: AvatarColors.fromIndex(_selectedColorIndex),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AvatarColors.fromIndex(
-                            _selectedColorIndex,
-                          ).withValues(alpha: 0.4),
-                          blurRadius: 24,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _avatarPreviewLabel,
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Title ──
-                  Text(
-                    t.addPatient_customize_label_title,
-                    style: const TextStyle(
-                      fontFamily: 'Merriweather',
-                      fontStyle: FontStyle.italic,
-                      fontSize: 20,
-                      color: EuphireColors.frostWhite,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    t.addPatient_alias_instruction,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 13,
-                      color: EuphireColors.mist.withValues(alpha: 0.6),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-
-                  // ── Label input ──
-                  SizedBox(
-                    width: 160,
-                    child: TextField(
-                      controller: _avatarLabelController,
-                      textAlign: TextAlign.center,
-                      maxLength: null,
-                      inputFormatters: [_GraphemeClusterLengthFormatter(2)],
-                      onChanged: (_) => setState(() {}),
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
-                        letterSpacing: 3,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: _defaultInitials,
-                        hintStyle: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 3,
-                          color: EuphireColors.mist.withValues(alpha: 0.25),
-                        ),
-                        counterText: '',
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.06),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: EuphireColors.ember,
-                            width: 1.5,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    t.addPatient_avatar_format_hint,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 11,
-                      color: EuphireColors.mist.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // ── Color grid ──
-                  Text(
-                    t.addPatient_background_color,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 1.5,
-                      color: EuphireColors.mist.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: List.generate(AvatarColors.palette.length, (i) {
-                      final isSelected = i == _selectedColorIndex;
-                      return GestureDetector(
-                        onTap: () {
-                          AppHapticFeedback.selectionClick();
-                          setState(() => _selectedColorIndex = i);
-                          _saveAvatarConfig();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          width: isSelected ? 44 : 38,
-                          height: isSelected ? 44 : 38,
-                          decoration: BoxDecoration(
-                            color: AvatarColors.palette[i],
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(
-                                    color: EuphireColors.ember,
-                                    width: 2.5,
-                                  )
-                                : Border.all(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    width: 1,
-                                  ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: EuphireColors.ember.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 12,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 18,
-                                  color: EuphireColors.frostWhite,
-                                )
-                              : null,
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── Sticky Bottom Buttons (Gotowe + Pomiń) ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: EuphireButton(
-                  text: t.common_done,
-                  icon: Icons.check_rounded,
-                  onPressed: () {
-                    _saveAvatarConfig();
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  t.addPatient_skip_for_now,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: EuphireColors.mist.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   // ── Actions ──
 
   void _openDpa() {
@@ -1098,18 +818,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         ),
       ),
     );
-  }
-
-  void _saveAvatarConfig() {
-    final patientId = _createdPatientId;
-    if (patientId == null) return;
-    final avatarLabel = _avatarLabelController.text.trim();
-    final isDefault = avatarLabel.isEmpty || avatarLabel == _defaultInitials;
-    final config = PatientAvatarConfig(
-      customLabel: isDefault ? null : avatarLabel,
-      colorIndex: _selectedColorIndex,
-    );
-    ref.read(patientAvatarProvider.notifier).setConfig(patientId, config);
   }
 
   Future<void> _onSave() async {
@@ -1186,8 +894,21 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
       if (mounted) {
         AppHapticFeedback.mediumImpact();
-        // Navigate to Step 4 (avatar customization)
-        _goToPage(3);
+        // Straight into the fresh kartoteka so the therapist can record
+        // the first session immediately (feedback 2026-07-20). Replacement
+        // — back from the kartoteka lands on the list, not the wizard.
+        if (_createdPatientId != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => ClientDetailsScreen(
+                patientId: _createdPatientId!,
+                clientName: alias,
+              ),
+            ),
+          );
+        } else {
+          Navigator.of(context).pop();
+        }
       }
     } on grpc.GrpcError catch (e) {
       if (mounted) {
@@ -1237,25 +958,3 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   }
 }
 
-/// A [TextInputFormatter] that limits input by grapheme cluster count rather
-/// than UTF-16 code-unit count.  This allows emoji characters (which are
-/// multi-code-unit) to be treated as a single "character" toward [maxLength].
-class _GraphemeClusterLengthFormatter extends TextInputFormatter {
-  final int maxLength;
-  const _GraphemeClusterLengthFormatter(this.maxLength);
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final clusters = newValue.text.characters;
-    if (clusters.length <= maxLength) return newValue;
-
-    final truncated = clusters.take(maxLength).toString();
-    return TextEditingValue(
-      text: truncated,
-      selection: TextSelection.collapsed(offset: truncated.length),
-    );
-  }
-}

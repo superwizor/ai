@@ -34,7 +34,7 @@ import '../widgets/pending_quota_sessions_widget.dart';
 import 'new_session_screen.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
-import 'transcript_screen.dart';
+import 'report_screen.dart';
 
 class ClientDetailsScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -1709,9 +1709,11 @@ class _SessionCard extends ConsumerWidget {
         if (isCompleted) {
           ref.read(viewedReportsProvider.notifier).markViewed(session.id);
         }
+        // Completed sessions open on the REPORT by default (feedback
+        // 2026-07-20) — the transcript stays one toggle away.
         final destination = isCompleted
             ? MaterialPageRoute(
-                builder: (_) => TranscriptScreen(sessionId: session.id),
+                builder: (_) => ReportScreen(sessionId: session.id),
               )
             : MaterialPageRoute(
                 builder: (_) => SessionStatusScreen(sessionId: session.id),

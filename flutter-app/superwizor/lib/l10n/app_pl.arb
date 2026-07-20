@@ -269,7 +269,7 @@
   "clientDetails_filter_client_notes": "Notatki od klienta",
   "clientDetails_filter_own_notes": "Moje notatki",
   "clientDetails_filter_empty": "Brak pozycji dla wybranych filtrów.",
-  "clientDetails_start_work_desc": "Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.",
+  "clientDetails_start_work_desc": "Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport.",
   "clientDetails_status_analyzing": "AI analizuje…",
   "clientDetails_status_converting": "Konwertuję audio…",
   "clientDetails_status_error": "Błąd analizy",

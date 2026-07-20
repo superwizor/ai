@@ -268,7 +268,7 @@
   "clientDetails_filter_client_notes": "Client notes",
   "clientDetails_filter_own_notes": "My notes",
   "clientDetails_filter_empty": "Nothing matches the selected filters.",
-  "clientDetails_start_work_desc": "Start recording and the system will take care of secure transcription and prepare a clinical report.",
+  "clientDetails_start_work_desc": "Start recording and the system will take care of secure transcription and prepare a report.",
   "clientDetails_status_analyzing": "AI analyzing…",
   "clientDetails_status_converting": "Converting audio…",
   "clientDetails_status_error": "Analysis error",

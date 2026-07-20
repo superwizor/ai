@@ -13,7 +13,7 @@
 //   - Large success icon scales in (center of screen)
 //   - HapticFeedback.heavyImpact()
 //   - play assets/sounds/SFX_succes.mp3 (best-effort)
-//   - 3-second pause, then push TranscriptScreen with replacement
+//   - 3-second pause, then push ReportScreen with replacement
 //
 // Apple-quality design:
 //   - "Bezpieczna analiza w toku." header (Montserrat, ember)
@@ -52,7 +52,7 @@ import '../widgets/euphire_session_status_stepper.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_action_sheet.dart';
 import 'home_screen.dart';
-import 'transcript_screen.dart';
+import 'report_screen.dart';
 
 /// Error classification for the failure view. Most errors collapse into
 /// three generic buckets (upload / processing / unknown); `subscription`
@@ -435,8 +435,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
     final sid = _resolvedSessionId;
     if (sid != null) {
+      // Report by default (feedback 2026-07-20) — matches the comment
+      // above: the user is about to see the report.
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => TranscriptScreen(sessionId: sid),
+        builder: (_) => ReportScreen(sessionId: sid),
       ));
     }
   }
