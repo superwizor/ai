@@ -9,27 +9,27 @@ export function Security() {
 
   const steps = locale === "en"
     ? [
-        { icon: "mic", label: "Recording", sub: "on your device" },
+        { icon: "mic", label: "Recording is", sub: "only for transcription" },
         { icon: "wave", label: "Transcription", sub: "encrypted in transit" },
-        { icon: "trash", label: "Audio deleted", sub: "immediately" },
+        { icon: "trash", label: "Audio deleted", sub: "immediately after transcription" },
         { icon: "lock", label: "Report", sub: "encrypted at rest" },
       ]
     : [
-        { icon: "mic", label: "Nagranie", sub: "na Twoim urządzeniu" },
+        { icon: "mic", label: "Nagranie służy", sub: "wyłącznie transkrypcji" },
         { icon: "wave", label: "Transkrypcja", sub: "szyfrowana w transmisji" },
-        { icon: "trash", label: "Audio usunięte", sub: "natychmiast" },
+        { icon: "trash", label: "Audio usuwane", sub: "zaraz po transkrypcji" },
         { icon: "lock", label: "Raport", sub: "zaszyfrowany na serwerze" },
       ];
 
   const badges = locale === "en"
     ? [
-        { label: "EU servers", detail: "Frankfurt / Warsaw" },
+        { label: "EU servers", detail: "Warsaw / Netherlands" },
         { label: "No AI training", detail: "on your data" },
         { label: "Envelope encryption", detail: "Google KMS" },
         { label: "GDPR ready", detail: "DPA included" },
       ]
     : [
-        { label: "Serwery w UE", detail: "Frankfurt / Warszawa" },
+        { label: "Serwery w UE", detail: "Warszawa / Holandia" },
         { label: "Brak trenowania AI", detail: "na Twoich danych" },
         { label: "Szyfrowanie kopertowe", detail: "Google KMS" },
         { label: "Zgodność z RODO", detail: "DPA w zestawie" },

@@ -175,6 +175,11 @@ export function Hero() {
                 </a>
               </div>
 
+              {/* Microcopy under CTA */}
+              <div className="hero-s4 mt-3 text-center lg:text-left text-[11px] sm:text-[12px] font-medium text-frost/60 tracking-wide">
+                {isPl ? "30 dni / 5 sesji. Bez karty kredytowej." : "30 days / 5 sessions. No credit card required."}
+              </div>
+
               {/* Co-created Microtext with Icon */}
               <div className="hero-s4 mt-8 inline-flex items-center justify-center gap-2.5 font-mono text-xs sm:text-[12.5px] uppercase text-frost/85 tracking-[1.5px] font-semibold self-center">
                 <svg className="w-[18px] h-[18px] text-ember shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -282,9 +287,9 @@ export function Hero() {
                       <div className="px-1 mb-4">
                         <div className="font-serif text-2xl font-medium leading-tight">
                           {isPl ? (
-                            <>Witaj, <span className="text-amber font-bold italic">Marku :)</span></>
+                            <>Witaj, <span className="text-amber font-bold italic">Marku</span></>
                           ) : (
-                            <>Hello, <span className="text-amber font-bold italic">Marc :)</span></>
+                            <>Hello, <span className="text-amber font-bold italic">Marc</span></>
                           )}
                         </div>
                         <div className="text-[11px] text-[#8ba4a6] mt-0.5">
@@ -356,7 +361,7 @@ export function Hero() {
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
-                                {isPl ? "Kuba Klient" : "Jacob Client"}
+                                {isPl ? "Kuba" : "Jacob"}
                               </div>
                               <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
                                 {isPl ? "Sesje: 2 · Ostatnio: 28 Maj" : "Sessions: 2 · Last: May 28"}
@@ -397,7 +402,7 @@ export function Hero() {
                             <div className="min-w-0">
                               <div className="font-sans text-[13px] font-bold text-white flex items-center gap-1.5 flex-wrap">
                                 <span className="truncate">
-                                  {isPl ? "Klient Marek" : "Client Mark"}
+                                  {isPl ? "Marek" : "Mark"}
                                 </span>
                                 <span className="bg-[#1b5042] text-[#5bf4bc] text-[8px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
                                   <span className="w-1 h-1 rounded-full bg-[#5bf4bc]" /> 

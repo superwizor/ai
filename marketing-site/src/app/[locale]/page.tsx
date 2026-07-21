@@ -23,8 +23,6 @@ import { Faq } from "@/components/marketing/Faq";
 import { CtaBand } from "@/components/marketing/CtaBand";
 import { Footer } from "@/components/marketing/Footer";
 
-import { AiSecurityBand } from "@/components/marketing/AiSecurityBand";
-import { AiValue } from "@/components/marketing/AiValue";
 import { ScrollEffects } from "@/components/marketing/ScrollEffects";
 import { Testimonials } from "@/components/marketing/Testimonials";
 
@@ -130,20 +128,18 @@ export default async function Home({
            HTML is pre-rendered at build time; JS hydration is deferred
            until the user scrolls near for ~200ms TBT savings. */}
         <DeferredFeatures />
-        {/* DARK — AI Security */}
-        <AiSecurityBand />
+        {/* LIGHT */}
+        <BrandStatement />
         {/* LIGHT */}
         <HowItWorks />
         {/* DARK */}
         <Problem />
-        {/* LIGHT */}
-        <BrandStatement />
-        {/* DARK — security pipeline */}
-        <Security />
         {/* LIGHT — audience cards */}
         <Audience />
-        {/* DARK — AI value proposition */}
-        <AiValue />
+        {/* DARK — Testimonials */}
+        <Testimonials />
+        {/* DARK — security pipeline */}
+        <Security />
         {/* LIGHT — Pricing */}
         <section id="cennik" className="w-full py-24 sm:py-28 bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] border-y border-[#E2DED5]/60">
           <div className="mx-auto w-full max-w-[1120px] px-6">
@@ -155,8 +151,6 @@ export default async function Home({
             </div>
           </div>
         </section>
-        {/* DARK — Testimonials */}
-        <Testimonials />
         {/* LIGHT */}
         <Faq />
         {/* DARK — Final CTA with breathing rings (from Version A) */}

@@ -679,7 +679,7 @@
   "topbar": {
     "rodo": "Zgodność z RODO",
     "encryption": "Szyfrowanie AES-256 (UE)",
-    "audio": "Audio usuwane po sesji",
+    "audio": "Audio trwale usuwane po transkrypcji",
     "confidentiality": "Poufność wszystkich sesji"
   },
   "hero": {
@@ -707,7 +707,7 @@
     "title": "Najwięcej z sesji ginie nie w trakcie — tylko po niej.",
     "body": "Wątek, do którego chciałeś wrócić. Zdanie, które wydało się ważne. Kierunek, który ustaliliście. Wszystko to trzymasz w głowie do następnego spotkania — a przy pełnym grafiku głowa nie udźwignie każdego szczegółu. To nie kwestia dyscypliny, tylko liczby sesji.",
     "quote": "Pozwala uniknąć utraty od 30 do 40% informacji, które tracę przy ręcznym przygotowywaniu notatek.",
-    "cite": "Agnieszka, psychoterapeutka"
+    "cite": "AGNIESZKA, PSYCHOTERAPEUTKA"
   },
   "how": {
     "overline": "Jak to działa",
@@ -720,8 +720,8 @@
       },
       "process": {
         "tag": "02",
-        "title": "Superwizor AI słucha po polsku",
-        "body": "Rozpoznaje, kto mówi, i czyta sesję w języku Twojego nurtu — z wątkami, które w pośpiechu łatwo przeoczyć. Nagranie znika po przetworzeniu, dane zostają w Unii Europejskiej."
+        "title": "Transkrypcja pisze się sama",
+        "body": "Z podziałem na mówców, po polsku. Raport powstaje w języku Twojego nurtu."
       },
       "report": {
         "tag": "03",
@@ -730,7 +730,7 @@
       }
     },
     "cta": "Wypróbuj na własnej sesji",
-    "micro": "5 sesji przez 30 dni. Bez karty."
+    "micro": "30 DNI / 5 SESJI. BEZ KARTY."
   },
   "differentiator": {
     "overline": "Dlaczego Superwizor AI",
@@ -792,7 +792,7 @@
     "punch": "Inni wysyłają te nagrania za ocean. My nie.",
     "cards": {
       "audio": {
-        "title": "Audio znika po transkrypcji",
+        "title": "Audio usuwane zaraz po transkrypcji",
         "body": "Z nagrania powstaje tekst, a samo audio jest potem bezpowrotnie usuwane. Najwrażliwszy ślad sesji nie zostaje na serwerze."
       },
       "access": {
@@ -815,7 +815,7 @@
     "title": "Przekonaj się na własnych sesjach.",
     "body": "Bez zobowiązań. Sam zdecydujesz, czy zostajesz.",
     "cta": "Wypróbuj za darmo",
-    "micro": "5 sesji przez 30 dni. Bez karty."
+    "micro": "30 DNI / 5 SESJI. BEZ KARTY."
   },
   "audience": {
     "overline": "Dla kogo",
@@ -841,7 +841,7 @@
     "items": {
       "rodo": {
         "q": "Jak wygląda kwestia RODO i bezpieczeństwa danych klientów?",
-        "a": "Wszystkie dane osobowe i medyczne są w pełni chronione. Dane przetrzymujemy w centrach danych w UE (GCP Frankfurt/Warszawa). Przesyłanie danych odbywa się za pomocą bezpiecznego połączenia SSL, a pliki audio są usuwane automatycznie z serwerów natychmiast po wygenerowaniu transkrypcji. Poufne kolumny w bazie danych są dodatkowo szyfrowane kluczem kopertowym (pattern envelope encryption)."
+        "a": "Wszystkie dane osobowe i medyczne są w pełni chronione. Dane przetrzymujemy w centrach danych w UE (GCP Warszawa / Holandia/Warszawa). Przesyłanie danych odbywa się za pomocą bezpiecznego połączenia SSL, a pliki audio są usuwane automatycznie z serwerów natychmiast po wygenerowaniu transkrypcji. Poufne kolumny w bazie danych są dodatkowo szyfrowane kluczem kopertowym (pattern envelope encryption)."
       },
       "dpa": {
         "q": "Czy muszę podpisać umowę powierzenia przetwarzania danych (DPA)?",
@@ -866,7 +866,7 @@
     }
   },
   "cta": {
-    "overline": "TWÓJ KOGNITYWNY EGZOSZKIELET",
+    "overline": "POZNAWCZY PARTNER W GABINECIE",
     "heading": "Uważność w gabinecie. Bez ciężaru pamiętania pomiędzy sesjami.",
     "body": "Dokumentacja czeka gotowa. Ty wracasz do tego, co dzieje się teraz.",
     "primary": "Wypróbuj za darmo",
@@ -1345,7 +1345,7 @@
       "title": "Najwięcej z sesji ginie nie w trakcie, tylko po niej.",
       "body": "Wątki, kierunki, ważne zdania. Trzymasz to w głowie do następnej sesji, ale przy pełnym grafiku głowa nie udźwignie.",
       "quote": "Pozwala uniknąć utraty 30–40% informacji, które tracę przy ręcznym przygotowywaniu notatek.",
-      "cite": "Katarzyna, psychoterapeutka"
+      "cite": "AGNIESZKA, PSYCHOTERAPEUTKA"
     },
     "how": {
       "overline": "Jak to działa",
@@ -1358,8 +1358,8 @@
         },
         "process": {
           "tag": "02",
-          "title": "Superwizor AI słucha po polsku",
-          "body": "Rozpoznaje, kto mówi, i czyta sesję w języku Twojego nurtu."
+          "title": "Transkrypcja pisze się sama",
+          "body": "Z podziałem na mówców, po polsku. Raport powstaje w języku Twojego nurtu."
         },
         "report": {
           "tag": "03",
@@ -1368,7 +1368,7 @@
         }
       },
       "cta": "Wypróbuj na własnej sesji",
-      "micro": "5 sesji przez 30 dni. Bez karty."
+      "micro": "30 DNI / 5 SESJI. BEZ KARTY."
     },
     "differentiator": {
       "title": "Nie kolejne narzędzie do dokumentacji. Partner, który zdejmuje ciężar pamiętania.",
@@ -1378,7 +1378,7 @@
     },
     "features": {
       "overline": "Funkcje aplikacji",
-      "heading": "Wszystko co związane z sesjami jest teraz zorganizowane w jednym miejscu.",
+      "heading": "Wszystko, co związane z sesjami, jest teraz zorganizowane w jednym miejscu.",
       "body": "Możesz ze spokojem zająć się tym, co w Twojej pracy jest najważniejsze.",
       "items": {
         "record": {
@@ -1411,7 +1411,7 @@
       "title": "To, co klient mówi Ci w zaufaniu, zostaje między wami.",
       "cards": {
         "audio": {
-          "title": "Audio znika po transkrypcji",
+          "title": "Audio usuwane zaraz po transkrypcji",
           "body": "Nagranie jest usuwane zaraz po przetworzeniu. Nie zostaje na serwerze."
         },
         "noTraining": {
@@ -1425,7 +1425,7 @@
       "body": "Uważność w gabinecie. Bez ciężaru pamiętania między sesjami. Dokumentacja czeka gotowa, Ty wracasz do tego, co dzieje się teraz.",
       "cta": "Wypróbuj za darmo",
       "cta2": "Zobacz cennik",
-      "micro": "5 sesji przez 30 dni. Bez karty. Pełen dostęp do aplikacji."
+      "micro": "30 DNI / 5 SESJI. BEZ KARTY."
     },
     "audience": {
       "heading": "Stworzony do realnej pracy w gabinecie",
@@ -1638,7 +1638,6 @@
       "managerRevokeCta": "Anuluj zaproszenie",
       "managerRevoked": "Zaproszenie anulowane.",
       "colManager": "Menedżer",
-      "colStatus": "Status",
       "managerYou": "to Ty",
       "managersEmpty": "Brak menedżerów.",
       "period": "Okres rozliczeniowy: {start} – {end}",
