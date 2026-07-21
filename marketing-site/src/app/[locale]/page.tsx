@@ -136,8 +136,6 @@ export default async function Home({
         <Problem />
         {/* LIGHT — audience cards */}
         <Audience />
-        {/* DARK — Testimonials */}
-        <Testimonials />
         {/* DARK — security pipeline */}
         <Security />
         {/* LIGHT — Pricing */}
@@ -151,6 +149,8 @@ export default async function Home({
             </div>
           </div>
         </section>
+        {/* DARK — Testimonials */}
+        <Testimonials />
         {/* LIGHT */}
         <Faq />
         {/* DARK — Final CTA with breathing rings (from Version A) */}
