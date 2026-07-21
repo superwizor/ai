@@ -1465,25 +1465,41 @@
       "overline": "Before you start",
       "title": "Common questions",
       "items": {
-        "rodo": {
+        "afterSession": {
+          "q": "What do I receive after a session?",
+          "a": "After the session, you receive a transcript split by speaker and reports with the essence of the meeting: key observations, client homework, and topics worth exploring deeper. Before the next meeting, you get a short note allowing you to return to full context in minutes."
+        },
+        "modalityStyle": {
+          "q": "Are reports tailored to my modality and working style?",
+          "a": "Yes. Reports are generated in the language of your therapeutic modality. You can also adjust length, tone, and the number of session quotes. The report organizes session material, while therapeutic interpretation and decisions always remain yours."
+        },
+        "sessionThreads": {
+          "q": "Does the app connect threads across sessions?",
+          "a": "Yes. Recurring topics from subsequent meetings are semantically linked with the client's previous context. This makes it easy to track how the process develops over time and return to the next session with full context."
+        },
+        "supervisionScope": {
+          "q": "Does this replace supervision or my clinical work?",
+          "a": "No. Superwizor AI does not conduct therapy, make diagnoses, or replace supervision. It helps organize session material, recalls context, and supports preparation for the next meeting or supervision. Interpretation and therapeutic decisions always belong to you."
+        },
+        "audioHandling": {
+          "q": "What happens to the session recording?",
+          "a": "The recording is used solely to prepare the transcript. Immediately after creation, it is automatically and permanently deleted. Only the transcript and report remain in the app."
+        },
+        "dataSecurity": {
           "q": "How is client data security handled?",
-          "a": "Data in the EU (Frankfurt/Warsaw). SSL, envelope encryption, audio deleted after transcription. Ready DPA agreement."
+          "a": "Session data is encrypted and processed on infrastructure located within the European Union. We do not use it to train AI models or for any purpose other than providing the service. We operate in compliance with GDPR, treating therapeutic confidentiality as the foundation of our system."
         },
-        "dpa": {
-          "q": "Do I need to sign a Data Processing Agreement (DPA)?",
-          "a": "Yes. A ready template compliant with Polish law can be signed electronically in the app panel."
+        "clientConsent": {
+          "q": "How do I get client consent for recording?",
+          "a": "Recording takes place strictly with informed client consent. It is helpful to calmly explain why the recording is made, what happens to it after transcription, and how it benefits the therapeutic process. We have prepared ready-made materials and consent templates to facilitate this conversation."
         },
-        "consent": {
-          "q": "How to obtain client consent?",
-          "a": "The app includes ready templates for written consent to recording and AI analysis."
+        "pricingTrial": {
+          "q": "How much does it cost and can I try it first?",
+          "a": "You start for free: the Exploration plan includes 30 days and 5 sessions, no credit card required. Paid plans start at 99 PLN per month (incl. VAT). All plans offer the same features — differing only in the number of included sessions."
         },
-        "training": {
-          "q": "Does the AI learn from my recordings?",
-          "a": "No. Vertex AI guarantees that no input data is used for training any models."
-        },
-        "modality": {
-          "q": "Which therapeutic modalities does Superwizor AI support?",
-          "a": "CBT, psychodynamic, Gestalt, systemic, integrative, SFT. Reports speak your modality's language."
+        "cancellation": {
+          "q": "How do I start and can I cancel anytime?",
+          "a": "Create an account and you can start working in minutes. You can cancel your subscription at any time. You retain access until the end of your paid period, with no hidden terms or extra formalities."
         }
       }
     }

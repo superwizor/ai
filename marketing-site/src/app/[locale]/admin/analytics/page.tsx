@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
       if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
-  }, [data?.registrationsDetail, marketingFilter, sortField, sortDirection]);
+  }, [data, marketingFilter, sortField, sortDirection]);
 
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {

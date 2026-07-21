@@ -3,7 +3,17 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-const faqKeys = ["rodo", "dpa", "consent", "training", "modality"] as const;
+const faqKeys = [
+  "afterSession",
+  "modalityStyle",
+  "sessionThreads",
+  "supervisionScope",
+  "audioHandling",
+  "dataSecurity",
+  "clientConsent",
+  "pricingTrial",
+  "cancellation",
+] as const;
 
 export function Faq() {
   const t = useTranslations("b.faq");

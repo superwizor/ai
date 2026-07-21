@@ -41,6 +41,10 @@ Zakończyliśmy kluczowy etap integracji Stripe z usługą `billing-svc` na pozi
     *   **Pro Annual** (`price_1TclViE5jzWcAIgehEFNihUP`) – limit 40 tokenów
 *   **Reset limitu (ADR-BL-003):** Obsługa zdarzenia `invoice.paid` resetuje zużycie na początku nowego okresu rozliczeniowego poprzez automatyczne utworzenie nowego wiersza w tabeli `usage_counters` z zerowym licznikiem zużytych tokenów (`tokens_used = 0`).
 
+### F. Kody rabatowe i środowisko developerskie (Zaktualizowano: Lipiec 2026)
+*   **API Stripe:** Zespół połączony jest i poprawnie wysterowany przez Stripe API. Wszystkie klucze zabezpieczające (w tym `STRIPE_WEBHOOK_SECRET`) i poświadczenia CLI są dodane.
+*   **Gotowe kody testowe:** Przygotowano w pełni odcięty kod na 100% zniżki `DEVFREE` (do maks. 5 użyć, omijający podpinanie kart testowych pod prawdziwe środki). Inne kody utworzone w celach E2E to `ROWNOWAGA`, `ROZKWIT` czy `PIONIER33`. Formularze subskrypcyjne mają włączoną w testach właściwość `allow_promotion_codes=true`.
+
 ---
 
 ## 2. Status Weryfikacji (Testy)
