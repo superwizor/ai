@@ -1268,11 +1268,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                               height: 24,
                             ), // Breathing room under header when spacers shrink
                             const Spacer(),
+                            // Interruption = pause UX (feedback 2026-07-22):
+                            // the standard control panel below already offers
+                            // resume/stop for `interrupted`, so instead of a
+                            // loud banner we show one calm line explaining WHY
+                            // the recording paused itself.
                             if (_recState == RecordingState.interrupted) ...[
-                              _InterruptionBanner(
-                                resuming: _resuming,
-                                onResume: _onResumeTap,
-                              ),
+                              const _InterruptionNote(),
                               const SizedBox(height: 16),
                             ],
                             // ── Waveform: staggered scale + fade ──
@@ -1394,103 +1396,38 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 /// Warning card shown while the OS holds the recorder paused
 /// (phone call / alarm / audio-focus loss — docs/28 WS2). The duration
 /// counter freezes alongside it; everything captured so far is intact.
-class _InterruptionBanner extends StatelessWidget {
-  final bool resuming;
-  final Future<void> Function() onResume;
-
-  const _InterruptionBanner({required this.resuming, required this.onResume});
+// Calm one-liner shown while the OS holds the mic (incoming call, Siri,
+// alarm). Deliberately NOT a call-to-action card: the standard control
+// panel below handles resume/stop, identical to a manual pause — the
+// only extra information the therapist needs is "why did it pause".
+class _InterruptionNote extends StatelessWidget {
+  const _InterruptionNote();
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: EuphireColors.ember.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EuphireColors.ember, width: 1),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.phone_paused_rounded,
-                color: EuphireColors.ember,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t.recording_interrupted_banner_title,
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      t.recording_interrupted_banner_body,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        color: EuphireColors.frostWhite.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton.icon(
-              onPressed: resuming ? null : onResume,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EuphireColors.ember,
-                foregroundColor: EuphireColors.frostWhite,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              icon: resuming
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: EuphireColors.frostWhite,
-                      ),
-                    )
-                  : const Icon(Icons.play_arrow_rounded),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  t.recording_interrupted_resume,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.phone_paused_rounded,
+          color: EuphireColors.ember.withValues(alpha: 0.9),
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            t.recording_interrupted_note,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              height: 1.4,
+              color: EuphireColors.frostWhite.withValues(alpha: 0.8),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

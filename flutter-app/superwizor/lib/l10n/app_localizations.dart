@@ -3684,23 +3684,11 @@ abstract class AppLocalizations {
   /// **'Kilka wskazówek dla lepszego nagrania'**
   String get recording_instructions_title;
 
-  /// No description provided for @recording_interrupted_banner_body.
+  /// No description provided for @recording_interrupted_note.
   ///
   /// In pl, this message translates to:
-  /// **'Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.'**
-  String get recording_interrupted_banner_body;
-
-  /// No description provided for @recording_interrupted_banner_title.
-  ///
-  /// In pl, this message translates to:
-  /// **'Nagrywanie wstrzymane'**
-  String get recording_interrupted_banner_title;
-
-  /// No description provided for @recording_interrupted_resume.
-  ///
-  /// In pl, this message translates to:
-  /// **'Wznów nagrywanie'**
-  String get recording_interrupted_resume;
+  /// **'Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie'**
+  String get recording_interrupted_note;
 
   /// No description provided for @recording_ios_only_body_part1.
   ///

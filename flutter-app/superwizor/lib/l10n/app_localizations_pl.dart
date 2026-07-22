@@ -2059,14 +2059,8 @@ class AppLocalizationsPl extends AppLocalizations {
       'Kilka wskazówek dla lepszego nagrania';
 
   @override
-  String get recording_interrupted_banner_body =>
-      'Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.';
-
-  @override
-  String get recording_interrupted_banner_title => 'Nagrywanie wstrzymane';
-
-  @override
-  String get recording_interrupted_resume => 'Wznów nagrywanie';
+  String get recording_interrupted_note =>
+      'Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie';
 
   @override
   String recording_ios_only_body_part1(String alias) {

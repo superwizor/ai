@@ -930,9 +930,7 @@
   "recording_instruction_5": "Recording stops automatically after a set time, and you'll get a periodic reminder (with an optional sound) — both adjustable in Settings → Recording.",
   "recording_instructions_subtitle": "Good recording conditions mean better transcription quality and more accurate AI insights.",
   "recording_instructions_title": "A few tips for a better recording",
-  "recording_interrupted_banner_body": "A phone call or another app interrupted the recording. Everything captured so far is safe.",
-  "recording_interrupted_banner_title": "Recording paused",
-  "recording_interrupted_resume": "Resume recording",
+  "recording_interrupted_note": "Paused for the call — recording will resume automatically",
   "recording_ios_only_body_part1": "To record a session with {alias}, use the ",
   "@recording_ios_only_body_part1": {
     "placeholders": {

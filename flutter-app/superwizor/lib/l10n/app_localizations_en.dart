@@ -2040,14 +2040,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'A few tips for a better recording';
 
   @override
-  String get recording_interrupted_banner_body =>
-      'A phone call or another app interrupted the recording. Everything captured so far is safe.';
-
-  @override
-  String get recording_interrupted_banner_title => 'Recording paused';
-
-  @override
-  String get recording_interrupted_resume => 'Resume recording';
+  String get recording_interrupted_note =>
+      'Paused for the call — recording will resume automatically';
 
   @override
   String recording_ios_only_body_part1(String alias) {

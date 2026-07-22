@@ -46,7 +46,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:flutter/services.dart';
 import 'reminder_service.dart';
 import '../utils/debug_flags.dart';
 
@@ -66,6 +65,7 @@ class RecordingService {
     Future<Directory> Function()? documentsDirProvider,
     Future<void> Function(bool enabled)? wakelockSetter,
     this.captureProbeWindow = const Duration(milliseconds: 1200),
+    this.autoResumePeriod = const Duration(seconds: 3),
   })  : _recorder = recorder ?? AudioRecorder(),
         _documentsDir =
             documentsDirProvider ?? getApplicationDocumentsDirectory,
@@ -167,6 +167,59 @@ class RecordingService {
   // pause() on an already-paused recorder is a native no-op) expire.
   final Map<RecordState, DateTime> _intents = {};
   static const Duration _intentTtl = Duration(seconds: 2);
+
+  // ── Auto-resume after OS interruption (feedback 2026-07-22) ──
+  // A mere incoming RING takes the audio session/focus and pauses the
+  // recorder even when the call is never answered. Instead of waiting
+  // for the therapist, we retry the VERIFIED resume() on a timer while
+  // the state is `interrupted`: during a call the attempt fails fast
+  // (iOS: session reactivation rejected; probe otherwise) and we stay
+  // interrupted; the first attempt after the OS releases the mic
+  // succeeds and recording continues on its own. Manual resume/stop
+  // keep working throughout — the loop is cancelled on any state exit.
+  //
+  // Android caveat (accepted): between answering and ending a call the
+  // mic yields silence to apps, so an auto-resume there records a
+  // silent gap instead of staying paused — clinically inert (STT skips
+  // silence), and Android surfaces no "call ended" signal we could use
+  // without READ_PHONE_STATE.
+  final Duration autoResumePeriod; // injectable for tests; 3 s in prod
+  static const _maxAutoResumeAttempts = 200; // ~10 min, then manual only
+  Timer? _autoResumeTimer;
+  int _autoResumeAttempts = 0;
+  bool _resumeInFlight = false;
+
+  void _startAutoResumeLoop() {
+    if (_autoResumeTimer != null) return; // keep attempt count across retries
+    _autoResumeAttempts = 0;
+    _autoResumeTimer =
+        Timer.periodic(autoResumePeriod, (_) => _autoResumeTick());
+  }
+
+  void _cancelAutoResumeLoop() {
+    _autoResumeTimer?.cancel();
+    _autoResumeTimer = null;
+  }
+
+  Future<void> _autoResumeTick() async {
+    if (_state != RecordingState.interrupted) {
+      _cancelAutoResumeLoop();
+      return;
+    }
+    if (_resumeInFlight) return;
+    _autoResumeAttempts++;
+    if (_autoResumeAttempts > _maxAutoResumeAttempts) {
+      debugPrint('[recording] auto-resume gave up after '
+          '$_maxAutoResumeAttempts attempts — manual resume only');
+      _cancelAutoResumeLoop();
+      return;
+    }
+    final ok = await resume();
+    if (ok) {
+      debugPrint('[recording] auto-resume succeeded '
+          '(attempt $_autoResumeAttempts)');
+    }
+  }
 
   void _arm(RecordState s) => _intents[s] = DateTime.now();
   bool _consumeIntent(RecordState s) {
@@ -323,6 +376,18 @@ class RecordingService {
         _state != RecordingState.interrupted) {
       return false;
     }
+    // Re-entrancy gate: the auto-resume timer and a manual tap can race;
+    // two overlapping native resume() calls would double-arm intents.
+    if (_resumeInFlight) return false;
+    _resumeInFlight = true;
+    try {
+      return await _resumeInner();
+    } finally {
+      _resumeInFlight = false;
+    }
+  }
+
+  Future<bool> _resumeInner() async {
     final fromInterruption = _state == RecordingState.interrupted;
 
     if (!kIsWeb && Platform.isIOS) {
@@ -499,6 +564,7 @@ class RecordingService {
   }
 
   Future<void> dispose() async {
+    _cancelAutoResumeLoop();
     await _nativeSub?.cancel();
     _ticker?.cancel();
     await _recorder.dispose();
@@ -583,6 +649,13 @@ class RecordingService {
 
   void _setState(RecordingState s) {
     _state = s;
+    // The auto-resume loop lives exactly as long as the interrupted
+    // state — every entry starts it, every exit cancels it.
+    if (s == RecordingState.interrupted) {
+      _startAutoResumeLoop();
+    } else {
+      _cancelAutoResumeLoop();
+    }
     if (!_stateController.isClosed) _stateController.add(s);
   }
 

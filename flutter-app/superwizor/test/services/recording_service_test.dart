@@ -11,6 +11,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:superwizor/services/recording_service.dart';
@@ -93,6 +94,16 @@ class _FakeRecorder extends Fake implements AudioRecorder {
 }
 
 void main() {
+  // ReminderService (native reminder rework) fires MethodChannel calls
+  // from start/pause/resume — in tests they need a binding plus a mock
+  // channel handler, or every unawaited call crashes the test zone.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('ai.superwizor/reminder_service'),
+    (call) async => null,
+  );
+
   late Directory tmp;
   late _FakeRecorder recorder;
   late RecordingService service;
@@ -379,6 +390,67 @@ void main() {
       await pump(60);
       expect(service.hadInterruption, isTrue);
       expect(service.needsReencode, isTrue);
+    });
+
+    test(
+        'auto-resume: interruption retries resume() and recovers once '
+        'capture works again (feedback 2026-07-22)', () async {
+      final auto = RecordingService(
+        recorder: recorder,
+        documentsDirProvider: () async => tmp,
+        wakelockSetter: (_) async {},
+        captureProbeWindow: const Duration(milliseconds: 100),
+        autoResumePeriod: const Duration(milliseconds: 150),
+      );
+      addTearDown(() => auto.dispose());
+
+      await auto.start('s1');
+      await pump(60);
+
+      // Incoming ring: OS pauses; capture still blocked → probe fails.
+      recorder.growFileOnResume = false;
+      recorder.emitNative(RecordState.pause);
+      await pump(60);
+      expect(auto.state, RecordingState.interrupted);
+
+      // A couple of loop ticks while the OS holds the mic.
+      await pump(400);
+      expect(auto.state, RecordingState.interrupted,
+          reason: 'blocked resume must not fake a recording state');
+      expect(recorder.resumeCalls, greaterThanOrEqualTo(1));
+
+      // Call over — mic is back; next tick should recover on its own.
+      recorder.growFileOnResume = true;
+      await pump(500);
+      expect(auto.state, RecordingState.recording,
+          reason: 'auto-resume should recover without user action');
+      expect(auto.hadInterruption, isTrue);
+      expect(auto.needsReencode, isTrue);
+    });
+
+    test('auto-resume loop stops on user stop()', () async {
+      final auto = RecordingService(
+        recorder: recorder,
+        documentsDirProvider: () async => tmp,
+        wakelockSetter: (_) async {},
+        captureProbeWindow: const Duration(milliseconds: 100),
+        autoResumePeriod: const Duration(milliseconds: 150),
+      );
+      addTearDown(() => auto.dispose());
+
+      await auto.start('s1');
+      await pump(60);
+      recorder.growFileOnResume = false;
+      recorder.emitNative(RecordState.pause);
+      await pump(60);
+      expect(auto.state, RecordingState.interrupted);
+
+      final path = await auto.stop();
+      expect(path, isNotNull);
+      final callsAtStop = recorder.resumeCalls;
+      await pump(500);
+      expect(recorder.resumeCalls, callsAtStop,
+          reason: 'no auto-resume attempts after stop()');
     });
 
     test('start() resets the latch from a previous session', () async {
