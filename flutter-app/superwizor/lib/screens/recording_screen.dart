@@ -1534,6 +1534,9 @@ class _InstructionsBlock extends ConsumerWidget {
       t.recording_instruction_3,
       t.recording_instruction_4,
       t.recording_instruction_5,
+      // iOS-only tip: on Android we start with AudioInterruptionMode.none
+      // and calls never pause the recording, so the advice would confuse.
+      if (!kIsWeb && Platform.isIOS) t.recording_instruction_6,
     ];
 
     return Container(

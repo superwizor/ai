@@ -928,6 +928,7 @@
   "recording_instruction_3": "Quiet environment – close windows/doors, turn off noise sources.",
   "recording_instruction_4": "For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.",
   "recording_instruction_5": "Recording stops automatically after a set time, and you'll get a periodic reminder (with an optional sound) — both adjustable in Settings → Recording.",
+  "recording_instruction_6": "On iPhone, enable Focus (Do Not Disturb) for the session — an incoming call, even silenced and unanswered, pauses the recording until it stops ringing; with Focus on, the session records without gaps.",
   "recording_instructions_subtitle": "Good recording conditions mean better transcription quality and more accurate AI insights.",
   "recording_instructions_title": "A few tips for a better recording",
   "recording_interrupted_note": "Paused for the call — recording will resume automatically",

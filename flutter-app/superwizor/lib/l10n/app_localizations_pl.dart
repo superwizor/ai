@@ -2051,6 +2051,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.';
 
   @override
+  String get recording_instruction_6 =>
+      'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka; z trybem skupienia sesja nagrywa się bez przerw.';
+
+  @override
   String get recording_instructions_subtitle =>
       'Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.';
 

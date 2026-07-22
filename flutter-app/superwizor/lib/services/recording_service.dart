@@ -169,20 +169,18 @@ class RecordingService {
   static const Duration _intentTtl = Duration(seconds: 2);
 
   // ── Auto-resume after OS interruption (feedback 2026-07-22) ──
-  // A mere incoming RING takes the audio session/focus and pauses the
-  // recorder even when the call is never answered. Instead of waiting
-  // for the therapist, we retry the VERIFIED resume() on a timer while
-  // the state is `interrupted`: during a call the attempt fails fast
-  // (iOS: session reactivation rejected; probe otherwise) and we stay
-  // interrupted; the first attempt after the OS releases the mic
+  // iOS-only in practice: a mere incoming RING revokes the audio
+  // session and pauses the recorder even when the call is never
+  // answered and the ringer is muted (Android never pauses since we
+  // start with AudioInterruptionMode.none — see start()). Instead of
+  // waiting for the therapist, we retry the VERIFIED resume() on a
+  // timer while the state is `interrupted`: during a call the attempt
+  // fails fast (session reactivation rejected; probe otherwise) and we
+  // stay interrupted; the first attempt after the OS releases the mic
   // succeeds and recording continues on its own. Manual resume/stop
   // keep working throughout — the loop is cancelled on any state exit.
-  //
-  // Android caveat (accepted): between answering and ending a call the
-  // mic yields silence to apps, so an auto-resume there records a
-  // silent gap instead of staying paused — clinically inert (STT skips
-  // silence), and Android surfaces no "call ended" signal we could use
-  // without READ_PHONE_STATE.
+  // The only full protection on iOS is Focus/DND (no interruption
+  // fires at all) — surfaced in the recording-screen instructions.
   final Duration autoResumePeriod; // injectable for tests; 3 s in prod
   static const _maxAutoResumeAttempts = 200; // ~10 min, then manual only
   Timer? _autoResumeTimer;
@@ -305,13 +303,28 @@ class RecordingService {
     //   - voice content sits below 8 kHz, no quality loss
     _arm(RecordState.record);
     await _recorder.start(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.flac, // lossless; ignores bitRate
         sampleRate: 16000,
         numChannels: 1,
         autoGain: true,
         echoCancel: false,
         noiseSuppress: false,
+        // Incoming-call policy (feedback 2026-07-22, silenced-ring
+        // session loss):
+        //  - Android `none`: the plugin skips the audio-focus request
+        //    entirely, so a ringing (or even answered) call never pauses
+        //    capture — the mic keeps working through a ring, and during
+        //    an answered call the system feeds silence. Zero session
+        //    loss; the therapist's own room audio is what we record.
+        //  - iOS `pause`: the system revokes the mic on interruption
+        //    regardless of this flag; `none` would just hide the pause
+        //    and rot the file silently. Keep the explicit pause and let
+        //    the auto-resume loop (below) recover the moment the OS
+        //    returns the session.
+        audioInterruption: !kIsWeb && Platform.isAndroid
+            ? AudioInterruptionMode.none
+            : AudioInterruptionMode.pause,
       ),
       path: outPath,
     );

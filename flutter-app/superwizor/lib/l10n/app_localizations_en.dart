@@ -2032,6 +2032,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recording stops automatically after a set time, and you\'ll get a periodic reminder (with an optional sound) — both adjustable in Settings → Recording.';
 
   @override
+  String get recording_instruction_6 =>
+      'On iPhone, enable Focus (Do Not Disturb) for the session — an incoming call, even silenced and unanswered, pauses the recording until it stops ringing; with Focus on, the session records without gaps.';
+
+  @override
   String get recording_instructions_subtitle =>
       'Good recording conditions mean better transcription quality and more accurate AI insights.';
 

@@ -3672,6 +3672,12 @@ abstract class AppLocalizations {
   /// **'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.'**
   String get recording_instruction_5;
 
+  /// No description provided for @recording_instruction_6.
+  ///
+  /// In pl, this message translates to:
+  /// **'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka; z trybem skupienia sesja nagrywa się bez przerw.'**
+  String get recording_instruction_6;
+
   /// No description provided for @recording_instructions_subtitle.
   ///
   /// In pl, this message translates to:

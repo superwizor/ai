@@ -929,6 +929,7 @@
   "recording_instruction_3": "Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.",
   "recording_instruction_4": "Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.",
   "recording_instruction_5": "Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.",
+  "recording_instruction_6": "Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka; z trybem skupienia sesja nagrywa się bez przerw.",
   "recording_instructions_subtitle": "Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.",
   "recording_instructions_title": "Kilka wskazówek dla lepszego nagrania",
   "recording_interrupted_note": "Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie",
