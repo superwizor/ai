@@ -24,6 +24,7 @@ class _FakeRecorder extends Fake implements AudioRecorder {
   String? lastPath;
   int pauseCalls = 0;
   int resumeCalls = 0;
+  int startCalls = 0;
   int stopCalls = 0;
 
   /// When set, resume() appends bytes to [lastPath] shortly after being
@@ -41,10 +42,22 @@ class _FakeRecorder extends Fake implements AudioRecorder {
 
   @override
   Future<void> start(RecordConfig config, {required String path}) async {
+    startCalls++;
     lastPath = path;
     nativePaused = false;
     await File(path).writeAsBytes(List.filled(1024, 7));
     emitNative(RecordState.record);
+    // Segment-per-resume (2026-07-23): an interruption-resume now
+    // restarts capture via start() into a fresh file, so "capture
+    // genuinely works again" must grow the NEW file too — same switch
+    // as the resume() growth below.
+    if (growFileOnResume) {
+      unawaited(Future<void>.delayed(const Duration(milliseconds: 30))
+          .then((_) async {
+        await File(path)
+            .writeAsBytes(List.filled(512, 9), mode: FileMode.append);
+      }));
+    }
   }
 
   @override
@@ -183,7 +196,10 @@ void main() {
 
     expect(ok, isFalse);
     expect(service.state, RecordingState.interrupted);
-    expect(recorder.resumeCalls, 1);
+    // Segment rotation (2026-07-23): interruption-resume = stop
+    // (finalize segment) + start (fresh file); no native resume().
+    expect(recorder.resumeCalls, 0);
+    expect(recorder.startCalls, greaterThanOrEqualTo(2));
   });
 
   test('resume from a normal user pause skips the probe (fast path)',
@@ -417,7 +433,8 @@ void main() {
       await pump(400);
       expect(auto.state, RecordingState.interrupted,
           reason: 'blocked resume must not fake a recording state');
-      expect(recorder.resumeCalls, greaterThanOrEqualTo(1));
+      expect(recorder.startCalls, greaterThanOrEqualTo(2),
+          reason: 'rotation restarts capture via start()');
 
       // Call over — mic is back; next tick should recover on its own.
       recorder.growFileOnResume = true;

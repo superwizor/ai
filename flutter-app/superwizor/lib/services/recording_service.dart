@@ -103,6 +103,16 @@ class RecordingService {
   RecordingState get state => _state;
 
   String? _activeFilePath;
+
+  /// Finalized recording segments, oldest first (segment-per-resume,
+  /// 2026-07-23). Index 0 is always the original raw.flac. A resume
+  /// after an OS interruption STOPS the recorder (clean finalization —
+  /// valid STREAMINFO, no frame-number reset) and starts a fresh file
+  /// instead of natively resuming into the same one; stop() concats
+  /// everything back into raw.flac. Root cause: session a1b09d6c
+  /// (2026-07-22) — the in-place resume left a never-finalized header
+  /// and silently LOST 10 of 16 minutes of audio.
+  final List<String> _segmentPaths = [];
   String? get activeFilePath => _activeFilePath;
 
   /// Session currently being captured. The orphan-recovery scanner
@@ -219,6 +229,72 @@ class RecordingService {
     }
   }
 
+  /// Path for the next rotation segment: `<sessionDir>/raw_seg<N>.flac`
+  /// next to the original raw.flac. Null when no recording is active.
+  String? _nextSegmentPath() {
+    if (_segmentPaths.isEmpty) return null;
+    final base = _segmentPaths.first;
+    final dir = p.dirname(base);
+    return p.join(dir, 'raw_seg${_segmentPaths.length}.flac');
+  }
+
+  /// Byte-concatenates all finalized segments (plus [lastPath] if it's
+  /// not already tracked) into the FIRST segment (the original
+  /// raw.flac) and deletes the appended files. The result is a
+  /// multi-substream FLAC — exactly the shape the server's
+  /// audio/x-flac re-encode already repairs — but with every
+  /// sub-stream carrying a FINALIZED header.
+  Future<String> _concatSegments(String? lastPath) async {
+    final ordered = List<String>.from(_segmentPaths);
+    if (lastPath != null && !ordered.contains(lastPath)) {
+      ordered.add(lastPath);
+    }
+    final base = ordered.first;
+    if (ordered.length > 1) {
+      final sink = await File(base).open(mode: FileMode.append);
+      try {
+        for (final path in ordered.skip(1)) {
+          final f = File(path);
+          if (!await f.exists()) continue;
+          await sink.writeFrom(await f.readAsBytes());
+          try {
+            await f.delete();
+          } catch (_) {/* best-effort */}
+        }
+      } finally {
+        await sink.close();
+      }
+    }
+    _segmentPaths.clear();
+    return base;
+  }
+
+  /// Shared recorder configuration — used by start() and by the
+  /// segment rotation after an OS interruption.
+  RecordConfig _recordConfig() => RecordConfig(
+        encoder: AudioEncoder.flac, // lossless; ignores bitRate
+        sampleRate: 16000,
+        numChannels: 1,
+        autoGain: true,
+        echoCancel: false,
+        noiseSuppress: false,
+        // Incoming-call policy (feedback 2026-07-22, silenced-ring
+        // session loss):
+        //  - Android `none`: the plugin skips the audio-focus request
+        //    entirely, so a ringing (or even answered) call never pauses
+        //    capture — the mic keeps working through a ring, and during
+        //    an answered call the system feeds silence. Zero session
+        //    loss; the therapist's own room audio is what we record.
+        //  - iOS `pause`: the system revokes the mic on interruption
+        //    regardless of this flag; `none` would just hide the pause
+        //    and rot the file silently. Keep the explicit pause and let
+        //    the auto-resume loop recover the moment the OS returns the
+        //    session.
+        audioInterruption: !kIsWeb && Platform.isAndroid
+            ? AudioInterruptionMode.none
+            : AudioInterruptionMode.pause,
+      );
+
   void _arm(RecordState s) => _intents[s] = DateTime.now();
   bool _consumeIntent(RecordState s) {
     final t = _intents.remove(s);
@@ -302,32 +378,10 @@ class RecordingService {
     //   - matches Chirp 3's native sample rate; no upstream resampling
     //   - voice content sits below 8 kHz, no quality loss
     _arm(RecordState.record);
-    await _recorder.start(
-      RecordConfig(
-        encoder: AudioEncoder.flac, // lossless; ignores bitRate
-        sampleRate: 16000,
-        numChannels: 1,
-        autoGain: true,
-        echoCancel: false,
-        noiseSuppress: false,
-        // Incoming-call policy (feedback 2026-07-22, silenced-ring
-        // session loss):
-        //  - Android `none`: the plugin skips the audio-focus request
-        //    entirely, so a ringing (or even answered) call never pauses
-        //    capture — the mic keeps working through a ring, and during
-        //    an answered call the system feeds silence. Zero session
-        //    loss; the therapist's own room audio is what we record.
-        //  - iOS `pause`: the system revokes the mic on interruption
-        //    regardless of this flag; `none` would just hide the pause
-        //    and rot the file silently. Keep the explicit pause and let
-        //    the auto-resume loop (below) recover the moment the OS
-        //    returns the session.
-        audioInterruption: !kIsWeb && Platform.isAndroid
-            ? AudioInterruptionMode.none
-            : AudioInterruptionMode.pause,
-      ),
-      path: outPath,
-    );
+    await _recorder.start(_recordConfig(), path: outPath);
+    _segmentPaths
+      ..clear()
+      ..add(outPath);
 
     await _setWakelock(true);
     // Keep the process alive if the app is backgrounded mid-recording
@@ -413,24 +467,68 @@ class RecordingService {
       }
     }
 
-    _arm(RecordState.record);
-    try {
-      await _recorder.resume();
-    } catch (e) {
-      debugPrint('[recording] resume failed: $e');
-      return false;
-    }
-    // The native recorder just appended a new FLAC sub-stream to the
-    // same file — its header can no longer be trusted at upload time.
-    _hadResumeCycle = true;
-
     if (fromInterruption) {
+      // Segment rotation (2026-07-23): resuming INTO the interrupted
+      // file is what corrupted session a1b09d6c (never-finalized
+      // STREAMINFO, frame-number resets, 10 of 16 minutes lost).
+      // Instead: cleanly STOP the recorder — the audio session is
+      // active again here, so finalization writes a valid header for
+      // everything captured so far — and START a fresh segment file.
+      // stop() concatenates the segments back into raw.flac.
+      try {
+        _arm(RecordState.stop);
+        await _recorder.stop();
+      } catch (e) {
+        // Retry-tolerant: a second rotation attempt after a failed one
+        // lands here with the recorder already stopped.
+        debugPrint('[recording] segment finalize stop: $e');
+      }
+      final next = _nextSegmentPath();
+      if (next == null) return false;
+      _arm(RecordState.record);
+      try {
+        await _recorder.start(_recordConfig(), path: next);
+      } catch (e) {
+        debugPrint('[recording] segment restart failed: $e');
+        return false;
+      }
+      _activeFilePath = next;
+      if (!_segmentPaths.contains(next)) _segmentPaths.add(next);
+      // Concatenated segments = multi-substream FLAC — same re-encode
+      // contract as before.
+      _hadResumeCycle = true;
+
       final capturing = await _verifyCapture();
       if (!capturing) {
         debugPrint('[recording] resume NOT capturing — staying interrupted');
+        // Roll the dead segment back so retry loops don't accumulate
+        // header-only junk files between attempts.
+        try {
+          _arm(RecordState.stop);
+          await _recorder.stop();
+        } catch (_) {/* recorder may already be dead */}
+        _segmentPaths.remove(next);
+        try {
+          final f = File(next);
+          if (await f.exists()) await f.delete();
+        } catch (_) {/* best-effort */}
+        if (_segmentPaths.isNotEmpty) _activeFilePath = _segmentPaths.last;
         _setState(RecordingState.interrupted);
         return false;
       }
+    } else {
+      // User pause → resume: the session never deactivated, the plugin
+      // resume is reliable and keeps the single-file fast path.
+      _arm(RecordState.record);
+      try {
+        await _recorder.resume();
+      } catch (e) {
+        debugPrint('[recording] resume failed: $e');
+        return false;
+      }
+      // The native recorder just appended a new FLAC sub-stream to the
+      // same file — its header can no longer be trusted at upload time.
+      _hadResumeCycle = true;
     }
 
     _segmentStart = DateTime.now();
@@ -487,7 +585,13 @@ class RecordingService {
     await _setWakelock(false);
     await RecordingForegroundService.stop();
     _setState(RecordingState.stopped);
-    final out = returnedPath ?? _activeFilePath;
+    // Segment-per-resume: stitch rotation segments back into raw.flac
+    // so every downstream consumer (encryption, upload, recovery) keeps
+    // seeing a single file.
+    final out = _segmentPaths.length > 1
+        ? await _concatSegments(returnedPath ?? _activeFilePath)
+        : (returnedPath ?? _activeFilePath);
+    _segmentPaths.clear();
     _activeFilePath = null;
     _activeSessionId = null;
     _patientFileId = null;
@@ -512,12 +616,16 @@ class RecordingService {
     _setState(RecordingState.idle);
 
     final target = path ?? _activeFilePath;
-    if (target != null) {
+    for (final doomed in {
+      ?target,
+      ..._segmentPaths,
+    }) {
       try {
-        final f = File(target);
+        final f = File(doomed);
         if (await f.exists()) await f.delete();
       } catch (_) {/* best-effort */}
     }
+    _segmentPaths.clear();
     _activeFilePath = null;
     _activeSessionId = null;
     _patientFileId = null;
