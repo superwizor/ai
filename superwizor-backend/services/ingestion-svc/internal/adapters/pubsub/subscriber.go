@@ -281,6 +281,16 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		t0 := time.Now()
 		result, convErr := s.converter.Convert(ctx, upload.BucketName, upload.ObjectPath, upload.ContentType, "audio/flac")
 		if convErr != nil {
+			// Terminal ONLY for deterministic decode failures. Anything
+			// else (GCS download/upload blip, tmp I/O) is transient —
+			// Nack and let Pub/Sub redeliver instead of failing a
+			// perfectly valid session (live incident 2026-07-17).
+			if !errors.Is(convErr, storage.ErrBadAudio) {
+				slog.Warn("subscriber: audio transcode transient error — nack for redelivery",
+					"session_id", sessionID, "error", convErr)
+				msg.Nack()
+				return
+			}
 			slog.Error("subscriber: audio transcode failed with terminal error", "session_id", sessionID, "error", convErr)
 			_ = txq.MarkAudioUploadFailed(ctx, db.MarkAudioUploadFailedParams{
 				ID:           upload.ID,
@@ -343,6 +353,17 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 
 			chunks, chunkErr := s.converter.ChunkForChirp(ctx, upload.BucketName, finalObjectPath, durationSec, maxSec)
 			if chunkErr != nil {
+				// Same classification as the transcode stage: only a
+				// deterministic ffmpeg failure is terminal. The 2026-07-17
+				// incident (session 0fb3d59b) was a single GCS
+				// `connection reset by peer` on the chunk-0 slice upload
+				// ack'd as FAILED — a Nack would have self-healed it.
+				if !errors.Is(chunkErr, storage.ErrBadAudio) {
+					slog.Warn("subscriber: ChunkForChirp transient error — nack for redelivery",
+						"session_id", sessionID, "error", chunkErr)
+					msg.Nack()
+					return
+				}
 				slog.Error("subscriber: ChunkForChirp failed with terminal error", "session_id", sessionID, "error", chunkErr)
 				_ = txq.MarkAudioUploadFailed(ctx, db.MarkAudioUploadFailedParams{
 					ID:           upload.ID,

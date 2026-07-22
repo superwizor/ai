@@ -135,6 +135,13 @@ func (c *Converter) ChunkForChirp(
 		return nil, fmt.Errorf("download src: %w", err)
 	}
 
+	// Same zeroed-STREAMINFO belt as Convert — chunking can also meet a
+	// never-finalized on-device FLAC directly (Chirp-supported content
+	// type skips the transcode stage).
+	if repaired, repErr := repairZeroedFlacStreaminfo(srcLocal); repErr == nil && repaired {
+		slog.Info("flac header repaired before chunking", "object", objectPath)
+	}
+
 	// 2. Compute target cut points and run silencedetect.
 	targets := planCutTargets(sourceDurationSec, maxChunkSec)
 	if len(targets) == 0 {
@@ -173,7 +180,10 @@ func (c *Converter) ChunkForChirp(
 			chunks[i].StartOffsetMS,
 			chunks[i].EndOffsetMS,
 		); err != nil {
-			return nil, fmt.Errorf("ffmpeg chunk %d: %w", chunks[i].ChunkIndex, err)
+			// Deterministic decode failure — the same input fails on
+			// every redelivery, so mark terminal for the subscriber.
+			return nil, fmt.Errorf("ffmpeg chunk %d: %w: %v",
+				chunks[i].ChunkIndex, ErrBadAudio, err)
 		}
 		if err := c.uploadObject(ctx, bucketName, dstObjectPath, dstLocal, "audio/flac"); err != nil {
 			return nil, fmt.Errorf("upload chunk %d: %w", chunks[i].ChunkIndex, err)

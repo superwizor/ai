@@ -3,8 +3,11 @@ package storage
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +17,16 @@ import (
 
 	"cloud.google.com/go/storage"
 )
+
+// ErrBadAudio marks DETERMINISTIC input failures (ffmpeg/ffprobe can't
+// decode the bytes) — retrying the same input can't succeed, so the
+// subscriber treats these as terminal (session FAILED). Every other
+// error out of this package (GCS download/upload, tmp-dir I/O) is
+// assumed TRANSIENT and must be Nack'd for Pub/Sub redelivery instead —
+// live incident 2026-07-17 (session 0fb3d59b): a single
+// `connection reset by peer` on the chunk-0 slice upload permanently
+// failed a fully-valid session.
+var ErrBadAudio = errors.New("bad audio input")
 
 // Converter shells out to ffmpeg to transcode GCS-hosted audio into a
 // Chirp 3-compatible codec (FLAC 16 kHz mono by default). Used by the
@@ -117,14 +130,6 @@ func (c *Converter) Convert(
 	dstExt := extFromContentType(targetContentType)
 	dstLocal := filepath.Join(tmpDir, "output"+dstExt)
 
-	if err := c.downloadObject(ctx, bucketName, srcObjectPath, srcLocal); err != nil {
-		return ConvertResult{}, fmt.Errorf("download src: %w", err)
-	}
-
-	if err := runFFmpeg(ctx, srcLocal, dstLocal, targetContentType); err != nil {
-		return ConvertResult{}, err
-	}
-
 	// Sibling object path: replace extension on the original key. Keeps
 	// the therapist_id/patient_file_id/timestamp prefix intact, which is
 	// what audit + cleanup tooling indexes on.
@@ -136,6 +141,46 @@ func (c *Converter) Convert(
 	if dstObjectPath == srcObjectPath {
 		dstObjectPath = strings.TrimSuffix(srcObjectPath, srcExt) +
 			"-converted" + dstExt
+	}
+
+	if err := c.downloadObject(ctx, bucketName, srcObjectPath, srcLocal); err != nil {
+		// Redelivery resilience: a prior attempt may have converted +
+		// deleted the source, then failed AFTER (chunking transient →
+		// Nack → tx rollback keeps the DB pointed at the deleted src).
+		// If the converted sibling already exists, hand it back instead
+		// of looping on a missing source until the DLQ.
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			if _, attrsErr := c.client.Bucket(bucketName).Object(dstObjectPath).
+				Attrs(ctx); attrsErr == nil {
+				return ConvertResult{
+					BucketName:  bucketName,
+					ObjectPath:  dstObjectPath,
+					ContentType: targetContentType,
+				}, nil
+			}
+		}
+		return ConvertResult{}, fmt.Errorf("download src: %w", err)
+	}
+
+	// Recording interrupted mid-session (incoming call) can leave the
+	// on-device FLAC with a never-finalized STREAMINFO (all zeros) —
+	// ffmpeg then refuses the file at open ("Invalid data found"),
+	// live incident 2026-07-22 (session a1b09d6c). Synthesizing a valid
+	// header from the first frame makes the re-encode below able to do
+	// its job. No-op for healthy files.
+	if repaired, repErr := repairZeroedFlacStreaminfo(srcLocal); repErr != nil {
+		// Repair is best-effort — a failure here just means ffmpeg gets
+		// the original bytes and renders its own verdict.
+		slog.Warn("flac header repair skipped", "error", repErr)
+	} else if repaired {
+		slog.Info("flac header repaired (zeroed STREAMINFO)",
+			"object", srcObjectPath)
+	}
+
+	if err := runFFmpeg(ctx, srcLocal, dstLocal, targetContentType); err != nil {
+		// ffmpeg rejecting the input is deterministic — same bytes will
+		// fail on every redelivery.
+		return ConvertResult{}, fmt.Errorf("%w: %v", ErrBadAudio, err)
 	}
 
 	if err := c.uploadObject(ctx, bucketName, dstObjectPath, dstLocal, targetContentType); err != nil {
@@ -407,7 +452,42 @@ func (c *Converter) downloadObject(ctx context.Context, bucket, object, dst stri
 // uploadObject writes a local file back to GCS at (bucket, object) with
 // the supplied Content-Type. We let the Cloud Storage client choose
 // chunked vs single-shot upload based on file size.
+//
+// Retries (live incident 2026-07-17, session 0fb3d59b): the Go SDK
+// does NOT retry object writes by default (no preconditions ⇒
+// non-idempotent), so a single `connection reset by peer` from the GCS
+// front-end used to bubble up and terminally fail the whole session.
+// Our writes are semantically idempotent — same deterministic bytes to
+// the same key — so we (a) opt the handle into RetryAlways for the
+// SDK's per-chunk transient handling and (b) wrap the whole write in a
+// 3-attempt outer loop for failures the SDK doesn't cover.
 func (c *Converter) uploadObject(
+	ctx context.Context,
+	bucket, object, src, contentType string,
+) error {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(attempt*attempt) * 2 * time.Second):
+			}
+			slog.Warn("uploadObject retry", "object", object,
+				"attempt", attempt+1, "prev_error", lastErr)
+		}
+		lastErr = c.uploadObjectOnce(ctx, bucket, object, src, contentType)
+		if lastErr == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return lastErr
+		}
+	}
+	return lastErr
+}
+
+func (c *Converter) uploadObjectOnce(
 	ctx context.Context,
 	bucket, object, src, contentType string,
 ) error {
@@ -423,7 +503,9 @@ func (c *Converter) uploadObject(
 	uploadCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	w := c.client.Bucket(bucket).Object(object).NewWriter(uploadCtx)
+	w := c.client.Bucket(bucket).Object(object).
+		Retryer(storage.WithPolicy(storage.RetryAlways)).
+		NewWriter(uploadCtx)
 	w.ContentType = contentType
 	// Match the metadata stamp Signer applies on signed-URL uploads so
 	// downstream tooling can't tell the converted object apart.
@@ -434,6 +516,104 @@ func (c *Converter) uploadObject(
 		return err
 	}
 	return w.Close()
+}
+
+// ── FLAC header repair (zeroed STREAMINFO) ──────────────────────────
+//
+// iOS finalizes the FLAC STREAMINFO block only on a clean recorder
+// stop; an OS interruption history can leave the 42-byte prefix as
+// `fLaC` + zeros, which every ffmpeg tool refuses at open even though
+// the frames after it are valid. repairZeroedFlacStreaminfo detects
+// exactly that shape and writes a synthetic-but-valid STREAMINFO with
+// the sample rate / channels / bit depth sniffed from the first frame
+// header (fallback: 16 kHz mono 16-bit — the app's recording config).
+// Returns (false, nil) for files that don't match the broken shape.
+func repairZeroedFlacStreaminfo(path string) (bool, error) {
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = f.Close() }()
+
+	head := make([]byte, 46)
+	if _, err := io.ReadFull(f, head); err != nil {
+		return false, nil // too short to be a FLAC — not our case
+	}
+	if string(head[:4]) != "fLaC" {
+		return false, nil
+	}
+	for _, b := range head[4:42] {
+		if b != 0 {
+			return false, nil // header present — healthy or differently broken
+		}
+	}
+
+	// Sniff stream parameters from the first frame header right after
+	// the (zeroed) metadata: sync 0xFFF8, then blocksize/rate nibbles
+	// and channels/sample-size bits.
+	rate, channels, bps := 16000, 1, 16
+	if head[42] == 0xFF && head[43]&0xFC == 0xF8 {
+		switch head[44] & 0x0F { // sample-rate code
+		case 0x4:
+			rate = 8000
+		case 0x5:
+			rate = 16000
+		case 0x6:
+			rate = 22050
+		case 0x7:
+			rate = 24000
+		case 0x8:
+			rate = 32000
+		case 0x9:
+			rate = 44100
+		case 0xA:
+			rate = 48000
+		case 0xB:
+			rate = 96000
+		}
+		chCode := head[45] >> 4
+		if chCode <= 0x7 {
+			channels = int(chCode) + 1
+		} else {
+			channels = 2 // stereo decorrelation modes
+		}
+		switch (head[45] >> 1) & 0x7 { // sample-size code
+		case 0x1:
+			bps = 8
+		case 0x2:
+			bps = 12
+		case 0x4:
+			bps = 16
+		case 0x5:
+			bps = 20
+		case 0x6:
+			bps = 24
+		case 0x7:
+			bps = 32
+		}
+	}
+
+	patch := make([]byte, 38)
+	// Metadata block header: last-metadata-block=1, type=0 (STREAMINFO),
+	// length=34.
+	patch[0] = 0x80
+	patch[3] = 34
+	// min/max blocksize — any legal fixed value; ffmpeg reads the real
+	// size per-frame.
+	binary.BigEndian.PutUint16(patch[4:6], 4608)
+	binary.BigEndian.PutUint16(patch[6:8], 4608)
+	// min/max framesize (6 bytes) stay 0 = unknown.
+	// rate(20) | channels-1(3) | bps-1(5) | total-samples(36, 0=unknown).
+	packed := uint64(rate)<<44 |
+		uint64(channels-1)<<41 |
+		uint64(bps-1)<<36
+	binary.BigEndian.PutUint64(patch[14:22], packed)
+	// MD5 (16 bytes) stays zeroed = unset.
+
+	if _, err := f.WriteAt(patch, 4); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // runFFmpeg shells out to the binary in PATH. The Dockerfile installs
