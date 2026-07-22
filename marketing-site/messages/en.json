@@ -690,7 +690,7 @@
     "subhead": "You open the app and know where to start. Previous sessions are waiting with transcripts, clinical themes, and notes in your modality.",
     "ctaPrimary": "Try for free",
     "ctaSecondary": "See how it works",
-    "microtext": "5 sessions for 30 days. No credit card.",
+    "microtext": "10 sessions for 30 days. No credit card.",
     "trustBar": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
     "chips": {
       "audio": "Audio deleted after transcription",
@@ -730,7 +730,7 @@
       }
     },
     "cta": "Try it on your own session",
-    "micro": "5 sessions for 30 days. No credit card."
+    "micro": "10 sessions for 30 days. No credit card."
   },
   "differentiator": {
     "overline": "Why Superwizor AI",
@@ -815,7 +815,7 @@
     "title": "See for yourself in your own sessions.",
     "body": "No obligations. You decide whether to stay.",
     "cta": "Try for free",
-    "micro": "5 sessions for 30 days. No credit card."
+    "micro": "10 sessions for 30 days. No credit card."
   },
   "audience": {
     "overline": "Who it's for",
@@ -1089,11 +1089,11 @@
       "trial": {
         "name": "Discovery",
         "tagline": "Try with no strings attached.",
-        "tokensSuffix": "5 sessions for 30 days",
+        "tokensSuffix": "10 sessions for 30 days",
         "tokensSuffix2": "full access to the application",
         "cta": "Try for free",
         "features": [
-          "5 sessions for 30 days",
+          "10 sessions for 30 days",
           "Full access to all features",
           "No credit card required"
         ]
@@ -1368,7 +1368,7 @@
         }
       },
       "cta": "Try on your own session",
-      "micro": "5 sessions for 30 days. No credit card."
+      "micro": "10 sessions for 30 days. No credit card."
     },
     "differentiator": {
       "title": "Not another documentation tool. A partner that lifts the weight of remembering.",
@@ -1425,7 +1425,7 @@
       "body": "Presence in the room. Without the weight of remembering between sessions. Documentation waits ready, you return to what's happening now.",
       "cta": "Try for free",
       "cta2": "See pricing",
-      "micro": "5 sessions for 30 days. No credit card. Full access to the app."
+      "micro": "10 sessions for 30 days. No credit card. Full access to the app."
     },
     "audience": {
       "heading": "Built for real work in the office",
@@ -1495,7 +1495,7 @@
         },
         "pricingTrial": {
           "q": "How much does it cost and can I try it first?",
-          "a": "You start for free: the Exploration plan includes 30 days and 5 sessions, no credit card required. Paid plans start at 99 PLN per month (incl. VAT). All plans offer the same features — differing only in the number of included sessions."
+          "a": "You start for free: the Exploration plan includes 30 days and 10 sessions, no credit card required. Paid plans start at 99 PLN per month (incl. VAT). All plans offer the same features — differing only in the number of included sessions."
         },
         "cancellation": {
           "q": "How do I start and can I cancel anytime?",

@@ -690,7 +690,7 @@
     "subhead": "Otwierasz aplikację i wiesz od czego zacząć. Poprzednie sesje czekają z transkrypcją, kluczowymi wątkami i notatkami w Twoim nurcie.",
     "ctaPrimary": "Wypróbuj za darmo",
     "ctaSecondary": "Zobacz, jak działa",
-    "microtext": "30 dni / 5 sesji. Bez karty kredytowej.",
+    "microtext": "30 dni / 10 sesji. Bez karty kredytowej.",
     "trustBar": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów.",
     "chips": {
       "audio": "Audio usuwane po transkrypcji",
@@ -1089,11 +1089,11 @@
       "trial": {
         "name": "Poznanie",
         "tagline": "Wypróbuj bez zobowiązań.",
-        "tokensSuffix": "5 sesji przez 30 dni",
+        "tokensSuffix": "10 sesji przez 30 dni",
         "tokensSuffix2": "pełen dostęp do aplikacji",
         "cta": "Wypróbuj za darmo",
         "features": [
-          "5 sesji przez 30 dni",
+          "10 sesji przez 30 dni",
           "Pełen dostęp do wszystkich funkcji",
           "Bez karty kredytowej"
         ]
@@ -1495,7 +1495,7 @@
         },
         "pricingTrial": {
           "q": "Ile to kosztuje i czy mogę najpierw wypróbować?",
-          "a": "Zaczynasz bezpłatnie: plan Poznanie obejmuje 30 dni i 5 sesji, bez podawania karty płatniczej. Płatne plany zaczynają się od 99 zł miesięcznie (z VAT). Wszystkie oferują te same funkcje — różnią się jedynie liczbą dostępnych sesji."
+          "a": "Zaczynasz bezpłatnie: plan Poznanie obejmuje 30 dni i 10 sesji, bez podawania karty płatniczej. Płatne plany zaczynają się od 99 zł miesięcznie (z VAT). Wszystkie oferują te same funkcje — różnią się jedynie liczbą dostępnych sesji."
         },
         "cancellation": {
           "q": "Jak zacząć i czy mogę zrezygnować w dowolnym momencie?",
