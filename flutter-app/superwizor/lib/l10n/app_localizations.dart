@@ -3348,6 +3348,18 @@ abstract class AppLocalizations {
   /// **'Przesyłanie przerwane'**
   String get pending_uploads_phase_failed;
 
+  /// No description provided for @pending_uploads_phase_offline.
+  ///
+  /// In pl, this message translates to:
+  /// **'Offline — wyślemy automatycznie'**
+  String get pending_uploads_phase_offline;
+
+  /// No description provided for @upload_offline_waiting.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak połączenia — nagranie jest bezpieczne na urządzeniu. Prześlemy je automatycznie, gdy wróci internet'**
+  String get upload_offline_waiting;
+
   /// No description provided for @pending_uploads_phase_pending.
   ///
   /// In pl, this message translates to:
@@ -3675,7 +3687,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_instruction_6.
   ///
   /// In pl, this message translates to:
-  /// **'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka; z trybem skupienia sesja nagrywa się bez przerw.'**
+  /// **'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) lub tryb samolotowy – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka. W trybie samolotowym nagrywasz normalnie offline, a nagranie prześlemy automatycznie po odzyskaniu połączenia.'**
   String get recording_instruction_6;
 
   /// No description provided for @recording_instructions_subtitle.

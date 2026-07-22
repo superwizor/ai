@@ -1848,6 +1848,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pending_uploads_phase_failed => 'Upload interrupted';
 
   @override
+  String get pending_uploads_phase_offline =>
+      'Offline — will upload automatically';
+
+  @override
+  String get upload_offline_waiting =>
+      'No connection — the recording is safe on this device. We\'ll upload it automatically once you\'re back online';
+
+  @override
   String get pending_uploads_phase_pending => 'In queue';
 
   @override
@@ -2033,7 +2041,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_instruction_6 =>
-      'On iPhone, enable Focus (Do Not Disturb) for the session — an incoming call, even silenced and unanswered, pauses the recording until it stops ringing; with Focus on, the session records without gaps.';
+      'On iPhone, enable Focus (Do Not Disturb) or Airplane Mode for the session — an incoming call, even silenced and unanswered, pauses the recording until it stops ringing. In Airplane Mode you record offline as usual, and we\'ll upload the recording automatically once you\'re back online.';
 
   @override
   String get recording_instructions_subtitle =>

@@ -11,8 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/patient_provider.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
@@ -554,12 +556,24 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
         upload.sessionId != null && upload.sessionId!.isNotEmpty;
     final canTap = !isFailed;
 
-    final iconData = _phaseIcon(upload.phase, isRetrying: isRetrying);
-    final isSpinning = upload.phase == UploadPhase.encrypting ||
-        upload.phase == UploadPhase.converting ||
-        upload.phase == UploadPhase.created ||
-        upload.phase == UploadPhase.uploaded ||
-        upload.phase == UploadPhase.converted;
+    // Offline queue UX (tryb samolotowy, 2026-07-23): network phases
+    // can't progress without connectivity — say so instead of spinning
+    // or flashing "Wznawianie…" retries. Takes precedence over the
+    // isRetrying label (offline retries fail by definition).
+    final waitsForNetwork = ref.watch(connectivityProvider).value ==
+            ConnectivityResult.none &&
+        (upload.phase == UploadPhase.pending ||
+            upload.phase == UploadPhase.created);
+
+    final iconData = waitsForNetwork
+        ? Icons.cloud_off_rounded
+        : _phaseIcon(upload.phase, isRetrying: isRetrying);
+    final isSpinning = !waitsForNetwork &&
+        (upload.phase == UploadPhase.encrypting ||
+            upload.phase == UploadPhase.converting ||
+            upload.phase == UploadPhase.created ||
+            upload.phase == UploadPhase.uploaded ||
+            upload.phase == UploadPhase.converted);
 
     Widget iconWidget = Icon(iconData, color: color, size: 20);
     if (isSpinning) {
@@ -620,7 +634,10 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _phaseLabel(upload.phase, l, isRetrying: isRetrying),
+                      waitsForNetwork
+                          ? l.pending_uploads_phase_offline
+                          : _phaseLabel(upload.phase, l,
+                              isRetrying: isRetrying),
                       style: const TextStyle(
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w600,
@@ -681,8 +698,9 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                   ],
                 ),
               ),
-              // Live upload progress
-              if (upload.phase == UploadPhase.created) ...[
+              // Live upload progress (hidden offline — a frozen bar at
+              // 0% reads as a hang; the offline label already explains).
+              if (upload.phase == UploadPhase.created && !waitsForNetwork) ...[
                 const SizedBox(height: 14),
                 Row(
                   children: [

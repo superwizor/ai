@@ -1870,6 +1870,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get pending_uploads_phase_failed => 'Przesyłanie przerwane';
 
   @override
+  String get pending_uploads_phase_offline => 'Offline — wyślemy automatycznie';
+
+  @override
+  String get upload_offline_waiting =>
+      'Brak połączenia — nagranie jest bezpieczne na urządzeniu. Prześlemy je automatycznie, gdy wróci internet';
+
+  @override
   String get pending_uploads_phase_pending => 'W kolejce';
 
   @override
@@ -2052,7 +2059,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_instruction_6 =>
-      'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka; z trybem skupienia sesja nagrywa się bez przerw.';
+      'Na iPhonie włącz na czas sesji tryb skupienia (Nie przeszkadzać) lub tryb samolotowy – przychodzące połączenie, nawet wyciszone i nieodebrane, wstrzymuje nagrywanie do końca dzwonka. W trybie samolotowym nagrywasz normalnie offline, a nagranie prześlemy automatycznie po odzyskaniu połączenia.';
 
   @override
   String get recording_instructions_subtitle =>

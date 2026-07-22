@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/euphire_theme.dart';
 import '../utils/haptics.dart';
 import '../widgets/euphire_toast.dart';
+import '../widgets/offline_banner.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
 
@@ -408,6 +409,10 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // ── Offline banner (tryb samolotowy, 2026-07-23):
+                        // the kartoteka renders from the encrypted cache
+                        // offline — say so, same as the home list. ──
+                        const OfflineBanner(),
                         // ── Patient name header (matches home screen style) ──
                         Text.rich(
                           TextSpan(

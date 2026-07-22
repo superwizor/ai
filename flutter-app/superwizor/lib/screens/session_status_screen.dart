@@ -34,6 +34,7 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/live_activity_service.dart';
 import '../services/recording_foreground_service.dart';
@@ -868,6 +869,16 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     final isUploading = upload.phase == UploadPhase.created;
+    // Offline queue UX (docs: tryb samolotowy, 2026-07-23): the network
+    // phases (`pending`, `created`) can't progress without connectivity —
+    // an honest "safe on device, will auto-upload" line beats a spinner
+    // that looks stuck. Local phases (encrypting/converting) keep their
+    // spinner: they proceed offline just fine.
+    final isOffline = ref.watch(connectivityProvider).value ==
+        ConnectivityResult.none;
+    final waitsForNetwork = isOffline &&
+        (upload.phase == UploadPhase.pending ||
+            upload.phase == UploadPhase.created);
     final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
     final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
     final cType = upload.contentType.isNotEmpty ? upload.contentType : 'audio';
@@ -912,7 +923,30 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           
           const SizedBox(height: 10),
           
-          if (isUploading) ...[
+          if (waitsForNetwork) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: 15,
+                  color: EuphireColors.mist.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).upload_offline_waiting,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      height: 1.4,
+                      color: EuphireColors.mist.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (isUploading) ...[
             // Progress Bar Row (lower)
             Row(
               children: [
