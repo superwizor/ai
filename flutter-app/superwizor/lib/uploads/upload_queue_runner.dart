@@ -24,6 +24,7 @@
 // therapist switch the old runner is stopped and a new one started.
 
 import 'dart:async';
+import 'dart:io' show InternetAddress;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -614,5 +615,19 @@ class UploadQueueRunner {
 // inspects the most recent ConnectivityResult.
 Future<bool> _defaultHasNetwork() async {
   final results = await Connectivity().checkConnectivity();
-  return results.any((r) => r != ConnectivityResult.none);
+  if (results.any((r) => r != ConnectivityResult.none)) return true;
+  // Airplane mode + Wi-Fi (sesja a5ce601f, 2026-07-23): iOS reports
+  // `none` here while Wi-Fi routes packets fine — every tick bailed at
+  // this gate BEFORE touching any row, so the queue idled forever with
+  // attemptCount=0, no error, and the stable state meant
+  // onConnectivityChanged never fired either. The interface report is a
+  // hint, not the truth — verify with a real DNS lookup before
+  // declaring offline.
+  try {
+    final addrs = await InternetAddress.lookup('storage.googleapis.com')
+        .timeout(const Duration(seconds: 4));
+    return addrs.isNotEmpty;
+  } catch (_) {
+    return false;
+  }
 }
