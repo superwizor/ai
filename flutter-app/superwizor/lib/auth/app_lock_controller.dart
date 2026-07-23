@@ -109,8 +109,16 @@ class AppLockController extends Notifier<bool> {
       }
       final ok = await _auth.authenticate(
         localizedReason: localizedReason,
-        // Survive the OS auth UI momentarily backgrounding the app.
-        persistAcrossBackgrounding: true,
+        // Survive the OS auth UI momentarily backgrounding the app — but
+        // NOT on Android: there the flag maps to stickyAuth, whose
+        // onActivityResumed hook re-launches the prompt UNCONDITIONALLY
+        // (local_auth_android 2.0.8, AuthenticationHelper). The device-PIN
+        // keyguard is a separate activity that pauses ours, so every PIN
+        // entry triggered a resume → fresh prompt → the "PIN three times"
+        // loop on Android 9 (2026-07-23). Without sticky the keyguard
+        // result comes back via onActivityResult and one PIN suffices;
+        // a genuine mid-auth backgrounding just fails into the retry UI.
+        persistAcrossBackgrounding: !Platform.isAndroid,
         // biometricOnly:false (default) → allow the device passcode fallback.
       );
       if (ok) {
