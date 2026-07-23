@@ -24,8 +24,10 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     // this watch sees the new uid and Riverpod rebuilds — the old
     // therapist's cached patients vanish. Without this, the home
     // screen showed stale data across login transitions.
+    debugPrint('[patients] build: awaiting firebase user');
     final user = await ref.watch(firebaseUserProvider.future);
     if (user == null) return const [];
+    debugPrint('[patients] build: firebase ok, awaiting repository');
 
     // Repository wraps the cache + gRPC client. Null while the cache
     // is still opening — fall back to a direct network fetch in that
@@ -33,10 +35,14 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     final repo = await ref.watch(patientRepositoryProvider.future);
     _repo = repo;
     if (repo == null) {
+      debugPrint('[patients] build: repo NULL — direct network fallback');
       return _fetchDirectFallback();
     }
 
+    debugPrint('[patients] build: repo ready, reading cache');
     final cached = await repo.getCachedAsModels();
+    debugPrint('[patients] build: cache hasData=${cached.hasData} '
+        'isFresh=${cached.isFresh}');
 
     // Fresh cache hit — return immediately, no network.
     if (cached.isFresh) {
@@ -50,8 +56,11 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       return cached.data!;
     }
 
-    // Cold cache — block on network.
-    final fresh = await repo.refresh();
+    // Cold cache — block on network, but FAIL FAST offline: an
+    // undeadlined gRPC call parks forever while the channel retries
+    // connecting, which reads as an infinite spinner (live 2026-07-23).
+    debugPrint('[patients] build: cold cache — network refresh');
+    final fresh = await repo.refresh().timeout(const Duration(seconds: 12));
     return fresh.map((d) => d.toModel()).toList();
   }
 

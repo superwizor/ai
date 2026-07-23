@@ -97,6 +97,8 @@ final backendUserIdProvider = FutureProvider<String?>((ref) async {
 
   final prefs = await SharedPreferences.getInstance();
   final known = prefs.getString('backend_user_id_${fbUser.uid}');
+  debugPrint('[backendId] mapping ${known != null ? "HIT" : "MISS"} '
+      'for uid=${fbUser.uid.substring(0, 6)}…');
   if (known != null) return known;
 
   final user = await ref.watch(currentUserProvider.future);
@@ -118,5 +120,9 @@ class AccountNotRegisteredException implements Exception {
 /// `therapist_id` fields in CreatePatientFile / CreateAudioUpload.
 final therapistIdProvider = Provider<String?>((ref) {
   final asyncUser = ref.watch(currentUserProvider);
-  return asyncUser.whenOrNull(data: (u) => u?.id);
+  // Offline fallback (2026-07-23): recording/session creation must work
+  // in airplane mode — the persisted mapping serves the same users.id
+  // when the network lookup can't.
+  return asyncUser.whenOrNull(data: (u) => u?.id) ??
+      ref.watch(backendUserIdProvider).value;
 });

@@ -15,6 +15,7 @@
 // Hard logout (clear keychain + delete box files) is handled by the
 // signOut action site, not here — see auth flow.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/current_user_provider.dart';
@@ -46,6 +47,7 @@ final cacheManagerProvider = FutureProvider<CacheManager?>((ref) async {
   }
 
   await mgr.openForUser(userId);
+  debugPrint('[cache] boxes open for $userId');
 
   // Background reconciliation: if the account was deleted and
   // re-registered under the same firebase uid, the backend id changes —
