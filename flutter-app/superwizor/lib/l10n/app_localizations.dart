@@ -3990,6 +3990,24 @@ abstract class AppLocalizations {
   /// **'Znaleziono przerwane nagranie'**
   String get recovery_sheet_header;
 
+  /// No description provided for @recovery_unknown_patient.
+  ///
+  /// In pl, this message translates to:
+  /// **'nieznaną kartoteką'**
+  String get recovery_unknown_patient;
+
+  /// No description provided for @recovery_pick_patient_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Do której kartoteki wysłać nagranie?'**
+  String get recovery_pick_patient_header;
+
+  /// No description provided for @recovery_pick_patient_none.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak kartotek — zaloguj się online i spróbuj ponownie'**
+  String get recovery_pick_patient_none;
+
   /// No description provided for @recovery_sheet_later.
   ///
   /// In pl, this message translates to:

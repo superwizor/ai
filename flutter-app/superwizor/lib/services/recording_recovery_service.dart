@@ -78,7 +78,6 @@ class RecordingRecoveryService {
   ///  4. another therapist's recording — left alone for [sweep].
   Future<List<RecoverableRecording>> findOrphans(String therapistId) async {
     final manifests = await _store.scanAll();
-    if (manifests.isEmpty) return const [];
 
     final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
     final activeId = _recordingService?.activeSessionId;
@@ -132,6 +131,60 @@ class RecordingRecoveryService {
         ),
       );
     }
+
+    // Manifest-LESS orphans (sesja a5ce601f, 2026-07-23). The manifest is
+    // deleted at enqueue — ownership transfers to the queue row. But an
+    // App Store DOWNGRADE mid-upload dropped that row (the older build
+    // couldn't decode the newer row schema), leaving a full raw.flac that
+    // NOTHING owned: invisible to this scan, the queue, and the retention
+    // sweep. Offer such directories too — with an empty patientFileId;
+    // the recovery sheet asks the user to pick the kartoteka before
+    // enqueueing. therapistId is the signed-in user: on a shared device a
+    // foreign manifest-less file cannot be attributed anyway, and PHI-wise
+    // offering send-to-own-kartoteka beats silent eternal retention.
+    final manifestIds = manifests.map((m) => m.sessionId).toSet();
+    if (await root.exists()) {
+      await for (final entry in root.list(followLinks: false)) {
+        if (entry is! Directory) continue;
+        final dirId = p.basename(entry.path);
+        if (manifestIds.contains(dirId)) continue;
+        if (queuedIds.contains(dirId)) continue;
+        if (dirId == activeId) continue;
+        final flac = File(p.join(entry.path, 'raw.flac'));
+        int size = 0;
+        DateTime? mtime;
+        try {
+          if (await flac.exists()) {
+            size = await flac.length();
+            mtime = (await flac.stat()).modified.toUtc();
+          }
+        } catch (e) {
+          debugPrint('[recovery] $dirId: manifest-less stat failed: $e');
+        }
+        if (size < minRecoverableBytes) continue; // left for sweep
+        final startedGuess = mtime ?? DateTime.now().toUtc();
+        out.add(
+          RecoverableRecording(
+            manifest: RecordingManifest(
+              sessionId: dirId,
+              therapistId: therapistId,
+              patientFileId: '', // unknown — UI must ask
+              patientAlias: '',
+              patientLanguageCode: 'pl-PL',
+              startedAtUtc: startedGuess,
+            ),
+            flacPath: flac.path,
+            sizeBytes: size,
+            estimatedDuration: _estimateDuration(
+              sizeBytes: size,
+              startedAtUtc: startedGuess,
+              lastWriteUtc: mtime,
+            ),
+          ),
+        );
+      }
+    }
+
     out.sort(
       (a, b) => a.manifest.startedAtUtc.compareTo(b.manifest.startedAtUtc),
     );
@@ -181,13 +234,26 @@ class RecordingRecoveryService {
   /// `IsChirpSupported("audio/x-flac") == false` coupling.
   static const String _recoveryContentType = 'audio/x-flac';
 
-  Future<PendingUpload> recover(RecoverableRecording r) async {
+  /// [patientFileId]/[patientLanguageCode] override the manifest values —
+  /// REQUIRED for manifest-less orphans (empty manifest.patientFileId),
+  /// where the user picked the target kartoteka in the recovery sheet.
+  Future<PendingUpload> recover(
+    RecoverableRecording r, {
+    String? patientFileId,
+    String? patientLanguageCode,
+  }) async {
     final m = r.manifest;
+    final pid =
+        (patientFileId?.isNotEmpty ?? false) ? patientFileId! : m.patientFileId;
+    if (pid.isEmpty) {
+      throw ArgumentError(
+          'recover: manifest-less orphan requires an explicit patientFileId');
+    }
     final pending = PendingUpload.initial(
       localId: m.sessionId,
       therapistId: m.therapistId,
-      patientFileId: m.patientFileId,
-      patientLanguageCode: m.patientLanguageCode,
+      patientFileId: pid,
+      patientLanguageCode: patientLanguageCode ?? m.patientLanguageCode,
       sourceKind: UploadSourceKind.plainFile,
       sourcePath: r.flacPath,
       contentType: _recoveryContentType,
@@ -215,7 +281,6 @@ class RecordingRecoveryService {
   /// Sessions owned by the queue or currently recording are exempt.
   Future<void> sweep() async {
     final manifests = await _store.scanAll();
-    if (manifests.isEmpty) return;
     final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
     final activeId = _recordingService?.activeSessionId;
     final cutoff = DateTime.now().toUtc().subtract(maxOrphanAge);
@@ -228,6 +293,34 @@ class RecordingRecoveryService {
           '(started ${m.startedAtUtc})',
         );
         await _store.deleteSessionDir(m.sessionId);
+      }
+    }
+
+    // Manifest-less dirs must age out too (PHI retention) — before the
+    // manifest-less recovery existed they simply rotted forever.
+    final manifestIds = manifests.map((m) => m.sessionId).toSet();
+    final root = await _store.sessionsRoot();
+    if (!await root.exists()) return;
+    await for (final entry in root.list(followLinks: false)) {
+      if (entry is! Directory) continue;
+      final dirId = p.basename(entry.path);
+      if (manifestIds.contains(dirId)) continue;
+      if (queuedIds.contains(dirId)) continue;
+      if (dirId == activeId) continue;
+      DateTime? newest;
+      try {
+        await for (final f in entry.list(followLinks: false)) {
+          if (f is! File) continue;
+          final t = (await f.stat()).modified.toUtc();
+          if (newest == null || t.isAfter(newest)) newest = t;
+        }
+      } catch (_) {
+        continue;
+      }
+      if (newest != null && newest.isBefore(cutoff)) {
+        debugPrint('[recovery] sweeping expired manifest-less dir $dirId '
+            '(last write $newest)');
+        await _store.deleteSessionDir(dirId);
       }
     }
   }

@@ -2239,6 +2239,17 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recovery_sheet_header => 'Znaleziono przerwane nagranie';
 
   @override
+  String get recovery_unknown_patient => 'nieznaną kartoteką';
+
+  @override
+  String get recovery_pick_patient_header =>
+      'Do której kartoteki wysłać nagranie?';
+
+  @override
+  String get recovery_pick_patient_none =>
+      'Brak kartotek — zaloguj się online i spróbuj ponownie';
+
+  @override
   String get recovery_sheet_later => 'Zdecyduję później';
 
   @override

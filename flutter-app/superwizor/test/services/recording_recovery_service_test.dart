@@ -222,4 +222,79 @@ void main() {
     expect(dirExists('expired_foreign'), isFalse);
     expect(dirExists('expired_but_queued'), isTrue);
   });
+
+  // ── Manifest-less orphans (sesja a5ce601f, 2026-07-23) ──
+  // An App Store downgrade mid-upload dropped the queue row after the
+  // manifest was already deleted at enqueue — a full raw.flac nothing
+  // owned. These lock the fallback scan + explicit-patient recover.
+
+  Future<void> plantGhost(String id, {int sizeBytes = 600 * 1024}) async {
+    final f = File(p.join(tmp.path, 'sessions', id, 'raw.flac'));
+    await f.create(recursive: true);
+    await f.writeAsBytes(List.filled(sizeBytes, 1));
+  }
+
+  test('manifest-less dir with raw.flac is offered with empty patientFileId',
+      () async {
+    await plantGhost('ghost1');
+    final out = await svc.findOrphans('th_1');
+    expect(out, hasLength(1));
+    expect(out.single.manifest.sessionId, 'ghost1');
+    expect(out.single.manifest.patientFileId, isEmpty);
+    expect(out.single.manifest.therapistId, 'th_1');
+    expect(out.single.sizeBytes, 600 * 1024);
+  });
+
+  test('manifest-less dir owned by the queue is not offered', () async {
+    await plantGhost('ghost1');
+    runner.rows.add(queueRow('ghost1'));
+    expect(await svc.findOrphans('th_1'), isEmpty);
+  });
+
+  test('undersized manifest-less dir is not offered (left for sweep)',
+      () async {
+    await plantGhost('tiny', sizeBytes: 10 * 1024);
+    expect(await svc.findOrphans('th_1'), isEmpty);
+    // NOT deleted eagerly — sweep owns retention for manifest-less dirs.
+    expect(
+      Directory(p.join(tmp.path, 'sessions', 'tiny')).existsSync(),
+      isTrue,
+    );
+  });
+
+  test('manifest-less recover requires an explicit patientFileId', () async {
+    await plantGhost('ghost1');
+    final r = (await svc.findOrphans('th_1')).single;
+
+    expect(() => svc.recover(r), throwsArgumentError);
+    expect(runner.enqueued, isEmpty);
+
+    await svc.recover(r, patientFileId: 'pf_9', patientLanguageCode: 'en-US');
+    final row = runner.enqueued.single;
+    expect(row.localId, 'ghost1');
+    expect(row.patientFileId, 'pf_9');
+    expect(row.patientLanguageCode, 'en-US');
+    expect(row.contentType, 'audio/x-flac');
+  });
+
+  test('sweep ages out stale manifest-less dirs, keeps fresh and queued ones',
+      () async {
+    await plantGhost('ghost_fresh');
+    await plantGhost('ghost_old');
+    await plantGhost('ghost_old_queued');
+    final old = DateTime.now().subtract(const Duration(days: 15));
+    File(p.join(tmp.path, 'sessions', 'ghost_old', 'raw.flac'))
+        .setLastModifiedSync(old);
+    File(p.join(tmp.path, 'sessions', 'ghost_old_queued', 'raw.flac'))
+        .setLastModifiedSync(old);
+    runner.rows.add(queueRow('ghost_old_queued'));
+
+    await svc.sweep();
+
+    bool dirExists(String id) =>
+        Directory(p.join(tmp.path, 'sessions', id)).existsSync();
+    expect(dirExists('ghost_fresh'), isTrue);
+    expect(dirExists('ghost_old'), isFalse);
+    expect(dirExists('ghost_old_queued'), isTrue);
+  });
 }

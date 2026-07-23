@@ -2221,6 +2221,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recovery_sheet_header => 'Interrupted recording found';
 
   @override
+  String get recovery_unknown_patient => 'an unknown client file';
+
+  @override
+  String get recovery_pick_patient_header =>
+      'Which client file should receive the recording?';
+
+  @override
+  String get recovery_pick_patient_none =>
+      'No client files — sign in online and try again';
+
+  @override
   String get recovery_sheet_later => 'Decide later';
 
   @override
