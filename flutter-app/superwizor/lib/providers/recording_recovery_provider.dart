@@ -39,11 +39,11 @@ final recordingRecoveryServiceProvider =
 final orphanedRecordingsProvider =
     FutureProvider<List<RecoverableRecording>>((ref) async {
   if (_ranThisLaunch) return const [];
-  final user = await ref.watch(currentUserProvider.future);
-  if (user == null) return const [];
+  final therapistId = await ref.watch(backendUserIdProvider.future);
+  if (therapistId == null) return const [];
   final svc = await ref.watch(recordingRecoveryServiceProvider.future);
   if (svc == null) return const [];
   _ranThisLaunch = true;
   await svc.sweep();
-  return svc.findOrphans(user.id);
+  return svc.findOrphans(therapistId);
 });

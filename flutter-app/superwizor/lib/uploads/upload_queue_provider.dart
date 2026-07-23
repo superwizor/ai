@@ -53,10 +53,12 @@ final _holder = _RunnerHolder();
 /// Returns null when there is no authenticated user.
 final uploadQueueRunnerProvider =
     FutureProvider<UploadQueueRunner?>((ref) async {
-  final user = await ref.watch(currentUserProvider.future);
+  // Offline-safe id (live-fix 2026-07-23): the queue must open in
+  // airplane mode or offline recordings have nowhere to persist.
+  final therapistId = await ref.watch(backendUserIdProvider.future);
 
   // Logged out — tear down any running instance.
-  if (user == null) {
+  if (therapistId == null) {
     _detachQuotaListener();
     final old = _holder.runner;
     _holder.runner = null;
@@ -73,7 +75,7 @@ final uploadQueueRunnerProvider =
   }
 
   // Same therapist as before — return the existing runner.
-  if (_holder.therapistId == user.id && _holder.runner != null) {
+  if (_holder.therapistId == therapistId && _holder.runner != null) {
     return _holder.runner;
   }
 
@@ -86,7 +88,7 @@ final uploadQueueRunnerProvider =
     await _holder.queue!.close();
   }
 
-  final queue = await UploadQueue.openForUser(user.id);
+  final queue = await UploadQueue.openForUser(therapistId);
   final ingestion = ref.watch(grpcClientsProvider).ingestion;
   final secureStorage = ref.watch(secureAudioStorageProvider);
   final sessionStateListener = ref.watch(sessionStateListenerProvider);
@@ -135,7 +137,7 @@ final uploadQueueRunnerProvider =
 
   _holder.queue = queue;
   _holder.runner = runner;
-  _holder.therapistId = user.id;
+  _holder.therapistId = therapistId;
 
   await runner.start();
   _attachQuotaListener(ref, runner);

@@ -174,8 +174,8 @@ Future<List<PatientDto>> _grpcFetch(
 /// fall back to a "loading" state during that brief window.
 final patientRepositoryProvider =
     FutureProvider<PatientRepository?>((ref) async {
-  final user = await ref.watch(currentUserProvider.future);
-  if (user == null) return null;
+  final therapistId = await ref.watch(backendUserIdProvider.future);
+  if (therapistId == null) return null;
 
   final mgr = await ref.watch(cacheManagerProvider.future);
   if (mgr == null) return null;
@@ -184,6 +184,6 @@ final patientRepositoryProvider =
   return PatientRepository.fromGrpc(
     cache: mgr,
     client: client,
-    therapistId: user.id,
+    therapistId: therapistId,
   );
 });

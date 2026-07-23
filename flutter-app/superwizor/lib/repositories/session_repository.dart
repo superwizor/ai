@@ -161,8 +161,8 @@ Future<List<SessionDto>> _grpcFetch(
 /// unauthenticated or the cache is still opening.
 final sessionRepositoryProvider =
     FutureProvider<SessionRepository?>((ref) async {
-  final user = await ref.watch(currentUserProvider.future);
-  if (user == null) return null;
+  final therapistId = await ref.watch(backendUserIdProvider.future);
+  if (therapistId == null) return null;
 
   final mgr = await ref.watch(cacheManagerProvider.future);
   if (mgr == null) return null;
@@ -171,6 +171,6 @@ final sessionRepositoryProvider =
   return SessionRepository.fromGrpc(
     cache: mgr,
     client: client,
-    therapistId: user.id,
+    therapistId: therapistId,
   );
 });

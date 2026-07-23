@@ -16,7 +16,6 @@
 // signOut action site, not here — see auth flow.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/current_user_provider.dart';
 import 'cache_manager.dart';
@@ -38,42 +37,27 @@ final _cacheManagerSingleton = CacheManager();
 /// First-ever login on a device still blocks on the network (there is
 /// no cache to serve anyway).
 final cacheManagerProvider = FutureProvider<CacheManager?>((ref) async {
-  final fbUser = await ref.watch(firebaseUserProvider.future);
+  final userId = await ref.watch(backendUserIdProvider.future);
   final mgr = _cacheManagerSingleton;
 
-  if (fbUser == null) {
+  if (userId == null) {
     await mgr.close();
     return null;
   }
 
-  final prefs = await SharedPreferences.getInstance();
-  final mappingKey = 'backend_user_id_${fbUser.uid}';
-  final knownId = prefs.getString(mappingKey);
+  await mgr.openForUser(userId);
 
-  if (knownId != null) {
-    await mgr.openForUser(knownId);
-    // Background reconciliation: if the account was deleted and
-    // re-registered under the same firebase uid, the backend id
-    // changes — refresh the mapping and reopen with the new boxes
-    // once the network lookup lands.
-    ref.listen(currentUserProvider, (prev, next) {
-      final freshId = next.value?.id;
-      if (freshId != null && freshId != knownId) {
-        prefs.setString(mappingKey, freshId);
-        ref.invalidateSelf();
-      }
-    });
-    return mgr;
-  }
+  // Background reconciliation: if the account was deleted and
+  // re-registered under the same firebase uid, the backend id changes —
+  // currentUserProvider refreshes the persisted mapping on success, so
+  // a mismatch here just needs a reopen with the new boxes.
+  ref.listen(currentUserProvider, (prev, next) {
+    final freshId = next.value?.id;
+    if (freshId != null && freshId != userId) {
+      ref.invalidateSelf();
+    }
+  });
 
-  // No local mapping yet — first login here; the network lookup is
-  // unavoidable (and also persists the mapping for next time).
-  final user = await ref.watch(currentUserProvider.future);
-  if (user == null) {
-    await mgr.close();
-    return null;
-  }
-  await mgr.openForUser(user.id);
   return mgr;
 });
 

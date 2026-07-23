@@ -81,6 +81,28 @@ final currentUserProvider = FutureProvider<identity_pb.User?>((ref) async {
   }
 });
 
+/// Offline-safe backend users.id for the signed-in Firebase account.
+///
+/// Every cache box, repository and the upload queue are keyed by the
+/// BACKEND id — which historically arrived only from the network lookup
+/// above, so a cold start in airplane mode hung every one of them
+/// (live-fix 2026-07-23: kartoteka spinner-forever). This provider
+/// prefers the locally persisted firebaseUid→users.id mapping (written
+/// on every successful currentUserProvider fetch) and touches the
+/// network only on the first-ever login on a device, when no cache
+/// exists to serve anyway. Null = signed out.
+final backendUserIdProvider = FutureProvider<String?>((ref) async {
+  final fbUser = await ref.watch(firebaseUserProvider.future);
+  if (fbUser == null) return null;
+
+  final prefs = await SharedPreferences.getInstance();
+  final known = prefs.getString('backend_user_id_${fbUser.uid}');
+  if (known != null) return known;
+
+  final user = await ref.watch(currentUserProvider.future);
+  return user?.id;
+});
+
 /// A Firebase session exists but identity-svc has no users row for it —
 /// the person signed into the app without ever registering (or their
 /// account was hard-deleted). _AuthGate maps this to the
