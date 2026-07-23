@@ -75,10 +75,26 @@ class CacheEnvelope {
   bool isExpired(Duration hardTtl, DateTime now) =>
       now.toUtc().difference(cachedAt) > hardTtl;
 
-  static Map<String, dynamic> _asStringMap(Object? raw) {
-    if (raw is Map) {
-      return raw.map((k, v) => MapEntry(k.toString(), v));
+  /// Deep-normalises Hive's disk shape. CRITICAL (live-fix 2026-07-23,
+  /// offline kartoteka): Hive re-reads maps as Map<dynamic, dynamic> at
+  /// EVERY nesting level. The old one-level normalisation left nested
+  /// DTO maps dynamic-keyed, the DTO fromJson threw on the first cold
+  /// start after a write, and cache_box's self-healing DELETED the
+  /// entry — so the cache looked permanently empty across restarts
+  /// while working within a session (Hive serves the original
+  /// in-memory object until the app dies).
+  static Object? _deepNormalize(Object? v) {
+    if (v is Map) {
+      return v.map<String, dynamic>(
+          (k, val) => MapEntry(k.toString(), _deepNormalize(val)));
     }
+    if (v is List) return v.map(_deepNormalize).toList();
+    return v;
+  }
+
+  static Map<String, dynamic> _asStringMap(Object? raw) {
+    final normalized = _deepNormalize(raw);
+    if (normalized is Map<String, dynamic>) return normalized;
     return const {};
   }
 }

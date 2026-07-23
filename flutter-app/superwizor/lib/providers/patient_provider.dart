@@ -10,6 +10,10 @@ import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
 
+/// TEMP diag (offline spinner, 2026-07-23): the home loading branch
+/// renders this so a screenshot shows exactly where the chain stalls.
+final patientsLoadStage = ValueNotifier<String>('init');
+
 final patientsProvider = AsyncNotifierProvider<PatientsNotifier, List<Patient>>(() {
   return PatientsNotifier();
 });
@@ -24,9 +28,11 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     // this watch sees the new uid and Riverpod rebuilds — the old
     // therapist's cached patients vanish. Without this, the home
     // screen showed stale data across login transitions.
+    patientsLoadStage.value = '1/5 firebase';
     debugPrint('[patients] build: awaiting firebase user');
     final user = await ref.watch(firebaseUserProvider.future);
     if (user == null) return const [];
+    patientsLoadStage.value = '2/5 repo';
     debugPrint('[patients] build: firebase ok, awaiting repository');
 
     // Repository wraps the cache + gRPC client. Null while the cache
@@ -35,12 +41,16 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     final repo = await ref.watch(patientRepositoryProvider.future);
     _repo = repo;
     if (repo == null) {
+      patientsLoadStage.value = '2b direct-fallback';
       debugPrint('[patients] build: repo NULL — direct network fallback');
       return _fetchDirectFallback();
     }
 
+    patientsLoadStage.value = '3/5 cache-read';
     debugPrint('[patients] build: repo ready, reading cache');
     final cached = await repo.getCachedAsModels();
+    patientsLoadStage.value =
+        '4/5 cache hasData=${cached.hasData} fresh=${cached.isFresh}';
     debugPrint('[patients] build: cache hasData=${cached.hasData} '
         'isFresh=${cached.isFresh}');
 
@@ -59,6 +69,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     // Cold cache — block on network, but FAIL FAST offline: an
     // undeadlined gRPC call parks forever while the channel retries
     // connecting, which reads as an infinite spinner (live 2026-07-23).
+    patientsLoadStage.value = '5/5 network-refresh';
     debugPrint('[patients] build: cold cache — network refresh');
     final fresh = await repo.refresh().timeout(const Duration(seconds: 12));
     return fresh.map((d) => d.toModel()).toList();

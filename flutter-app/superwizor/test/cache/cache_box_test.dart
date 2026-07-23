@@ -56,6 +56,8 @@ void main() {
     );
   }
 
+  nestedRestartTests();
+
   test('round-trip stores and reads a value', () async {
     final box = await openFooBox();
     final written = await box.put('k1', _Foo('a', 42));
@@ -166,5 +168,64 @@ void main() {
     ix.sort((x, y) => x.lastAccessedAt.compareTo(y.lastAccessedAt));
     expect(ix.first.key, 'a');
     expect(ix.last.key, 'b');
+  });
+}
+
+// ── Regresja: zimny start (live-fix 2026-07-23) ──────────────────────
+// Hive po ponownym otwarciu boxu z DYSKU zwraca mapy jako
+// Map<dynamic, dynamic> na każdym poziomie zagnieżdżenia. Stara,
+// jednopoziomowa normalizacja w CacheEnvelope zostawiała zagnieżdżone
+// mapy DTO dynamic-keyed → fromJson rzucał → self-healing KASOWAŁ wpis
+// i cache był wiecznie pusty między restartami aplikacji.
+
+class _NestedDto {
+  final String id;
+  final List<Map<String, dynamic>> items;
+  _NestedDto(this.id, this.items);
+  Map<String, dynamic> toJson() => {'id': id, 'items': items};
+  factory _NestedDto.fromJson(Map<String, dynamic> j) => _NestedDto(
+        j['id'] as String,
+        // Ten cast to dokładnie to, co robią prawdziwe DTO — na
+        // Map<dynamic,dynamic> rzuca TypeError.
+        (j['items'] as List)
+            .map((e) => e as Map<String, dynamic>)
+            .toList(),
+      );
+}
+
+void nestedRestartTests() {
+  test('nested DTO survives a box close/reopen (cold-start restart)',
+      () async {
+    const boxName = 'restart_survival_box';
+    final hive1 = await Hive.openBox<Map>(boxName);
+    final cache1 = CacheBox<_NestedDto>(
+      hiveBox: hive1,
+      fromJson: _NestedDto.fromJson,
+      toJson: (d) => d.toJson(),
+      softTtl: const Duration(hours: 1),
+      hardTtl: const Duration(days: 30),
+    );
+    await cache1.put('k', _NestedDto('p1', [
+      {'alias': 'Anna K.', 'sessions': 3},
+      {'alias': 'Jan B.', 'sessions': 1},
+    ]));
+
+    // Restart aplikacji: box zamknięty i sparsowany z dysku od nowa.
+    await hive1.close();
+    final hive2 = await Hive.openBox<Map>(boxName);
+    final cache2 = CacheBox<_NestedDto>(
+      hiveBox: hive2,
+      fromJson: _NestedDto.fromJson,
+      toJson: (d) => d.toJson(),
+      softTtl: const Duration(hours: 1),
+      hardTtl: const Duration(days: 30),
+    );
+
+    final hit = await cache2.get('k');
+    expect(hit, isNotNull,
+        reason: 'wpis NIE może zostać skasowany jako "corrupt" po '
+            'restarcie — to była przyczyna pustej kartoteki offline');
+    expect(hit!.data.items, hasLength(2));
+    expect(hit.data.items.first['alias'], 'Anna K.');
   });
 }
