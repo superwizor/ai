@@ -14,10 +14,13 @@
 //   3. Caches the resulting User (incl. id, email, role, organization_id)
 //   4. Exposes it as AsyncValue<User?> for UI to consume
 
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'grpc_provider.dart';
@@ -37,9 +40,22 @@ final currentUserProvider = FutureProvider<identity_pb.User?>((ref) async {
 
   final identityClient = ref.watch(grpcClientsProvider).identity;
   try {
-    return await identityClient.getUserByFirebaseUID(
-      identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: firebaseUser.uid),
-    );
+    // Fast-fail on dead networks (airplane mode): without the timeout a
+    // connecting gRPC channel can hold this future for minutes and every
+    // consumer (auth gate, cache) hangs with it.
+    final user = await identityClient
+        .getUserByFirebaseUID(
+          identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: firebaseUser.uid),
+        )
+        .timeout(const Duration(seconds: 8));
+    // Persist the firebase-uid → backend-id mapping so the encrypted
+    // cache can open OFFLINE on the next cold start (the boxes are
+    // keyed by users.id, which normally only this network call knows —
+    // see cacheManagerProvider's offline fast path).
+    unawaited(SharedPreferences.getInstance().then(
+      (p) => p.setString('backend_user_id_${firebaseUser.uid}', user.id),
+    ));
+    return user;
   } on grpc.GrpcError catch (e) {
     // Firebase session without an identity-svc row. The old "self-heal"
     // silently auto-registered a THERAPIST here — which minted GHOST
