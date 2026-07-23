@@ -1451,20 +1451,6 @@ class _InterruptionNote extends StatelessWidget {
             ),
           ],
         ),
-        // TEMP diag (2026-07-23): ostatni wynik próby auto-resume.
-        ValueListenableBuilder<String>(
-          valueListenable: service.resumeDiag,
-          builder: (context, diag, child) => diag.isEmpty
-              ? const SizedBox.shrink()
-              : Text(
-                  diag,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: EuphireColors.mist.withValues(alpha: 0.7),
-                  ),
-                ),
-        ),
       ],
     );
   }

@@ -105,7 +105,6 @@ class RecordingService {
   Future<void> _recycleRecorder() async {
     debugPrint('[recording] recycling native recorder after '
         '$_consecutiveProbeFails failed probes');
-    resumeDiag.value = 'R: recorder recycle';
     await _nativeSub?.cancel();
     try {
       await _recorder.dispose();
@@ -231,10 +230,6 @@ class RecordingService {
   // fires at all) — surfaced in the recording-screen instructions.
   final Duration autoResumePeriod; // injectable for tests; 3 s in prod
 
-  /// TEMP diag (auto-resume, 2026-07-23): last resume-attempt outcome,
-  /// rendered by the interruption note so a screenshot pinpoints the
-  /// failing gate on-device. Remove before TestFlight.
-  final ValueNotifier<String> resumeDiag = ValueNotifier<String>('');
   static const _maxAutoResumeAttempts = 200; // ~10 min, then manual only
   Timer? _autoResumeTimer;
   int _autoResumeAttempts = 0;
@@ -509,7 +504,6 @@ class RecordingService {
       if (!reactivated && fromInterruption) {
         // The session is still owned by another audio user (call not
         // fully torn down). Fail fast; the user can retry.
-        resumeDiag.value = 'A: reactivate=false (#$_autoResumeAttempts)';
         debugPrint('[recording] resume blocked: session reactivation failed');
         return false;
       }
@@ -529,8 +523,6 @@ class RecordingService {
       try {
         await _recorder.resume();
       } catch (e) {
-        resumeDiag.value =
-            'C: resume err (#$_autoResumeAttempts): ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}';
         debugPrint('[recording] resume failed: $e');
         return false;
       }
@@ -540,7 +532,6 @@ class RecordingService {
       final capturing = await _verifyCapture();
       if (epoch != _sessionEpoch) return false; // stopped mid-probe
       if (!capturing) {
-        resumeDiag.value = 'D: probe fail (#$_autoResumeAttempts)';
         debugPrint('[recording] resume NOT capturing — staying interrupted');
         _consecutiveProbeFails++;
         if (_autoResumeAttempts >= _stuckThreshold) {
@@ -572,7 +563,6 @@ class RecordingService {
       _hadResumeCycle = true;
     }
 
-    resumeDiag.value = 'OK (#$_autoResumeAttempts)';
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     unawaited(ReminderService.resume(
