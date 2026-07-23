@@ -65,6 +65,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
 
   StreamSubscription<RecordingState>? _recStateSub;
   StreamSubscription<Duration>? _recDurSub;
+  Timer? _statusPollTimer;
   RecordingState _activeRecState = RecordingState.idle;
   Duration _activeRecDuration = Duration.zero;
   String? _activeRecPatientId;
@@ -99,6 +100,28 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
         );
       }
     });
+    // Status poll: server-side ANALYZING → COMPLETED transitions have no
+    // push channel to the session LIST (only SessionStatusScreen listens
+    // per-session). After the offline queue flushed several uploads at
+    // once, cards sat on "AI analizuje…" forever unless the user left
+    // and re-entered (2026-07-23). While any visible session is
+    // non-terminal, re-fetch every 20 s; idle otherwise.
+    _statusPollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      final sessions =
+          ref.read(sessionsProvider).asData?.value[widget.patientId] ?? [];
+      final hasLive = sessions.any(
+        (s) =>
+            s.status == SessionStatus.inProgress ||
+            s.status == SessionStatus.pendingUpload,
+      );
+      if (hasLive) {
+        unawaited(
+          ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
+        );
+      }
+    });
+
     final recSvc = ref.read(recordingServiceProvider);
     _activeRecState = recSvc.state;
     _activeRecDuration = recSvc.currentDuration;
@@ -176,6 +199,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     _pulseController.dispose();
     _recStateSub?.cancel();
     _recDurSub?.cancel();
+    _statusPollTimer?.cancel();
     super.dispose();
   }
 

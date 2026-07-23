@@ -14,6 +14,8 @@ import '../widgets/debug_test_overlay.dart';
 import '../widgets/sort_filter_sheet.dart';
 import '../widgets/client_invite_sheet.dart';
 import '../widgets/offline_banner.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../providers/connectivity_provider.dart';
 
 
 import '../models/session.dart';
@@ -288,12 +290,33 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddPatientModal(context, ref),
-        backgroundColor: EuphireColors.ember,
-        foregroundColor: EuphireColors.nocturne,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add, size: 28),
+      floatingActionButton: Consumer(
+        builder: (context, ref, _) {
+          // Creating a kartoteka is a server-side operation (CreatePatientFile
+          // has no offline queue) — grey the FAB out and explain instead of
+          // letting the form fail on submit (2026-07-23).
+          final offline =
+              ref.watch(connectivityProvider).asData?.value ==
+              ConnectivityResult.none;
+          return FloatingActionButton(
+            onPressed: offline
+                ? () => EuphireToast.error(
+                    context,
+                    message: AppLocalizations.of(
+                      context,
+                    ).home_add_patient_offline,
+                  )
+                : () => _showAddPatientModal(context, ref),
+            backgroundColor: offline
+                ? EuphireColors.mist.withValues(alpha: 0.4)
+                : EuphireColors.ember,
+            foregroundColor: EuphireColors.nocturne,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.add, size: 28),
+          );
+        },
       ),
     );
   }

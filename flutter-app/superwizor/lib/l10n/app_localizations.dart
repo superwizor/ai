@@ -2034,6 +2034,12 @@ abstract class AppLocalizations {
   /// **'Dodaj klienta'**
   String get home_add_patient_fab;
 
+  /// No description provided for @home_add_patient_offline.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tworzenie kartoteki wymaga połączenia z internetem'**
+  String get home_add_patient_offline;
+
   /// No description provided for @home_card_last_prefix_only.
   ///
   /// In pl, this message translates to:

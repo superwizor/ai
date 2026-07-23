@@ -1118,6 +1118,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get home_add_patient_fab => 'Dodaj klienta';
 
   @override
+  String get home_add_patient_offline =>
+      'Tworzenie kartoteki wymaga połączenia z internetem';
+
+  @override
   String get home_card_last_prefix_only => 'Ostatnio: ';
 
   @override

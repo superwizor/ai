@@ -468,6 +468,7 @@
   "hard_delete_error": "Błąd usuwania",
   "hard_delete_title": "Usunięcie konta jest bezpowrotne",
   "home_add_patient_fab": "Dodaj klienta",
+  "home_add_patient_offline": "Tworzenie kartoteki wymaga połączenia z internetem",
   "home_card_last_prefix_only": "Ostatnio: ",
   "home_card_last_session_prefix": " • Ostatnio: ",
   "home_card_sessions_prefix": "Sesje: ",

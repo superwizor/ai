@@ -467,6 +467,7 @@
   "hard_delete_error": "Deletion error",
   "hard_delete_title": "Account deletion is irreversible",
   "home_add_patient_fab": "Add patient",
+  "home_add_patient_offline": "Creating a client file requires an internet connection",
   "home_card_last_prefix_only": "Last: ",
   "home_card_last_session_prefix": " • Last: ",
   "home_card_sessions_prefix": "Sessions: ",

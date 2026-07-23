@@ -1257,8 +1257,23 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                                   p.id == widget.patientFileId,
                                             )
                                             .firstOrNull;
+                                        // Offline: sessionCount is the CACHED
+                                        // server count — sessions recorded
+                                        // back-to-back before any upload all
+                                        // showed "#1" (2026-07-23). Queued
+                                        // uploads are sessions-in-the-making,
+                                        // so count them in.
+                                        final queued = ref
+                                            .watch(
+                                              pendingUploadsForPatientProvider(
+                                                widget.patientFileId,
+                                              ),
+                                            )
+                                            .length;
                                         final sessionNumber =
-                                            (patient?.sessionCount ?? 0) + 1;
+                                            (patient?.sessionCount ?? 0) +
+                                            queued +
+                                            1;
                                         return Text(
                                           '${t.clientDetails_session_title} #$sessionNumber',
                                           style: const TextStyle(

@@ -1103,6 +1103,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_add_patient_fab => 'Add patient';
 
   @override
+  String get home_add_patient_offline =>
+      'Creating a client file requires an internet connection';
+
+  @override
   String get home_card_last_prefix_only => 'Last: ';
 
   @override
