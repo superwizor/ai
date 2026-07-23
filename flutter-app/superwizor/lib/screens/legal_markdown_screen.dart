@@ -21,6 +21,13 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
   double _progress = 0.0;
   final ScrollController _scrollController = ScrollController();
 
+  // Created ONCE. Passing `_loadDocument()` inline to FutureBuilder made
+  // every rebuild mint a fresh future — and the scroll-progress setState
+  // rebuilds on every scrolled frame, so scrolling destroyed the scroll
+  // view (spinner flash) and remounted it at the top. That was the
+  // "błyska zamiast przewijać" bug on the legal screens (2026-07-23).
+  late final Future<String> _docFuture = _loadDocument();
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -56,7 +63,7 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
           child: Stack(
             children: [
               FutureBuilder<String>(
-                future: _loadDocument(),
+                future: _docFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
