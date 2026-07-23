@@ -174,7 +174,13 @@ class UploadWorker {
   /// retryable and keep the row in `encrypting`.
   Future<PendingUpload> _doEncrypt(PendingUpload u) async {
     try {
-      final r = await _io.encryptSource(u);
+      // No network involved — a streaming AES pass over even a 160 MB
+      // FLAC is minutes, not tens of minutes. A hang here (sesja
+      // a5ce601f suspect) must surface as a retryable TimeoutException,
+      // not wedge the tick until the runner's 30-min breaker.
+      final r = await _io.encryptSource(u).timeout(
+            const Duration(minutes: 10),
+          );
       return u.copyWith(
         phase: UploadPhase.pending,
         sizeBytes: r.sizeBytes,
