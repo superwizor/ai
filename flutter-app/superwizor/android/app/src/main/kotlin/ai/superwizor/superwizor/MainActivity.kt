@@ -16,6 +16,7 @@ import java.util.TimerTask
 // FlutterFragmentActivity (not FlutterActivity) is required by local_auth's
 // biometric prompt (app-lock). Engine wiring below is unchanged.
 class MainActivity : FlutterFragmentActivity() {
+    private val audioSessionChannel = "superwizor/audio_session"
     private val fgsChannel = "superwizor/recording_fgs"
     private val liveActivityChannel = "ai.superwizor/live_activity"
     private val reminderChannel = "ai.superwizor/reminder_service"
@@ -33,6 +34,25 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Call-interruption probe (2026-07-23). Android never pauses our
+        // recorder on an incoming call — the mic is silently muted and the
+        // file keeps growing with dead audio. Dart polls getAudioMode()
+        // while recording and pauses itself on RINGTONE/IN_CALL/
+        // IN_COMMUNICATION. Same channel name as iOS AudioSessionHelper
+        // (which handles "reactivate"); here only the Android-side method.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            audioSessionChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getAudioMode" -> {
+                    val am = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    result.success(am.mode)
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         // Recording foreground-service control (docs/28 WS5). Started when
         // a recording begins so the OS won't kill the app while it's

@@ -509,6 +509,19 @@ class RecordingService {
       }
     }
 
+    if (!kIsWeb && Platform.isAndroid && fromInterruption) {
+      // A call still owns the mic. Android mutes it SILENTLY — an
+      // AudioRecord "resumed" mid-call happily encodes zero-frames, so
+      // the file-growth probe would falsely pass. Refuse until the mode
+      // is back to NORMAL; the auto-resume loop retries every 3 s.
+      final mode = await AudioSessionHelper.getAudioMode();
+      if (epoch != _sessionEpoch) return false; // stop()/cancel() ran
+      if (mode != 0) {
+        debugPrint('[recording] resume blocked: call active (mode=$mode)');
+        return false;
+      }
+    }
+
     if (fromInterruption) {
       // Plain native resume — EVIDENCE-BASED reversal (2026-07-23, two
       // on-device rounds): segment rotation (stop+start) right after an
@@ -821,12 +834,47 @@ class RecordingService {
     if (!_stateController.isClosed) _stateController.add(s);
   }
 
+  // Android call detection (2026-07-23): unlike iOS, Android delivers NO
+  // native pause event on an incoming call — the OS silently mutes the
+  // mic for other apps, so the recorder keeps "recording" dead audio and
+  // the widget shows an active session while the transcript is truncated.
+  // Poll AudioManager.getMode() (~1 s) and interrupt ourselves on
+  // RINGTONE(1) / IN_CALL(2) / IN_COMMUNICATION(3).
+  int _modePollCounter = 0;
+  bool _modeCheckInFlight = false;
+
+  Future<void> _checkAndroidCallInterruption() async {
+    if (_modeCheckInFlight) return;
+    _modeCheckInFlight = true;
+    try {
+      final mode = await AudioSessionHelper.getAudioMode();
+      if (mode != 0 && _state == RecordingState.recording) {
+        debugPrint('[recording] Android audio mode=$mode during recording '
+            '— call interruption, pausing');
+        _arm(RecordState.pause);
+        try {
+          await _recorder.pause();
+        } catch (_) {/* best-effort — mark interrupted regardless */}
+        _foldSegment();
+        _hadInterruption = true;
+        _hadResumeCycle = true;
+        _setState(RecordingState.interrupted);
+      }
+    } catch (_) {/* probe is best-effort */} finally {
+      _modeCheckInFlight = false;
+    }
+  }
+
   void _startTicker() {
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) async {
       if (_state != RecordingState.recording) return;
       if (!_durationController.isClosed) {
         _durationController.add(currentDuration);
+      }
+      if (!kIsWeb && Platform.isAndroid && ++_modePollCounter >= 5) {
+        _modePollCounter = 0;
+        unawaited(_checkAndroidCallInterruption());
       }
       try {
         final amp = await _recorder.getAmplitude();

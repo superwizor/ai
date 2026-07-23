@@ -34,4 +34,20 @@ class AudioSessionHelper {
       return true;
     }
   }
+
+  /// Android: AudioManager.getMode() — 0 NORMAL, 1 RINGTONE, 2 IN_CALL,
+  /// 3 IN_COMMUNICATION. Android delivers NO recorder pause event on an
+  /// incoming call (the mic is silently muted for other apps), so
+  /// RecordingService polls this to detect call interruptions itself
+  /// (2026-07-23). Missing channel (iOS, tests) returns 0 (= normal).
+  static Future<int> getAudioMode() async {
+    try {
+      final mode = await _channel.invokeMethod<int>('getAudioMode');
+      return mode ?? 0;
+    } on PlatformException {
+      return 0;
+    } on MissingPluginException {
+      return 0;
+    }
+  }
 }
