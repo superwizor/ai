@@ -8,9 +8,13 @@
 // durable upload queue — the same pipeline a normal stop uses — so the
 // session still gets its transcript + report.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../analytics/analytics_collector.dart';
 import '../l10n/app_localizations.dart';
@@ -38,6 +42,16 @@ class _RecordingRecoveryGuardState
   @override
   Widget build(BuildContext context) {
     ref.listen(orphanedRecordingsProvider, (previous, next) {
+      // TEMP diag (2026-07-24, odzysk sesji a5ce601f): the scan reports
+      // empty on-device though chunks should exist — dump the sessions
+      // dir + scan outcome on screen. REMOVE after recovery.
+      if (!_handled && (next.hasValue || next.hasError)) {
+        _handled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showScanDiag(next);
+        });
+        return;
+      }
       final orphans = next.value;
       if (_handled || orphans == null || orphans.isEmpty) return;
       _handled = true;
@@ -46,6 +60,58 @@ class _RecordingRecoveryGuardState
       });
     });
     return const SizedBox.shrink();
+  }
+
+  /// TEMP diag — lists the sessions dir recursively + scan result.
+  Future<void> _showScanDiag(
+      AsyncValue<List<RecoverableRecording>> scan) async {
+    final buf = StringBuffer();
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final root = Directory(p.join(docs.path, 'sessions'));
+      buf.writeln('root: ${root.path}');
+      buf.writeln('exists: ${await root.exists()}');
+      if (await root.exists()) {
+        await for (final e in root.list(recursive: true)) {
+          final rel = p.relative(e.path, from: root.path);
+          if (e is File) {
+            buf.writeln('F $rel ${await e.length()}B');
+          } else {
+            buf.writeln('D $rel');
+          }
+        }
+      }
+    } catch (e) {
+      buf.writeln('list error: $e');
+    }
+    buf.writeln('scan: ${scan.hasError ? "ERROR ${scan.error}" : "${scan.value?.length ?? "null"} orphans"}');
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A2326),
+        title: const Text('TEMP scan diag',
+            style: TextStyle(color: Colors.white, fontSize: 14)),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            buf.toString(),
+            style: const TextStyle(
+                color: Colors.white70, fontSize: 11, fontFamily: 'Menlo'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    // After the diag, continue with the normal flow if anything WAS found.
+    final orphans = scan.value;
+    if (orphans != null && orphans.isNotEmpty && mounted) {
+      await _promptSequentially(orphans);
+    }
   }
 
   Future<void> _promptSequentially(List<RecoverableRecording> orphans) async {

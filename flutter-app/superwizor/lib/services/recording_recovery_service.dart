@@ -94,7 +94,18 @@ class RecordingRecoveryService {
   Future<List<RecoverableRecording>> findOrphans(String therapistId) async {
     final manifests = await _store.scanAll();
 
-    final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
+    final queuedIds = _runner
+        .snapshotNow()
+        // A COMPLETED row whose source file still exists is a broken
+        // state, not ownership: completion normally deletes the audio,
+        // and the 1.0.2 downgrade left a completed-marked row next to a
+        // fully intact raw.flac (sesja a5ce601f / dir 79e83709,
+        // 2026-07-24) — the skip rule hid the file from recovery
+        // forever. Failed/parked rows still count as owners (they keep
+        // their own resend affordances).
+        .where((u) => u.phase != UploadPhase.completed)
+        .map((u) => u.localId)
+        .toSet();
     final activeId = _recordingService?.activeSessionId;
     final root = await _store.sessionsRoot();
 
@@ -327,7 +338,18 @@ class RecordingRecoveryService {
   /// Sessions owned by the queue or currently recording are exempt.
   Future<void> sweep() async {
     final manifests = await _store.scanAll();
-    final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
+    final queuedIds = _runner
+        .snapshotNow()
+        // A COMPLETED row whose source file still exists is a broken
+        // state, not ownership: completion normally deletes the audio,
+        // and the 1.0.2 downgrade left a completed-marked row next to a
+        // fully intact raw.flac (sesja a5ce601f / dir 79e83709,
+        // 2026-07-24) — the skip rule hid the file from recovery
+        // forever. Failed/parked rows still count as owners (they keep
+        // their own resend affordances).
+        .where((u) => u.phase != UploadPhase.completed)
+        .map((u) => u.localId)
+        .toSet();
     final activeId = _recordingService?.activeSessionId;
     final cutoff = DateTime.now().toUtc().subtract(maxOrphanAge);
     for (final m in manifests) {

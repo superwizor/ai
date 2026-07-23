@@ -251,6 +251,17 @@ void main() {
     expect(await svc.findOrphans('th_1'), isEmpty);
   });
 
+  test(
+      'COMPLETED queue row does not block recovery of a still-existing file '
+      '(downgrade-poisoned row, dir 79e83709)', () async {
+    await plantGhost('ghost1');
+    runner.rows
+        .add(queueRow('ghost1').copyWith(phase: UploadPhase.completed));
+    final out = await svc.findOrphans('th_1');
+    expect(out, hasLength(1));
+    expect(out.single.manifest.sessionId, 'ghost1');
+  });
+
   test('undersized manifest-less dir is not offered (left for sweep)',
       () async {
     await plantGhost('tiny', sizeBytes: 10 * 1024);
