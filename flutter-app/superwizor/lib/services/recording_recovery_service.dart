@@ -23,6 +23,11 @@ import 'recording_service.dart';
 
 class RecoverableRecording {
   final RecordingManifest manifest;
+
+  /// Plain orphan: absolute path of raw.flac. Encrypted orphan
+  /// ([encryptedChunks] true): absolute path of the session DIRECTORY
+  /// holding chunk_NNNNN.enc files (matches the queue's encryptedChunks
+  /// sourcePath convention).
   final String flacPath;
   final int sizeBytes;
 
@@ -31,11 +36,21 @@ class RecoverableRecording {
   /// from the audio during transcription.
   final Duration estimatedDuration;
 
+  /// True when the recording survived only as AES chunks (the offline
+  /// enqueue path encrypts and DELETES raw.flac; if the queue row is
+  /// later lost, chunks are all that's left — sesja a5ce601f).
+  final bool encryptedChunks;
+
+  /// Number of chunk_NNNNN.enc files when [encryptedChunks]; 1 otherwise.
+  final int chunkCount;
+
   const RecoverableRecording({
     required this.manifest,
     required this.flacPath,
     required this.sizeBytes,
     required this.estimatedDuration,
+    this.encryptedChunks = false,
+    this.chunkCount = 1,
   });
 }
 
@@ -153,10 +168,34 @@ class RecordingRecoveryService {
         final flac = File(p.join(entry.path, 'raw.flac'));
         int size = 0;
         DateTime? mtime;
+        bool chunked = false;
+        int chunkCount = 0;
         try {
           if (await flac.exists()) {
             size = await flac.length();
             mtime = (await flac.stat()).modified.toUtc();
+          } else {
+            // Offline enqueue encrypts into chunk_NNNNN.enc and DELETES
+            // raw.flac — a lost queue row leaves ONLY chunks. Recover
+            // them via the queue's own encryptedChunks source kind.
+            int encTotal = 0;
+            await for (final f in entry.list(followLinks: false)) {
+              if (f is! File) continue;
+              final name = p.basename(f.path);
+              if (!name.startsWith('chunk_') || !name.endsWith('.enc')) {
+                continue;
+              }
+              chunkCount++;
+              encTotal += await f.length();
+              final t = (await f.stat()).modified.toUtc();
+              if (mtime == null || t.isAfter(mtime)) mtime = t;
+            }
+            if (chunkCount > 0) {
+              // Plaintext ≈ encrypted minus per-chunk header+GCM tag
+              // (13+16 B) — mirrors estimateDecryptedSize.
+              size = encTotal - 29 * chunkCount;
+              chunked = true;
+            }
           }
         } catch (e) {
           debugPrint('[recovery] $dirId: manifest-less stat failed: $e');
@@ -173,13 +212,15 @@ class RecordingRecoveryService {
               patientLanguageCode: 'pl-PL',
               startedAtUtc: startedGuess,
             ),
-            flacPath: flac.path,
+            flacPath: chunked ? entry.path : flac.path,
             sizeBytes: size,
             estimatedDuration: _estimateDuration(
               sizeBytes: size,
               startedAtUtc: startedGuess,
               lastWriteUtc: mtime,
             ),
+            encryptedChunks: chunked,
+            chunkCount: chunked ? chunkCount : 1,
           ),
         );
       }
@@ -254,11 +295,16 @@ class RecordingRecoveryService {
       therapistId: m.therapistId,
       patientFileId: pid,
       patientLanguageCode: patientLanguageCode ?? m.patientLanguageCode,
-      sourceKind: UploadSourceKind.plainFile,
+      // Chunked orphans re-enter the queue exactly where the offline
+      // flow left off: encryption done, sourcePath = session dir,
+      // phase=pending → create → decrypt-and-PUT.
+      sourceKind: r.encryptedChunks
+          ? UploadSourceKind.encryptedChunks
+          : UploadSourceKind.plainFile,
       sourcePath: r.flacPath,
       contentType: _recoveryContentType,
       sizeBytes: r.sizeBytes,
-      chunkCount: 1,
+      chunkCount: r.chunkCount,
       actualDurationSeconds: r.estimatedDuration.inSeconds,
       // Local-intent flag for observability; the actual server trigger is
       // the content-type above (the flag itself is never sent on the RPC).

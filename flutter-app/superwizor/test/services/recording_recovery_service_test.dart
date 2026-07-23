@@ -277,6 +277,30 @@ void main() {
     expect(row.contentType, 'audio/x-flac');
   });
 
+  test('manifest-less CHUNK dir (no raw.flac) is offered as encryptedChunks',
+      () async {
+    // Offline enqueue encrypted + deleted raw.flac before the row was
+    // lost — only chunk_NNNNN.enc files remain.
+    final dir = Directory(p.join(tmp.path, 'sessions', 'ghostc'));
+    await dir.create(recursive: true);
+    for (var i = 0; i < 3; i++) {
+      await File(p.join(dir.path, 'chunk_0000$i.enc'))
+          .writeAsBytes(List.filled(300 * 1024, 2));
+    }
+    final r = (await svc.findOrphans('th_1')).single;
+    expect(r.encryptedChunks, isTrue);
+    expect(r.chunkCount, 3);
+    expect(r.flacPath, dir.path);
+    expect(r.sizeBytes, 3 * 300 * 1024 - 3 * 29);
+
+    await svc.recover(r, patientFileId: 'pf_9');
+    final row = runner.enqueued.single;
+    expect(row.sourceKind, UploadSourceKind.encryptedChunks);
+    expect(row.sourcePath, dir.path);
+    expect(row.chunkCount, 3);
+    expect(row.phase, UploadPhase.pending);
+  });
+
   test('sweep ages out stale manifest-less dirs, keeps fresh and queued ones',
       () async {
     await plantGhost('ghost_fresh');
