@@ -2074,6 +2074,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie';
 
   @override
+  String get recording_interrupted_stuck =>
+      'Nie udaje się wznowić automatycznie — możesz zakończyć sesję i wysłać dotychczasowe nagranie';
+
+  @override
   String recording_ios_only_body_part1(String alias) {
     return 'Aby nagrać sesję z $alias, użyj aplikacji ';
   }

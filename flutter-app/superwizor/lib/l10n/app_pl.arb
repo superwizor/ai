@@ -935,6 +935,7 @@
   "recording_instructions_subtitle": "Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.",
   "recording_instructions_title": "Kilka wskazówek dla lepszego nagrania",
   "recording_interrupted_note": "Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie",
+  "recording_interrupted_stuck": "Nie udaje się wznowić automatycznie — możesz zakończyć sesję i wysłać dotychczasowe nagranie",
   "recording_ios_only_body_part1": "Aby nagrać sesję z {alias}, użyj aplikacji ",
   "@recording_ios_only_body_part1": {
     "placeholders": {

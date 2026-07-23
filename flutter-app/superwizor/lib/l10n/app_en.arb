@@ -934,6 +934,7 @@
   "recording_instructions_subtitle": "Good recording conditions mean better transcription quality and more accurate AI insights.",
   "recording_instructions_title": "A few tips for a better recording",
   "recording_interrupted_note": "Paused for the call — recording will resume automatically",
+  "recording_interrupted_stuck": "Automatic resume is not succeeding — you can finish the session and send what was recorded",
   "recording_ios_only_body_part1": "To record a session with {alias}, use the ",
   "@recording_ios_only_body_part1": {
     "placeholders": {

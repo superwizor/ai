@@ -2056,6 +2056,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Paused for the call — recording will resume automatically';
 
   @override
+  String get recording_interrupted_stuck =>
+      'Automatic resume is not succeeding — you can finish the session and send what was recorded';
+
+  @override
   String recording_ios_only_body_part1(String alias) {
     return 'To record a session with $alias, use the ';
   }

@@ -24,7 +24,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'grpc_provider.dart';
-import 'patient_provider.dart' show patientsLoadStage;
 import 'services_provider.dart';
 
 /// Streams Firebase Auth state changes (logged-in user or null on logout).
@@ -98,7 +97,6 @@ final backendUserIdProvider = FutureProvider<String?>((ref) async {
 
   final prefs = await SharedPreferences.getInstance();
   final known = prefs.getString('backend_user_id_${fbUser.uid}');
-  patientsLoadStage.value = '2a mapping=${known != null ? "HIT" : "MISS"}';
   debugPrint('[backendId] mapping ${known != null ? "HIT" : "MISS"} '
       'for uid=${fbUser.uid.substring(0, 6)}…');
   if (known != null) return known;

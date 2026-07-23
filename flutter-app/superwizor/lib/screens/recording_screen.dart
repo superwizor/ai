@@ -1431,14 +1431,21 @@ class _InterruptionNote extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                t.recording_interrupted_note,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 13,
-                  height: 1.4,
-                  color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: service.autoResumeStuck,
+                builder: (context, stuck, child) => Text(
+                  stuck
+                      ? t.recording_interrupted_stuck
+                      : t.recording_interrupted_note,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    height: 1.4,
+                    color: stuck
+                        ? EuphireColors.ember.withValues(alpha: 0.95)
+                        : EuphireColors.frostWhite.withValues(alpha: 0.8),
+                  ),
                 ),
               ),
             ),

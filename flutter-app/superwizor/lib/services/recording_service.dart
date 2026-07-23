@@ -92,7 +92,15 @@ class RecordingService {
   /// in a state where every start() "succeeded" but captured nothing
   /// (probe fail #20+); only a fresh AVAudioRecorder instance recovers.
   int _consecutiveProbeFails = 0;
-  static const _recycleThreshold = 3;
+  static const _recycleThreshold = 8;
+
+  /// Latches true after [_stuckThreshold] consecutive failed probes in
+  /// one interruption episode (~36 s of retries) — the UI switches the
+  /// "will resume automatically" note to an honest "can't auto-resume,
+  /// finish & send" message. Attempts keep running underneath; a late
+  /// recovery clears the flag.
+  final ValueNotifier<bool> autoResumeStuck = ValueNotifier<bool>(false);
+  static const _stuckThreshold = 12;
 
   Future<void> _recycleRecorder() async {
     debugPrint('[recording] recycling native recorder after '
@@ -235,6 +243,7 @@ class RecordingService {
   void _startAutoResumeLoop() {
     if (_autoResumeTimer != null) return; // keep attempt count across retries
     _autoResumeAttempts = 0;
+    autoResumeStuck.value = false;
     _autoResumeTimer =
         Timer.periodic(autoResumePeriod, (_) => _autoResumeTick());
   }
@@ -262,15 +271,6 @@ class RecordingService {
       debugPrint('[recording] auto-resume succeeded '
           '(attempt $_autoResumeAttempts)');
     }
-  }
-
-  /// Path for the next rotation segment: `<sessionDir>/raw_seg<N>.flac`
-  /// next to the original raw.flac. Null when no recording is active.
-  String? _nextSegmentPath() {
-    if (_segmentPaths.isEmpty) return null;
-    final base = _segmentPaths.first;
-    final dir = p.dirname(base);
-    return p.join(dir, 'raw_seg${_segmentPaths.length}.flac');
   }
 
   /// Byte-concatenates all finalized segments (plus [lastPath] if it's
@@ -504,56 +504,34 @@ class RecordingService {
     }
 
     if (fromInterruption) {
-      // Segment rotation (2026-07-23): resuming INTO the interrupted
-      // file is what corrupted session a1b09d6c (never-finalized
-      // STREAMINFO, frame-number resets, 10 of 16 minutes lost).
-      // Instead: cleanly STOP the recorder — the audio session is
-      // active again here, so finalization writes a valid header for
-      // everything captured so far — and START a fresh segment file.
-      // stop() concatenates the segments back into raw.flac.
-      try {
-        _arm(RecordState.stop);
-        await _recorder.stop();
-      } catch (e) {
-        // Retry-tolerant: a second rotation attempt after a failed one
-        // lands here with the recorder already stopped.
-        resumeDiag.value = 'B: stop err (#$_autoResumeAttempts)';
-        debugPrint('[recording] segment finalize stop: $e');
-      }
-      final next = _nextSegmentPath();
-      if (next == null) return false;
+      // Plain native resume — EVIDENCE-BASED reversal (2026-07-23, two
+      // on-device rounds): segment rotation (stop+start) right after an
+      // interruption left record_ios unable to capture (probe fail #20+
+      // even manually), while the plain resume reliably recovered within
+      // ~5 attempts of the ring ending. In-place-resume header
+      // corruption is now repaired SERVER-side (zeroed-STREAMINFO
+      // synthesis + lossless re-encode), so the rotation's original
+      // motivation is covered downstream. Rotation code stays for the
+      // stop()-time concat (unused segments = no-op).
       _arm(RecordState.record);
       try {
-        await _recorder.start(_recordConfig(), path: next);
+        await _recorder.resume();
       } catch (e) {
         resumeDiag.value =
-            'C: start err (#$_autoResumeAttempts): ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}';
-        debugPrint('[recording] segment restart failed: $e');
+            'C: resume err (#$_autoResumeAttempts): ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}';
+        debugPrint('[recording] resume failed: $e');
         return false;
       }
-      _activeFilePath = next;
-      if (!_segmentPaths.contains(next)) _segmentPaths.add(next);
-      // Concatenated segments = multi-substream FLAC — same re-encode
-      // contract as before.
       _hadResumeCycle = true;
 
       final capturing = await _verifyCapture();
       if (!capturing) {
         resumeDiag.value = 'D: probe fail (#$_autoResumeAttempts)';
         debugPrint('[recording] resume NOT capturing — staying interrupted');
-        // Roll the dead segment back so retry loops don't accumulate
-        // header-only junk files between attempts.
-        try {
-          _arm(RecordState.stop);
-          await _recorder.stop();
-        } catch (_) {/* recorder may already be dead */}
-        _segmentPaths.remove(next);
-        try {
-          final f = File(next);
-          if (await f.exists()) await f.delete();
-        } catch (_) {/* best-effort */}
-        if (_segmentPaths.isNotEmpty) _activeFilePath = _segmentPaths.last;
         _consecutiveProbeFails++;
+        if (_autoResumeAttempts >= _stuckThreshold) {
+          autoResumeStuck.value = true;
+        }
         if (_consecutiveProbeFails >= _recycleThreshold) {
           await _recycleRecorder();
           _consecutiveProbeFails = 0;
@@ -562,6 +540,7 @@ class RecordingService {
         return false;
       }
       _consecutiveProbeFails = 0;
+      autoResumeStuck.value = false;
     } else {
       // User pause → resume: the session never deactivated, the plugin
       // resume is reliable and keeps the single-file fast path.

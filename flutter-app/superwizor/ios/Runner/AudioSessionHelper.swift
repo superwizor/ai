@@ -18,8 +18,18 @@ class AudioSessionHelper {
       switch call.method {
       case "reactivate":
         do {
-          try AVAudioSession.sharedInstance()
-            .setActive(true, options: .notifyOthersOnDeactivation)
+          let session = AVAudioSession.sharedInstance()
+          // FULL reconfiguration, not just activation (live-fix
+          // 2026-07-23): a phone call — especially the SECOND one in a
+          // session — resets the category/route, and the record
+          // plugin's resume() never re-sets it (only start() does). A
+          // bare setActive(true) then "succeeds" while the input route
+          // stays dead: every capture probe fails forever (#57 on
+          // device). Mirror the recording category before activating.
+          try session.setCategory(
+            .playAndRecord,
+            options: [.defaultToSpeaker, .allowBluetoothHFP])
+          try session.setActive(true, options: .notifyOthersOnDeactivation)
           result(true)
         } catch {
           result(false)

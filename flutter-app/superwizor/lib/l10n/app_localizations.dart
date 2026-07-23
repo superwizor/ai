@@ -3708,6 +3708,12 @@ abstract class AppLocalizations {
   /// **'Wstrzymano na czas połączenia — nagrywanie wznowi się automatycznie'**
   String get recording_interrupted_note;
 
+  /// No description provided for @recording_interrupted_stuck.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udaje się wznowić automatycznie — możesz zakończyć sesję i wysłać dotychczasowe nagranie'**
+  String get recording_interrupted_stuck;
+
   /// No description provided for @recording_ios_only_body_part1.
   ///
   /// In pl, this message translates to:

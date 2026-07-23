@@ -186,27 +186,11 @@ class HomeScreen extends ConsumerWidget {
 
                             // ── Lista Kartotek ──────────────────────────────────
                             patientsAsync.when(
-                              loading: () => Padding(
-                                padding: const EdgeInsets.all(32),
+                              loading: () => const Padding(
+                                padding: EdgeInsets.all(32),
                                 child: Center(
-                                  child: Column(
-                                    children: [
-                                      const CircularProgressIndicator(
-                                        color: EuphireColors.ember,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      // TEMP diag (2026-07-23)
-                                      ValueListenableBuilder<String>(
-                                        valueListenable: patientsLoadStage,
-                                        builder: (_, stage, child) => Text(
-                                          stage,
-                                          style: const TextStyle(
-                                            color: EuphireColors.mist,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  child: CircularProgressIndicator(
+                                    color: EuphireColors.ember,
                                   ),
                                 ),
                               ),

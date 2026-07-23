@@ -205,10 +205,8 @@ void main() {
 
     expect(ok, isFalse);
     expect(service.state, RecordingState.interrupted);
-    // Segment rotation (2026-07-23): interruption-resume = stop
-    // (finalize segment) + start (fresh file); no native resume().
-    expect(recorder.resumeCalls, 0);
-    expect(recorder.startCalls, greaterThanOrEqualTo(2));
+    // Plain-resume path (2026-07-23 reversal): native resume + probe.
+    expect(recorder.resumeCalls, 1);
   });
 
   test('resume from a normal user pause skips the probe (fast path)',
@@ -443,8 +441,8 @@ void main() {
       await pump(400);
       expect(auto.state, RecordingState.interrupted,
           reason: 'blocked resume must not fake a recording state');
-      expect(recorder.startCalls, greaterThanOrEqualTo(2),
-          reason: 'rotation restarts capture via start()');
+      expect(recorder.resumeCalls, greaterThanOrEqualTo(1),
+          reason: 'auto-resume retries native resume()');
 
       // Call over — mic is back; next tick should recover on its own.
       recorder.growFileOnResume = true;
