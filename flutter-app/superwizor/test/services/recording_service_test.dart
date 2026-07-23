@@ -479,6 +479,43 @@ void main() {
           reason: 'no auto-resume attempts after stop()');
     });
 
+    test(
+        'stop() during an in-flight failing resume probe stays stopped '
+        '(phantom "wstrzymana" duplicate, 2026-07-23)', () async {
+      // Probe window LONGER than stop()'s 200 ms resume-before-stop
+      // dwell, so the stale probe finishes AFTER stop() — the on-device
+      // ordering: "Zakończ i wyślij" mid-probe uploaded the file, then
+      // the probe failed and resurrected `interrupted`.
+      final svc = RecordingService(
+        recorder: recorder,
+        recorderFactory: () => recorder,
+        documentsDirProvider: () async => tmp,
+        wakelockSetter: (_) async {},
+        captureProbeWindow: const Duration(milliseconds: 400),
+        autoResumePeriod: const Duration(seconds: 10),
+      );
+      addTearDown(() => svc.dispose());
+
+      await svc.start('s1');
+      await pump(60);
+      recorder.growFileOnResume = false; // mic still held — probe fails
+      recorder.emitNative(RecordState.pause);
+      await pump(60);
+      expect(svc.state, RecordingState.interrupted);
+
+      final staleResume = svc.resume(); // probe in flight (~400 ms)...
+      await pump(30);
+      final path = await svc.stop(); // ...user finishes mid-probe
+      expect(path, isNotNull);
+      expect(svc.state, RecordingState.stopped);
+
+      expect(await staleResume, isFalse);
+      await pump(600);
+      expect(svc.state, RecordingState.stopped,
+          reason: 'stale probe must not resurrect interrupted after stop()');
+      expect(svc.autoResumeStuck.value, isFalse);
+    });
+
     test('start() resets the latch from a previous session', () async {
       await service.start('s1');
       await pump(60);

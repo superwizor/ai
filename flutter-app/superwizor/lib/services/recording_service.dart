@@ -240,6 +240,15 @@ class RecordingService {
   int _autoResumeAttempts = 0;
   bool _resumeInFlight = false;
 
+  // Session epoch — bumped by start()/stop()/cancel(). An async resume
+  // (auto-resume tick or manual tap) that was already in flight when the
+  // user hit "Zakończ i wyślij" finishes AFTER stop(): its failing probe
+  // used to _setState(interrupted) on the already-stopped service,
+  // resurrecting a phantom "Wstrzymane" session next to the uploaded one
+  // (duplicate in the kartoteka, observed on-device 2026-07-23). Stale
+  // epochs bail out without touching state.
+  int _sessionEpoch = 0;
+
   void _startAutoResumeLoop() {
     if (_autoResumeTimer != null) return; // keep attempt count across retries
     _autoResumeAttempts = 0;
@@ -432,6 +441,7 @@ class RecordingService {
     _accumulated = Duration.zero;
     _hadInterruption = false;
     _hadResumeCycle = false;
+    _sessionEpoch++;
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     
@@ -491,9 +501,11 @@ class RecordingService {
 
   Future<bool> _resumeInner() async {
     final fromInterruption = _state == RecordingState.interrupted;
+    final epoch = _sessionEpoch;
 
     if (!kIsWeb && Platform.isIOS) {
       final reactivated = await AudioSessionHelper.reactivate();
+      if (epoch != _sessionEpoch) return false; // stop()/cancel() ran
       if (!reactivated && fromInterruption) {
         // The session is still owned by another audio user (call not
         // fully torn down). Fail fast; the user can retry.
@@ -522,9 +534,11 @@ class RecordingService {
         debugPrint('[recording] resume failed: $e');
         return false;
       }
+      if (epoch != _sessionEpoch) return false; // stop()/cancel() ran
       _hadResumeCycle = true;
 
       final capturing = await _verifyCapture();
+      if (epoch != _sessionEpoch) return false; // stopped mid-probe
       if (!capturing) {
         resumeDiag.value = 'D: probe fail (#$_autoResumeAttempts)';
         debugPrint('[recording] resume NOT capturing — staying interrupted');
@@ -535,6 +549,7 @@ class RecordingService {
         if (_consecutiveProbeFails >= _recycleThreshold) {
           await _recycleRecorder();
           _consecutiveProbeFails = 0;
+          if (epoch != _sessionEpoch) return false; // stopped mid-recycle
         }
         _setState(RecordingState.interrupted);
         return false;
@@ -551,6 +566,7 @@ class RecordingService {
         debugPrint('[recording] resume failed: $e');
         return false;
       }
+      if (epoch != _sessionEpoch) return false; // stop()/cancel() ran
       // The native recorder just appended a new FLAC sub-stream to the
       // same file — its header can no longer be trusted at upload time.
       _hadResumeCycle = true;
@@ -583,6 +599,12 @@ class RecordingService {
     if (_state == RecordingState.idle || _state == RecordingState.stopped) {
       return null;
     }
+    // Invalidate any resume that is mid-flight (auto-resume probe) and
+    // kill its timer NOW — relying on the next tick's state check leaves
+    // a window where the stale probe resurrects `interrupted`.
+    _sessionEpoch++;
+    _cancelAutoResumeLoop();
+    autoResumeStuck.value = false;
     if (_state == RecordingState.paused ||
         _state == RecordingState.interrupted) {
       try {
@@ -630,6 +652,9 @@ class RecordingService {
   /// Cancels and deletes the in-progress recording (used by
   /// "Zakończ bez zapisu" / "Usuń to nagranie bezpowrotnie").
   Future<void> cancel() async {
+    _sessionEpoch++;
+    _cancelAutoResumeLoop();
+    autoResumeStuck.value = false;
     _arm(RecordState.stop);
     final path = await _recorder.stop();
     unawaited(ReminderService.stop());
