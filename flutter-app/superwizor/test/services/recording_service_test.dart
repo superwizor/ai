@@ -100,10 +100,17 @@ class _FakeRecorder extends Fake implements AudioRecorder {
   Future<Amplitude> getAmplitude() async =>
       Amplitude(current: -20, max: -10);
 
+  /// Liczy recykle rekordera (dispose + fabryka). Fake jest reużywany
+  /// przez fabrykę w testach, więc dispose NIE zamyka strumienia —
+  /// zamknięcie robi dopiero closeForTest() w tearDown.
+  int disposeCalls = 0;
+
   @override
   Future<void> dispose() async {
-    await _stateCtrl.close();
+    disposeCalls++;
   }
+
+  Future<void> closeForTest() => _stateCtrl.close();
 }
 
 void main() {
@@ -129,6 +136,7 @@ void main() {
     recorder = _FakeRecorder();
     service = RecordingService(
       recorder: recorder,
+      recorderFactory: () => recorder,
       documentsDirProvider: () async => tmp,
       wakelockSetter: (_) async {},
       captureProbeWindow: const Duration(milliseconds: 100),
@@ -137,6 +145,7 @@ void main() {
 
   tearDown(() async {
     await service.dispose();
+    await recorder.closeForTest();
     if (await tmp.exists()) await tmp.delete(recursive: true);
   });
 
@@ -413,6 +422,7 @@ void main() {
         'capture works again (feedback 2026-07-22)', () async {
       final auto = RecordingService(
         recorder: recorder,
+        recorderFactory: () => recorder,
         documentsDirProvider: () async => tmp,
         wakelockSetter: (_) async {},
         captureProbeWindow: const Duration(milliseconds: 100),
@@ -448,6 +458,7 @@ void main() {
     test('auto-resume loop stops on user stop()', () async {
       final auto = RecordingService(
         recorder: recorder,
+        recorderFactory: () => recorder,
         documentsDirProvider: () async => tmp,
         wakelockSetter: (_) async {},
         captureProbeWindow: const Duration(milliseconds: 100),

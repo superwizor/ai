@@ -343,6 +343,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
     if (backendSaysConsent) {
       debugPrint('[recording] backend consent=true → calling _start()');
+      // Mirror the backend confirmation into the local consent box so
+      // the NEXT recording — possibly offline — takes the instant local
+      // path instead of re-asking (live-feedback 2026-07-23: after a
+      // reinstall wiped the local box, airplane-mode recording re-asked
+      // for a consent the kartoteka already had).
+      try {
+        await ref.read(consentServiceProvider).recordConsent(
+              patientFileId: widget.patientFileId,
+              documentVersion: 'backend-confirmed',
+            );
+      } catch (_) {/* best-effort mirror */}
       await _start();
       return;
     }
@@ -1274,7 +1285,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                             // loud banner we show one calm line explaining WHY
                             // the recording paused itself.
                             if (_recState == RecordingState.interrupted) ...[
-                              const _InterruptionNote(),
+                              _InterruptionNote(service: _service),
                               const SizedBox(height: 16),
                             ],
                             // ── Waveform: staggered scale + fade ──
@@ -1401,31 +1412,51 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 // panel below handles resume/stop, identical to a manual pause — the
 // only extra information the therapist needs is "why did it pause".
 class _InterruptionNote extends StatelessWidget {
-  const _InterruptionNote();
+  final RecordingService service;
+  const _InterruptionNote({required this.service});
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.phone_paused_rounded,
-          color: EuphireColors.ember.withValues(alpha: 0.9),
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            t.recording_interrupted_note,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 13,
-              height: 1.4,
-              color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.phone_paused_rounded,
+              color: EuphireColors.ember.withValues(alpha: 0.9),
+              size: 18,
             ),
-          ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                t.recording_interrupted_note,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  height: 1.4,
+                  color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ),
+        // TEMP diag (2026-07-23): ostatni wynik próby auto-resume.
+        ValueListenableBuilder<String>(
+          valueListenable: service.resumeDiag,
+          builder: (context, diag, child) => diag.isEmpty
+              ? const SizedBox.shrink()
+              : Text(
+                  diag,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                  ),
+                ),
         ),
       ],
     );

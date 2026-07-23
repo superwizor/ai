@@ -75,11 +75,11 @@ class CacheEnvelope {
   bool isExpired(Duration hardTtl, DateTime now) =>
       now.toUtc().difference(cachedAt) > hardTtl;
 
-  /// Deep-normalises Hive's disk shape. CRITICAL (live-fix 2026-07-23,
-  /// offline kartoteka): Hive re-reads maps as Map<dynamic, dynamic> at
-  /// EVERY nesting level. The old one-level normalisation left nested
-  /// DTO maps dynamic-keyed, the DTO fromJson threw on the first cold
-  /// start after a write, and cache_box's self-healing DELETED the
+  /// Deep-normalises Hive disk shape. CRITICAL (live-fix 2026-07-23,
+  /// offline kartoteka): Hive re-reads maps as dynamic-keyed at
+  /// EVERY nesting level (`Map<dynamic, dynamic>`). The old one-level
+  /// normalisation left nested DTO maps dynamic-keyed, fromJson threw on
+  /// the first cold start after a write, and self-healing DELETED the
   /// entry — so the cache looked permanently empty across restarts
   /// while working within a session (Hive serves the original
   /// in-memory object until the app dies).

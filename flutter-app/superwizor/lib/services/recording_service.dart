@@ -62,11 +62,13 @@ class RecordingService {
   /// MissingPluginException in a bare test binding.
   RecordingService({
     AudioRecorder? recorder,
+    AudioRecorder Function()? recorderFactory,
     Future<Directory> Function()? documentsDirProvider,
     Future<void> Function(bool enabled)? wakelockSetter,
     this.captureProbeWindow = const Duration(milliseconds: 1200),
     this.autoResumePeriod = const Duration(seconds: 3),
   })  : _recorder = recorder ?? AudioRecorder(),
+        _recorderFactory = recorderFactory ?? AudioRecorder.new,
         _documentsDir =
             documentsDirProvider ?? getApplicationDocumentsDirectory,
         _setWakelock = wakelockSetter ?? _defaultWakelock {
@@ -80,7 +82,35 @@ class RecordingService {
   static Future<void> _defaultWakelock(bool enabled) =>
       enabled ? WakelockPlus.enable() : WakelockPlus.disable();
 
-  final AudioRecorder _recorder;
+  AudioRecorder _recorder;
+  final AudioRecorder Function() _recorderFactory;
+
+  /// Consecutive failed capture probes within the CURRENT interruption
+  /// episode. At [_recycleThreshold] the native recorder gets fully
+  /// disposed and recreated — live repro 2026-07-23: after one
+  /// successful segment rotation, a SECOND phone call left record_ios
+  /// in a state where every start() "succeeded" but captured nothing
+  /// (probe fail #20+); only a fresh AVAudioRecorder instance recovers.
+  int _consecutiveProbeFails = 0;
+  static const _recycleThreshold = 3;
+
+  Future<void> _recycleRecorder() async {
+    debugPrint('[recording] recycling native recorder after '
+        '$_consecutiveProbeFails failed probes');
+    resumeDiag.value = 'R: recorder recycle';
+    await _nativeSub?.cancel();
+    try {
+      await _recorder.dispose();
+    } catch (e) {
+      debugPrint('[recording] recorder dispose: $e');
+    }
+    _recorder = _recorderFactory();
+    _nativeSub = _recorder.onStateChanged().listen(
+          _onNativeState,
+          onError: (Object e) =>
+              debugPrint('[recording] native state stream error: $e'),
+        );
+  }
   final Future<Directory> Function() _documentsDir;
   final Future<void> Function(bool enabled) _setWakelock;
 
@@ -192,6 +222,11 @@ class RecordingService {
   // The only full protection on iOS is Focus/DND (no interruption
   // fires at all) — surfaced in the recording-screen instructions.
   final Duration autoResumePeriod; // injectable for tests; 3 s in prod
+
+  /// TEMP diag (auto-resume, 2026-07-23): last resume-attempt outcome,
+  /// rendered by the interruption note so a screenshot pinpoints the
+  /// failing gate on-device. Remove before TestFlight.
+  final ValueNotifier<String> resumeDiag = ValueNotifier<String>('');
   static const _maxAutoResumeAttempts = 200; // ~10 min, then manual only
   Timer? _autoResumeTimer;
   int _autoResumeAttempts = 0;
@@ -462,6 +497,7 @@ class RecordingService {
       if (!reactivated && fromInterruption) {
         // The session is still owned by another audio user (call not
         // fully torn down). Fail fast; the user can retry.
+        resumeDiag.value = 'A: reactivate=false (#$_autoResumeAttempts)';
         debugPrint('[recording] resume blocked: session reactivation failed');
         return false;
       }
@@ -481,6 +517,7 @@ class RecordingService {
       } catch (e) {
         // Retry-tolerant: a second rotation attempt after a failed one
         // lands here with the recorder already stopped.
+        resumeDiag.value = 'B: stop err (#$_autoResumeAttempts)';
         debugPrint('[recording] segment finalize stop: $e');
       }
       final next = _nextSegmentPath();
@@ -489,6 +526,8 @@ class RecordingService {
       try {
         await _recorder.start(_recordConfig(), path: next);
       } catch (e) {
+        resumeDiag.value =
+            'C: start err (#$_autoResumeAttempts): ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}';
         debugPrint('[recording] segment restart failed: $e');
         return false;
       }
@@ -500,6 +539,7 @@ class RecordingService {
 
       final capturing = await _verifyCapture();
       if (!capturing) {
+        resumeDiag.value = 'D: probe fail (#$_autoResumeAttempts)';
         debugPrint('[recording] resume NOT capturing — staying interrupted');
         // Roll the dead segment back so retry loops don't accumulate
         // header-only junk files between attempts.
@@ -513,9 +553,15 @@ class RecordingService {
           if (await f.exists()) await f.delete();
         } catch (_) {/* best-effort */}
         if (_segmentPaths.isNotEmpty) _activeFilePath = _segmentPaths.last;
+        _consecutiveProbeFails++;
+        if (_consecutiveProbeFails >= _recycleThreshold) {
+          await _recycleRecorder();
+          _consecutiveProbeFails = 0;
+        }
         _setState(RecordingState.interrupted);
         return false;
       }
+      _consecutiveProbeFails = 0;
     } else {
       // User pause → resume: the session never deactivated, the plugin
       // resume is reliable and keeps the single-file fast path.
@@ -531,6 +577,7 @@ class RecordingService {
       _hadResumeCycle = true;
     }
 
+    resumeDiag.value = 'OK (#$_autoResumeAttempts)';
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     unawaited(ReminderService.resume(
