@@ -389,13 +389,36 @@ class UploadQueueRunner {
         if (fresh == null || fresh.isTerminal || fresh.isParked) continue;
         var current = fresh;
         while (_running) {
-          final next = await _worker.runOne(
-            current,
-            onUploadProgress: (frac) {
-              _uploadProgress[current.localId] = frac;
-              _emitSnapshot(); // live progress bar during the PUT
-            },
-          );
+          // Deadlock breaker (2026-07-23): a single hung await inside
+          // runOne (deadline-less gRPC in airplane mode, sesja a5ce601f)
+          // held _tickInFlight forever and froze the ENTIRE queue with
+          // no error. Every inner step now carries its own timeout; this
+          // outer ceiling exists only so no future regression can wedge
+          // the runner again. Generous on purpose — a 160 MB PUT with
+          // the size-scaled transfer timeout must fit comfortably.
+          final next = await _worker
+              .runOne(
+                current,
+                onUploadProgress: (frac) {
+                  _uploadProgress[current.localId] = frac;
+                  _emitSnapshot(); // live progress bar during the PUT
+                },
+              )
+              .timeout(
+                const Duration(minutes: 30),
+                onTimeout: () {
+                  debugPrint('[upload-runner] runOne WEDGED >30 min for '
+                      '${current.localId} (${current.phase.name}) — '
+                      'backing off');
+                  return current.copyWith(
+                    attemptCount: current.attemptCount + 1,
+                    nextAttemptAt:
+                        DateTime.now().toUtc().add(const Duration(minutes: 2)),
+                    lastError: 'wedged: ${current.phase.name} step exceeded '
+                        '30 min without completing',
+                  );
+                },
+              );
           if (identical(next, current)) break; // worker no-op (terminal/parked)
           // Upload finished one way or another — drop the transient progress.
           if (next.phase != UploadPhase.created) {

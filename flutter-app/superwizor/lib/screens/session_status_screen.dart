@@ -833,6 +833,35 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
           activeStepContent: _buildActiveStepContent(),
         ),
+        // Worker diagnostics — surfaced ONLY when attempts are failing
+        // (attemptCount > 0 with a recorded error). "Czeka w kolejce" hid
+        // a worker that was erroring every tick with no visible trace
+        // (sesja a5ce601f, 2026-07-23: 160 MB row stuck for 2 h, zero
+        // server traffic, nothing on screen to say why).
+        if (_lastRow != null &&
+            _lastRow!.attemptCount > 0 &&
+            _lastRow!.lastError != null &&
+            _phase == SessionStepperPhase.pending) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Próba ${_lastRow!.attemptCount} (${_lastRow!.phase.name}): '
+                '${_lastRow!.lastError}',
+                textAlign: TextAlign.center,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 11,
+                  height: 1.4,
+                  color: EuphireColors.ember.withValues(alpha: 0.75),
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 32),
         // Reassurance Text
         Center(

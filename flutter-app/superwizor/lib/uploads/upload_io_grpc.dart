@@ -270,7 +270,14 @@ class GrpcUploadIo implements UploadIo {
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
-    final res = await _ingestion.createAudioUpload(
+    // Hard deadline (2026-07-23, sesja a5ce601f): this RPC fired in
+    // airplane mode hung FOREVER (gRPC-dart issues no deadline by
+    // default), and the un-completing await held the runner's
+    // _tickInFlight — the whole queue froze silently for 2 h with zero
+    // server traffic. TimeoutException classifies as retryable, so a
+    // dead network now costs one 45 s attempt instead of the queue.
+    final res = await _ingestion
+        .createAudioUpload(
       ingestion_pb.CreateAudioUploadRequest(
         patientFileId: u.patientFileId,
         therapistId: u.therapistId,
@@ -289,7 +296,8 @@ class GrpcUploadIo implements UploadIo {
         idempotencyKey: u.idempotencyKey,
         reportLanguage: u.patientLanguageCode,
       ),
-    );
+    )
+        .timeout(const Duration(seconds: 45));
     return CreateAudioUploadResult(
       uploadId: res.uploadId,
       signedUrl: res.signedUrl,
