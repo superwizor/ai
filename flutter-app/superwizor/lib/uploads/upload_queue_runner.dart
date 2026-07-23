@@ -24,10 +24,12 @@
 // therapist switch the old runner is stopped and a new one started.
 
 import 'dart:async';
-import 'dart:io' show InternetAddress;
+import 'dart:io'
+    show Directory, FileSystemEntity, FileSystemEntityType, InternetAddress;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../utils/debug_flags.dart';
 
@@ -75,6 +77,7 @@ class UploadQueueRunner {
     OnUploadComplete? onUploadComplete,
     OnAnalysisComplete? onAnalysisComplete,
     OnReservationCreated? onReservationCreated,
+    Future<Directory> Function()? documentsDirProvider,
   })  : _queue = queue,
         _worker = worker,
         _periodicInterval = periodicInterval ?? const Duration(seconds: 60),
@@ -84,7 +87,8 @@ class UploadQueueRunner {
         _sessionStatusStream = sessionStatusStream,
         _onUploadComplete = onUploadComplete,
         _onAnalysisComplete = onAnalysisComplete,
-        _onReservationCreated = onReservationCreated;
+        _onReservationCreated = onReservationCreated,
+        _documentsDir = documentsDirProvider ?? getApplicationDocumentsDirectory;
 
   final UploadQueue _queue;
   final UploadWorker _worker;
@@ -95,6 +99,44 @@ class UploadQueueRunner {
   final OnUploadComplete? _onUploadComplete;
   final OnAnalysisComplete? _onAnalysisComplete;
   final OnReservationCreated? _onReservationCreated;
+  final Future<Directory> Function() _documentsDir;
+
+  /// iOS rotates the app-container UUID on EVERY install/update, so an
+  /// absolute sourcePath stored before an update points into a container
+  /// that no longer exists — the worker then fails every attempt with
+  /// PathNotFound forever (sesja a5ce601f: row stuck in `created` with
+  /// att=143 after an App Store update). When the stored path is dead,
+  /// rebase the part after '/Documents/' onto the CURRENT documents dir;
+  /// a `created` row also drops back to `pending` (its signedUrl is long
+  /// expired — CreateAudioUpload is idempotent and will mint a fresh one).
+  Future<PendingUpload> _repairContainerPath(PendingUpload u) async {
+    try {
+      final type = await FileSystemEntity.type(u.sourcePath);
+      if (type != FileSystemEntityType.notFound) return u;
+      const marker = '/Documents/';
+      final idx = u.sourcePath.indexOf(marker);
+      if (idx < 0) return u;
+      final rel = u.sourcePath.substring(idx + marker.length);
+      final docs = await _documentsDir();
+      final candidate = '${docs.path}/$rel';
+      if (await FileSystemEntity.type(candidate) ==
+          FileSystemEntityType.notFound) {
+        return u;
+      }
+      debugPrint('[upload-runner] rebased stale container path for '
+          '${u.localId}: $candidate');
+      return u.copyWith(
+        sourcePath: candidate,
+        phase: u.phase == UploadPhase.created ? UploadPhase.pending : u.phase,
+        attemptCount: 0,
+        nextAttemptAt: DateTime.now().toUtc(),
+        clearLastError: true,
+      );
+    } catch (e) {
+      debugPrint('[upload-runner] path repair failed for ${u.localId}: $e');
+      return u;
+    }
+  }
 
   /// Active per-sessionId Firestore subscriptions for completed rows
   /// awaiting backend analysis. Keyed by localId so we can clean up
@@ -389,6 +431,13 @@ class UploadQueueRunner {
         final fresh = _queue.getById(initial.localId);
         if (fresh == null || fresh.isTerminal || fresh.isParked) continue;
         var current = fresh;
+        // Heal container-UUID drift BEFORE the worker touches the row.
+        final repaired = await _repairContainerPath(current);
+        if (!identical(repaired, current)) {
+          await _queue.update(repaired);
+          current = repaired;
+          changed = true;
+        }
         while (_running) {
           // Deadlock breaker (2026-07-23): a single hung await inside
           // runOne (deadline-less gRPC in airplane mode, sesja a5ce601f)
