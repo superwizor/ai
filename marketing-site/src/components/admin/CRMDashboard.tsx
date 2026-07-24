@@ -151,9 +151,10 @@ const ALERT_OPTIONS = [
 
 const APP_DELAY_OPTIONS = [
   { value: "", label: "📱 Wszyscy (apka)" },
-  { value: "24h", label: "📱 Brak w apce (>24h od rej.) ℹ️" },
-  { value: "48h", label: "📱 Brak w apce (>48h od rej.) ℹ️" },
-  { value: "7d", label: "📱 Brak w apce (>7d od rej.) ℹ️" },
+  { value: "installed", label: "✅ Zalogowani w apce" },
+  { value: "24h", label: "⚠️ Brak w apce (>24h od rej.)" },
+  { value: "48h", label: "⚠️ Brak w apce (>48h od rej.)" },
+  { value: "7d", label: "⚠️ Brak w apce (>7d od rej.)" },
 ];
 
 const EMAIL_TEMPLATES = [

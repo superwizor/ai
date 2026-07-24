@@ -955,22 +955,28 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 
 		// App delay filter (web registered users who haven't logged in to app)
 		if appDelayFilter != "" {
-			if firstAppLoginAt != nil && !firstAppLoginAt.IsZero() {
-				continue // User has logged in to app
-			}
-			hoursAgo := time.Since(userCreated).Hours()
-			switch appDelayFilter {
-			case "24h":
-				if hoursAgo < 24 {
-					continue
+			if appDelayFilter == "installed" {
+				if firstAppLoginAt == nil || firstAppLoginAt.IsZero() {
+					continue // User has NOT logged in, we only want those who have
 				}
-			case "48h":
-				if hoursAgo < 48 {
-					continue
+			} else {
+				if firstAppLoginAt != nil && !firstAppLoginAt.IsZero() {
+					continue // User has logged in to app, but we are looking for "Brak w apce"
 				}
-			case "7d":
-				if hoursAgo < 168 {
-					continue
+				hoursAgo := time.Since(userCreated).Hours()
+				switch appDelayFilter {
+				case "24h":
+					if hoursAgo < 24 {
+						continue
+					}
+				case "48h":
+					if hoursAgo < 48 {
+						continue
+					}
+				case "7d":
+					if hoursAgo < 168 {
+						continue
+					}
 				}
 			}
 		}
