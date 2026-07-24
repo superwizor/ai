@@ -40,6 +40,8 @@ func (h *CRMHandler) RegisterCRMRoutes(mux *http.ServeMux, auth *AdminAuthMiddle
 	// Notes
 	mux.HandleFunc("GET /admin/crm/user/{userId}/notes", auth.Require(h.handleListNotes))
 	mux.HandleFunc("POST /admin/crm/notes", auth.Require(h.handleCreateNote))
+	mux.HandleFunc("PUT /admin/crm/notes/{id}", auth.Require(h.handleUpdateNote))
+	mux.HandleFunc("DELETE /admin/crm/notes/{id}", auth.Require(h.handleDeleteNote))
 
 	// Follow-ups
 	mux.HandleFunc("GET /admin/crm/follow-ups", auth.Require(h.handleListFollowUps))
@@ -143,6 +145,66 @@ func (h *CRMHandler) handleCreateNote(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.InfoContext(ctx, "crm: note created", "target", req.TargetUserID, "id", id)
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "message": "ok"})
+}
+
+func (h *CRMHandler) handleUpdateNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing note id", nil)
+		return
+	}
+
+	var req createNoteRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json", err)
+		return
+	}
+	if strings.TrimSpace(req.Body) == "" {
+		writeError(w, http.StatusBadRequest, "body required", nil)
+		return
+	}
+
+	res, err := h.pool.Exec(ctx, `
+		UPDATE crm_notes
+		SET body = $1, updated_at = now()
+		WHERE id = $2
+	`, req.Body, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "update note", err)
+		return
+	}
+	if res.RowsAffected() == 0 {
+		writeError(w, http.StatusNotFound, "note not found", nil)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "crm: note updated", "id", id)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
+}
+
+func (h *CRMHandler) handleDeleteNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing note id", nil)
+		return
+	}
+
+	res, err := h.pool.Exec(ctx, `
+		DELETE FROM crm_notes WHERE id = $1
+	`, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "delete note", err)
+		return
+	}
+	if res.RowsAffected() == 0 {
+		writeError(w, http.StatusNotFound, "note not found", nil)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "crm: note deleted", "id", id)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
 }
 
 // ──────────────────── Follow-ups ────────────────────
