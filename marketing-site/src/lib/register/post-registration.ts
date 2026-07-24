@@ -76,7 +76,13 @@ export async function handlePostRegistrationRedirect(
   }
 
   let promoCode: string | undefined;
-  if (planSlug) {
+  let noPromo = false;
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    noPromo = params.get("nopromo") === "1" || params.get("clean") === "1";
+  }
+
+  if (planSlug && !noPromo) {
     const slug = planSlug.toLowerCase();
     const mapping: Record<string, { tier: string; cycle: string }> = {
       solo_monthly: { tier: "SOLO", cycle: "MONTHLY" },

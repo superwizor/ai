@@ -2,10 +2,10 @@
 //
 // Features:
 // 1. Live status of the current logged-in user's subscription (tier, period, status).
-// 2. Full-price Checkout triggers for Równowaga (149 zł/mo, 1490 zł/yr) & Rozkwit (299 zł/mo, 2990 zł/yr).
-// 3. Intro-price Checkout triggers (with ROWNOWAGA/ROZKWIT coupons).
-// 4. Custom Promo Code tester (e.g. for testing 0 zł coupons or 1 zł coupons created in Stripe).
-// 5. Direct instructions for Stripe Dashboard configuration.
+// 2. Custom Email override (so tests don't have to be performed on Darek's admin email).
+// 3. Full-price Checkout triggers for Równowaga & Rozkwit.
+// 4. Custom Promo Code tester pre-filled with Darek's exact test coupons.
+// 5. Direct links for testing full new user signup from scratch (with clean promo code field).
 
 "use client";
 
@@ -17,6 +17,9 @@ import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/bi
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 
+const CODE_ZERO = "TEST0BlueBallshejohejo1920";
+const CODE_99 = "TEST0Blue99Ballshejohejo99";
+
 export function StripeTestDashboard() {
   const [catalog, setCatalog] = useState<ReadonlyArray<PlanRow>>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -25,12 +28,13 @@ export function StripeTestDashboard() {
   const [subLoading, setSubLoading] = useState(true);
 
   // Custom checkout form state
+  const [customEmail, setCustomEmail] = useState<string>("");
   const [customTier, setCustomTier] = useState<"SOLO" | "PRO">("SOLO");
   const [customCycle, setCustomCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [customPromo, setCustomPromo] = useState<string>("");
-  const [noPromo, setNoPromo] = useState<boolean>(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     getPlanCatalog().then(setCatalog);
@@ -66,6 +70,12 @@ export function StripeTestDashboard() {
   useEffect(() => {
     refreshSubState();
   }, [refreshSubState]);
+
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   const triggerCheckout = async (
     stripePriceId: string,
@@ -128,6 +138,7 @@ export function StripeTestDashboard() {
       }
 
       const returnUrl = "/admin/stripe-test";
+      const targetEmail = customEmail.trim() || user.email || undefined;
 
       const resp = await fetch("/api/checkout", {
         method: "POST",
@@ -138,7 +149,7 @@ export function StripeTestDashboard() {
         body: JSON.stringify({
           priceId: stripePriceId,
           organizationId,
-          email: user.email ?? undefined,
+          email: targetEmail,
           phoneNumber,
           name,
           taxId,
@@ -178,13 +189,13 @@ export function StripeTestDashboard() {
       <div className="border-b border-white/10 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#004D54]/20 border border-[#004D54]/40 text-[#4ADE80] text-xs font-mono mb-2">
-            <span>🧪 DEVELOPS / TEST PANEL</span>
+            <span>🧪 STRIPE TEST PANEL</span>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             Stripe Checkout & Subscription Tester
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Przetestuj pełne płatności, kody promocyjne (0 zł, 1 zł) oraz działanie webhooków Stripe na żywej bazodanowej subskrypcji.
+            Testuj płatności dla dowolnego e-maila testowego, wyzwalaj czysty checkout bez narzuconych kodów oraz testuj pełną rejestrację od A do Z.
           </p>
         </div>
 
@@ -210,7 +221,7 @@ export function StripeTestDashboard() {
         </button>
       </div>
 
-      {/* Sub Status Inspector */}
+      {/* Sub Status Inspector & Email Override */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
           <div className="text-xs font-mono text-slate-500 uppercase tracking-wider">Zalogowany Użytkownik</div>
@@ -241,6 +252,35 @@ export function StripeTestDashboard() {
         </div>
       </div>
 
+      {/* Custom Email Input Bar */}
+      <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <label className="block text-xs font-bold uppercase font-mono text-indigo-300 tracking-wider">
+            📧 Własny Testowy E-mail Płatności (Opcjonalnie)
+          </label>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Wpisz tutaj dowolny testowy e-mail (np. <code className="text-indigo-200">testowy.klient@gmail.com</code>), aby na stronie Stripe Checkout NIE pojawiał się e-mail Darka.
+          </p>
+        </div>
+        <div className="w-full md:w-80 flex items-center gap-2">
+          <input
+            type="email"
+            placeholder={userEmail ? `Domyślnie: ${userEmail}` : "np. jan.kowalski@gmail.com"}
+            value={customEmail}
+            onChange={(e) => setCustomEmail(e.target.value)}
+            className="w-full bg-slate-950 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+          />
+          {customEmail && (
+            <button
+              onClick={() => setCustomEmail("")}
+              className="text-xs text-slate-400 hover:text-white px-2 py-1"
+            >
+              Wyczyść
+            </button>
+          )}
+        </div>
+      </div>
+
       {checkoutError && (
         <div className="p-4 rounded-xl bg-red-950/50 border border-red-800 text-red-300 text-sm flex items-start gap-3">
           <span className="text-red-400 font-bold text-base">⚠️</span>
@@ -259,10 +299,10 @@ export function StripeTestDashboard() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <h2 className="text-lg font-bold text-white">1. Szybki Checkout w Pełnych Cenach</h2>
+              <h2 className="text-lg font-bold text-white">1. Czysty Checkout w Pełnych Cenach</h2>
             </div>
             <p className="text-xs text-slate-400 mb-6">
-              Inicjuje Stripe Checkout z bazową cenie bez automatycznego nakładania domyślnego kuponu rabatowego. Możesz wpisać dowolny promo kod ręcznie w Stripe.
+              Otwiera bezpośredni Stripe Checkout z bazową ceną (bez automatycznie narzuconego kuponu). Pozwala na wpisanie dowolnego własnego promo kodu na ekranie Stripe.
             </p>
 
             <div className="space-y-3">
@@ -329,15 +369,15 @@ export function StripeTestDashboard() {
           </div>
         </div>
 
-        {/* Box 2: Custom Promo Code & Test Generator (0 zł / 1 zł / Custom) */}
+        {/* Box 2: Custom Promo Code & Test Generator */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-              <h2 className="text-lg font-bold text-white">2. Test z Własnym Kodem (np. 0 zł / 1 zł)</h2>
+              <h2 className="text-lg font-bold text-white">2. Test z Domyślnie Wstrzykniętym Kodem</h2>
             </div>
             <p className="text-xs text-slate-400 mb-6">
-              Skonfiguruj dowolną kombinację planu i wpisz własny kod rabatowy utworzony w panelu Stripe (np. <code className="text-amber-300">TEST0</code> dla 0 zł lub <code className="text-amber-300">TEST1</code> dla 1 zł).
+              Wybierz plan oraz kliknij w jeden z poniższych gotowych kodów rabatowych, aby wstępnie zaaplikować go przy starcie płatności.
             </p>
 
             <div className="space-y-4">
@@ -399,17 +439,17 @@ export function StripeTestDashboard() {
                 </div>
               </div>
 
-              {/* Custom Promo Code Input */}
+              {/* Custom Promo Code Input & Quick Select */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Kod promocyjny / kupon (opcjonalny)
+                  Kod promocyjny / kupon (wpisz lub wybierz z listy)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="np. TEST0, TEST1, ROWNOWAGA"
+                    placeholder="Wpisz kod..."
                     value={customPromo}
-                    onChange={(e) => setCustomPromo(e.target.value.toUpperCase())}
+                    onChange={(e) => setCustomPromo(e.target.value)}
                     className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-teal-500"
                   />
                   {customPromo && (
@@ -422,27 +462,25 @@ export function StripeTestDashboard() {
                     </button>
                   )}
                 </div>
-                <div className="mt-1 flex gap-2">
+
+                {/* Quick Fill Buttons */}
+                <div className="mt-2 flex flex-col gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setCustomPromo("TEST0")}
-                    className="text-[10px] font-mono text-amber-400 hover:underline"
+                    onClick={() => setCustomPromo(CODE_ZERO)}
+                    className="text-left text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60 transition-colors flex items-center justify-between"
                   >
-                    + Użyj TEST0 (0 zł)
+                    <span>🎁 Użyj: <strong>{CODE_ZERO}</strong> (0 zł)</span>
+                    <span className="text-[10px] uppercase font-bold text-emerald-400">0 PLN</span>
                   </button>
+                  
                   <button
                     type="button"
-                    onClick={() => setCustomPromo("TEST1")}
-                    className="text-[10px] font-mono text-amber-400 hover:underline"
+                    onClick={() => setCustomPromo(CODE_99)}
+                    className="text-left text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-indigo-950/60 border border-indigo-800/60 text-indigo-300 hover:bg-indigo-900/60 transition-colors flex items-center justify-between"
                   >
-                    + Użyj TEST1 (1 zł)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCustomPromo("ROWNOWAGA")}
-                    className="text-[10px] font-mono text-teal-400 hover:underline"
-                  >
-                    + ROWNOWAGA (99 zł)
+                    <span>🔥 Użyj: <strong>{CODE_99}</strong> (-99%)</span>
+                    <span className="text-[10px] uppercase font-bold text-indigo-400">-99%</span>
                   </button>
                 </div>
               </div>
@@ -477,45 +515,112 @@ export function StripeTestDashboard() {
         </div>
       </div>
 
-      {/* Instructions for Stripe Dashboard setup */}
+      {/* Section 3: Full Signup Test from Scratch */}
+      <div className="bg-slate-900/60 border border-[#004D54]/50 rounded-2xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+          <h3 className="text-lg font-bold text-white">
+            3. Testuj Pełną Ścieżkę Rejestracji Nowego Konta (Od A do Z)
+          </h3>
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Poniższe linki kierują do formularza rejestracji nowego terapeuty <strong>z aktywnym polem wpisywania własnego kodu promocyjnego</strong> (domyślny kod rabatowy <code>ROWNOWAGA</code> został odpięty w tym trybie, aby Stripe Checkout nie blikował pola wpisywania kodu).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <a
+            href="/pl/register/therapist?plan=solo_monthly&nopromo=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 rounded-xl bg-slate-950 border border-teal-800/80 hover:border-teal-400 transition-all flex flex-col justify-between group"
+          >
+            <div>
+              <div className="text-sm font-bold text-teal-300 flex items-center justify-between">
+                <span>🌿 Nowe Konto — Plan Równowaga</span>
+                <span className="text-xs text-slate-400 group-hover:text-white">Otwórz ↗</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Rejestracja od zera dla nowego e-maila + przejście do Stripe Checkout z otwartym wpisywaniem kodu <code>TEST0...</code>.
+              </p>
+            </div>
+          </a>
+
+          <a
+            href="/pl/register/therapist?plan=pro_monthly&nopromo=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 rounded-xl bg-slate-950 border border-teal-800/80 hover:border-teal-400 transition-all flex flex-col justify-between group"
+          >
+            <div>
+              <div className="text-sm font-bold text-teal-300 flex items-center justify-between">
+                <span>🌸 Nowe Konto — Plan Rozkwit</span>
+                <span className="text-xs text-slate-400 group-hover:text-white">Otwórz ↗</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Rejestracja nowego terapeuty dla planu Rozkwit (299 zł) z możliwością podania własnego kuponu w Stripe.
+              </p>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      {/* Copyable Test Codes Cards */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <span>🛠️ Instrukcja Wyklikania Kuponów 0 zł i 1 zł w Panelu Stripe</span>
+          <span>📋 Gotowe Kody Testowe Stripe (Kliknij, aby skopiować)</span>
         </h3>
         
-        <div className="text-xs text-slate-300 space-y-3 leading-relaxed">
-          <p>
-            Stripe umożliwia bezproblemowe dodawanie kuponów rabatowych bez konieczności jakichkolwiek zmian w kodzie aplikacji.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="font-bold text-teal-300 text-sm">Jak utworzyć kupon na 0 zł (100% zniżki):</div>
-              <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                <li>Wejdź na dashboard.stripe.com → <strong>Katalog produktów</strong> (Product Catalog) → <strong>Kupony</strong> (Coupons).</li>
-                <li>Kliknij <strong>+ Utwórz kupon</strong> (+ Add Coupon).</li>
-                <li><strong>Nazwa:</strong> np. <code className="text-white">Test 0 PLN</code>.</li>
-                <li><strong>Typ rabatu:</strong> Procentowy → <code className="text-white">100%</code>.</li>
-                <li><strong>Czas trwania:</strong> Jednorazowo (Once) lub Na zawsze (Forever).</li>
-                <li>Zaznacz opcję <strong>Włącz kod promocyjny widoczny dla klienta</strong> (Allow customer promo codes).</li>
-                <li>Wpisz kod: np. <code className="text-amber-400 font-bold">TEST0</code>. Zapisz.</li>
-              </ol>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* Card 1: 0 zł */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-emerald-400 text-sm">Kupon na 0 zł (100% zniżki)</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px] font-mono font-bold">0 PLN</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Po wpisaniu w Stripe Checkout kwota zamienia się w 0,00 zł. Idealny do szybkiego testowania bez użycia karty.
+              </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="font-bold text-[#4ADE80] text-sm">Jak utworzyć kupon na 1 zł:</div>
-              <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                <li>Wejdź na dashboard.stripe.com → <strong>Coupons</strong> → <strong>+ Add Coupon</strong>.</li>
-                <li><strong>Nazwa:</strong> np. <code className="text-white">Test 1 PLN</code>.</li>
-                <li><strong>Typ rabatu:</strong> Kwotowy (Fixed amount) → <code className="text-white">148.00 PLN</code> dla Równowagi (149-148 = 1 zł) lub <code className="text-white">298.00 PLN</code> dla Rozkwitu.</li>
-                <li>Zaznacz opcję <strong>Włącz kod promocyjny widoczny dla klienta</strong>.</li>
-                <li>Wpisz kod: np. <code className="text-amber-400 font-bold">TEST1</code>. Zapisz.</li>
-              </ol>
+            <div className="flex items-center gap-2 pt-1">
+              <code className="flex-1 bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono text-white truncate">
+                {CODE_ZERO}
+              </code>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(CODE_ZERO)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex-shrink-0"
+              >
+                {copiedCode === CODE_ZERO ? "Skopiowano! ✓" : "Kopiuj"}
+              </button>
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-teal-950/40 border border-teal-800/60 text-teal-200 text-xs">
-            💡 <strong>Jak testować:</strong> Kliknij przycisk płatności wyżej, a na oficjalnej stronie Stripe Checkout kliknij <strong>"Dodaj kod promocyjny"</strong> i wpisz utworzony kod (<code className="text-amber-300">TEST0</code> lub <code className="text-amber-300">TEST1</code>). Stripe przeliczy kwotę i pozwoli zakończyć transakcję. Po powrocie na tę stronę odśwież stan subskrypcji powyżej, aby sprawdzić czy webhook poprawnie odnotował upgrade!
+          {/* Card 2: -99% */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-indigo-400 text-sm">Kupon na -99% zniżki</span>
+                <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 text-[10px] font-mono font-bold">-99%</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Obniża kwotę o 99%. Pozwala przetestować prawdziwą transakcję za grosze (np. 1,49 zł za Równowagę).
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <code className="flex-1 bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono text-white truncate">
+                {CODE_99}
+              </code>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(CODE_99)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex-shrink-0"
+              >
+                {copiedCode === CODE_99 ? "Skopiowano! ✓" : "Kopiuj"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
