@@ -75,7 +75,8 @@
       "audit": "Audit log",
       "analytics": "Analytics",
       "crm": "CRM",
-      "prompts": "Prompts"
+      "prompts": "Prompts",
+      "stripeTest": "Stripe Testing"
     },
     "header": {
       "signOut": "Sign out",
@@ -99,7 +100,10 @@
       "cardAuditCta": "View audit log",
       "cardAnalytics": "Analytics & Stats",
       "cardAnalyticsBody": "Dashboards, usage metrics, Unit Economics, AI Quality, funnel, and cohort retention.",
-      "cardAnalyticsCta": "View analytics"
+      "cardAnalyticsCta": "View analytics",
+      "cardStripeTest": "Stripe Payment Testing",
+      "cardStripeTestBody": "Testing console to safely trigger full-price Stripe Checkout (Równowaga 149 PLN / Rozkwit 299 PLN), test promo codes (e.g. 0 PLN and 1 PLN), and verify database webhook updates.",
+      "cardStripeTestCta": "Open Stripe Testing"
     },
     "orgs": {
       "metaTitle": "Organisations",

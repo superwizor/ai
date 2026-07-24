@@ -197,18 +197,16 @@ Endpoint: `POST /v1/userInvitations`
 
 ---
 
-## Typowy flow wydania nowej wersji produkcyjnej
+## Typowy flow wydania nowej wersji produkcyjnej (Wymóg podnoszenia wersji)
 
-### Android (Google Play)
-1. Podnieś wersję w `pubspec.yaml` (np. `1.0.1+25` -> `1.0.2+26`).
-2. `./KOMENDY/11` (buduje AAB i wysyła bezpośrednio na tor produkcyjny).
-3. Jeśli masz wyłączone "Managed Publishing", wersja wejdzie automatycznie do sklepu po przejściu review w Google.
+Przed każdym wydaniem nowej wersji aplikacji, **bezwzględnie podnieś numer wersji w `pubspec.yaml`** (np. zmiana z `1.0.3+35` na `1.0.4+37`). Dzięki temu w sklepach App Store i Google Play Console zawsze pojawi się nowy, unikalny numer wersji (np. 1.0.4).
 
-### iOS (App Store)
-1. Podnieś wersję w `pubspec.yaml`.
-2. `./KOMENDY/8` (buduje IPA i wysyła do TestFlight).
-3. Uruchom `go run scripts/update_app_metadata.go` (tworzy nową wersję roboczą i ustawia WhatsNew).
-4. **Krok ręczny:** Ponieważ przetworzenie buildu na serwerach Apple trwa 15-30 minut, podpięcie go pod wersję roboczą i wysłanie do recenzji (`Submit for Review`) aktualnie wymaga kliknięcia w App Store Connect.
+### Full Release (Android + iOS)
+1. Podnieś wersję w `flutter-app/superwizor/pubspec.yaml` (np. `version: 1.0.4+37`).
+2. `./KOMENDY/8` — Buduje `.ipa` i wysyła do TestFlight.
+3. `./KOMENDY/11` — Buduje `.aab` i wysyła na tor produkcyjny Google Play LIVE.
+4. `cd superwizor-backend && go run scripts/update_app_metadata.go` — Tworzy nową wersję w App Store Connect.
+5. Podepnij nowy build w App Store Connect i kliknij *Submit for Review*.
 
 ---
 

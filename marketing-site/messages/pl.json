@@ -75,7 +75,8 @@
       "audit": "Dziennik audytowy",
       "analytics": "Analityka",
       "crm": "CRM",
-      "prompts": "Prompty"
+      "prompts": "Prompty",
+      "stripeTest": "Testy Stripe"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -99,7 +100,10 @@
       "cardAuditCta": "Przeglądaj audyt",
       "cardAnalytics": "Analityka i Statystyki",
       "cardAnalyticsBody": "Dashboardy, wykresy użycia, Unit Economics, Jakość AI oraz zaawansowany lejek i retencja.",
-      "cardAnalyticsCta": "Zobacz analitykę"
+      "cardAnalyticsCta": "Zobacz analitykę",
+      "cardStripeTest": "Testy Płatności Stripe",
+      "cardStripeTestBody": "Panel testowy do bezpiecznego wyzwalania płatności Stripe po pełnej cenie (Równowaga 149 zł / Rozkwit 299 zł) oraz testowania kuponów rabatowych (np. 0 zł i 1 zł) i automatycznych webhooków w bazie.",
+      "cardStripeTestCta": "Przejdź do testów Stripe"
     },
     "orgs": {
       "metaTitle": "Organizacje",

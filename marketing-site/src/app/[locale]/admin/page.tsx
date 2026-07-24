@@ -72,8 +72,24 @@ export default function AdminHome() {
           hoverGlow="hover:border-mist/30 hover:shadow-[0_0_30px_rgba(178,202,204,0.08)]"
           ctaText={t("cardAuditCta")}
         />
+        <Card
+          title={t("cardStripeTest")}
+          body={t("cardStripeTestBody")}
+          href={`${prefix}/admin/stripe-test`}
+          icon={<CreditCardIcon />}
+          hoverGlow="hover:border-amber-500/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.12)]"
+          ctaText={t("cardStripeTestCta")}
+        />
       </div>
     </div>
+  );
+}
+
+function CreditCardIcon() {
+  return (
+    <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
   );
 }
 

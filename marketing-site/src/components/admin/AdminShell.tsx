@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
-type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts"; href: string };
+type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts" | "stripeTest"; href: string };
 
 function getSidebarIcon(key: string, active: boolean) {
   const colorClass = active ? "text-ember" : "text-mist group-hover:text-frost transition-colors";
@@ -68,6 +68,12 @@ function getSidebarIcon(key: string, active: boolean) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       );
+    case "stripeTest":
+      return (
+        <svg className={`w-5 h-5 ${colorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -88,14 +94,15 @@ export function AdminShell({
   const pathname = usePathname() ?? "";
 
   const items: SidebarItem[] = [
-    { key: "dashboard", href: `${prefix}/admin` },
-    { key: "orgs",      href: `${prefix}/admin/orgs` },
-    { key: "users",     href: `${prefix}/admin/users` },
-    { key: "sessions",  href: `${prefix}/admin/sessions` },
-    { key: "audit",     href: `${prefix}/admin/audit` },
-    { key: "analytics", href: `${prefix}/admin/analytics` },
-    { key: "crm",       href: `${prefix}/admin/crm` },
-    { key: "prompts",   href: `${prefix}/admin/prompts` },
+    { key: "dashboard",  href: `${prefix}/admin` },
+    { key: "orgs",       href: `${prefix}/admin/orgs` },
+    { key: "users",      href: `${prefix}/admin/users` },
+    { key: "sessions",   href: `${prefix}/admin/sessions` },
+    { key: "audit",      href: `${prefix}/admin/audit` },
+    { key: "analytics",  href: `${prefix}/admin/analytics` },
+    { key: "crm",        href: `${prefix}/admin/crm` },
+    { key: "prompts",    href: `${prefix}/admin/prompts` },
+    { key: "stripeTest", href: `${prefix}/admin/stripe-test` },
   ];
 
   const onSignOut = async () => {
