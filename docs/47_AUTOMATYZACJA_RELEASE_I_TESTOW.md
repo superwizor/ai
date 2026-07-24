@@ -203,10 +203,11 @@ Przed każdym wydaniem nowej wersji aplikacji, **bezwzględnie podnieś numer we
 
 ### Full Release (Android + iOS)
 1. Podnieś wersję w `flutter-app/superwizor/pubspec.yaml` (np. `version: 1.0.4+37`).
-2. `./KOMENDY/8` — Buduje `.ipa` i wysyła do TestFlight.
-3. `./KOMENDY/11` — Buduje `.aab` i wysyła na tor produkcyjny Google Play LIVE.
-4. `cd superwizor-backend && go run scripts/update_app_metadata.go` — Tworzy nową wersję w App Store Connect.
-5. Podepnij nowy build w App Store Connect i kliknij *Submit for Review*.
+2. **Wymóg Google Play (przed 31 sierpnia 2026):** Sprawdź w `flutter-app/superwizor/android/app/build.gradle.kts` czy `targetSdk` wynosi minimum `36` (Android 16).
+3. `./KOMENDY/8` — Buduje `.ipa` i wysyła do TestFlight.
+4. `./KOMENDY/11` — Buduje `.aab` i wysyła na tor produkcyjny Google Play LIVE.
+5. `cd superwizor-backend && go run scripts/update_app_metadata.go` — Tworzy nową wersję w App Store Connect.
+6. Podepnij nowy build w App Store Connect i kliknij *Submit for Review*.
 
 ---
 
