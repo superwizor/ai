@@ -683,9 +683,11 @@ type CRMSubscriber struct {
 	Email             string `json:"email"`
 	Phone             string `json:"phone"`
 	ProfessionalTitle string `json:"professional_title"`
-	CreatedAt         string `json:"created_at"`
-	FirstAppLoginAt   string `json:"first_app_login_at,omitempty"`
-	IsTest            bool   `json:"is_test"`
+	CreatedAt         string    `json:"created_at"`
+	SortCreatedAt     time.Time `json:"-"`
+	FirstAppLoginAt   string    `json:"first_app_login_at,omitempty"`
+	SortFirstAppLoginAt time.Time `json:"-"`
+	IsTest            bool      `json:"is_test"`
 	// Subscription
 	SubscriptionID   string `json:"subscription_id"`
 	PlanTier         string `json:"plan_tier"`
@@ -703,7 +705,8 @@ type CRMSubscriber struct {
 	// Sessions (all-time from sessions table)
 	TotalSessions int32 `json:"total_sessions"`
 	// Last activity
-	LastSessionAt string `json:"last_session_at"`
+	LastSessionAt     string    `json:"last_session_at"`
+	SortLastSessionAt time.Time `json:"-"`
 	// Urgency flags
 	CreditAlert  string `json:"credit_alert"`  // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
 	ExpiryAlert  string `json:"expiry_alert"`  // "imminent" (≤3d), "soon" (≤7d), ""
@@ -762,7 +765,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 
 	// ── Global stats (unfiltered, for KPI chips — distinct users) ──
 	var globalStats CRMGlobalStats
-	testWhere := "AND tst.user_id IS NULL"
+	testWhere := "AND tst.user_id IS NULL AND u.email NOT IN ('dpiotrak2@gmail.com', 'theatlantahomes@gmail.com')"
 	if showTest {
 		testWhere = ""
 	}
@@ -775,7 +778,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(EXTRACT(DAY FROM s.current_period_end - now())::int, 999) <= 3) AS expiring,
 			COUNT(DISTINCT u.id) FILTER (WHERE s.status = 'CANCELED') AS churned
 		FROM users u
-		JOIN organizations o ON o.id = u.organization_id
+		LEFT JOIN organizations o ON o.id = u.organization_id
 		LEFT JOIN subscriptions s ON s.organization_id = o.id AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		LEFT JOIN subscription_plans p ON p.id = s.plan_id
 		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id AND uc.period_start = s.current_period_start
@@ -818,7 +821,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			o.id AS org_id,
 			COALESCE(o.legal_name, '') AS org_name
 		FROM users u
-		JOIN organizations o ON o.id = u.organization_id
+		LEFT JOIN organizations o ON o.id = u.organization_id
 		LEFT JOIN subscriptions s ON s.organization_id = o.id AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		LEFT JOIN subscription_plans p ON p.id = s.plan_id
 		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id AND uc.period_start = s.current_period_start
@@ -877,8 +880,10 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		}
 
 		sub.CreatedAt = userCreated.Format("2006-01-02")
+		sub.SortCreatedAt = userCreated
 		if firstAppLoginAt != nil && !firstAppLoginAt.IsZero() {
 			sub.FirstAppLoginAt = firstAppLoginAt.Format("2006-01-02 15:04")
+			sub.SortFirstAppLoginAt = *firstAppLoginAt
 		}
 		if !periodStart.IsZero() {
 			sub.PeriodStart = periodStart.Format("2006-01-02")
@@ -889,6 +894,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		}
 		if lastSessionAt != nil && !lastSessionAt.IsZero() {
 			sub.LastSessionAt = lastSessionAt.Format("2006-01-02")
+			sub.SortLastSessionAt = *lastSessionAt
 		}
 		sub.TokensLimit = tokensLimit
 		sub.TokensUsed = tokensUsed
@@ -990,11 +996,11 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		a, b := allSubscribers[i], allSubscribers[j]
 		switch sortCol {
 		case "created_at":
-			if a.CreatedAt != b.CreatedAt {
+			if !a.SortCreatedAt.Equal(b.SortCreatedAt) {
 				if isAsc {
-					return a.CreatedAt < b.CreatedAt
+					return a.SortCreatedAt.Before(b.SortCreatedAt)
 				}
-				return a.CreatedAt > b.CreatedAt
+				return a.SortCreatedAt.After(b.SortCreatedAt)
 			}
 		case "name":
 			aName := strings.ToLower(a.FirstName + " " + a.LastName)
@@ -1020,11 +1026,18 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 				return a.TotalSessions > b.TotalSessions
 			}
 		case "activity":
-			if a.LastSessionAt != b.LastSessionAt {
+			if !a.SortLastSessionAt.Equal(b.SortLastSessionAt) {
 				if isAsc {
-					return a.LastSessionAt < b.LastSessionAt
+					return a.SortLastSessionAt.Before(b.SortLastSessionAt)
 				}
-				return a.LastSessionAt > b.LastSessionAt
+				return a.SortLastSessionAt.After(b.SortLastSessionAt)
+			}
+		case "app_login":
+			if !a.SortFirstAppLoginAt.Equal(b.SortFirstAppLoginAt) {
+				if isAsc {
+					return a.SortFirstAppLoginAt.Before(b.SortFirstAppLoginAt)
+				}
+				return a.SortFirstAppLoginAt.After(b.SortFirstAppLoginAt)
 			}
 		case "renewal":
 			if a.DaysUntilRenewal != b.DaysUntilRenewal {

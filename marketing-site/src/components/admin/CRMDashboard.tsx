@@ -151,9 +151,9 @@ const ALERT_OPTIONS = [
 
 const APP_DELAY_OPTIONS = [
   { value: "", label: "📱 Wszyscy (apka)" },
-  { value: "24h", label: "📱 Brak w apce (>24h)" },
-  { value: "48h", label: "📱 Brak w apce (>48h)" },
-  { value: "7d", label: "📱 Brak w apce (>7d)" },
+  { value: "24h", label: "📱 Brak w apce (>24h od rej.) ℹ️" },
+  { value: "48h", label: "📱 Brak w apce (>48h od rej.) ℹ️" },
+  { value: "7d", label: "📱 Brak w apce (>7d od rej.) ℹ️" },
 ];
 
 const EMAIL_TEMPLATES = [
@@ -1244,6 +1244,7 @@ export function CRMDashboard() {
                   </th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("name")}>Użytkownik{sortIndicator("name")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("created_at")}>Konto założone{sortIndicator("created_at")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("app_login")} title="Sortuj według daty logowania w apce">Aplikacja{sortIndicator("app_login")}</th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)]">Plan</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("credits")}>Kredyty{sortIndicator("credits")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("sessions")}>Sesje{sortIndicator("sessions")}</th>
@@ -1283,15 +1284,6 @@ export function CRMDashboard() {
                                   🧪 Test
                                 </span>
                               )}
-                              {s.first_app_login_at ? (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--crm-success-bg)] text-[var(--crm-accent-green)] border border-[var(--crm-success-border)]" title={`Pierwsze zalogowanie w apce: ${s.first_app_login_at}`}>
-                                  📱 Apka
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--crm-warning-bg)] text-[var(--crm-ember-text)]" title="Brak zalogowania w aplikacji Flutter">
-                                  ⚠️ Brak w apce
-                                </span>
-                              )}
                             </div>
                             <span className="text-[var(--crm-muted)] text-xs truncate">{s.email}</span>
                           </div>
@@ -1299,6 +1291,17 @@ export function CRMDashboard() {
                       </td>
                       <td className="px-4 py-3.5 text-center font-mono text-xs text-[var(--crm-text)] font-medium">
                         {formatDateDot(s.created_at)}
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        {s.first_app_login_at ? (
+                          <span className="text-[10px] font-bold px-2 py-1 rounded bg-[var(--crm-success-bg)] text-[var(--crm-accent-green)] border border-[var(--crm-success-border)]" title={`Zalogowano: ${s.first_app_login_at}`}>
+                            📱 Jest
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium px-2 py-1 rounded bg-[var(--crm-warning-bg)] text-[var(--crm-ember-text)]" title="Nie logował się w apce">
+                            ⚠️ Brak
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getTierBadge(s.plan_tier, isDark)}`}>{s.plan_display_name}</span>
