@@ -3,9 +3,10 @@
 // Features:
 // 1. Live status of the current logged-in user's subscription (tier, period, status).
 // 2. Custom Email override (so tests don't have to be performed on Darek's admin email).
-// 3. Full-price Checkout triggers for Równowaga & Rozkwit.
-// 4. Custom Promo Code tester pre-filled with Darek's exact test coupons.
-// 5. Direct links for testing full new user signup from scratch (with clean promo code field).
+// 3. Choice of return URL: Real Customer Success page (/register/therapist/success) OR Admin panel (/admin/stripe-test).
+// 4. Full-price Checkout triggers for Równowaga & Rozkwit.
+// 5. Custom Promo Code tester pre-filled with Darek's exact test coupons.
+// 6. Direct links for testing full new user signup from scratch (with clean promo code field).
 
 "use client";
 
@@ -26,6 +27,9 @@ export function StripeTestDashboard() {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [currentSub, setCurrentSub] = useState<any | null>(null);
   const [subLoading, setSubLoading] = useState(true);
+
+  // Return destination choice
+  const [redirectToRealSuccess, setRedirectToRealSuccess] = useState<boolean>(true);
 
   // Custom checkout form state
   const [customEmail, setCustomEmail] = useState<string>("");
@@ -137,7 +141,8 @@ export function StripeTestDashboard() {
         console.warn("Could not prefill org details", e);
       }
 
-      const returnUrl = "/admin/stripe-test";
+      // If user selected real customer success, return to /register/therapist/success
+      const returnUrl = redirectToRealSuccess ? "/register/therapist/success" : "/admin/stripe-test";
       const targetEmail = customEmail.trim() || user.email || undefined;
 
       const resp = await fetch("/api/checkout", {
@@ -195,7 +200,7 @@ export function StripeTestDashboard() {
             Stripe Checkout & Subscription Tester
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Testuj płatności dla dowolnego e-maila testowego, wyzwalaj czysty checkout bez narzuconych kodów oraz testuj pełną rejestrację od A do Z.
+            Testuj płatności dla dowolnego e-maila testowego, wyzwalaj czysty checkout w pełnych cenach oraz weryfikuj prawdziwy onboarding klienta.
           </p>
         </div>
 
@@ -221,7 +226,7 @@ export function StripeTestDashboard() {
         </button>
       </div>
 
-      {/* Sub Status Inspector & Email Override */}
+      {/* Sub Status Inspector */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
           <div className="text-xs font-mono text-slate-500 uppercase tracking-wider">Zalogowany Użytkownik</div>
@@ -252,32 +257,48 @@ export function StripeTestDashboard() {
         </div>
       </div>
 
-      {/* Custom Email Input Bar */}
-      <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <label className="block text-xs font-bold uppercase font-mono text-indigo-300 tracking-wider">
-            📧 Własny Testowy E-mail Płatności (Opcjonalnie)
-          </label>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Wpisz tutaj dowolny testowy e-mail (np. <code className="text-indigo-200">testowy.klient@gmail.com</code>), aby na stronie Stripe Checkout NIE pojawiał się e-mail Darka.
-          </p>
+      {/* Settings Bar: Custom Email + Return Destination */}
+      <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-800/60 space-y-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <label className="block text-xs font-bold uppercase font-mono text-indigo-300 tracking-wider">
+              📧 Własny Testowy E-mail Płatności (Opcjonalnie)
+            </label>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Wpisz tutaj dowolny testowy e-mail (np. <code className="text-indigo-200">testowy.klient@gmail.com</code>), aby na stronie Stripe Checkout NIE pojawiał się e-mail Darka.
+            </p>
+          </div>
+          <div className="w-full md:w-80 flex items-center gap-2">
+            <input
+              type="email"
+              placeholder={userEmail ? `Domyślnie: ${userEmail}` : "np. jan.kowalski@gmail.com"}
+              value={customEmail}
+              onChange={(e) => setCustomEmail(e.target.value)}
+              className="w-full bg-slate-950 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+            />
+            {customEmail && (
+              <button
+                onClick={() => setCustomEmail("")}
+                className="text-xs text-slate-400 hover:text-white px-2 py-1"
+              >
+                Wyczyść
+              </button>
+            )}
+          </div>
         </div>
-        <div className="w-full md:w-80 flex items-center gap-2">
+
+        {/* Return Destination Checkbox */}
+        <div className="pt-3 border-t border-indigo-900/60 flex items-center gap-3">
           <input
-            type="email"
-            placeholder={userEmail ? `Domyślnie: ${userEmail}` : "np. jan.kowalski@gmail.com"}
-            value={customEmail}
-            onChange={(e) => setCustomEmail(e.target.value)}
-            className="w-full bg-slate-950 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+            type="checkbox"
+            id="redirectSuccess"
+            checked={redirectToRealSuccess}
+            onChange={(e) => setRedirectToRealSuccess(e.target.checked)}
+            className="w-4 h-4 rounded bg-slate-950 border-indigo-700 text-teal-500 focus:ring-teal-500 cursor-pointer"
           />
-          {customEmail && (
-            <button
-              onClick={() => setCustomEmail("")}
-              className="text-xs text-slate-400 hover:text-white px-2 py-1"
-            >
-              Wyczyść
-            </button>
-          )}
+          <label htmlFor="redirectSuccess" className="text-xs text-slate-200 font-medium cursor-pointer">
+            ✨ <strong>Po udanej płatności przekieruj na PRAWDZIWĄ stronę sukcesu klienta:</strong> <code className="text-teal-300">/register/therapist/success</code> (zamiast powrotu do panelu admina)
+          </label>
         </div>
       </div>
 
@@ -524,7 +545,7 @@ export function StripeTestDashboard() {
           </h3>
         </div>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Poniższe linki kierują do formularza rejestracji nowego terapeuty <strong>z aktywnym polem wpisywania własnego kodu promocyjnego</strong> (domyślny kod rabatowy <code>ROWNOWAGA</code> został odpięty w tym trybie, aby Stripe Checkout nie blikował pola wpisywania kodu).
+          Poniższe linki kierują do rejestracji nowego terapeuty <strong>z pełnym onboardingiem klienta</strong> (tworzenie nowego konta, rejestracja w bazie, opłata na Stripe i przekierowanie na prawdziwy ekran sukcesu <code className="text-teal-300">/register/therapist/success</code>).
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -536,11 +557,11 @@ export function StripeTestDashboard() {
           >
             <div>
               <div className="text-sm font-bold text-teal-300 flex items-center justify-between">
-                <span>🌿 Nowe Konto — Plan Równowaga</span>
+                <span>🌿 Nowy Klient — Plan Równowaga (149 zł)</span>
                 <span className="text-xs text-slate-400 group-hover:text-white">Otwórz ↗</span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Rejestracja od zera dla nowego e-maila + przejście do Stripe Checkout z otwartym wpisywaniem kodu <code>TEST0...</code>.
+                Pełny onboarding od rejestracji po ekran sukcesu klienta z otwartym polem na własne kody rabatowe.
               </p>
             </div>
           </a>
@@ -553,11 +574,11 @@ export function StripeTestDashboard() {
           >
             <div>
               <div className="text-sm font-bold text-teal-300 flex items-center justify-between">
-                <span>🌸 Nowe Konto — Plan Rozkwit</span>
+                <span>🌸 Nowy Klient — Plan Rozkwit (299 zł)</span>
                 <span className="text-xs text-slate-400 group-hover:text-white">Otwórz ↗</span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Rejestracja nowego terapeuty dla planu Rozkwit (299 zł) z możliwością podania własnego kuponu w Stripe.
+                Pełny onboarding od rejestracji po ekran sukcesu klienta dla planu Rozkwit.
               </p>
             </div>
           </a>
@@ -611,7 +632,7 @@ export function StripeTestDashboard() {
 
             <div className="flex items-center gap-2 pt-1">
               <code className="flex-1 bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono text-white truncate">
-                {CODE_99}
+                {CODE_ZERO}
               </code>
               <button
                 type="button"
