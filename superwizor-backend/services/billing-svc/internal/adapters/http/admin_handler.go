@@ -15,6 +15,7 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -859,10 +860,11 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	var allSubscribers []CRMSubscriber
 	for rows.Next() {
 		var sub CRMSubscriber
-		var periodStart, periodEnd, userCreated time.Time
-		var firstAppLoginAt, lastSessionAt *time.Time
-		var daysUntilRenewal int
+		var userCreated time.Time
+		var periodStart, periodEnd, firstAppLoginAt, lastSessionAt *time.Time
+		var daysUntilRenewal *int
 		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
+		var orgID, orgName sql.NullString
 
 		if err := rows.Scan(
 			&sub.UserID, &sub.FirstName, &sub.LastName, &sub.Email, &sub.Phone,
@@ -873,10 +875,17 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			&tokensLimit, &tokensUsed, &tokensRemaining,
 			&totalSessions,
 			&lastSessionAt,
-			&sub.OrgID, &sub.OrgName,
+			&orgID, &orgName,
 		); err != nil {
 			h.logger.ErrorContext(ctx, "crm: scan row", "error", err)
 			continue
+		}
+
+		if orgID.Valid {
+			sub.OrgID = orgID.String
+		}
+		if orgName.Valid {
+			sub.OrgName = orgName.String
 		}
 
 		sub.CreatedAt = userCreated.Format("2006-01-02")
@@ -885,12 +894,14 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			sub.FirstAppLoginAt = firstAppLoginAt.Format("2006-01-02 15:04")
 			sub.SortFirstAppLoginAt = *firstAppLoginAt
 		}
-		if !periodStart.IsZero() {
+		if periodStart != nil && !periodStart.IsZero() {
 			sub.PeriodStart = periodStart.Format("2006-01-02")
 		}
-		if !periodEnd.IsZero() && periodEnd.Year() > 2000 {
+		if periodEnd != nil && !periodEnd.IsZero() && periodEnd.Year() > 2000 {
 			sub.PeriodEnd = periodEnd.Format("2006-01-02")
-			sub.DaysUntilRenewal = daysUntilRenewal
+			if daysUntilRenewal != nil {
+				sub.DaysUntilRenewal = *daysUntilRenewal
+			}
 		}
 		if lastSessionAt != nil && !lastSessionAt.IsZero() {
 			sub.LastSessionAt = lastSessionAt.Format("2006-01-02")
@@ -920,13 +931,15 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 
 		// Expiry alerts — only for valid period_end
 		if sub.PeriodEnd != "" {
-			switch {
-			case daysUntilRenewal <= 3:
-				sub.ExpiryAlert = "imminent"
-				urgency += 15
-			case daysUntilRenewal <= 7:
-				sub.ExpiryAlert = "soon"
-				urgency += 5
+			if daysUntilRenewal != nil {
+				switch {
+				case *daysUntilRenewal <= 3:
+					sub.ExpiryAlert = "imminent"
+					urgency += 15
+				case *daysUntilRenewal <= 7:
+					sub.ExpiryAlert = "soon"
+					urgency += 5
+				}
 			}
 		}
 
