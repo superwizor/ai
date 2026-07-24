@@ -60,6 +60,7 @@ type CRMSubscriber = {
   org_id: string;
   org_name: string;
   past_subscriptions?: PastSubscription[];
+  tags: CRMTag[];
 };
 
 type UserDetail = {
@@ -120,6 +121,7 @@ type FilterState = {
   alert: string;
   search: string;
   app_delay: string;
+  tag: string;
   show_test: boolean;
 };
 
@@ -394,10 +396,10 @@ export function CRMDashboard() {
     "--crm-elevated": "#ebeef0",
     "--crm-border": "#d0d7de",
     "--crm-border-subtle": "#e8ecef",
-    "--crm-text": "#1F2937",
-    "--crm-heading": "#1F1F1F",
-    "--crm-muted": "#57606a",
-    "--crm-faint": "#6b7280",
+    "--crm-text": "#000000",
+    "--crm-heading": "#000000",
+    "--crm-muted": "#374151",
+    "--crm-faint": "#4B5563",
     "--crm-focus": "#004D54",
     "--crm-row-alt": "#f5f7f8",
     "--crm-row-base": "#ffffff",
@@ -433,8 +435,9 @@ export function CRMDashboard() {
   const [subscribers, setSubscribers] = useState<CRMSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fullScreen, setFullScreen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(() => {
-    if (typeof window === "undefined") return { tier: "", status: "", alert: "", search: "", app_delay: "", show_test: false };
+    if (typeof window === "undefined") return { tier: "", status: "", alert: "", search: "", app_delay: "", tag: "", show_test: false };
     const p = new URLSearchParams(window.location.search);
     return {
       tier: p.get("tier") || "",
@@ -442,6 +445,7 @@ export function CRMDashboard() {
       alert: p.get("alert") || "",
       search: p.get("search") || "",
       app_delay: p.get("app_delay") || "",
+      tag: p.get("tag") || "",
       show_test: p.get("show_test") === "1" || p.get("show_test") === "true",
     };
   });
@@ -462,6 +466,7 @@ export function CRMDashboard() {
   });
   const [totalFiltered, setTotalFiltered] = useState(0);
   const [totalAll, setTotalAll] = useState(0);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // Global stats (KPI chips — always full database)
   const [globalStats, setGlobalStats] = useState<GlobalStats>({ total: 0, critical: 0, warning: 0, expiring: 0, churned: 0 });
@@ -489,6 +494,7 @@ export function CRMDashboard() {
   // Detail drawer
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerFullScreen, setDrawerFullScreen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
 
@@ -498,6 +504,8 @@ export function CRMDashboard() {
   // Notes
   const [newNote, setNewNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteBody, setEditingNoteBody] = useState("");
 
   // Tags
   const [newTag, setNewTag] = useState("");
@@ -529,6 +537,7 @@ export function CRMDashboard() {
     if (filters.alert) p.set("alert", filters.alert);
     if (filters.search) p.set("search", filters.search);
     if (filters.app_delay) p.set("app_delay", filters.app_delay);
+    if (filters.tag) p.set("tag", filters.tag);
     if (filters.show_test) p.set("show_test", "1");
     if (page > 1) p.set("page", String(page));
     if (perPage !== 100) p.set("pageSize", String(perPage));
@@ -561,6 +570,7 @@ export function CRMDashboard() {
       if (filters.alert) params.set("alert", filters.alert);
       if (filters.search) params.set("search", filters.search);
       if (filters.app_delay) params.set("app_delay", filters.app_delay);
+      if (filters.tag) params.set("tag", filters.tag);
       if (filters.show_test) params.set("show_test", "1");
       params.set("sort", sortColumn);
       params.set("dir", sortDirection);
@@ -573,13 +583,14 @@ export function CRMDashboard() {
       setSubscribers(data.subscribers || []);
       setTotalFiltered(data.total || 0);
       setTotalAll(data.total_all || 0);
+      setAvailableTags(data.available_tags || []);
       setGlobalStats(data.global_stats || { total: 0, critical: 0, warning: 0, expiring: 0, churned: 0 });
     } catch (err: any) {
       setError(err.message || "Błąd ładowania danych CRM");
     } finally {
       setLoading(false);
     }
-  }, [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay, filters.show_test, sortColumn, sortDirection, page, perPage]);
+  }, [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay, filters.tag, filters.show_test, sortColumn, sortDirection, page, perPage]);
 
   const fetchFollowUps = useCallback(async () => {
     try {
@@ -620,6 +631,7 @@ export function CRMDashboard() {
 
   const closeDrawer = () => {
     setDrawerOpen(false);
+    setDrawerFullScreen(false);
     setTimeout(() => setSelectedUser(null), 300);
   };
 
@@ -642,6 +654,36 @@ export function CRMDashboard() {
       showToast(`❌ Błąd: ${err.message}`);
     } finally {
       setNoteSaving(false);
+    }
+  };
+
+  
+  const updateNote = async (id: string, body: string) => {
+    if (!selectedUser || !body.trim()) return;
+    try {
+      const resp = await crmFetch(`/admin/crm/notes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setEditingNoteId(null);
+      await openUserDetail(selectedUser.user_id);
+      showToast("📝 Notatka zaktualizowana");
+    } catch (err: any) {
+      showToast(`❌ Błąd: ${err.message}`);
+    }
+  };
+
+  const deleteNote = async (id: string) => {
+    if (!selectedUser || !confirm("Na pewno usunąć tę notatkę?")) return;
+    try {
+      const resp = await crmFetch(`/admin/crm/notes/${id}`, { method: "DELETE" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      await openUserDetail(selectedUser.user_id);
+      showToast("🗑️ Notatka usunięta");
+    } catch (err: any) {
+      showToast(`❌ Błąd: ${err.message}`);
     }
   };
 
@@ -950,6 +992,7 @@ export function CRMDashboard() {
         if (filters.alert) params.set("alert", filters.alert);
         if (filters.search) params.set("search", filters.search);
         if (filters.app_delay) params.set("app_delay", filters.app_delay);
+      if (filters.tag) params.set("tag", filters.tag);
         if (filters.show_test) params.set("show_test", "1");
         params.set("sort", sortColumn);
         params.set("dir", sortDirection);
@@ -1033,7 +1076,7 @@ export function CRMDashboard() {
   };
 
   // Active filters count
-  const activeFilterCount = [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay].filter(Boolean).length + (filters.show_test ? 1 : 0);
+  const activeFilterCount = [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay, filters.tag].filter(Boolean).length + (filters.show_test ? 1 : 0);
 
   // Priority inbox items — P3.8: show overdue (due_date < today) + today's (due_date == today)
   const today = new Date().toISOString().slice(0, 10);
@@ -1042,7 +1085,7 @@ export function CRMDashboard() {
   // ─── Render ────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[var(--crm-bg)] transition-colors duration-300" style={themeVars}>
+    <div className={fullScreen ? "fixed inset-0 z-[100] bg-[var(--crm-bg)] overflow-auto p-4" : "min-h-screen bg-[var(--crm-bg)] transition-colors duration-300"} style={themeVars}>
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto">
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
@@ -1060,6 +1103,7 @@ export function CRMDashboard() {
           <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] hover:border-[var(--crm-muted)] transition" title="Odśwież dane">
             ↻ Odśwież
           </button>
+          <button onClick={() => setFullScreen(!fullScreen)} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] transition">{fullScreen ? "Opuść pełny ekran" : "Pełny ekran CRM"}</button>
           <button onClick={() => void exportCSV(false)} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] transition" title="Eksportuj wybraną stronę">
             📄 CSV Strona
           </button>
@@ -1133,23 +1177,23 @@ export function CRMDashboard() {
       {/* ── KPI Chips ────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
         <KPIChip label="Łącznie" value={globalStats.total} color="#c9d1d9" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "", status: "", tier: "", app_delay: "" }));
+          setFilters((f) => ({ ...f, alert: "", status: "", tier: "", app_delay: "", tag: "" }));
           setPage(1);
         }} />
         <KPIChip label="Krytyczne" value={globalStats.critical} color="#ef4444" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "critical", status: "", tier: "", app_delay: "" }));
+          setFilters((f) => ({ ...f, alert: "critical", status: "", tier: "", app_delay: "", tag: "" }));
           setPage(1);
         }} />
         <KPIChip label="Ostrzeżenie" value={globalStats.warning} color="#f97316" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "warning", status: "", tier: "", app_delay: "" }));
+          setFilters((f) => ({ ...f, alert: "warning", status: "", tier: "", app_delay: "", tag: "" }));
           setPage(1);
         }} />
         <KPIChip label="Wygasa" value={globalStats.expiring} color="#a855f7" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "expiring", status: "", tier: "", app_delay: "" }));
+          setFilters((f) => ({ ...f, alert: "expiring", status: "", tier: "", app_delay: "", tag: "" }));
           setPage(1);
         }} />
         <KPIChip label="Churned" value={globalStats.churned} color="#6b7280" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "", status: "CANCELED", tier: "", app_delay: "" }));
+          setFilters((f) => ({ ...f, alert: "", status: "CANCELED", tier: "", app_delay: "", tag: "" }));
           setPage(1);
         }} />
       </div>
@@ -1160,6 +1204,12 @@ export function CRMDashboard() {
         <FilterSelect value={filters.status} onChange={(v) => updateFilter("status", v)} options={STATUS_OPTIONS} />
         <FilterSelect value={filters.alert} onChange={(v) => updateFilter("alert", v)} options={ALERT_OPTIONS} />
         <FilterSelect value={filters.app_delay} onChange={(v) => updateFilter("app_delay", v)} options={APP_DELAY_OPTIONS} />
+
+        <select value={filters.tag} onChange={(e) => setFilters(f => ({ ...f, tag: e.target.value }))} className="rounded-lg bg-[var(--crm-surface)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--crm-focus)] transition cursor-pointer">
+          <option value="">🏷️ Wszystkie tagi</option>
+          {availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+        </select>
+
         <button
           onClick={() => {
             setFilters((f) => ({ ...f, show_test: !f.show_test }));
@@ -1186,7 +1236,7 @@ export function CRMDashboard() {
         </div>
         {activeFilterCount > 0 && (
           <button
-            onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "", app_delay: "", show_test: false }); setSearchInput(""); setPage(1); }}
+            onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "", app_delay: "", tag: "", show_test: false }); setSearchInput(""); setPage(1); }}
             className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] px-3 py-2.5 text-xs font-semibold hover:text-[var(--crm-text)] hover:bg-[var(--crm-border)] transition"
           >
             ✕ Wyczyść ({activeFilterCount})
@@ -1248,7 +1298,8 @@ export function CRMDashboard() {
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("app_login")} title="Sortuj według daty logowania w apce">Aplikacja{sortIndicator("app_login")}</th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)]">Plan</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("credits")}>Kredyty{sortIndicator("credits")}</th>
-                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("sessions")}>Sesje{sortIndicator("sessions")}</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] w-24">Tagi</th>
+<th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("sessions")}>Sesje{sortIndicator("sessions")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("activity")}>Aktywność{sortIndicator("activity")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("renewal")}>Odnowienie{sortIndicator("renewal")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)]">Alerty</th>
@@ -1315,7 +1366,17 @@ export function CRMDashboard() {
                           <div className={`h-full rounded-full transition-all duration-500 ${creditBar.color}`} style={{ width: `${Math.min(creditBar.pct, 100)}%` }} />
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-center font-mono text-[var(--crm-text)]">{s.total_sessions}</td>
+                      
+                      <td className="px-4 py-3.5 text-left">
+                        <div className="flex flex-wrap gap-1">
+                          {s.tags?.slice(0, 2).map((tag, idx) => (
+                            <span key={idx} className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-white" style={{ backgroundColor: tag.color }}>
+                              {tag.tag}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+<td className="px-4 py-3.5 text-center font-mono text-[var(--crm-text)]">{s.total_sessions}</td>
                       <td className="px-4 py-3.5 text-center">
                         {s.last_session_at ? (
                           <span className={`text-xs font-medium ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
@@ -1379,9 +1440,9 @@ export function CRMDashboard() {
 
       {/* ── Detail Drawer ─────────────────────────────────── */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.2)" }} onClick={closeDrawer} />
-          <div className={`relative w-full max-w-lg bg-[var(--crm-surface)] border-l border-[var(--crm-border)] overflow-y-auto transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`} style={{ boxShadow: isDark ? "-8px 0 30px rgba(0,0,0,0.7)" : "-8px 0 30px rgba(0,0,0,0.15)" }}>
+        <div className="fixed inset-0 z-[200] flex justify-end" style={themeVars}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeDrawer} />
+          <div className={`relative ${drawerFullScreen ? "w-[90vw] max-w-[1200px]" : "w-full max-w-lg"} bg-[var(--crm-surface)] border-l border-[var(--crm-border)] overflow-y-auto transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`} style={{ boxShadow: isDark ? "-8px 0 30px rgba(0,0,0,0.7)" : "-8px 0 30px rgba(0,0,0,0.15)" }}>
             {drawerLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="w-8 h-8 border-2 border-ember border-t-transparent rounded-full animate-spin" />
@@ -1393,7 +1454,8 @@ export function CRMDashboard() {
               </div>
             ) : selectedUser && (
               <div className="p-6 space-y-6">
-                <button onClick={closeDrawer} className="absolute top-4 right-4 text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition w-8 h-8 rounded-lg hover:bg-[var(--crm-elevated)] flex items-center justify-center">✕</button>
+                <button onClick={() => setDrawerFullScreen(!drawerFullScreen)} className="absolute top-4 right-16 text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition w-8 h-8 rounded-lg hover:bg-[var(--crm-elevated)] flex items-center justify-center">{drawerFullScreen ? "➖" : "🔲"}</button>
+<button onClick={closeDrawer} className="absolute top-4 right-4 text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition w-8 h-8 rounded-lg hover:bg-[var(--crm-elevated)] flex items-center justify-center">✕</button>
 
                 {/* Contact Card */}
                 <div className="border-b border-[var(--crm-border-subtle)] pb-6">
@@ -1542,11 +1604,34 @@ export function CRMDashboard() {
                       {noteSaving ? "..." : "📝"}
                     </button>
                   </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className={`space-y-2 overflow-y-auto ${drawerFullScreen ? "max-h-[60vh]" : "max-h-[350px]"}`}>
                     {selectedUser.notes.map((note) => (
-                      <div key={note.id} className="rounded-lg bg-[var(--crm-card)] border border-[var(--crm-border)] px-3.5 py-3">
-                        <p className="text-[var(--crm-text)] text-xs leading-relaxed whitespace-pre-wrap">{note.body}</p>
-                        <p className="text-[var(--crm-faint)] text-[10px] mt-1.5">{new Date(note.created_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                      <div key={note.id} className="rounded-lg bg-[var(--crm-card)] border border-[var(--crm-border)] px-3.5 py-3 group">
+                        {editingNoteId === note.id ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={editingNoteBody}
+                              onChange={(e) => setEditingNoteBody(e.target.value)}
+                              className="w-full bg-[var(--crm-elevated)] border border-[var(--crm-border)] rounded-lg p-2 text-sm text-[var(--crm-text)] focus:outline-none focus:border-[var(--crm-ember-border)] resize-none"
+                              rows={4}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => setEditingNoteId(null)} className="px-3 py-1 text-xs text-[var(--crm-muted)] hover:text-[var(--crm-text)]">Anuluj</button>
+                              <button onClick={() => updateNote(note.id, editingNoteBody)} className="px-3 py-1 bg-[var(--crm-focus)] text-white text-xs rounded hover:opacity-90">Zapisz</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-start gap-4">
+                              <p className="text-[var(--crm-text)] text-xs leading-relaxed whitespace-pre-wrap flex-1">{note.body}</p>
+                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => { setEditingNoteId(note.id); setEditingNoteBody(note.body); }} className="text-[var(--crm-muted)] hover:text-[var(--crm-focus)]" title="Edytuj">✎</button>
+                                <button onClick={() => deleteNote(note.id)} className="text-[var(--crm-muted)] hover:text-[var(--crm-accent-red)]" title="Usuń">🗑️</button>
+                              </div>
+                            </div>
+                            <p className="text-[var(--crm-faint)] text-[10px] mt-1.5">{new Date(note.created_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                          </>
+                        )}
                       </div>
                     ))}
                     {selectedUser.notes.length === 0 && <p className="text-[var(--crm-faint)] text-xs">Brak notatek</p>}
@@ -1673,7 +1758,7 @@ function FilterSelect({ value, onChange, options }: { value: string; onChange: (
 }
 
 function AlertPill({ color, label, bgVar }: { color: string; label: string; bgVar: string }) {
-  return <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase" style={{ backgroundColor: `var(${bgVar})`, color }}>{label}</span>;
+  return <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap" style={{ backgroundColor: `var(${bgVar})`, color }}>{label}</span>;
 }
 
 function ActionBtn({ children, onClick, href, title, color }: { children: React.ReactNode; onClick?: () => void; href?: string; title: string; color: string }) {
