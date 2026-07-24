@@ -19,6 +19,17 @@ import { TableSkeleton } from "./TableSkeleton";
 
 // ─── Types ───────────────────────────────────────────────────
 
+type PastSubscription = {
+  subscription_id: string;
+  plan_display_name: string;
+  sub_status: string;
+  period_start: string;
+  period_end: string;
+  tokens_limit: number;
+  tokens_used: number;
+  total_sessions: number;
+};
+
 type CRMSubscriber = {
   user_id: string;
   first_name: string;
@@ -27,6 +38,8 @@ type CRMSubscriber = {
   phone: string;
   professional_title: string;
   created_at: string;
+  first_app_login_at?: string;
+  is_test?: boolean;
   subscription_id: string;
   plan_tier: string;
   plan_display_name: string;
@@ -46,6 +59,7 @@ type CRMSubscriber = {
   urgency_score: number;
   org_id: string;
   org_name: string;
+  past_subscriptions?: PastSubscription[];
 };
 
 type UserDetail = {
@@ -56,6 +70,8 @@ type UserDetail = {
   phone: string;
   professional_title: string;
   created_at: string;
+  first_app_login_at?: string;
+  is_test?: boolean;
   plan_tier: string;
   sub_status: string;
   tokens_remaining: number;
@@ -103,6 +119,8 @@ type FilterState = {
   status: string;
   alert: string;
   search: string;
+  app_delay: string;
+  show_test: boolean;
 };
 
 // ─── Constants ───────────────────────────────────────────────
@@ -129,6 +147,13 @@ const ALERT_OPTIONS = [
   { value: "critical", label: "🔴 Krytyczne (1 lub mniej)" },
   { value: "warning", label: "🟡 Ostrzeżenie (3 lub mniej)" },
   { value: "expiring", label: "🟣 Wygasa (3 dni lub mniej)" },
+];
+
+const APP_DELAY_OPTIONS = [
+  { value: "", label: "📱 Wszyscy (apka)" },
+  { value: "24h", label: "📱 Brak w apce (>24h)" },
+  { value: "48h", label: "📱 Brak w apce (>48h)" },
+  { value: "7d", label: "📱 Brak w apce (>7d)" },
 ];
 
 const EMAIL_TEMPLATES = [
@@ -408,9 +433,16 @@ export function CRMDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(() => {
-    if (typeof window === "undefined") return { tier: "", status: "", alert: "", search: "" };
+    if (typeof window === "undefined") return { tier: "", status: "", alert: "", search: "", app_delay: "", show_test: false };
     const p = new URLSearchParams(window.location.search);
-    return { tier: p.get("tier") || "", status: p.get("status") || "", alert: p.get("alert") || "", search: p.get("search") || "" };
+    return {
+      tier: p.get("tier") || "",
+      status: p.get("status") || "",
+      alert: p.get("alert") || "",
+      search: p.get("search") || "",
+      app_delay: p.get("app_delay") || "",
+      show_test: p.get("show_test") === "1" || p.get("show_test") === "true",
+    };
   });
 
   // Debounced search
@@ -422,16 +454,27 @@ export function CRMDashboard() {
     if (typeof window === "undefined") return 1;
     return parseInt(new URLSearchParams(window.location.search).get("page") || "1");
   });
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(() => {
+    if (typeof window === "undefined") return 100;
+    const ps = new URLSearchParams(window.location.search).get("pageSize") || new URLSearchParams(window.location.search).get("per_page");
+    return ps ? parseInt(ps) : 100;
+  });
   const [totalFiltered, setTotalFiltered] = useState(0);
   const [totalAll, setTotalAll] = useState(0);
 
   // Global stats (KPI chips — always full database)
   const [globalStats, setGlobalStats] = useState<GlobalStats>({ total: 0, critical: 0, warning: 0, expiring: 0, churned: 0 });
 
-  // Sorting
-  const [sortColumn, setSortColumn] = useState<string>("urgency");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  // Sorting — default to created_at DESC (Marcin's request #1)
+  const [sortColumn, setSortColumn] = useState<string>(() => {
+    if (typeof window === "undefined") return "created_at";
+    return new URLSearchParams(window.location.search).get("sort") || "created_at";
+  });
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(() => {
+    if (typeof window === "undefined") return "desc";
+    const dir = new URLSearchParams(window.location.search).get("dir");
+    return dir === "asc" ? "asc" : "desc";
+  });
 
   // Bulk selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -447,6 +490,9 @@ export function CRMDashboard() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
+
+  // Expanded accordion rows for user subscription history
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
   // Notes
   const [newNote, setNewNote] = useState("");
@@ -481,11 +527,16 @@ export function CRMDashboard() {
     if (filters.status) p.set("status", filters.status);
     if (filters.alert) p.set("alert", filters.alert);
     if (filters.search) p.set("search", filters.search);
+    if (filters.app_delay) p.set("app_delay", filters.app_delay);
+    if (filters.show_test) p.set("show_test", "1");
     if (page > 1) p.set("page", String(page));
+    if (perPage !== 100) p.set("pageSize", String(perPage));
+    if (sortColumn !== "created_at") p.set("sort", sortColumn);
+    if (sortDirection !== "desc") p.set("dir", sortDirection);
     const qs = p.toString();
     const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
     window.history.replaceState(null, "", url);
-  }, [filters, page]);
+  }, [filters, page, perPage, sortColumn, sortDirection]);
 
   // Debounce search input → filters.search
   useEffect(() => {
@@ -507,7 +558,11 @@ export function CRMDashboard() {
       if (filters.tier) params.set("tier", filters.tier);
       if (filters.status) params.set("status", filters.status);
       if (filters.alert) params.set("alert", filters.alert);
-      if (filters.search) params.set("search", filters.search); // P2.4: send search to backend
+      if (filters.search) params.set("search", filters.search);
+      if (filters.app_delay) params.set("app_delay", filters.app_delay);
+      if (filters.show_test) params.set("show_test", "1");
+      params.set("sort", sortColumn);
+      params.set("dir", sortDirection);
       params.set("page", String(page));
       params.set("per_page", String(perPage));
       const qs = params.toString();
@@ -523,7 +578,7 @@ export function CRMDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [filters.tier, filters.status, filters.alert, filters.search, page, perPage]);
+  }, [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay, filters.show_test, sortColumn, sortDirection, page, perPage]);
 
   const fetchFollowUps = useCallback(async () => {
     try {
@@ -746,29 +801,14 @@ export function CRMDashboard() {
 
   // ─── Sorting ───────────────────────────────────────────────
 
-  const sorted = useMemo(() => {
-    return [...subscribers].sort((a, b) => {
-      const dir = sortDirection === "asc" ? 1 : -1;
-      switch (sortColumn) {
-        case "credits": return (a.tokens_remaining - b.tokens_remaining) * dir;
-        case "sessions": return (a.total_sessions - b.total_sessions) * dir;
-        case "renewal": return (a.days_until_renewal - b.days_until_renewal) * dir;
-        case "activity": {
-          const aDate = a.last_session_at || "1970-01-01";
-          const bDate = b.last_session_at || "1970-01-01";
-          return aDate.localeCompare(bDate) * dir;
-        }
-        default: return (a.urgency_score - b.urgency_score) * -dir;
-      }
-    });
-  }, [subscribers, sortColumn, sortDirection]);
+  const sorted = subscribers;
 
   const toggleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection(column === "urgency" ? "desc" : "asc");
+      setSortDirection(column === "created_at" || column === "urgency" ? "desc" : "asc");
     }
   };
 
@@ -897,18 +937,83 @@ export function CRMDashboard() {
     return { pct, color: "bg-aurora" };
   };
 
-  // CSV export
-  const exportCSV = () => {
-    const headers = ["Imię","Nazwisko","Email","Telefon","Plan","Status","Sesje","Kredyty użyte","Kredyty pozostałe","Limit","Koniec okresu","Dni do odnowienia","Alert","Pilność","Dołączył"];
-    const rows = sorted.map((s) => [s.first_name, s.last_name, s.email, s.phone, s.plan_display_name, s.sub_status, s.total_sessions, s.tokens_used, s.tokens_remaining, s.tokens_limit, s.period_end, s.days_until_renewal, s.credit_alert || s.expiry_alert || "-", s.urgency_score, s.created_at]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+  // CSV export with UTF-8 BOM, field escaping, and optional full database export
+  const exportCSV = async (exportAll = false) => {
+    let dataset = sorted;
+    if (exportAll) {
+      showToast("⏳ Pobieranie pełnej bazy do eksportu...");
+      try {
+        const params = new URLSearchParams();
+        if (filters.tier) params.set("tier", filters.tier);
+        if (filters.status) params.set("status", filters.status);
+        if (filters.alert) params.set("alert", filters.alert);
+        if (filters.search) params.set("search", filters.search);
+        if (filters.app_delay) params.set("app_delay", filters.app_delay);
+        if (filters.show_test) params.set("show_test", "1");
+        params.set("sort", sortColumn);
+        params.set("dir", sortDirection);
+        params.set("page", "1");
+        params.set("per_page", "10000");
+        const resp = await crmFetch(`/admin/crm/subscribers?${params.toString()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          dataset = data.subscribers || dataset;
+        }
+      } catch {
+        showToast("⚠️ Nie udało się pobrać całej bazy — eksportowanie bieżącej strony");
+      }
+    }
+
+    const esc = (val: any) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+    const headers = [
+      "Imię", "Nazwisko", "Email", "Telefon", "Tytuł",
+      "Konto założone", "Pierwsze zalogowanie w apce",
+      "Plan", "Status", "Dni do odnowienia",
+      "Kredyty pozostałe", "Kredyty użyte", "Limit",
+      "Sesje", "Ostatnia sesja", "Alert", "Pilność"
+    ];
+
+    const rows = dataset.map((s) => [
+      esc(s.first_name),
+      esc(s.last_name),
+      esc(s.email),
+      esc(s.phone),
+      esc(s.professional_title),
+      esc(formatDateDot(s.created_at)),
+      esc(s.first_app_login_at ? formatDateDot(s.first_app_login_at) : "Brak"),
+      esc(s.plan_display_name),
+      esc(s.sub_status),
+      esc(s.days_until_renewal),
+      esc(s.tokens_remaining),
+      esc(s.tokens_used),
+      esc(s.tokens_limit),
+      esc(s.total_sessions),
+      esc(s.last_session_at || "-"),
+      esc(s.credit_alert || s.expiry_alert || "-"),
+      esc(s.urgency_score),
+    ]);
+
+    const BOM = "\uFEFF"; // UTF-8 Byte Order Mark for Excel
+    const csvContent = BOM + [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `superwizor-crm-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `superwizor-crm-${exportAll ? "calosc" : "strona"}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    showToast(`📥 Wyeksportowano ${dataset.length} rekordów do CSV`);
+  };
+
+  // Helper to format YYYY-MM-DD or ISO string to DD.MM.RRRR
+  const formatDateDot = (dateStr: string) => {
+    if (!dateStr) return "-";
+    const clean = dateStr.slice(0, 10);
+    const parts = clean.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return dateStr;
   };
 
   // ─── Quick date helpers ────────────────────────────────────
@@ -927,7 +1032,7 @@ export function CRMDashboard() {
   };
 
   // Active filters count
-  const activeFilterCount = [filters.tier, filters.status, filters.alert, filters.search].filter(Boolean).length;
+  const activeFilterCount = [filters.tier, filters.status, filters.alert, filters.search, filters.app_delay].filter(Boolean).length + (filters.show_test ? 1 : 0);
 
   // Priority inbox items — P3.8: show overdue (due_date < today) + today's (due_date == today)
   const today = new Date().toISOString().slice(0, 10);
@@ -947,15 +1052,18 @@ export function CRMDashboard() {
             <p className="text-[var(--crm-muted)] mt-0.5 text-sm">{t("subhead")}</p>
           </div>
         </div>
-        <div className="flex gap-2 self-start sm:self-auto">
+        <div className="flex gap-2 self-start sm:self-auto flex-wrap">
           <button onClick={toggleTheme} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] w-10 h-10 flex items-center justify-center text-base hover:bg-[var(--crm-border)] transition" title={isDark ? "Tryb jasny" : "Tryb ciemny"}>
             {isDark ? "☀️" : "🌙"}
           </button>
-          <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] hover:border-[var(--crm-muted)] transition" title="Odśwież dane">
+          <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] hover:border-[var(--crm-muted)] transition" title="Odśwież dane">
             ↻ Odśwież
           </button>
-          <button onClick={exportCSV} className="rounded-lg bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">
-            📥 Eksport CSV
+          <button onClick={() => void exportCSV(false)} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] transition" title="Eksportuj wybraną stronę">
+            📄 CSV Strona
+          </button>
+          <button onClick={() => void exportCSV(true)} className="rounded-lg bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] px-3.5 py-2.5 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition" title="Eksportuj całą bazę z wybranymi filtrami">
+            📥 CSV Całość
           </button>
         </div>
       </header>
@@ -1024,23 +1132,23 @@ export function CRMDashboard() {
       {/* ── KPI Chips ────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
         <KPIChip label="Łącznie" value={globalStats.total} color="#c9d1d9" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "", status: "", tier: "" }));
+          setFilters((f) => ({ ...f, alert: "", status: "", tier: "", app_delay: "" }));
           setPage(1);
         }} />
         <KPIChip label="Krytyczne" value={globalStats.critical} color="#ef4444" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "critical", status: "", tier: "" }));
+          setFilters((f) => ({ ...f, alert: "critical", status: "", tier: "", app_delay: "" }));
           setPage(1);
         }} />
         <KPIChip label="Ostrzeżenie" value={globalStats.warning} color="#f97316" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "warning", status: "", tier: "" }));
+          setFilters((f) => ({ ...f, alert: "warning", status: "", tier: "", app_delay: "" }));
           setPage(1);
         }} />
         <KPIChip label="Wygasa" value={globalStats.expiring} color="#a855f7" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "expiring", status: "", tier: "" }));
+          setFilters((f) => ({ ...f, alert: "expiring", status: "", tier: "", app_delay: "" }));
           setPage(1);
         }} />
         <KPIChip label="Churned" value={globalStats.churned} color="#6b7280" onClick={() => {
-          setFilters((f) => ({ ...f, alert: "", status: "CANCELED", tier: "" }));
+          setFilters((f) => ({ ...f, alert: "", status: "CANCELED", tier: "", app_delay: "" }));
           setPage(1);
         }} />
       </div>
@@ -1050,6 +1158,21 @@ export function CRMDashboard() {
         <FilterSelect value={filters.tier} onChange={(v) => updateFilter("tier", v)} options={TIER_OPTIONS} />
         <FilterSelect value={filters.status} onChange={(v) => updateFilter("status", v)} options={STATUS_OPTIONS} />
         <FilterSelect value={filters.alert} onChange={(v) => updateFilter("alert", v)} options={ALERT_OPTIONS} />
+        <FilterSelect value={filters.app_delay} onChange={(v) => updateFilter("app_delay", v)} options={APP_DELAY_OPTIONS} />
+        <button
+          onClick={() => {
+            setFilters((f) => ({ ...f, show_test: !f.show_test }));
+            setPage(1);
+          }}
+          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+            filters.show_test
+              ? "bg-[var(--crm-purple-bg)] border-[var(--crm-purple-border)] text-[var(--crm-text)]"
+              : "bg-[var(--crm-surface)] border-[var(--crm-border)] text-[var(--crm-muted)] hover:text-[var(--crm-text)]"
+          }`}
+          title="Pokaż konta oznaczone jako testowe/deweloperskie"
+        >
+          {filters.show_test ? "🧪 Ukryj testowe" : "👻 Pokaż testowe"}
+        </button>
         <div className="relative flex-1 min-w-[220px]">
           <input
             type="search"
@@ -1062,7 +1185,7 @@ export function CRMDashboard() {
         </div>
         {activeFilterCount > 0 && (
           <button
-            onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "" }); setSearchInput(""); setPage(1); }}
+            onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "", app_delay: "", show_test: false }); setSearchInput(""); setPage(1); }}
             className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] px-3 py-2.5 text-xs font-semibold hover:text-[var(--crm-text)] hover:bg-[var(--crm-border)] transition"
           >
             ✕ Wyczyść ({activeFilterCount})
@@ -1097,11 +1220,12 @@ export function CRMDashboard() {
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-                className="rounded-lg bg-[var(--crm-surface)] border border-[var(--crm-border)] text-[var(--crm-text)] px-2 py-1 text-xs focus:outline-none focus:border-[var(--crm-focus)] cursor-pointer"
+                className="rounded-lg bg-[var(--crm-surface)] border border-[var(--crm-border)] text-[var(--crm-text)] px-2 py-1 text-xs focus:outline-none focus:border-[var(--crm-focus)] cursor-pointer font-semibold"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
+                <option value={200}>200</option>
               </select>
             </div>
           </div>
@@ -1118,7 +1242,8 @@ export function CRMDashboard() {
                       title="Zaznacz / odznacz wszystkich"
                     />
                   </th>
-                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)]">Użytkownik</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("name")}>Użytkownik{sortIndicator("name")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("created_at")}>Konto założone{sortIndicator("created_at")}</th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)]">Plan</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("credits")}>Kredyty{sortIndicator("credits")}</th>
                   <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--crm-muted)] cursor-pointer hover:text-[var(--crm-text)] transition select-none" onClick={() => toggleSort("sessions")}>Sesje{sortIndicator("sessions")}</th>
@@ -1133,7 +1258,7 @@ export function CRMDashboard() {
                   const creditBar = getCreditBarInfo(s.tokens_remaining, s.tokens_limit);
                   return (
                     <tr
-                      key={s.subscription_id}
+                      key={s.subscription_id || s.user_id}
                       onClick={() => openUserDetail(s.user_id)}
                       className={`border-t border-[var(--crm-border-subtle)] hover:bg-[var(--crm-card)] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-[var(--crm-ember-faint)]" : idx % 2 === 1 ? "bg-[var(--crm-surface)]" : "bg-[var(--crm-bg)]"}`}
                     >
@@ -1151,10 +1276,29 @@ export function CRMDashboard() {
                             {getInitials(s.first_name, s.last_name)}
                           </div>
                           <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="text-[var(--crm-text)] font-semibold truncate">{s.first_name} {s.last_name}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[var(--crm-text)] font-semibold truncate">{s.first_name} {s.last_name}</span>
+                              {s.is_test && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--crm-purple-bg)] text-[var(--crm-purple-border)] border border-[var(--crm-purple-border)]">
+                                  🧪 Test
+                                </span>
+                              )}
+                              {s.first_app_login_at ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--crm-success-bg)] text-[var(--crm-accent-green)] border border-[var(--crm-success-border)]" title={`Pierwsze zalogowanie w apce: ${s.first_app_login_at}`}>
+                                  📱 Apka
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--crm-warning-bg)] text-[var(--crm-ember-text)]" title="Brak zalogowania w aplikacji Flutter">
+                                  ⚠️ Brak w apce
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[var(--crm-muted)] text-xs truncate">{s.email}</span>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-[var(--crm-text)] font-medium">
+                        {formatDateDot(s.created_at)}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getTierBadge(s.plan_tier, isDark)}`}>{s.plan_display_name}</span>

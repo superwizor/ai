@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { AboutFounders, Founder } from "@/components/marketing/AboutFounders";
+import { TRIAL_COPY } from "@/lib/billing/plans";
 
 export async function generateMetadata({
   params,
@@ -257,10 +258,11 @@ export default async function AboutPage({
                 ? "Try Superwizor AI in your practice"
                 : "Wypróbuj Superwizor AI w swoim gabinecie"}
             </h2>
+            {/* 🚨 Session count from TRIAL_COPY (src/lib/billing/plans.ts) — never hardcode */}
             <p className="font-sans text-mist/80 mt-4 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
               {locale === "en"
-                ? "Start with 5 free sessions. Test all templates and see how cognitive release works."
-                : "Rozpocznij od 5 darmowych sesji. Przetestuj wszystkie szablony i zobacz, jak działa uwolnienie poznawcze."}
+                ? `${TRIAL_COPY.en.ctaSub} Test all templates and see how cognitive release works.`
+                : `${TRIAL_COPY.pl.ctaSub} Przetestuj wszystkie szablony i zobacz, jak działa uwolnienie poznawcze.`}
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-10">
               <a

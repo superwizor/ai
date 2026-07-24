@@ -1708,8 +1708,8 @@ function BillingSection({
               </p>
               <p>
                 {locale === "pl"
-                  ? `Twoja subskrypcja została anulowana i wygaśnie z dniem ${periodEnd}. Po tym terminie Twoje konto powróci do darmowego limitu 5 sesji. Wszystkie zapisane dane sesji pozostaną bezpieczne.`
-                  : `Your subscription has been canceled and will expire on ${periodEnd}. After this date, your account will revert to the free limit of 5 sessions. All your session data remains safe.`}
+                  ? `Twoja subskrypcja została anulowana i wygaśnie z dniem ${periodEnd}. Po tym terminie nie będziesz mógł/mogła zlecać nowych transkrypcji — dotychczasowe dane sesji pozostaną bezpieczne i dostępne. Aby kontynuować, wykup nowy plan.`
+                  : `Your subscription has been canceled and will expire on ${periodEnd}. After this date, you won't be able to request new transcriptions — your existing session data remains safe and accessible. To continue, purchase a new plan.`}
               </p>
             </div>
           </div>

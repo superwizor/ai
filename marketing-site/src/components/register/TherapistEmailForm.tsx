@@ -48,7 +48,7 @@ import {
   PhoneInput,
 } from "@/components/forms/Field";
 
-import { lookupPlan, formatPrice } from "@/lib/billing/plans";
+import { lookupPlan, formatPrice, TRIAL_COPY } from "@/lib/billing/plans";
 import type { PlanTier, BillingCycle } from "@/lib/billing/plans";
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
@@ -135,13 +135,15 @@ type ContentBlock = {
   footnote: string;
 };
 
+// 🚨 Session counts come from TRIAL_COPY (src/lib/billing/plans.ts).
+//    NEVER hardcode session numbers here — change tokensPerPeriod in plans.ts.
 const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
   trial: {
     pl: {
       badge: "Darmowy start",
-      heading: "Zacznij od 5 sesji za darmo",
+      heading: TRIAL_COPY.pl.heading,
       features: [
-        "5 sesji terapeutycznych przez 30 dni",
+        TRIAL_COPY.pl.feature,
         "Pełny dostęp do wszystkich funkcji",
         "Bez podawania karty kredytowej",
         "Możliwość rezygnacji w każdej chwili",
@@ -150,9 +152,9 @@ const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }
     },
     en: {
       badge: "Free start",
-      heading: "Start with 5 free sessions",
+      heading: TRIAL_COPY.en.heading,
       features: [
-        "5 therapy sessions for 30 days",
+        TRIAL_COPY.en.feature,
         "Full access to all features",
         "No credit card required",
         "Cancel at any time",

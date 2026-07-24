@@ -749,7 +749,7 @@ abstract class AppLocalizations {
   /// No description provided for @auth_toggle_to_register.
   ///
   /// In pl, this message translates to:
-  /// **'Nie masz konta? Załóż'**
+  /// **'Nie masz konta? '**
   String get auth_toggle_to_register;
 
   /// No description provided for @avatar_customize_background_color.
@@ -2663,6 +2663,42 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Utwórz konto'**
   String get login_register_title;
+
+  /// No description provided for @login_account_info_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Jak założyć konto?'**
+  String get login_account_info_title;
+
+  /// No description provided for @login_account_info_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rejestracja i konfiguracja'**
+  String get login_account_info_subtitle;
+
+  /// No description provided for @login_account_info_body_1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ze względów bezpieczeństwa oraz spójności konfiguracji Twojej praktyki terapeutycznej, rejestracja nowych kont odbywa się wyłącznie na naszej stronie internetowej.'**
+  String get login_account_info_body_1;
+
+  /// No description provided for @login_account_info_body_2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Jeśli posiadasz już aktywne konto, po prostu zaloguj się swoimi danymi.'**
+  String get login_account_info_body_2;
+
+  /// No description provided for @login_back_to_sign_in.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć do logowania'**
+  String get login_back_to_sign_in;
+
+  /// No description provided for @auth_toggle_register_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dowiedz się więcej'**
+  String get auth_toggle_register_action;
 
   /// No description provided for @login_subtitle.
   ///

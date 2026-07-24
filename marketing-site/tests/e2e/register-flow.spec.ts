@@ -53,13 +53,13 @@ test.describe("Happy Path: Cennik", () => {
     await expect(page.locator("#cennik")).toBeVisible();
   });
 
-  test("Trial card shows 5 sessions / 30 days", async ({ page }) => {
+  test("Trial card shows 10 sessions / 30 days", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/`);
     const cennik = page.locator("#cennik");
     const trialText = forLocale({
-      pl: /5 sesji.*30 dni|5.*sesji/i,
-      en: /5 sessions.*30 days/i,
+      pl: /10 sesji.*30 dni|10.*sesji/i,
+      en: /10 sessions.*30 days/i,
     });
     await expect(cennik).toContainText(trialText);
   });
@@ -180,8 +180,8 @@ test.describe("Happy Path: Registration", () => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
     const trialInfo = forLocale({
-      pl: /5 sesji|30 dni/i,
-      en: /5 sessions|30 days/i,
+      pl: /10 sesji|30 dni/i,
+      en: /10 sessions|30 days/i,
     });
     await expect(page.locator("body")).toContainText(trialInfo);
   });
@@ -342,8 +342,8 @@ test.describe("Bad Path: Invalid Plans", () => {
     await expect(page.locator('#start-trial-btn')).toBeVisible();
     // Should show trial info
     const trialInfo = forLocale({
-      pl: /5 sesji|30 dni/i,
-      en: /5 sessions|30 days/i,
+      pl: /10 sesji|30 dni/i,
+      en: /10 sessions|30 days/i,
     });
     await expect(page.locator("body")).toContainText(trialInfo);
   });

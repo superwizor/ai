@@ -289,7 +289,7 @@ func (q *Queries) ListPendingManagerInvitationsByOrg(ctx context.Context, organi
 }
 
 const listTherapistsInOrgAll = `-- name: ListTherapistsInOrgAll :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
 WHERE organization_id = $1 AND role = 'THERAPIST' AND deleted_at IS NULL
 ORDER BY created_at ASC
 `
@@ -332,6 +332,7 @@ func (q *Queries) ListTherapistsInOrgAll(ctx context.Context, organizationID pgt
 			&i.ReportPreferences,
 			&i.IsActive,
 			&i.DeactivatedAt,
+			&i.FirstAppLoginAt,
 		); err != nil {
 			return nil, err
 		}

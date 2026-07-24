@@ -143,6 +143,9 @@ type Querier interface {
 	// timestamp of the LAST deactivation (cleared on reactivate).
 	SetUserActiveStatus(ctx context.Context, arg SetUserActiveStatusParams) (User, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
+	// Sets first_app_login_at timestamp on the user's first login from the Flutter app.
+	// Idempotent: only updates if first_app_login_at IS NULL.
+	StampFirstAppLogin(ctx context.Context, id uuid.UUID) error
 	// Selective update — pass NULL on any narg to keep the existing value.
 	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	// Selective UPDATE — every column uses COALESCE(sqlc.narg, current). Pass

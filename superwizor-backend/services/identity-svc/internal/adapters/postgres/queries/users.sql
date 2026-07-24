@@ -123,3 +123,11 @@ RETURNING report_preferences;
 SELECT * FROM users
 WHERE organization_id = $1 AND role = 'ORG_ADMIN' AND deleted_at IS NULL
 ORDER BY created_at ASC;
+
+-- name: StampFirstAppLogin :exec
+-- Sets first_app_login_at timestamp on the user's first login from the Flutter app.
+-- Idempotent: only updates if first_app_login_at IS NULL.
+UPDATE users
+SET first_app_login_at = now()
+WHERE id = $1 AND first_app_login_at IS NULL AND deleted_at IS NULL;
+

@@ -18,7 +18,7 @@ SET firebase_uid     = $2,
     email            = $3,
     has_accepted_tos = TRUE
 WHERE id = $1 AND role = 'PATIENT' AND deleted_at IS NULL
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at
 `
 
 type ActivatePatientUserParams struct {
@@ -59,6 +59,7 @@ func (q *Queries) ActivatePatientUser(ctx context.Context, arg ActivatePatientUs
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }

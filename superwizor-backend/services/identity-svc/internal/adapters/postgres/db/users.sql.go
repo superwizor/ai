@@ -13,7 +13,7 @@ import (
 )
 
 const adminListUsers = `-- name: AdminListUsers :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
 WHERE deleted_at IS NULL
   AND ($1::uuid IS NULL OR organization_id = $1::uuid)
   AND ($2::user_role IS NULL OR role = $2::user_role)
@@ -81,6 +81,7 @@ func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) 
 			&i.ReportPreferences,
 			&i.IsActive,
 			&i.DeactivatedAt,
+			&i.FirstAppLoginAt,
 		); err != nil {
 			return nil, err
 		}
@@ -110,7 +111,7 @@ UPDATE users SET
     timezone              = COALESCE($14, timezone),
     billing_address_id    = COALESCE($15, billing_address_id)
 WHERE id = $16 AND deleted_at IS NULL
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at
 `
 
 type AdminUpdateUserParams struct {
@@ -181,6 +182,7 @@ func (q *Queries) AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }
@@ -203,7 +205,7 @@ INSERT INTO users (
     role, firebase_uid, email,
     first_name, last_name, ui_language, timezone, has_accepted_tos
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at
 `
 
 type CreateUserParams struct {
@@ -254,6 +256,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }
@@ -274,7 +277,7 @@ func (q *Queries) GetReportPreferences(ctx context.Context, id uuid.UUID) ([]byt
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users WHERE email = $1 AND deleted_at IS NULL
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users WHERE email = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, error) {
@@ -305,12 +308,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, erro
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }
 
 const getUserByFirebaseUID = `-- name: GetUserByFirebaseUID :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid *string) (User, error) {
@@ -341,12 +345,13 @@ func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid *string)
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users WHERE id = $1 AND deleted_at IS NULL
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -377,6 +382,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }
@@ -399,7 +405,7 @@ func (q *Queries) LinkUserToOrganization(ctx context.Context, arg LinkUserToOrga
 }
 
 const listManagersByOrganization = `-- name: ListManagersByOrganization :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
 WHERE organization_id = $1 AND role = 'ORG_ADMIN' AND deleted_at IS NULL
 ORDER BY created_at ASC
 `
@@ -440,6 +446,7 @@ func (q *Queries) ListManagersByOrganization(ctx context.Context, organizationID
 			&i.ReportPreferences,
 			&i.IsActive,
 			&i.DeactivatedAt,
+			&i.FirstAppLoginAt,
 		); err != nil {
 			return nil, err
 		}
@@ -452,7 +459,7 @@ func (q *Queries) ListManagersByOrganization(ctx context.Context, organizationID
 }
 
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
 WHERE organization_id = $1
   AND role = 'THERAPIST'
   AND deleted_at IS NULL
@@ -493,6 +500,7 @@ func (q *Queries) ListTherapistsByOrganization(ctx context.Context, organization
 			&i.ReportPreferences,
 			&i.IsActive,
 			&i.DeactivatedAt,
+			&i.FirstAppLoginAt,
 		); err != nil {
 			return nil, err
 		}
@@ -513,6 +521,19 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const stampFirstAppLogin = `-- name: StampFirstAppLogin :exec
+UPDATE users
+SET first_app_login_at = now()
+WHERE id = $1 AND first_app_login_at IS NULL AND deleted_at IS NULL
+`
+
+// Sets first_app_login_at timestamp on the user's first login from the Flutter app.
+// Idempotent: only updates if first_app_login_at IS NULL.
+func (q *Queries) StampFirstAppLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, stampFirstAppLogin, id)
+	return err
+}
+
 const updateProfile = `-- name: UpdateProfile :one
 UPDATE users SET
     first_name            = COALESCE($1, first_name),
@@ -528,7 +549,7 @@ UPDATE users SET
     billing_address_id    = COALESCE($11, billing_address_id),
     has_marketing_consent = COALESCE($12, has_marketing_consent)
 WHERE id = $13 AND deleted_at IS NULL
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at
 `
 
 type UpdateProfileParams struct {
@@ -595,6 +616,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (U
 		&i.ReportPreferences,
 		&i.IsActive,
 		&i.DeactivatedAt,
+		&i.FirstAppLoginAt,
 	)
 	return i, err
 }

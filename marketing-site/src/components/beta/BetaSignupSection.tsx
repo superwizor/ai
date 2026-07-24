@@ -62,7 +62,7 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
       items: [
         {
           q: "Co się stanie po 2 miesiącach?",
-          a: "Twoje konto przejdzie na plan darmowy (5 sesji / 30 dni). Możesz w każdej chwili przejść na plan płatny, by zachować pełny dostęp.",
+          a: "Po zakończeniu okresu beta Twoje konto pozostanie aktywne, ale nie będziesz mógł/mogła zlecać nowych transkrypcji. Możesz w każdej chwili wykupić plan płatny, by kontynuować korzystanie.",
         },
         {
           q: "Czy moje dane będą bezpieczne?",
@@ -130,7 +130,7 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
       items: [
         {
           q: "What happens after 2 months?",
-          a: "Your account will switch to the free plan (5 sessions / 30 days). You can upgrade to a paid plan at any time to keep full access.",
+          a: "After the beta period ends, your account will remain active, but you won't be able to request new transcriptions. You can purchase a paid plan at any time to continue.",
         },
         {
           q: "Is my data safe?",

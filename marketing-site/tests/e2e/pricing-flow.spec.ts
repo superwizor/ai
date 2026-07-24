@@ -42,7 +42,7 @@ test.describe("Pricing & CTA Flow", () => {
     await expect(navCta).toHaveClass(/bg-ember/);
   });
 
-  test("pricing section has correct trial info (5 sessions, 30 days)", async ({ page }) => {
+  test("pricing section has correct trial info (10 sessions, 30 days)", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/`);
 
@@ -50,8 +50,8 @@ test.describe("Pricing & CTA Flow", () => {
     await expect(pricingSection).toBeVisible();
 
     const trialText = forLocale({
-      pl: "5 sesji przez 30 dni",
-      en: "5 sessions for 30 days",
+      pl: "10 sesji przez 30 dni",
+      en: "10 sessions for 30 days",
     });
     await expect(pricingSection).toContainText(trialText);
   });
@@ -183,8 +183,8 @@ test.describe("Pricing & CTA Flow", () => {
     await page.goto(`${prefix}/register/therapist`);
 
     const pitchText = forLocale({
-      pl: /5 sesji.*30 dni/i,
-      en: /5.*sessions.*30 days/i,
+      pl: /10 sesji.*30 dni/i,
+      en: /10.*sessions.*30 days/i,
     });
     await expect(page.getByText(pitchText).first()).toBeVisible();
   });

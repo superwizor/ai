@@ -114,6 +114,7 @@ class AuthInterceptor extends ClientInterceptor {
   }
 
   Future<void> _authProvider(Map<String, String> metadata, String uri) async {
+    metadata['x-client-platform'] = 'flutter-app';
     final user = fb_auth.FirebaseAuth.instance.currentUser;
     if (user != null) {
       final token = await user.getIdToken();

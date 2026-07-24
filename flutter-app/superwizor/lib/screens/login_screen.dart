@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +9,6 @@ import '../providers/grpc_provider.dart';
 import '../services/grpc_client.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
-import 'legal_markdown_screen.dart';
 import '../analytics/analytics_collector.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,12 +49,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _nameCtrl = TextEditingController();
   late final PageController _pageCtrl;
   bool _loading = false;
   String? _error;
   bool _obscurePassword = true;
-  bool _tosAccepted = false;
 
   @override
   void initState() {
@@ -75,7 +71,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
-    _nameCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
   }
@@ -198,36 +193,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _submitRegister() async {
-    if (!_tosAccepted) {
-      final t = AppLocalizations.of(context);
-      setState(() => _error = t.login_accept_terms_error);
-      return;
-    }
-    setState(() { _loading = true; _error = null; });
-    final email = _emailCtrl.text.trim().toLowerCase();
-    final pass = _passwordCtrl.text;
-    try {
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email, password: pass,
-      );
-      TextInput.finishAutofillContext();
-      final nameParts = _nameCtrl.text.trim().split(' ');
-      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-      final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
-      if (!mounted) return;
-      final grpc = ref.read(grpcClientsProvider);
-      await _registerInIdentityService(grpc, cred.user!,
-          firstName: firstName, lastName: lastName);
-    } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() => _error = _friendlyError(e.code));
-    } catch (_) {
-      if (mounted) setState(() => _error = AppLocalizations.of(context).auth_error_generic);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   void _openForgotPassword() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -297,18 +262,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool get _isAndroid =>
       !kIsWeb && Theme.of(context).platform == TargetPlatform.android;
 
-  void _openLegal(String baseName, String title) {
-    final lang = Localizations.localeOf(context).languageCode;
-    final path = lang == 'en'
-        ? 'assets/legal/${baseName}_en.md'
-        : 'assets/legal/$baseName.md';
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
-      ),
-    );
-  }
-
   // ── Build ───────────────────────────────────────────────────────────────
 
   @override
@@ -326,7 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: SafeArea(
           child: PageView(
             controller: _pageCtrl,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
             children: [
               _buildPage(_buildLoginContent()),
               _buildPage(_buildRegisterContent()),
@@ -403,8 +356,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _buildCta(t.login_btn_sign_in, _loading ? null : _submitLogin),
           const SizedBox(height: 28),
           _buildModeSwitch(
-            '${t.auth_toggle_to_register.split('?').first}? ',
-            t.login_btn_sign_up,
+            t.auth_toggle_to_register,
+            t.auth_toggle_register_action,
             _goToRegister,
           ),
         ],
@@ -412,59 +365,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // ── Register page ───────────────────────────────────────────────────────
+  // ── Account Creation Info page ──────────────────────────────────────────
 
   Widget _buildRegisterContent() {
     final t = AppLocalizations.of(context);
-    return AutofillGroup(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildLogo(),
-          const SizedBox(height: 28),
-          _buildTitle(t.login_register_title, t.login_register_subtitle),
-          const SizedBox(height: 36),
-          _buildSocialButtons(),
-          const SizedBox(height: 24),
-          _buildDivider(),
-          const SizedBox(height: 24),
-          _buildFloatingField(
-            controller: _nameCtrl,
-            label: t.login_name_field,
-            keyboardType: TextInputType.name,
-            autofillHints: const [AutofillHints.name],
-            prefixIcon: Icons.person_outline_rounded,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildLogo(),
+        const SizedBox(height: 28),
+        _buildTitle(t.login_account_info_title, ''),
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: _kWhite08,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kWhite15),
           ),
-          const SizedBox(height: 16),
-          _buildFloatingField(
-            controller: _emailCtrl,
-            label: t.auth_email_label,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            prefixIcon: Icons.mail_outline_rounded,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: _kWhite08,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.verified_user_outlined,
+                  color: _kEmber,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              RichText(
+                textAlign: TextAlign.center,
+                text: const TextSpan(
+                  style: TextStyle(
+                    fontFamily: _kFont, fontSize: 14,
+                    fontWeight: FontWeight.w400, color: _kWhite70,
+                    height: 1.5,
+                  ),
+                  children: [
+                    const TextSpan(
+                      text: 'Ze względów bezpieczeństwa oraz spójności konfiguracji Twojej praktyki terapeutycznej, rejestracja nowych kont odbywa się ',
+                    ),
+                    const TextSpan(
+                      text: 'wyłącznie na naszej stronie internetowej.',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: _kWhite,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                t.login_account_info_body_2,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: _kFont, fontSize: 14,
+                  fontWeight: FontWeight.w400, color: _kWhite70,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          _buildFloatingField(
-            controller: _passwordCtrl,
-            label: t.login_password_hint,
-            obscureText: _obscurePassword,
-            autofillHints: const [AutofillHints.newPassword],
-            prefixIcon: Icons.lock_outline_rounded,
-            suffixIcon: _buildVisibilityToggle(),
-          ),
-          const SizedBox(height: 20),
-          _buildTosCheckbox(),
-          const SizedBox(height: 20),
-          if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
-          _buildCta(t.login_btn_sign_up, _loading ? null : _submitRegister),
-          const SizedBox(height: 28),
-          _buildModeSwitch(
-            '${t.auth_toggle_to_login.split('?').first}? ',
-            t.login_btn_sign_in,
-            _goToLogin,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 32),
+        _buildCta(t.login_back_to_sign_in, _goToLogin),
+      ],
     );
   }
 
@@ -490,17 +461,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildTitle(String title, String subtitle) {
+  Widget _buildTitle(String title, [String? subtitle]) {
     return Column(children: [
       Text(title, textAlign: TextAlign.center, style: const TextStyle(
         fontFamily: _kFont, fontSize: 28, fontWeight: FontWeight.w700,
         color: _kWhite, height: 1.15, letterSpacing: -0.5,
       )),
-      const SizedBox(height: 8),
-      Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(
-        fontFamily: _kFont, fontSize: 15, fontWeight: FontWeight.w400,
-        color: _kWhite70, height: 1.4,
-      )),
+      if (subtitle != null && subtitle.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(
+          fontFamily: _kFont, fontSize: 15, fontWeight: FontWeight.w400,
+          color: _kWhite70, height: 1.4,
+        )),
+      ],
     ]);
   }
 
@@ -600,61 +573,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
         color: _kWhite40, size: 20,
       ),
-    );
-  }
-
-  Widget _buildTosCheckbox() {
-    final t = AppLocalizations.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 24, height: 24,
-          child: Checkbox(
-            value: _tosAccepted,
-            onChanged: _loading ? null : (v) => setState(() => _tosAccepted = v ?? false),
-            activeColor: _kEmber,
-            checkColor: _kObsidian,
-            side: const BorderSide(color: _kWhite40, width: 1.5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontFamily: _kFont, fontSize: 13,
-                fontWeight: FontWeight.w400, color: _kWhite70,
-                height: 1.5,
-              ),
-              children: [
-                TextSpan(text: t.login_accept_prefix),
-                TextSpan(
-                  text: t.settings_terms,
-                  style: const TextStyle(
-                    color: _kMint, fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                    decorationColor: _kMint,
-                  ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('terms', t.settings_terms),
-                ),
-                TextSpan(text: ' ${t.common_or} '),
-                TextSpan(
-                  text: t.login_accept_privacy,
-                  style: const TextStyle(
-                    color: _kMint, fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                    decorationColor: _kMint,
-                  ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('privacy_policy', t.login_privacy_policy_title),
-                ),
-                const TextSpan(text: ' Superwizor AI.'),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 

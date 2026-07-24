@@ -544,7 +544,7 @@ export function DashboardHub({ locale }: { locale: string }) {
                 </div>
                 <div>
                   <span className="block font-sans text-xs font-bold text-[#F2F0EA] mb-0.5">
-                    {locale === "en" ? "Unlimited Sessions" : "Bez limitów sesji"}
+                    {locale === "en" ? "Up to 90 sessions / month" : "Do 90 sesji miesięcznie"}
                   </span>
                   <span className="block font-sans text-[11px] text-[#8FA5A0] leading-relaxed">
                     {locale === "en"

@@ -63,6 +63,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, auth *AdminAuthMiddlew
 	mux.HandleFunc("POST /admin/renewal-reminders", schedAuth.Require(h.handleRenewalReminders))
 	mux.HandleFunc("GET /admin/crm/subscribers", auth.Require(h.handleCRMSubscribers))
 	mux.HandleFunc("POST /admin/crm/subscribers/bulk-delete", auth.Require(h.handleCRMBulkDelete))
+	mux.HandleFunc("POST /admin/crm/test-flag", auth.Require(h.handleCRMTestFlagToggle))
 }
 
 // ---------- reservation-expiry ----------
@@ -683,6 +684,8 @@ type CRMSubscriber struct {
 	Phone             string `json:"phone"`
 	ProfessionalTitle string `json:"professional_title"`
 	CreatedAt         string `json:"created_at"`
+	FirstAppLoginAt   string `json:"first_app_login_at,omitempty"`
+	IsTest            bool   `json:"is_test"`
 	// Subscription
 	SubscriptionID   string `json:"subscription_id"`
 	PlanTier         string `json:"plan_tier"`
@@ -730,14 +733,6 @@ type crmResponse struct {
 }
 
 // handleCRMSubscribers — GET /admin/crm/subscribers
-//
-// Returns enriched subscriber data for Marcin's CRM panel. Supports:
-//
-//	?tier=BETA|TRIAL|SOLO|PRO|CLINIC — filter by plan tier
-//	?status=ACTIVE|CANCELED|TRIALING — filter by sub status
-//	?alert=critical|warning — filter only users needing attention
-//
-// Sorted by urgency score by default (most critical first).
 func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.logger.InfoContext(ctx, "crm: subscribers list requested")
@@ -745,50 +740,55 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	tierFilter := r.URL.Query().Get("tier")
 	statusFilter := r.URL.Query().Get("status")
 	alertFilter := r.URL.Query().Get("alert")
+	appDelayFilter := r.URL.Query().Get("app_delay")
+	showTest := r.URL.Query().Get("show_test") == "1" || r.URL.Query().Get("show_test") == "true"
+	sortCol := r.URL.Query().Get("sort")
+	sortDir := r.URL.Query().Get("dir")
 	searchFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("search")))
 
 	// Pagination params
 	page := 1
-	perPage := 25
+	perPage := 100
 	if p := r.URL.Query().Get("page"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil && v > 0 {
 			page = v
 		}
 	}
 	if pp := r.URL.Query().Get("per_page"); pp != "" {
-		if v, err := strconv.Atoi(pp); err == nil && v > 0 && v <= 100 {
+		if v, err := strconv.Atoi(pp); err == nil && v > 0 && v <= 10000 {
 			perPage = v
 		}
 	}
 
-	// ── Global stats (unfiltered, for KPI chips) ──
+	// ── Global stats (unfiltered, for KPI chips — distinct users) ──
 	var globalStats CRMGlobalStats
+	testWhere := "AND tst.user_id IS NULL"
+	if showTest {
+		testWhere = ""
+	}
+
 	_ = h.pool.QueryRow(ctx, `
 		SELECT
-			COUNT(*) AS total,
-			COUNT(*) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) <= 1 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS critical,
-			COUNT(*) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) BETWEEN 2 AND 3 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS warning,
-			COUNT(*) FILTER (WHERE COALESCE(EXTRACT(DAY FROM s.current_period_end - now())::int, 999) <= 3) AS expiring,
-			COUNT(*) FILTER (WHERE s.status = 'CANCELED') AS churned
-		FROM subscriptions s
-		JOIN subscription_plans p ON p.id = s.plan_id
-		JOIN organizations o ON o.id = s.organization_id
-		JOIN users u ON u.organization_id = o.id
-		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
-			AND uc.period_start = s.current_period_start
+			COUNT(DISTINCT u.id) AS total,
+			COUNT(DISTINCT u.id) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) <= 1 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS critical,
+			COUNT(DISTINCT u.id) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) BETWEEN 2 AND 3 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS warning,
+			COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(EXTRACT(DAY FROM s.current_period_end - now())::int, 999) <= 3) AS expiring,
+			COUNT(DISTINCT u.id) FILTER (WHERE s.status = 'CANCELED') AS churned
+		FROM users u
+		JOIN organizations o ON o.id = u.organization_id
+		LEFT JOIN subscriptions s ON s.organization_id = o.id AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		LEFT JOIN subscription_plans p ON p.id = s.plan_id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id AND uc.period_start = s.current_period_start
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
-		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		LEFT JOIN crm_test_users tst ON tst.user_id = u.id
+		WHERE u.deleted_at IS NULL
 		  AND ex.user_id IS NULL
-		  AND u.deleted_at IS NULL
-		  AND u.email NOT LIKE 'kolodzmaciej%'
-		  AND u.email NOT LIKE '%@example.com'
-		  AND u.email NOT LIKE '%@superwizor.test'
-		  AND u.email NOT LIKE '%@test.pl'
+		  `+testWhere+`
 	`).Scan(&globalStats.Total, &globalStats.Critical, &globalStats.Warning, &globalStats.Expiring, &globalStats.Churned)
 
-	// ── Main subscriber query (with last_session_at + fixed days_until_renewal) ──
+	// ── Main subscriber query ──
 	rows, err := h.pool.Query(ctx, `
-		SELECT
+		SELECT DISTINCT ON (u.id)
 			u.id AS user_id,
 			COALESCE(u.first_name, '') AS first_name,
 			COALESCE(u.last_name, '') AS last_name,
@@ -796,11 +796,13 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			COALESCE(u.phone_number, '') AS phone,
 			COALESCE(u.professional_title, '') AS professional_title,
 			u.created_at AS user_created_at,
+			u.first_app_login_at,
+			(tst.user_id IS NOT NULL) AS is_test,
 
-			s.id AS sub_id,
+			COALESCE(s.id::text, '') AS sub_id,
 			COALESCE(p.tier::text, '') AS plan_tier,
-			COALESCE(p.display_name, p.tier::text) AS plan_display_name,
-			COALESCE(s.status::text, '') AS sub_status,
+			COALESCE(p.display_name, p.tier::text, 'Brak planu') AS plan_display_name,
+			COALESCE(s.status::text, 'INACTIVE') AS sub_status,
 			COALESCE(s.provider::text, '') AS provider,
 			s.current_period_start,
 			s.current_period_end,
@@ -815,12 +817,11 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 
 			o.id AS org_id,
 			COALESCE(o.legal_name, '') AS org_name
-		FROM subscriptions s
-		JOIN subscription_plans p ON p.id = s.plan_id
-		JOIN organizations o ON o.id = s.organization_id
-		JOIN users u ON u.organization_id = o.id
-		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
-			AND uc.period_start = s.current_period_start
+		FROM users u
+		JOIN organizations o ON o.id = u.organization_id
+		LEFT JOIN subscriptions s ON s.organization_id = o.id AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		LEFT JOIN subscription_plans p ON p.id = s.plan_id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id AND uc.period_start = s.current_period_start
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*)::int AS cnt
 			FROM sessions sess
@@ -832,15 +833,19 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			WHERE sess2.therapist_id = u.id
 		) last_sess ON true
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
-		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		LEFT JOIN crm_test_users tst ON tst.user_id = u.id
+		WHERE u.deleted_at IS NULL
 		  AND ex.user_id IS NULL
-		  AND u.deleted_at IS NULL
-		  AND u.email NOT LIKE 'kolodzmaciej%'
-		  AND u.email NOT LIKE '%@example.com'
-		  AND u.email NOT LIKE '%@superwizor.test'
-		  AND u.email NOT LIKE '%@test.pl'
-		ORDER BY s.current_period_end ASC
-		LIMIT 500
+		  `+testWhere+`
+		ORDER BY u.id,
+			CASE s.status
+				WHEN 'ACTIVE' THEN 1
+				WHEN 'TRIALING' THEN 2
+				WHEN 'PAST_DUE' THEN 3
+				WHEN 'CANCELED' THEN 4
+				ELSE 5
+			END ASC,
+			s.current_period_end DESC NULLS LAST
 	`)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "crm query", err)
@@ -852,13 +857,13 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	for rows.Next() {
 		var sub CRMSubscriber
 		var periodStart, periodEnd, userCreated time.Time
-		var lastSessionAt *time.Time
+		var firstAppLoginAt, lastSessionAt *time.Time
 		var daysUntilRenewal int
 		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
 
 		if err := rows.Scan(
 			&sub.UserID, &sub.FirstName, &sub.LastName, &sub.Email, &sub.Phone,
-			&sub.ProfessionalTitle, &userCreated,
+			&sub.ProfessionalTitle, &userCreated, &firstAppLoginAt, &sub.IsTest,
 			&sub.SubscriptionID, &sub.PlanTier, &sub.PlanDisplayName,
 			&sub.SubStatus, &sub.Provider,
 			&periodStart, &periodEnd, &daysUntilRenewal,
@@ -872,7 +877,12 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		}
 
 		sub.CreatedAt = userCreated.Format("2006-01-02")
-		sub.PeriodStart = periodStart.Format("2006-01-02")
+		if firstAppLoginAt != nil && !firstAppLoginAt.IsZero() {
+			sub.FirstAppLoginAt = firstAppLoginAt.Format("2006-01-02 15:04")
+		}
+		if !periodStart.IsZero() {
+			sub.PeriodStart = periodStart.Format("2006-01-02")
+		}
 		if !periodEnd.IsZero() && periodEnd.Year() > 2000 {
 			sub.PeriodEnd = periodEnd.Format("2006-01-02")
 			sub.DaysUntilRenewal = daysUntilRenewal
@@ -937,8 +947,29 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
-		// Server-side text search (P2.4 fix — search must run before
-		// pagination so totalFiltered reflects the real count)
+		// App delay filter (web registered users who haven't logged in to app)
+		if appDelayFilter != "" {
+			if firstAppLoginAt != nil && !firstAppLoginAt.IsZero() {
+				continue // User has logged in to app
+			}
+			hoursAgo := time.Since(userCreated).Hours()
+			switch appDelayFilter {
+			case "24h":
+				if hoursAgo < 24 {
+					continue
+				}
+			case "48h":
+				if hoursAgo < 48 {
+					continue
+				}
+			case "7d":
+				if hoursAgo < 168 {
+					continue
+				}
+			}
+		}
+
+		// Server-side text search
 		if searchFilter != "" {
 			nameMatch := strings.Contains(strings.ToLower(sub.FirstName), searchFilter) ||
 				strings.Contains(strings.ToLower(sub.LastName), searchFilter) ||
@@ -953,9 +984,65 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		allSubscribers = append(allSubscribers, sub)
 	}
 
-	// Sort by urgency score (highest first)
+	// ── Dynamic sorting ──
+	isAsc := sortDir == "asc"
 	sort.Slice(allSubscribers, func(i, j int) bool {
-		return allSubscribers[i].UrgencyScore > allSubscribers[j].UrgencyScore
+		a, b := allSubscribers[i], allSubscribers[j]
+		switch sortCol {
+		case "created_at":
+			if a.CreatedAt != b.CreatedAt {
+				if isAsc {
+					return a.CreatedAt < b.CreatedAt
+				}
+				return a.CreatedAt > b.CreatedAt
+			}
+		case "name":
+			aName := strings.ToLower(a.FirstName + " " + a.LastName)
+			bName := strings.ToLower(b.FirstName + " " + b.LastName)
+			if aName != bName {
+				if isAsc {
+					return aName < bName
+				}
+				return aName > bName
+			}
+		case "credits":
+			if a.TokensRemaining != b.TokensRemaining {
+				if isAsc {
+					return a.TokensRemaining < b.TokensRemaining
+				}
+				return a.TokensRemaining > b.TokensRemaining
+			}
+		case "sessions":
+			if a.TotalSessions != b.TotalSessions {
+				if isAsc {
+					return a.TotalSessions < b.TotalSessions
+				}
+				return a.TotalSessions > b.TotalSessions
+			}
+		case "activity":
+			if a.LastSessionAt != b.LastSessionAt {
+				if isAsc {
+					return a.LastSessionAt < b.LastSessionAt
+				}
+				return a.LastSessionAt > b.LastSessionAt
+			}
+		case "renewal":
+			if a.DaysUntilRenewal != b.DaysUntilRenewal {
+				if isAsc {
+					return a.DaysUntilRenewal < b.DaysUntilRenewal
+				}
+				return a.DaysUntilRenewal > b.DaysUntilRenewal
+			}
+		default: // "urgency"
+			if a.UrgencyScore != b.UrgencyScore {
+				if isAsc {
+					return a.UrgencyScore < b.UrgencyScore
+				}
+				return a.UrgencyScore > b.UrgencyScore
+			}
+		}
+		// Tie-breaker
+		return a.UserID < b.UserID
 	})
 
 	// Paginate
@@ -1025,5 +1112,55 @@ func (h *AdminHandler) handleCRMBulkDelete(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message":       "ok",
 		"deleted_count": tag.RowsAffected(),
+	})
+}
+
+// handleCRMTestFlagToggle — POST /admin/crm/test-flag
+//
+// Toggles or sets the is_test flag in crm_test_users table.
+func (h *AdminHandler) handleCRMTestFlagToggle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req struct {
+		UserID string `json:"user_id"`
+		IsTest bool   `json:"is_test"`
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", err)
+		return
+	}
+
+	uID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid user_id uuid", err)
+		return
+	}
+
+	if req.IsTest {
+		reason := req.Reason
+		if reason == "" {
+			reason = "Manual flag by admin"
+		}
+		_, err = h.pool.Exec(ctx, `
+			INSERT INTO crm_test_users (user_id, reason)
+			VALUES ($1, $2)
+			ON CONFLICT (user_id) DO UPDATE SET reason = EXCLUDED.reason, marked_at = now()
+		`, uID, reason)
+	} else {
+		_, err = h.pool.Exec(ctx, `
+			DELETE FROM crm_test_users WHERE user_id = $1
+		`, uID)
+	}
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update test flag", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "ok",
+		"user_id": req.UserID,
+		"is_test": req.IsTest,
 	})
 }

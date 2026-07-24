@@ -383,7 +383,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get auth_toggle_to_login => 'Masz już konto? Zaloguj się';
 
   @override
-  String get auth_toggle_to_register => 'Nie masz konta? Załóż';
+  String get auth_toggle_to_register => 'Nie masz konta? ';
 
   @override
   String get avatar_customize_background_color => 'KOLOR TŁA';
@@ -1466,6 +1466,26 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get login_register_title => 'Utwórz konto';
+
+  @override
+  String get login_account_info_title => 'Jak założyć konto?';
+
+  @override
+  String get login_account_info_subtitle => 'Rejestracja i konfiguracja';
+
+  @override
+  String get login_account_info_body_1 =>
+      'Ze względów bezpieczeństwa oraz spójności konfiguracji Twojej praktyki terapeutycznej, rejestracja nowych kont odbywa się wyłącznie na naszej stronie internetowej.';
+
+  @override
+  String get login_account_info_body_2 =>
+      'Jeśli posiadasz już aktywne konto, po prostu zaloguj się swoimi danymi.';
+
+  @override
+  String get login_back_to_sign_in => 'Wróć do logowania';
+
+  @override
+  String get auth_toggle_register_action => 'Dowiedz się więcej';
 
   @override
   String get login_subtitle => 'Zaloguj się do Superwizor AI';

@@ -3,12 +3,14 @@ package grpc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -26,6 +28,17 @@ func (s *Server) GetMyProfile(ctx context.Context, _ *emptypb.Empty) (*identityv
 	if err != nil {
 		return nil, err
 	}
+
+	// Check if call originates from Flutter mobile/app client (via x-client-platform header)
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if platforms := md.Get("x-client-platform"); len(platforms) > 0 {
+			if strings.Contains(strings.ToLower(platforms[0]), "flutter") {
+				// Best-effort stamp: set first_app_login_at if currently NULL
+				_ = s.queries.StampFirstAppLogin(ctx, c.userID)
+			}
+		}
+	}
+
 	user, err := s.queries.GetUserByID(ctx, c.userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

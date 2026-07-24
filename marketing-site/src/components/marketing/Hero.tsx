@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
+import { TRIAL_COPY } from "@/lib/billing/plans";
 
 export function Hero() {
   const t = useTranslations("hero");
@@ -175,9 +176,9 @@ export function Hero() {
                 </a>
               </div>
 
-              {/* Microcopy under CTA */}
+              {/* Microcopy under CTA — 🚨 session count from TRIAL_COPY, never hardcode */}
               <div className="hero-s4 mt-3 text-center lg:text-left text-[11px] sm:text-[12px] font-medium text-frost/60 tracking-wide">
-                {isPl ? "30 dni / 5 sesji. Bez karty kredytowej." : "30 days / 5 sessions. No credit card required."}
+                {TRIAL_COPY[isPl ? "pl" : "en"].micro}
               </div>
 
               {/* Co-created Microtext with Icon */}

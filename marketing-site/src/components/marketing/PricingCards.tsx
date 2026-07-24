@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
-import { findPlan, formatPrice } from "@/lib/billing/plans";
+import { findPlan, formatPrice, TRIAL_COPY } from "@/lib/billing/plans";
 
 export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
@@ -126,8 +126,11 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
 }
 
 /* ─── Trial ──────────────────────────────────────────────────────── */
+// 🚨 Session count comes from TRIAL_COPY (src/lib/billing/plans.ts).
+//    NEVER hardcode "10 sesji" or "10 sessions" here.
 
 function TrialCard({ registerHref, locale }: { registerHref: string; locale: string }) {
+  const tc = TRIAL_COPY[locale === "en" ? "en" : "pl"];
   return (
     <article className="flex flex-col rounded-[20px] bg-white border border-[#E2DED5] p-7 sm:p-8 justify-between h-full hover:border-[#004D54]/20 hover:shadow-lg transition-all duration-300">
       <div>
@@ -144,7 +147,7 @@ function TrialCard({ registerHref, locale }: { registerHref: string; locale: str
         </div>
 
         <ul className="mt-7 space-y-2.5">
-          <Feat>{locale === "en" ? "5 sessions for 30 days" : "5 sesji przez 30 dni"}</Feat>
+          <Feat>{tc.pitch}</Feat>
           <Feat>{locale === "en" ? "Full access to all features" : "Pełen dostęp do aplikacji"}</Feat>
           <Feat>{locale === "en" ? "No credit card" : "Bez karty kredytowej"}</Feat>
         </ul>

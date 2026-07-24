@@ -1,6 +1,6 @@
 // TrialPitchBanner — visual pitch block shown at the top of /register/therapist.
 //
-// Shows what the user gets with the free trial (5 sessions, 30 days, full access).
+// Shows what the user gets with the free trial (10 sessions, 30 days, full access).
 // When ?plan=solo_monthly or ?plan=pro_monthly is in the URL, shows the paid plan
 // pitch instead with a note that registration comes first.
 
@@ -8,7 +8,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
-import { lookupPlan, formatPrice } from "@/lib/billing/plans";
+import { lookupPlan, formatPrice, TRIAL_COPY } from "@/lib/billing/plans";
 import type { PlanTier, BillingCycle } from "@/lib/billing/plans";
 
 type PitchVariant = "trial" | "solo" | "pro" | "beta";
@@ -87,13 +87,15 @@ function renderPitchHeading(
   );
 }
 
+// 🚨 Session counts come from TRIAL_COPY (src/lib/billing/plans.ts).
+//    NEVER hardcode session numbers here — change tokensPerPeriod in plans.ts.
 const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
   trial: {
     pl: {
       badge: "Darmowy start",
-      heading: "Zacznij od 5 sesji za darmo",
+      heading: TRIAL_COPY.pl.heading,
       features: [
-        "5 sesji terapeutycznych przez 30 dni",
+        TRIAL_COPY.pl.feature,
         "Pełny dostęp do wszystkich funkcji",
         "Bez karty kredytowej",
         "Anuluj w dowolnym momencie",
@@ -102,14 +104,14 @@ const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
     },
     en: {
       badge: "Free start",
-      heading: "Start with 5 free sessions",
+      heading: TRIAL_COPY.en.heading,
       features: [
-        "5 therapy sessions for 30 days",
+        TRIAL_COPY.en.feature,
         "Full access to all features",
         "No credit card required",
         "Cancel anytime",
       ],
-      footnote: "After signing up you’ll get immediate access to the app.",
+      footnote: "After signing up you'll get immediate access to the app.",
     },
   },
   solo: {

@@ -375,7 +375,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_toggle_to_login => 'Already have an account? Sign in';
 
   @override
-  String get auth_toggle_to_register => 'No account? Create one';
+  String get auth_toggle_to_register => 'Don\'t have an account? ';
 
   @override
   String get avatar_customize_background_color => 'BACKGROUND COLOR';
@@ -1450,6 +1450,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get login_register_title => 'Create account';
+
+  @override
+  String get login_account_info_title => 'How to create an account?';
+
+  @override
+  String get login_account_info_subtitle => 'Registration & setup';
+
+  @override
+  String get login_account_info_body_1 =>
+      'For security reasons and proper setup of your therapy practice, new account registration takes place exclusively on our website.';
+
+  @override
+  String get login_account_info_body_2 =>
+      'If you already have an active account, please log in with your credentials.';
+
+  @override
+  String get login_back_to_sign_in => 'Back to sign in';
+
+  @override
+  String get auth_toggle_register_action => 'Learn more';
 
   @override
   String get login_subtitle => 'Sign in to Superwizor AI';
