@@ -715,6 +715,14 @@ type CRMSubscriber struct {
 	// Organization
 	OrgID   string `json:"org_id"`
 	OrgName string `json:"org_name"`
+	// Tags
+	Tags []CRMSubscriberTag `json:"tags"`
+}
+
+type CRMSubscriberTag struct {
+	ID    string `json:"id"`
+	Tag   string `json:"tag"`
+	Color string `json:"color"`
 }
 
 // CRMGlobalStats — aggregate stats across the entire subscriber base (unfiltered).
@@ -724,6 +732,7 @@ type CRMGlobalStats struct {
 	Warning  int `json:"warning"`
 	Expiring int `json:"expiring"`
 	Churned  int `json:"churned"`
+	AvailableTags []string `json:"available_tags"`
 }
 
 type crmResponse struct {
@@ -745,6 +754,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	statusFilter := r.URL.Query().Get("status")
 	alertFilter := r.URL.Query().Get("alert")
 	appDelayFilter := r.URL.Query().Get("app_delay")
+	tagFilter := r.URL.Query().Get("tag")
 	showTest := r.URL.Query().Get("show_test") == "1" || r.URL.Query().Get("show_test") == "true"
 	sortCol := r.URL.Query().Get("sort")
 	sortDir := r.URL.Query().Get("dir")
@@ -820,7 +830,8 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			last_sess.last_session_at,
 
 			o.id AS org_id,
-			COALESCE(o.legal_name, '') AS org_name
+			COALESCE(o.legal_name, '') AS org_name,
+			c_tags.tags_json
 		FROM users u
 		LEFT JOIN organizations o ON o.id = u.organization_id
 		LEFT JOIN subscriptions s ON s.organization_id = o.id AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
@@ -832,10 +843,16 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			WHERE sess.therapist_id = u.id
 		) sess_count ON true
 		LEFT JOIN LATERAL (
-			SELECT MAX(created_at) AS last_session_at
+			SELECT COUNT(*)::int AS cnt,
+				   MAX(created_at) AS last_session_at
 			FROM sessions sess2
 			WHERE sess2.therapist_id = u.id
 		) last_sess ON true
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(json_agg(json_build_object('id', id, 'tag', tag, 'color', color)), '[]')::text AS tags_json
+			FROM crm_tags
+			WHERE target_user_id = u.id
+		) c_tags ON true
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		LEFT JOIN crm_test_users tst ON tst.user_id = u.id
 		WHERE u.deleted_at IS NULL
@@ -865,6 +882,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		var daysUntilRenewal *int
 		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
 		var orgID, orgName sql.NullString
+		var tagsJSON string
 
 		if err := rows.Scan(
 			&sub.UserID, &sub.FirstName, &sub.LastName, &sub.Email, &sub.Phone,
@@ -876,6 +894,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			&totalSessions,
 			&lastSessionAt,
 			&orgID, &orgName,
+			&tagsJSON,
 		); err != nil {
 			h.logger.ErrorContext(ctx, "crm: scan row", "error", err)
 			continue
@@ -886,6 +905,13 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		}
 		if orgName.Valid {
 			sub.OrgName = orgName.String
+		}
+
+		if tagsJSON != "" && tagsJSON != "[]" {
+			_ = json.Unmarshal([]byte(tagsJSON), &sub.Tags)
+		}
+		if sub.Tags == nil {
+			sub.Tags = []CRMSubscriberTag{}
 		}
 
 		sub.CreatedAt = userCreated.Format("2006-01-02")
@@ -999,15 +1025,43 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			nameMatch := strings.Contains(strings.ToLower(sub.FirstName), searchFilter) ||
 				strings.Contains(strings.ToLower(sub.LastName), searchFilter) ||
 				strings.Contains(strings.ToLower(sub.Email), searchFilter) ||
-				strings.Contains(strings.ToLower(sub.OrgName), searchFilter) ||
-				strings.Contains(strings.ToLower(sub.Phone), searchFilter)
+				strings.Contains(strings.ToLower(sub.Phone), searchFilter) ||
+				strings.Contains(strings.ToLower(sub.OrgName), searchFilter)
 			if !nameMatch {
+				continue
+			}
+		}
+
+		// Tag filter
+		if tagFilter != "" {
+			hasTag := false
+			for _, t := range sub.Tags {
+				if strings.EqualFold(t.Tag, tagFilter) {
+					hasTag = true
+					break
+				}
+			}
+			if !hasTag {
 				continue
 			}
 		}
 
 		allSubscribers = append(allSubscribers, sub)
 	}
+
+	// Extract unique tags from allSubscribers (across all pages)
+	uniqueTagsMap := make(map[string]bool)
+	for _, sub := range allSubscribers {
+		for _, t := range sub.Tags {
+			uniqueTagsMap[t.Tag] = true
+		}
+	}
+	var availableTags []string
+	for tag := range uniqueTagsMap {
+		availableTags = append(availableTags, tag)
+	}
+	sort.Strings(availableTags)
+	globalStats.AvailableTags = availableTags
 
 	// ── Dynamic sorting ──
 	isAsc := sortDir == "asc"
