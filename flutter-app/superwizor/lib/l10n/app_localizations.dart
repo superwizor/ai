@@ -5794,6 +5794,96 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.'**
   String get invite_client_revoke_confirm_body;
+
+  /// No description provided for @ai_chat_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Asystent AI'**
+  String get ai_chat_title;
+
+  /// No description provided for @ai_chat_fab_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapytaj AI'**
+  String get ai_chat_fab_label;
+
+  /// No description provided for @ai_chat_fab_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Czat z kontekstem sesji'**
+  String get ai_chat_fab_subtitle;
+
+  /// No description provided for @ai_chat_input_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zadaj pytanie o pacjenta...'**
+  String get ai_chat_input_hint;
+
+  /// No description provided for @ai_chat_loading_context.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ładuję kontekst sesji...'**
+  String get ai_chat_loading_context;
+
+  /// No description provided for @ai_chat_save_dialog_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisać rozmowę?'**
+  String get ai_chat_save_dialog_title;
+
+  /// No description provided for @ai_chat_save_dialog_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Czy chcesz zapisać podsumowanie tej rozmowy jako notatkę kliniczną?'**
+  String get ai_chat_save_dialog_body;
+
+  /// No description provided for @ai_chat_save_yes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz jako notatkę'**
+  String get ai_chat_save_yes;
+
+  /// No description provided for @ai_chat_save_no.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie zapisuj'**
+  String get ai_chat_save_no;
+
+  /// No description provided for @ai_chat_save_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj'**
+  String get ai_chat_save_cancel;
+
+  /// No description provided for @ai_chat_saving.
+  ///
+  /// In pl, this message translates to:
+  /// **'Generuję podsumowanie...'**
+  String get ai_chat_saving;
+
+  /// No description provided for @ai_chat_saved_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka z rozmowy AI zapisana'**
+  String get ai_chat_saved_toast;
+
+  /// No description provided for @ai_chat_error_init.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zainicjalizować czatu AI. Sprawdź połączenie i spróbuj ponownie.'**
+  String get ai_chat_error_init;
+
+  /// No description provided for @ai_chat_system_intro.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cześć! Jestem asystentem AI. Mam dostęp do raportów z sesji tego pacjenta. Mogę pomóc z analizą wzorców, przypomnieniem szczegółów lub przygotowaniem do kolejnej sesji. Jak mogę pomóc?'**
+  String get ai_chat_system_intro;
+
+  /// No description provided for @ai_chat_note_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka z rozmowy AI'**
+  String get ai_chat_note_title;
 }
 
 class _AppLocalizationsDelegate

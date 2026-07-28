@@ -32,6 +32,7 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/client_invite_sheet.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/pending_quota_sessions_widget.dart';
+import 'ai_chat_screen.dart';
 import 'new_session_screen.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
@@ -58,6 +59,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   late Animation<double> _recordAnim; // mini-FAB #1 (closer to main FAB)
   late Animation<double> _noteAnim; // action card #2 (middle)
   late Animation<double> _uploadAnim; // action card #3 (higher up)
+  late Animation<double> _aiChatAnim; // action card #4 (highest — AI chat)
   late Animation<double> _bannerAnim; // security banner from top
   late AnimationController _pulseController; // mic icon pulse
   late Animation<double> _pulseScale;
@@ -159,11 +161,15 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     );
     _uploadAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.16, 0.80, curve: Curves.easeOutCubic),
+      curve: const Interval(0.16, 0.75, curve: Curves.easeOutCubic),
+    );
+    _aiChatAnim = CurvedAnimation(
+      parent: _fabController,
+      curve: const Interval(0.22, 0.85, curve: Curves.easeOutCubic),
     );
     _bannerAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.25, 1.0, curve: Curves.easeOutCubic),
+      curve: const Interval(0.30, 1.0, curve: Curves.easeOutCubic),
     );
 
     // Mic pulse: 2 gentle beats when FAB opens
@@ -299,6 +305,22 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
       context,
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(patientId: widget.patientId),
+      ),
+    );
+  }
+
+  Future<void> _onAiChatTapped() async {
+    _closeFab();
+    final ctx = await _resolveSessionContext();
+    if (ctx == null || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AiChatScreen(
+          patientId: widget.patientId,
+          patientAlias: ctx.alias,
+          therapistId: ctx.therapistId,
+        ),
       ),
     );
   }
@@ -1113,7 +1135,34 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              // ── Action Card #3: Upload file (highest) ──
+                              // ── Action Card #4: AI Chat (highest) ──
+                              // Visible only when the patient has at least
+                              // one completed session (otherwise there's
+                              // nothing for the AI to analyze).
+                              if (currentSessions.any((s) =>
+                                  s.status == SessionStatus.completed))
+                                SizeTransition(
+                                  sizeFactor: _aiChatAnim,
+                                  axisAlignment: 1.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: SizedBox(
+                                      width: screenWidth - 48,
+                                      child: _buildActionCard(
+                                        animation: _aiChatAnim,
+                                        icon: Icons.auto_awesome,
+                                        label: 'Zapytaj AI',
+                                        subtitle:
+                                            'Czat z kontekstem sesji',
+                                        onTap: _onAiChatTapped,
+                                        isPrimary: false,
+                                        cardColor: const Color(0xFF1A1040),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // ── Action Card #3: Upload file ──
                               // Web: hidden — recording/file upload are native-only
                               // for now (see new_session web-upload deferral).
                               if (!kIsWeb)

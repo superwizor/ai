@@ -3235,4 +3235,52 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get invite_client_revoke_confirm_body =>
       'The link in the sent e-mail will stop working immediately. You can send a new invitation afterwards.';
+
+  @override
+  String get ai_chat_title => 'AI Assistant';
+
+  @override
+  String get ai_chat_fab_label => 'Ask AI';
+
+  @override
+  String get ai_chat_fab_subtitle => 'Chat with session context';
+
+  @override
+  String get ai_chat_input_hint => 'Ask a question about the patient...';
+
+  @override
+  String get ai_chat_loading_context => 'Loading session context...';
+
+  @override
+  String get ai_chat_save_dialog_title => 'Save the conversation?';
+
+  @override
+  String get ai_chat_save_dialog_body =>
+      'Would you like to save a summary of this conversation as a clinical note?';
+
+  @override
+  String get ai_chat_save_yes => 'Save as note';
+
+  @override
+  String get ai_chat_save_no => 'Don\'t save';
+
+  @override
+  String get ai_chat_save_cancel => 'Cancel';
+
+  @override
+  String get ai_chat_saving => 'Generating summary...';
+
+  @override
+  String get ai_chat_saved_toast => 'AI conversation note saved';
+
+  @override
+  String get ai_chat_error_init =>
+      'Failed to initialize AI chat. Check your connection and try again.';
+
+  @override
+  String get ai_chat_system_intro =>
+      'Hi! I\'m an AI assistant. I have access to this patient\'s session reports. I can help analyze patterns, recall details, or prepare for the next session. How can I help?';
+
+  @override
+  String get ai_chat_note_title => 'AI conversation note';
 }

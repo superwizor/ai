@@ -20,6 +20,7 @@ dependencies:
   firebase_auth: ^6.4.0
   firebase_messaging: ^16.0.4
   cloud_firestore: ^6.0.4
+  firebase_ai: ^3.14.1
 
   # gRPC
   grpc: ^5.1.0
@@ -73,7 +74,7 @@ dependencies:
   collection: ^1.19.0
 
   # i18n (D7) — generated AppLocalizations
-  firebase_core_platform_interface: ^6.0.3
+  firebase_core_platform_interface: ^8.0.0
   flutter_markdown: ^0.7.7+1
   file_picker: ^11.0.2
   image_picker: ^1.2.2

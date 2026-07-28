@@ -3258,4 +3258,52 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get invite_client_revoke_confirm_body =>
       'Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.';
+
+  @override
+  String get ai_chat_title => 'Asystent AI';
+
+  @override
+  String get ai_chat_fab_label => 'Zapytaj AI';
+
+  @override
+  String get ai_chat_fab_subtitle => 'Czat z kontekstem sesji';
+
+  @override
+  String get ai_chat_input_hint => 'Zadaj pytanie o pacjenta...';
+
+  @override
+  String get ai_chat_loading_context => 'Ładuję kontekst sesji...';
+
+  @override
+  String get ai_chat_save_dialog_title => 'Zapisać rozmowę?';
+
+  @override
+  String get ai_chat_save_dialog_body =>
+      'Czy chcesz zapisać podsumowanie tej rozmowy jako notatkę kliniczną?';
+
+  @override
+  String get ai_chat_save_yes => 'Zapisz jako notatkę';
+
+  @override
+  String get ai_chat_save_no => 'Nie zapisuj';
+
+  @override
+  String get ai_chat_save_cancel => 'Anuluj';
+
+  @override
+  String get ai_chat_saving => 'Generuję podsumowanie...';
+
+  @override
+  String get ai_chat_saved_toast => 'Notatka z rozmowy AI zapisana';
+
+  @override
+  String get ai_chat_error_init =>
+      'Nie udało się zainicjalizować czatu AI. Sprawdź połączenie i spróbuj ponownie.';
+
+  @override
+  String get ai_chat_system_intro =>
+      'Cześć! Jestem asystentem AI. Mam dostęp do raportów z sesji tego pacjenta. Mogę pomóc z analizą wzorców, przypomnieniem szczegółów lub przygotowaniem do kolejnej sesji. Jak mogę pomóc?';
+
+  @override
+  String get ai_chat_note_title => 'Notatka z rozmowy AI';
 }
