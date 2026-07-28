@@ -18,6 +18,7 @@ import '../providers/patient_notes_provider.dart';
 import '../repositories/clinical_notes_repository.dart';
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/ai_preferences_modal.dart';
 import '../widgets/euphire_toast.dart';
 
 // ── Chat Message Model ─────────────────────────────────────
@@ -365,6 +366,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           ),
         ],
       ),
+      actions: [
+        IconButton(
+          tooltip: 'Dostosuj zachowanie AI',
+          icon: const Icon(Icons.tune_rounded, color: EuphireColors.mist),
+          onPressed: () => AiPreferencesModal.show(context),
+        ),
+      ],
     );
   }
 

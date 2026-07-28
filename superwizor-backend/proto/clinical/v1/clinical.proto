@@ -192,6 +192,14 @@ service ClinicalService {
     // Gemini's response chunk-by-chunk. Persists to chat_interactions
     // on completion.
     rpc AskPatientQuestion(AskPatientQuestionRequest) returns (stream AskPatientQuestionResponse);
+
+    // ─── Natural Language AI Preference Tuning (Meta-Prompting) ───
+    // Generates a proposed update to therapist's report_preferences based
+    // on a natural language request. Returns a human-readable summary for
+    // therapist review before confirmation.
+    rpc UpdateReportPreferencesFromPrompt(UpdateReportPreferencesFromPromptRequest) returns (UpdateReportPreferencesFromPromptResponse);
+    rpc ConfirmReportPreferencesUpdate(ConfirmReportPreferencesUpdateRequest) returns (google.protobuf.Empty);
+    rpc ResetReportPreferencesToDefault(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 enum ProcessType {
@@ -1376,4 +1384,27 @@ message AskPatientQuestionResponse {
   bool is_final = 3;
   // Number of RAG hits used (set only in the first chunk).
   int32 rag_hits_used = 4;
+}
+
+// ─── Natural Language Preference Tuning Messages ──────────────────────
+
+message UpdateReportPreferencesFromPromptRequest {
+  // Therapist's natural language request (e.g. "Chcę krótsze notatki i skupienie na mechanizmach obronnych")
+  string instruction = 1;
+}
+
+message UpdateReportPreferencesFromPromptResponse {
+  // Human-readable summary of proposed changes for therapist review
+  string summary_pl = 1;
+  // Proposed updated preferences struct (JSON serialization)
+  google.protobuf.Struct proposed_preferences = 2;
+  // Temporary signed update token to prevent tampering
+  string update_token = 3;
+}
+
+message ConfirmReportPreferencesUpdateRequest {
+  // Token received from UpdateReportPreferencesFromPromptResponse
+  string update_token = 1;
+  // Confirmed preferences struct
+  google.protobuf.Struct confirmed_preferences = 2;
 }
