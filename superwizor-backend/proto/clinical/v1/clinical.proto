@@ -180,6 +180,18 @@ service ClinicalService {
     // ─── Transcript segment editing and splitting ───
     rpc EditTranscriptSegment(EditTranscriptSegmentRequest) returns (EditTranscriptSegmentResponse);
     rpc SplitTranscriptSegment(SplitTranscriptSegmentRequest) returns (SplitTranscriptSegmentResponse);
+
+    // ─── AI Assistant (Faza 1+2, docs/critical_analysis) ───
+    // Generates a one-shot session briefing for a patient using RAG
+    // context from rag_memories. Runs Gemini Flash server-side (no PHI
+    // leaves the backend). Audit-logged to chat_interactions.
+    rpc GenerateSessionBrief(GenerateSessionBriefRequest) returns (GenerateSessionBriefResponse);
+
+    // Server-streaming conversational AI. Each message embeds the
+    // therapist's question, retrieves RAG context, and streams back
+    // Gemini's response chunk-by-chunk. Persists to chat_interactions
+    // on completion.
+    rpc AskPatientQuestion(AskPatientQuestionRequest) returns (stream AskPatientQuestionResponse);
 }
 
 enum ProcessType {
@@ -1324,3 +1336,44 @@ message SplitTranscriptSegmentResponse {
   Transcript transcript = 2;
 }
 
+// ─── AI Assistant Messages ────────────────────────────────────────────
+
+// Faza 1: one-shot briefing. The server fetches RAG context, generates
+// a Gemini response, and returns it in a single unary call.
+message GenerateSessionBriefRequest {
+  string patient_file_id = 1;
+  // Optional free-text focus hint: "wzorce lękowe", "cele terapii", etc.
+  // When empty, the server uses a generic "session preparation" query.
+  string focus_hint = 2;
+}
+
+message GenerateSessionBriefResponse {
+  // The generated brief in markdown format.
+  string brief_markdown = 1;
+  // Stable conversation ID. Pass this to AskPatientQuestion to continue
+  // asking follow-up questions in the context of this brief.
+  string conversation_id = 2;
+  // Number of RAG memory hits used to build context.
+  int32 rag_hits_used = 3;
+}
+
+// Faza 2: multi-turn server-streaming chat. Each call sends one user
+// message and streams back the AI's response chunk by chunk.
+message AskPatientQuestionRequest {
+  string patient_file_id = 1;
+  string question = 2;
+  // Conversation ID from GenerateSessionBrief or a prior
+  // AskPatientQuestion response. Empty = new conversation.
+  string conversation_id = 3;
+}
+
+message AskPatientQuestionResponse {
+  // Partial text chunk (accumulated or delta, depending on client need).
+  string text_chunk = 1;
+  // Conversation ID (set in every chunk for idempotency).
+  string conversation_id = 2;
+  // True only on the very last chunk.
+  bool is_final = 3;
+  // Number of RAG hits used (set only in the first chunk).
+  int32 rag_hits_used = 4;
+}

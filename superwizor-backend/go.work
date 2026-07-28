@@ -13,6 +13,7 @@ use (
 	./pkg/logging
 	./pkg/observability
 	./pkg/pubsubx
+	./pkg/rag
 	./pkg/testutil
 	./pkg/transcription
 	./services/ai-pipeline-svc
