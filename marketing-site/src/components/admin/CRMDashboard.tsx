@@ -1624,7 +1624,7 @@ export function CRMDashboard() {
                           <>
                             <div className="flex justify-between items-start gap-4">
                               <p className="text-[var(--crm-text)] text-xs leading-relaxed whitespace-pre-wrap flex-1">{note.body}</p>
-                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex gap-2">
                                 <button onClick={() => { setEditingNoteId(note.id); setEditingNoteBody(note.body); }} className="text-[var(--crm-muted)] hover:text-[var(--crm-focus)]" title="Edytuj">✎</button>
                                 <button onClick={() => deleteNote(note.id)} className="text-[var(--crm-muted)] hover:text-[var(--crm-accent-red)]" title="Usuń">🗑️</button>
                               </div>
