@@ -123,9 +123,19 @@ class AuthInterceptor extends ClientInterceptor {
     // wysyłała POST-a — każdy RPC z superwizor-app.web.app padał na
     // "code 2 UNKNOWN: HTTP request completed without a status
     // (potential CORS issue)" (incydent 2026-07-24 → 2026-07-29).
-    // Nagłówek dopisano do defaultAllowedHeaders w tym samym PR; tę
-    // bramkę można zdjąć, gdy identity/clinical/ingestion/notification
-    // będą już wdrożone z nową allowlistą.
+    // Nagłówek dopisano do defaultAllowedHeaders w tym samym PR; bramkę
+    // można zdjąć, gdy identity-svc i clinical-svc będą wdrożone z nową
+    // allowlistą — TYLKO te dwa mają w ogóle middleware CORS
+    // (`cors.New` w cmd/server/main.go). ingestion-svc i
+    // notification-svc serwują goły gRPC po HTTP/2, bez CORS i bez
+    // gRPC-Web, więc wywołania do nich z przeglądarki padają niezależnie
+    // od tego nagłówka — patrz docs/agents/12_web_file_upload_deferred.md.
+    //
+    // Konsekwencja bramki: identity-svc stempluje users.first_app_login_at
+    // tylko gdy widzi ten nagłówek (profile.go), więc web nigdy go nie
+    // zapali. Dziś to bez różnicy — stempel siedzi w GetMyProfile, którego
+    // aplikacja Flutter w ogóle nie woła (używa GetUserByFirebaseUID), więc
+    // odznaka „pierwsze logowanie w apce" w CRM i tak się nie zapala.
     if (!kIsWeb) {
       metadata['x-client-platform'] = 'flutter-app';
     }
