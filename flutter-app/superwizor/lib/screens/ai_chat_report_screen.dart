@@ -16,12 +16,14 @@ class AiChatReportScreen extends ConsumerStatefulWidget {
   final String patientId;
   final String initialSummary;
   final String fullTranscript;
+  final String? noteId;
 
   const AiChatReportScreen({
     super.key,
     required this.patientId,
     required this.initialSummary,
     required this.fullTranscript,
+    this.noteId,
   });
 
   @override
@@ -57,12 +59,20 @@ $_summary
 ${widget.fullTranscript}
 '''.trim();
 
-      await notesRepo.createNote(
-        widget.patientId,
-        l.ai_chat_note_title,
-        combinedText,
-        kind: 'FREE_NOTE',
-      );
+      if (widget.noteId != null && widget.noteId!.isNotEmpty) {
+        await notesRepo.updateNote(
+          widget.noteId!,
+          l.ai_chat_note_title,
+          combinedText,
+        );
+      } else {
+        await notesRepo.createNote(
+          widget.patientId,
+          l.ai_chat_note_title,
+          combinedText,
+          kind: 'FREE_NOTE',
+        );
+      }
 
       ref.invalidate(patientNotesProvider(widget.patientId));
 
@@ -415,7 +425,7 @@ ${widget.fullTranscript}
               padding: EdgeInsets.only(right: 16.0),
               child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.aurora))),
             )
-          else
+          else if (_summary != widget.initialSummary || widget.noteId == null)
             TextButton(
               onPressed: _saveNote,
               child: Text(

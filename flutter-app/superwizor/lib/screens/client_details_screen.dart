@@ -20,6 +20,7 @@ import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/kartoteka_filters_provider.dart';
+import '../screens/ai_chat_report_screen.dart';
 import '../providers/patient_notes_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
@@ -2660,12 +2661,31 @@ class _NoteCard extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => _NoteViewScreen(note: note, patientId: patientId),
-          ),
-        );
+        if (note.title == l.ai_chat_note_title) {
+          final delimiter = '\n\n---\n### ${l.transcript_tab}\n';
+          final parts = note.text.split(delimiter);
+          final summary = parts[0];
+          final transcript = parts.length > 1 ? parts.sublist(1).join(delimiter) : '';
+          
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AiChatReportScreen(
+                patientId: patientId,
+                initialSummary: summary,
+                fullTranscript: transcript,
+                noteId: note.id,
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => _NoteViewScreen(note: note, patientId: patientId),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),

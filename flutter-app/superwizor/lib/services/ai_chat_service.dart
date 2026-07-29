@@ -81,10 +81,11 @@ class AiChatService {
   /// Returns the summary text suitable for saving as a PatientNote.
   Future<String> summarizeConversation() async {
     final response = await _chat.sendMessage(Content.text(
-      'Proszę, stwórz zwięzłe podsumowanie naszej rozmowy w formie notatki '
-      'klinicznej. Podsumowanie powinno zawierać: (1) kluczowe pytania, '
-      'które zadałem, (2) najważniejsze wnioski i obserwacje z odpowiedzi, '
-      '(3) ewentualne sugestie do dalszej pracy. '
+      'Stwórz faktograficzne, wysoce szczegółowe podsumowanie naszej rozmowy '
+      'w formie notatki klinicznej. Skup się na przekazaniu maksymalnej ilości '
+      'przydatnych detali i szczegółów, które pojawiły się w trakcie rozmowy, '
+      'aby wesprzeć proces psychoterapii. Zignoruj ogólniki, skup się na faktach, '
+      'odkryciach i konkretach. '
       'Format: krótka notatka, maksymalnie 3-4 akapity. Nie używaj nagłówków markdown.',
     ));
     return response.text ?? 'Nie udało się wygenerować podsumowania.';
