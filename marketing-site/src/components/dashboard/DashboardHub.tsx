@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
+import { useHandheldDevice } from "@/lib/hooks/useHandheldDevice";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,21 @@ export function DashboardHub({ locale }: { locale: string }) {
   // and the account/subscription card.
   const [isClinicMember, setIsClinicMember] = useState<boolean>(false);
   const [loadingSub, setLoadingSub] = useState<boolean>(true);
+  // Na telefonie i tablecie nie promujemy web-appki — tam użytkownik
+  // ma korzystać z natywnej aplikacji iOS/Android (kafelek "Ściągnij
+  // na telefon" zostaje). Detekcja jest po URZĄDZENIU, nie po
+  // szerokości okna: wąskie okno na desktopie nadal dostaje kafelek.
+  const isHandheld = useHandheldDevice();
+
+  // Ile kafelków realnie renderujemy — grid ma tyle kolumn, żeby na
+  // tablecie/desktopie nie zostawała pusta szczelina po ukrytej karcie.
+  const visibleCards = 1 + (isHandheld ? 0 : 1) + (isClinicMember ? 0 : 1);
+  const gridColsClass =
+    visibleCards >= 3
+      ? "md:grid-cols-3"
+      : visibleCards === 2
+        ? "md:grid-cols-2"
+        : "md:grid-cols-1";
 
   const handleOpenModal = (platform: "ios" | "android") => {
     setShowInstructions(false);
@@ -320,9 +336,14 @@ export function DashboardHub({ locale }: { locale: string }) {
         )}
 
 
-        {/* --- Three Hub Cards --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Open App (Web) */}
+        {/* --- Hub Cards --- */}
+        <div className={`grid grid-cols-1 ${gridColsClass} gap-6`}>
+          {/* Card 1: Open App (Web) — desktop only. Na telefonie i
+              tablecie kierujemy do natywnej aplikacji. Klasa
+              pointer:coarse chowa kartę jeszcze przed hydracją (strona
+              jest statycznym eksportem, więc prerender zawsze zawiera
+              ten kafelek); useHandheldDevice zdejmuje ją z drzewa. */}
+          {!isHandheld && (
           <a
             href={APP_URL}
             target="_blank"
@@ -331,7 +352,7 @@ export function DashboardHub({ locale }: { locale: string }) {
               e.preventDefault();
               void openAppWithSso(fbUser?.email ?? undefined);
             }}
-            className="group relative rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-[#004D54]/75 to-[#003A40]/75 border border-[#2F6B62]/35 shadow-xl hover:shadow-2xl hover:shadow-[#004D54]/25 transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between backdrop-blur-md"
+            className="group relative rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-[#004D54]/75 to-[#003A40]/75 border border-[#2F6B62]/35 shadow-xl hover:shadow-2xl hover:shadow-[#004D54]/25 transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between backdrop-blur-md [@media(pointer:coarse)]:hidden"
           >
             <div>
               {/* Superwizor Logo */}
@@ -372,6 +393,7 @@ export function DashboardHub({ locale }: { locale: string }) {
               </svg>
             </div>
           </a>
+          )}
 
           {/* Card 2: Download Mobile App */}
           <button
