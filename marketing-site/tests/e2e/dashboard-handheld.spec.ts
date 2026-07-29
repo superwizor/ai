@@ -1,10 +1,10 @@
-// Playwright E2E: the dashboard's "Przejdź do aplikacji" tile is
-// desktop-only.
+// Playwright E2E: the web-app entry points are desktop-only.
 //
 // On a phone or a tablet we steer the therapist to the native
-// iOS/Android app instead of the Flutter web build, so the tile that
-// links to superwizor-app.web.app must not render there. The other two
-// tiles ("Ściągnij na telefon", "Zarządzaj kontem") are unaffected.
+// iOS/Android app instead of the Flutter web build, so neither the
+// dashboard tile nor the navbar CTA that link to superwizor-app.web.app
+// may render there. The remaining tiles ("Ściągnij na telefon",
+// "Zarządzaj kontem") and the rest of the navigation are unaffected.
 //
 // The detection under test (src/lib/hooks/useHandheldDevice.ts) is
 // device-shaped, not viewport-shaped — hence the deliberately awkward
@@ -46,25 +46,29 @@ async function signInToDashboard(page: Page) {
   await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl|/en)?/dashboard`));
 }
 
-// Scoped to the card's heading on purpose: the navbar carries a second
-// link to the same APP_URL ("Otwórz aplikację"), which this change does
-// not touch.
+// Scoped to the card's heading on purpose — the navbar carries a second
+// link to the same APP_URL, asserted separately by navbarAppCta().
 function webAppTile(page: Page) {
   return page.getByRole("heading", {
     name: /Przejdź do aplikacji|Go to Application/,
   });
 }
 
+function navbarAppCta(page: Page) {
+  return page.getByRole("link", { name: /Otwórz aplikację|Open App/i });
+}
+
 function mobileTile(page: Page) {
   return page.getByRole("heading", { name: /Ściągnij na telefon|Download on Phone/ });
 }
 
-test.describe("Dashboard — web-app tile", () => {
-  test("desktop keeps the tile", async ({ page }, testInfo) => {
+test.describe("Web-app entry points", () => {
+  test("desktop keeps the tile and the navbar CTA", async ({ page }, testInfo) => {
     await signInToDashboard(page);
 
     await expect(mobileTile(page)).toBeVisible();
     await expect(webAppTile(page)).toBeVisible();
+    await expect(navbarAppCta(page)).toBeVisible();
 
     await page.screenshot({
       path: `../evidence/dashboard-handheld/${testInfo.project.name}-desktop.png`,
@@ -80,11 +84,12 @@ test.describe("Dashboard — web-app tile", () => {
       isMobile: true,
     });
 
-    test("hides the tile", async ({ page }, testInfo) => {
+    test("hides the tile and the navbar CTA", async ({ page }, testInfo) => {
       await signInToDashboard(page);
 
       await expect(mobileTile(page)).toBeVisible();
       await expect(webAppTile(page)).toHaveCount(0);
+      await expect(navbarAppCta(page)).toHaveCount(0);
 
       await page.screenshot({
         path: `../evidence/dashboard-handheld/${testInfo.project.name}-iphone.png`,
@@ -100,7 +105,7 @@ test.describe("Dashboard — web-app tile", () => {
       hasTouch: true,
     });
 
-    test("hides the tile", async ({ page }, testInfo) => {
+    test("hides the tile and the navbar CTA", async ({ page }, testInfo) => {
       // Playwright's touch emulation reports maxTouchPoints = 1; a real
       // iPad reports 5. Pin it so this exercises the same branch the
       // device does — the UA alone says "Macintosh".
@@ -112,6 +117,7 @@ test.describe("Dashboard — web-app tile", () => {
 
       await expect(mobileTile(page)).toBeVisible();
       await expect(webAppTile(page)).toHaveCount(0);
+      await expect(navbarAppCta(page)).toHaveCount(0);
 
       await page.screenshot({
         path: `../evidence/dashboard-handheld/${testInfo.project.name}-ipad.png`,
