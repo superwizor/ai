@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:grpc/grpc.dart';
 import 'package:grpc/grpc_or_grpcweb.dart';
 import '../generated/identity/v1/identity.pbgrpc.dart';
@@ -114,7 +115,20 @@ class AuthInterceptor extends ClientInterceptor {
   }
 
   Future<void> _authProvider(Map<String, String> metadata, String uri) async {
-    metadata['x-client-platform'] = 'flutter-app';
+    // NIE na webie. Transport gRPC-Web robi
+    // `metadata.forEach(request.setRequestHeader)`, więc KAŻDY klucz
+    // metadanych staje się nagłówkiem HTTP objętym walidacją CORS
+    // preflight. `X-Client-Platform` nie było na allowliście serwera
+    // (pkg/cors/cors.go), więc przeglądarka odrzucała preflight i nie
+    // wysyłała POST-a — każdy RPC z superwizor-app.web.app padał na
+    // "code 2 UNKNOWN: HTTP request completed without a status
+    // (potential CORS issue)" (incydent 2026-07-24 → 2026-07-29).
+    // Nagłówek dopisano do defaultAllowedHeaders w tym samym PR; tę
+    // bramkę można zdjąć, gdy identity/clinical/ingestion/notification
+    // będą już wdrożone z nową allowlistą.
+    if (!kIsWeb) {
+      metadata['x-client-platform'] = 'flutter-app';
+    }
     final user = fb_auth.FirebaseAuth.instance.currentUser;
     if (user != null) {
       final token = await user.getIdToken();
