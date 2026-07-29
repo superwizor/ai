@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart' as grpc;
 
 import '../l10n/app_localizations.dart';
 import '../utils/haptics.dart';
@@ -26,6 +27,7 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
   // by sending a new client-panel invitation.
   late final TextEditingController _aliasController;
   bool _saving = false;
+  String? _aliasError;
 
   @override
   void initState() {
@@ -201,7 +203,14 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
             _GlassTextField(
               controller: _aliasController,
               label: t.addPatient_last_name_label,
-              onChanged: (_) => setState(() {}),
+              errorText: _aliasError,
+              onChanged: (_) {
+                if (_aliasError != null) {
+                  setState(() => _aliasError = null);
+                } else {
+                  setState(() {});
+                }
+              },
             ),
 
             // ── E-mail (read-only, resolved server-side from the
@@ -251,7 +260,10 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
     final alias = _aliasController.text.trim();
     if (alias.isEmpty) return;
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _aliasError = null;
+    });
     try {
       // Persist the alias via UpdatePatientFile.working_alias — the
       // server COALESCEs the other fields (docs/43 §4).
@@ -263,10 +275,31 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
         AppHapticFeedback.mediumImpact();
         Navigator.of(context).pop();
       }
+    } on grpc.GrpcError catch (e) {
+      if (mounted) {
+        if (e.code == grpc.StatusCode.alreadyExists) {
+          AppHapticFeedback.heavyImpact();
+          setState(() {
+            _aliasError = 'Ten pseudonim jest już używany, wybierz inny.';
+          });
+        } else {
+          EuphireToast.error(
+            context,
+            message: e.message ?? AppLocalizations.of(context).common_error,
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
-        final t = AppLocalizations.of(context);
-        EuphireToast.error(context, message: t.editPatient_error(e.toString()));
+        if (e.toString().contains('ALREADY_EXISTS')) {
+          AppHapticFeedback.heavyImpact();
+          setState(() {
+            _aliasError = 'Ten pseudonim jest już używany, wybierz inny.';
+          });
+        } else {
+          final t = AppLocalizations.of(context);
+          EuphireToast.error(context, message: t.editPatient_error(e.toString()));
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -281,79 +314,117 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
 class _GlassTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String? errorText;
   final ValueChanged<String>? onChanged;
 
   const _GlassTextField({
     required this.controller,
     required this.label,
+    this.errorText,
     this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      style: const TextStyle(
-        fontFamily: 'Montserrat',
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: EuphireColors.frostWhite,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        hintText: label,
-        hintStyle: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: EuphireColors.mist.withValues(alpha: 0.45),
-        ),
-        labelText: label,
-        labelStyle: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: EuphireColors.mist.withValues(alpha: 0.7),
-          height: 1.1,
-        ),
-        floatingLabelStyle: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: EuphireColors.ember.withValues(alpha: 0.9),
-          height: 1.1,
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.08),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.12),
+    final hasError = errorText != null && errorText!.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: hasError ? EuphireColors.magma : EuphireColors.frostWhite,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: label,
+            hintStyle: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: EuphireColors.mist.withValues(alpha: 0.45),
+            ),
+            labelText: label,
+            labelStyle: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: hasError
+                  ? EuphireColors.magma
+                  : EuphireColors.mist.withValues(alpha: 0.7),
+              height: 1.1,
+            ),
+            floatingLabelStyle: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: hasError
+                  ? EuphireColors.magma
+                  : EuphireColors.ember.withValues(alpha: 0.9),
+              height: 1.1,
+            ),
+            filled: true,
+            fillColor: hasError
+                ? EuphireColors.magma.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.08),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError
+                    ? EuphireColors.magma
+                    : Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError
+                    ? EuphireColors.magma
+                    : Colors.white.withValues(alpha: 0.12),
+                width: hasError ? 1.5 : 1.0,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError ? EuphireColors.magma : EuphireColors.ember,
+                width: 1.5,
+              ),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.12),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 14,
+                color: EuphireColors.magma,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  errorText!,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.magma,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: EuphireColors.ember,
-            width: 1.5,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: EuphireColors.magma,
-            width: 1.5,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
+        ],
+      ],
     );
   }
 }

@@ -16,6 +16,7 @@ import '../widgets/client_invite_sheet.dart';
 import '../widgets/offline_banner.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../providers/connectivity_provider.dart';
+import 'package:grpc/grpc.dart' as grpc;
 
 
 import '../models/session.dart';
@@ -1540,6 +1541,7 @@ class _PatientOptionsMenu extends ConsumerStatefulWidget {
 class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
   bool _editing = false;
   bool _saving = false;
+  String? _aliasError;
   // docs/43 §4: the working alias is the only editable client
   // identifier. The e-mail is displayed read-only — it changes only by
   // sending a new client-panel invitation.
@@ -1609,7 +1611,10 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     final alias = _aliasCtrl.text.trim();
     if (alias.isEmpty) return;
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _aliasError = null;
+    });
     try {
       // UpdatePatientFile.working_alias — the server COALESCEs the
       // other fields, so only the alias changes (docs/43 §4).
@@ -1620,10 +1625,31 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
         AppHapticFeedback.mediumImpact();
         Navigator.of(context).pop();
       }
+    } on grpc.GrpcError catch (e) {
+      if (mounted) {
+        if (e.code == grpc.StatusCode.alreadyExists) {
+          AppHapticFeedback.heavyImpact();
+          setState(() {
+            _aliasError = 'Ten pseudonim jest już używany, wybierz inny.';
+          });
+        } else {
+          EuphireToast.error(
+            context,
+            message: e.message ?? AppLocalizations.of(context).common_error,
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
-        final t = AppLocalizations.of(context);
-        EuphireToast.error(context, message: t.home_error_toast(e.toString()));
+        if (e.toString().contains('ALREADY_EXISTS')) {
+          AppHapticFeedback.heavyImpact();
+          setState(() {
+            _aliasError = 'Ten pseudonim jest już używany, wybierz inny.';
+          });
+        } else {
+          final t = AppLocalizations.of(context);
+          EuphireToast.error(context, message: t.home_error_toast(e.toString()));
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -2055,7 +2081,14 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
         _GlassField(
           controller: _aliasCtrl,
           label: t.home_menu_field_last_name,
-          onChanged: (_) => setState(() {}),
+          errorText: _aliasError,
+          onChanged: (_) {
+            if (_aliasError != null) {
+              setState(() => _aliasError = null);
+            } else {
+              setState(() {});
+            }
+          },
         ),
         // ── E-mail (read-only, resolved server-side; changes only via
         // a new client-panel invitation). ──
@@ -2162,61 +2195,112 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
 class _GlassField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String? errorText;
   final ValueChanged<String>? onChanged;
 
   const _GlassField({
     required this.controller,
     required this.label,
+    this.errorText,
     this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      style: const TextStyle(
-        fontFamily: 'Montserrat',
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: EuphireColors.frostWhite,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        labelText: label,
-        labelStyle: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: EuphireColors.mist.withValues(alpha: 0.7),
-          height: 1.1,
+    final hasError = errorText != null && errorText!.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: hasError ? EuphireColors.magma : EuphireColors.frostWhite,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            labelText: label,
+            labelStyle: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: hasError
+                  ? EuphireColors.magma
+                  : EuphireColors.mist.withValues(alpha: 0.7),
+              height: 1.1,
+            ),
+            floatingLabelStyle: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: hasError
+                  ? EuphireColors.magma
+                  : EuphireColors.ember.withValues(alpha: 0.9),
+              height: 1.1,
+            ),
+            filled: true,
+            fillColor: hasError
+                ? EuphireColors.magma.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.08),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError
+                    ? EuphireColors.magma
+                    : Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError
+                    ? EuphireColors.magma
+                    : Colors.white.withValues(alpha: 0.12),
+                width: hasError ? 1.5 : 1.0,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError ? EuphireColors.magma : EuphireColors.ember,
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
         ),
-        floatingLabelStyle: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: EuphireColors.ember.withValues(alpha: 0.9),
-          height: 1.1,
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.08),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: EuphireColors.ember, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 14,
+                color: EuphireColors.magma,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  errorText!,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.magma,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

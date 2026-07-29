@@ -1153,10 +1153,15 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                         icon: Icons.auto_awesome,
                                         label: 'Zapytaj AI',
                                         subtitle:
-                                            'Czat z kontekstem sesji',
+                                            'Czat z kontekstem wszystkich sesji',
                                         onTap: _onAiChatTapped,
                                         isPrimary: false,
-                                        cardColor: const Color(0xFF1A1040),
+                                        cardColor: const Color(0xFF2D1E0B),
+                                        borderOverride: Border.all(
+                                          color: EuphireColors.ember.withValues(alpha: 0.45),
+                                          width: 1,
+                                        ),
+                                        iconColor: EuphireColors.ember,
                                       ),
                                     ),
                                   ),
@@ -1357,6 +1362,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     required VoidCallback onTap,
     required bool isPrimary,
     Color? cardColor,
+    Border? borderOverride,
+    Color? iconColor,
   }) {
     return FadeTransition(
       opacity: animation,
@@ -1375,9 +1382,10 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                   cardColor ??
                   (isPrimary ? EuphireColors.ember : const Color(0xFF0F1F21)),
               borderRadius: BorderRadius.circular(14),
-              border: isPrimary
-                  ? null
-                  : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: borderOverride ??
+                  (isPrimary
+                      ? null
+                      : Border.all(color: Colors.white.withValues(alpha: 0.1))),
               boxShadow: isPrimary
                   ? [
                       ...EuphireColors.emberGlow,
@@ -1408,15 +1416,18 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                     decoration: BoxDecoration(
                       color: isPrimary
                           ? Colors.white.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.06),
+                          : (iconColor != null
+                              ? iconColor.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.06)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       icon,
                       size: 22,
-                      color: isPrimary
-                          ? EuphireColors.frostWhite
-                          : EuphireColors.frostWhite.withValues(alpha: 0.7),
+                      color: iconColor ??
+                          (isPrimary
+                              ? EuphireColors.obsidianBlack
+                              : EuphireColors.frostWhite.withValues(alpha: 0.7)),
                     ),
                   ),
                 ),
@@ -2659,21 +2670,56 @@ class _NoteCard extends ConsumerWidget {
     final l = AppLocalizations.of(context);
     final displayTitle = note.title.isNotEmpty ? note.title : l.note_untitled;
 
+    String aiSummary = '';
+    String aiTranscript = '';
+    
+    if (note.title == l.ai_chat_note_title) {
+      final headerPattern = RegExp(r'###\s*(Zapis rozmowy z AI|Transkrypcja)[^\n]*\n?');
+      if (note.text.contains(headerPattern)) {
+        final splitParts = note.text.split(headerPattern);
+        final rawSummary = splitParts[0].replaceFirst(RegExp(r'\n*---+\s*$'), '').trim();
+        final rawTranscript = splitParts.sublist(1).join('\n').trim();
+
+        final isRoleHeader = rawSummary.startsWith('**System:**') ||
+            rawSummary.startsWith('**Terapeuta:**') ||
+            rawSummary.startsWith('**Superwizor AI:**') ||
+            rawSummary.startsWith('**AI:**') ||
+            rawSummary.startsWith('###');
+
+        if (rawSummary.isNotEmpty && !isRoleHeader) {
+          aiSummary = rawSummary;
+        } else {
+          aiSummary = '';
+        }
+        aiTranscript = rawTranscript;
+      } else {
+        final trimmedText = note.text.trim();
+        final isRoleHeader = trimmedText.startsWith('**System:**') ||
+            trimmedText.startsWith('**Terapeuta:**') ||
+            trimmedText.startsWith('**Superwizor AI:**') ||
+            trimmedText.startsWith('**AI:**') ||
+            trimmedText.startsWith('###');
+
+        if (isRoleHeader) {
+          aiSummary = '';
+          aiTranscript = trimmedText;
+        } else {
+          aiSummary = trimmedText;
+          aiTranscript = trimmedText;
+        }
+      }
+    }
+
     return GestureDetector(
       onTap: () {
         if (note.title == l.ai_chat_note_title) {
-          final delimiter = '\n\n---\n### ${l.transcript_tab}\n';
-          final parts = note.text.split(delimiter);
-          final summary = parts[0];
-          final transcript = parts.length > 1 ? parts.sublist(1).join(delimiter) : '';
-          
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => AiChatReportScreen(
                 patientId: patientId,
-                initialSummary: summary,
-                fullTranscript: transcript,
+                initialSummary: aiSummary,
+                fullTranscript: aiTranscript,
                 noteId: note.id,
               ),
             ),
@@ -2698,17 +2744,45 @@ class _NoteCard extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Emoji badge ──
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: EuphireColors.ember.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(note.isClientNote ? '💬' : '📝',
-                  style: const TextStyle(fontSize: 18)),
+            // ── Emoji / Logo badge ──
+            Builder(
+              builder: (context) {
+                final isAiNote = note.title == l.ai_chat_note_title ||
+                    note.title.contains('AI') ||
+                    note.title.toLowerCase().contains('rozmowa') ||
+                    note.text.contains('Superwizor AI');
+
+                return Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isAiNote
+                        ? const Color(0xFF00B37E).withValues(alpha: 0.18)
+                        : EuphireColors.ember.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: isAiNote
+                        ? Border.all(
+                            color: const Color(0xFF00B37E).withValues(alpha: 0.4),
+                            width: 1,
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: note.isClientNote
+                      ? const Icon(Icons.chat_bubble_rounded, size: 18, color: EuphireColors.mist)
+                      : isAiNote
+                          ? ClipOval(
+                              child: Image.asset(
+                                // ignore: avoid_hardcoded_strings_in_widgets
+                                'assets/images/PNG/v02_supervisor_logo_gradient.png',
+                                width: 22,
+                                height: 22,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(Icons.edit_note_rounded, size: 22, color: EuphireColors.ember),
+                );
+              },
             ),
             const SizedBox(width: 14),
             // ── Title + preview + meta ──
@@ -2764,17 +2838,41 @@ class _NoteCard extends ConsumerWidget {
                   ),
                   if (note.text.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      note.text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: EuphireColors.frostWhite.withValues(alpha: 0.6),
-                        height: 1.4,
-                      ),
+                    Builder(
+                      builder: (context) {
+                        String preview = note.title == l.ai_chat_note_title && aiSummary.isNotEmpty 
+                            ? aiSummary 
+                            : note.text;
+                        
+                        // Clean up markdown delimiters and role headers
+                        preview = preview.replaceFirst(RegExp(r'^\s*---\s*'), '');
+                        preview = preview.replaceFirst(RegExp(r'^\s*###\s*Transkrypcja\s*'), '');
+                        preview = preview.replaceFirst(RegExp(r'^\s*###\s*Transkrypt\s*'), '');
+                        preview = preview.replaceAll('**Terapeuta:**', 'Terapeuta:');
+                        preview = preview.replaceAll('**Superwizor AI:**', 'Superwizor AI:');
+                        preview = preview.replaceAll('**AI:**', 'Superwizor AI:');
+                        preview = preview.replaceAll('**System:**', 'System:');
+                        preview = preview.replaceAll(RegExp(r'\*+'), '');
+                        preview = preview.replaceAll(RegExp(r'#+'), '');
+                        preview = preview.replaceAll(RegExp(r'\n+'), ' ').trim();
+
+                        if (preview.isEmpty) {
+                          preview = 'Zapisana rozmowa z Asystentem AI';
+                        }
+
+                        return Text(
+                          preview,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: EuphireColors.frostWhite.withValues(alpha: 0.6),
+                            height: 1.4,
+                          ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 6),

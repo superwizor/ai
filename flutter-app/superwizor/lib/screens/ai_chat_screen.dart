@@ -4,8 +4,9 @@
 // Loads patient context from session reports, streams Gemini responses,
 // and optionally saves the conversation as a clinical note on close.
 //
-// Design: dark Euphire theme, message bubbles (user=ember, AI=surfaceTeal),
-// shimmer loading indicator, streaming text.
+// Design: modern dark Euphire glassmorphism theme, Superwizor AI branding logo,
+// responsive message bubbles (user=ember gradient, AI=deep teal glass),
+// pulsing logo indicator during streaming.
 
 import 'dart:async';
 
@@ -13,12 +14,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'ai_chat_report_screen.dart';
-
 import '../l10n/app_localizations.dart';
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
+import '../utils/haptics.dart';
 import '../widgets/euphire_toast.dart';
+import '../providers/patient_notes_provider.dart';
+import '../widgets/report_preferences_section.dart';
 
 // ── Chat Message Model ─────────────────────────────────────
 
@@ -64,24 +66,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   AiChatService? _chatService;
   bool _isLoading = true; // initial context loading
   bool _isGenerating = false; // AI is streaming a response
+  bool _isLastResponseTruncated = false; // AI response was cut off / truncated
   String _streamingText = ''; // partial response text
-  StreamSubscription<String>? _streamSub;
+  StreamSubscription<AiChatStreamEvent>? _streamSub;
 
-  late AnimationController _shimmerCtrl;
+  late AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
-    _shimmerCtrl = AnimationController(
+    _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
     _initChat();
   }
 
   Future<void> _initChat() async {
     try {
       final factory = ref.read(aiChatServiceFactoryProvider);
+      await ref.read(patientNotesMapProvider.notifier).refreshNotes(widget.patientId);
       final service = await factory.create(
         patientId: widget.patientId,
         patientAlias: widget.patientAlias,
@@ -117,38 +121,53 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     _textCtrl.dispose();
     _inputFocus.dispose();
     _scrollCtrl.dispose();
-    _shimmerCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
   // ── Send Message ─────────────────────────────────────────
 
-  void _sendMessage() {
-    final text = _textCtrl.text.trim();
+  void _sendMessage([String? overrideText]) {
+    final text = (overrideText ?? _textCtrl.text).trim();
     if (text.isEmpty || _chatService == null || _isGenerating) return;
+
+    AppHapticFeedback.lightImpact();
 
     setState(() {
       _messages.add(_ChatMessage(role: _MessageRole.user, text: text));
       _isGenerating = true;
+      _isLastResponseTruncated = false;
       _streamingText = '';
     });
-    _textCtrl.clear();
+    if (overrideText == null) {
+      _textCtrl.clear();
+    }
     _scrollToBottom();
 
+    bool lastWasTruncated = false;
     _streamSub?.cancel();
     _streamSub = _chatService!.sendMessage(text).listen(
-      (partial) {
+      (event) {
         if (!mounted) return;
-        setState(() => _streamingText = partial);
+        lastWasTruncated = event.isTruncated;
+        setState(() => _streamingText = event.text);
         _scrollToBottom();
       },
       onDone: () {
         if (!mounted) return;
+        final finalText = _streamingText.trim();
+        final endsWithSentencePunctuation =
+            RegExp(r'[\.\!\?\:\)\"”\*]$').hasMatch(finalText);
+        final isGrammaticallyCutOff =
+            !endsWithSentencePunctuation && finalText.length > 200;
+
         setState(() {
           if (_streamingText.isNotEmpty) {
             _messages.add(
                 _ChatMessage(role: _MessageRole.ai, text: _streamingText));
           }
+          _isLastResponseTruncated =
+              lastWasTruncated || isGrammaticallyCutOff;
           _streamingText = '';
           _isGenerating = false;
         });
@@ -163,6 +182,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           ));
           _streamingText = '';
           _isGenerating = false;
+          _isLastResponseTruncated = false;
         });
         _scrollToBottom();
       },
@@ -171,16 +191,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   // ── Close / Save Dialog ──────────────────────────────────
 
-  Future<bool> _onWillPop() async {
-    // No messages beyond the intro → just close
-    final userMessages =
-        _messages.where((m) => m.role == _MessageRole.user).toList();
-    if (userMessages.isEmpty) return true;
-
-    final l = AppLocalizations.of(context);
-
+  Future<bool> _showExitDialog() async {
     final result = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
@@ -191,7 +205,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -199,49 +213,44 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2)),
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.ai_chat_save_dialog_title,
-                    style: const TextStyle(
+                  const SizedBox(height: 28),
+                  _buildSuperwizorAvatar(size: 56, isPulsing: false),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'ZAPISANA ROZMOWA TRAFI DO KARTOTEKI PACJENTA',
+                    style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
-                      fontSize: 18,
+                      fontSize: 16,
                       color: EuphireColors.frostWhite,
+                      letterSpacing: 0.3,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l.ai_chat_save_dialog_body,
-                    style: const TextStyle(
-                      fontFamily: 'Merriweather',
-                      fontSize: 14,
-                      color: EuphireColors.mist,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: EuphireColors.aurora,
-                        foregroundColor: const Color(0xFF041416),
+                        backgroundColor: EuphireColors.ember,
+                        foregroundColor: EuphireColors.obsidianBlack,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(ctx, 'save'),
                       child: const Text(
-                        'Podsumuj i zobacz',
+                        'Zapisz do profilu',
                         style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16),
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -252,16 +261,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(ctx, 'discard'),
-                      child: Text(
-                        l.ai_chat_save_no,
-                        style: const TextStyle(
-                            color: EuphireColors.magma,
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16),
+                      child: const Text(
+                        'Odrzuć',
+                        style: TextStyle(
+                          color: EuphireColors.magma,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -284,34 +295,38 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   Future<void> _saveAsNote() async {
     if (_chatService == null) return;
 
-    EuphireToast.info(context, message: '⏳ Generowanie podsumowania...');
+    EuphireToast.info(context, message: 'Zapisywanie notatki...');
 
     try {
-      final summary = await _chatService!.summarizeConversation();
-
-      if (!mounted) return;
-
-      final fullTranscript = _messages.map((m) {
+      final List<_ChatMessage> allMessages = List.from(_messages);
+      if (_streamingText.trim().isNotEmpty) {
+        allMessages.add(_ChatMessage(role: _MessageRole.ai, text: _streamingText.trim()));
+      }
+      final chatMessagesToSave = allMessages.where((m) => m.role != _MessageRole.system);
+      final fullTranscript = chatMessagesToSave.map((m) {
         final role = m.role == _MessageRole.user 
             ? '**Terapeuta:**' 
-            : m.role == _MessageRole.ai 
-                ? '**AI:**' 
-                : '**System:**';
+            : '**Superwizor AI:**';
         return '$role\n${m.text}';
       }).join('\n\n---\n\n');
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => AiChatReportScreen(
-            patientId: widget.patientId,
-            initialSummary: summary,
-            fullTranscript: fullTranscript,
-          ),
-        ),
+      final l = AppLocalizations.of(context);
+
+      final combinedText = '### Zapis rozmowy z AI\n$fullTranscript'.trim();
+
+      await ref.read(patientNotesMapProvider.notifier).addNote(
+        widget.patientId,
+        l.ai_chat_note_title,
+        combinedText,
       );
+
+      if (!mounted) return;
+
+      EuphireToast.success(context, message: 'Zapisano rozmowę z AI');
+      Navigator.of(context).pop(); // Zamknięcie ekranu czatu
     } catch (e) {
       if (mounted) {
-        EuphireToast.error(context, message: 'Błąd generowania: $e');
+        EuphireToast.error(context, message: 'Wystąpił błąd podczas zapisywania notatki: $e');
       }
     }
   }
@@ -330,6 +345,84 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     });
   }
 
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  // ── Superwizor AI Logo Avatar Widget ─────────────────────
+
+  Widget _buildSuperwizorAvatar({double size = 28, bool isPulsing = false}) {
+    if (!isPulsing) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: EuphireColors.ember.withValues(alpha: 0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: EuphireColors.ember.withValues(alpha: 0.5),
+            width: 1.2,
+          ),
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            // ignore: avoid_hardcoded_strings_in_widgets
+            'assets/images/PNG/v02_supervisor_logo_gradient.png',
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _pulseCtrl,
+      builder: (context, child) {
+        final glowVal = 0.2 + (0.45 * _pulseCtrl.value);
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: EuphireColors.ember.withValues(alpha: glowVal),
+                blurRadius: 10 * _pulseCtrl.value + 4,
+                spreadRadius: 2 * _pulseCtrl.value,
+              ),
+            ],
+            border: Border.all(
+              color: Color.lerp(
+                EuphireColors.ember.withValues(alpha: 0.6),
+                EuphireColors.ember,
+                _pulseCtrl.value,
+              )!,
+              width: 1.5,
+            ),
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              // ignore: avoid_hardcoded_strings_in_widgets
+              'assets/images/PNG/v02_supervisor_logo_gradient.png',
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // ── Build ────────────────────────────────────────────────
 
   @override
@@ -339,68 +432,112 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final nav = Navigator.of(context);
-        final canPop = await _onWillPop();
+        final canPop = await _showExitDialog();
         if (canPop && mounted) {
           nav.pop();
         }
       },
       child: Scaffold(
-        backgroundColor: EuphireColors.obsidianBlack,
-        appBar: _buildAppBar(),
-        body: Column(
-          children: [
-            Expanded(child: _buildMessageList()),
-            _buildInputBar(),
-          ],
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF002024),
+                Color(0xFF001214),
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(child: _buildMessageList()),
+                _buildInputBar(),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: EuphireColors.nocturne,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.close, color: EuphireColors.mist),
-        onPressed: () async {
-          final canPop = await _onWillPop();
-          if (canPop && mounted) {
-            Navigator.of(context).pop();
-          }
-        },
-      ),
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: EuphireColors.aurora.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.auto_awesome, size: 18, color: EuphireColors.aurora),
+  Widget _buildAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: EuphireColors.nocturne.withValues(alpha: 0.8),
+        border: Border(
+          bottom: BorderSide(
+            color: EuphireColors.glassBorder.withValues(alpha: 0.4),
+            width: 0.5,
           ),
-          const SizedBox(width: 10),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: EuphireColors.mist, size: 20),
+            onPressed: () async {
+              final canPop = await _showExitDialog();
+              if (canPop && mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+          const SizedBox(width: 4),
+          _buildSuperwizorAvatar(size: 34, isPulsing: _isGenerating),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  AppLocalizations.of(context).ai_chat_title,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: EuphireColors.frostWhite,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context).ai_chat_title,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: EuphireColors.ember.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: EuphireColors.ember.withValues(alpha: 0.4),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: const Text(
+                        'PRO',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: EuphireColors.ember,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  widget.patientAlias,
+                  'Kontekst: ${widget.patientAlias}',
                   style: TextStyle(
-                    fontFamily: 'RobotoMono',
-                    fontSize: 11,
-                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: EuphireColors.mist.withValues(alpha: 0.75),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -418,19 +555,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildSuperwizorAvatar(size: 48, isPulsing: true),
+            const SizedBox(height: 20),
             const SizedBox(
-              width: 40,
-              height: 40,
+              width: 24,
+              height: 24,
               child: CircularProgressIndicator(
                 color: EuphireColors.ember,
-                strokeWidth: 3,
+                strokeWidth: 2.5,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               AppLocalizations.of(context).ai_chat_loading_context,
               style: const TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 14,
                 color: EuphireColors.mist,
               ),
@@ -442,7 +581,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
     return ListView.builder(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       itemCount: _messages.length + (_isGenerating ? 1 : 0),
       itemBuilder: (ctx, index) {
         // Streaming bubble (last item while generating)
@@ -458,77 +597,170 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     final isUser = msg.role == _MessageRole.user;
     final isSystem = msg.role == _MessageRole.system;
 
+    if (isSystem) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF092629).withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: EuphireColors.glassBorder.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSuperwizorAvatar(size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Asystent Kliniczny Superwizor AI',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.ember,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      msg.text,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12.5,
+                        height: 1.5,
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            Container(
-              width: 28,
-              height: 28,
-              margin: const EdgeInsets.only(top: 4, right: 8),
-              decoration: BoxDecoration(
-                color: isSystem
-                    ? EuphireColors.mist.withValues(alpha: 0.15)
-                    : EuphireColors.aurora.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                isSystem ? Icons.info_outline : Icons.auto_awesome,
-                size: 14,
-                color: isSystem ? EuphireColors.mist : EuphireColors.aurora,
-              ),
-            ),
+            _buildSuperwizorAvatar(size: 30, isPulsing: false),
+            const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
-                    ? EuphireColors.ember.withValues(alpha: 0.15)
-                    : isSystem
-                        ? EuphireColors.mist.withValues(alpha: 0.08)
-                        : EuphireColors.surfaceTeal,
+                gradient: isUser
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF35250E),
+                          Color(0xFF221607),
+                        ],
+                      )
+                    : const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF0D2D31),
+                          Color(0xFF071D20),
+                        ],
+                      ),
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
                 ),
-                border: isUser
-                    ? Border.all(
-                        color: EuphireColors.ember.withValues(alpha: 0.3),
-                        width: 1)
-                    : null,
+                border: Border.all(
+                  color: isUser
+                      ? EuphireColors.ember.withValues(alpha: 0.4)
+                      : const Color(0xFF1E4348),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: MarkdownBody(
-                data: msg.text,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 13.5,
-                    height: 1.6,
-                    color: isUser
-                        ? EuphireColors.frostWhite
-                        : isSystem
-                            ? EuphireColors.mist
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MarkdownBody(
+                    data: msg.text,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13.5,
+                        height: 1.55,
+                        color: isUser
+                            ? EuphireColors.frostWhite
                             : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                      ),
+                      strong: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.ember,
+                      ),
+                      h1: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
+                      ),
+                      h2: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
+                      ),
+                      h3: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.ember,
+                      ),
+                      listBullet: TextStyle(
+                        fontFamily: 'Montserrat',
+                        color: isUser
+                            ? EuphireColors.ember
+                            : EuphireColors.mist,
+                      ),
+                    ),
                   ),
-                  strong: const TextStyle(fontWeight: FontWeight.bold, color: EuphireColors.frostWhite),
-                  listBullet: TextStyle(
-                    color: isUser
-                        ? EuphireColors.frostWhite
-                        : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text(
+                      _formatTime(msg.timestamp),
+                      style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        fontSize: 10,
+                        color: EuphireColors.mist.withValues(alpha: 0.45),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
-          if (isUser) const SizedBox(width: 8),
+          if (isUser) const SizedBox(width: 4),
         ],
       ),
     );
@@ -536,32 +768,27 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   Widget _buildStreamingBubble() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            margin: const EdgeInsets.only(top: 4, right: 8),
-            decoration: BoxDecoration(
-              color: EuphireColors.aurora.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.auto_awesome,
-                size: 14, color: EuphireColors.aurora),
-          ),
+          _buildSuperwizorAvatar(size: 30, isPulsing: true),
+          const SizedBox(width: 8),
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: const BoxDecoration(
-                color: EuphireColors.surfaceTeal,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D2D31),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(4),
-                  bottomRight: Radius.circular(16),
+                  bottomRight: Radius.circular(18),
+                ),
+                border: Border.all(
+                  color: EuphireColors.ember.withValues(alpha: 0.5),
+                  width: 1,
                 ),
               ),
               child: _streamingText.isEmpty
@@ -571,14 +798,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                       selectable: true,
                       styleSheet: MarkdownStyleSheet(
                         p: TextStyle(
-                          fontFamily: 'Merriweather',
+                          fontFamily: 'Montserrat',
                           fontSize: 13.5,
-                          height: 1.6,
+                          height: 1.55,
                           color: EuphireColors.frostWhite.withValues(alpha: 0.92),
                         ),
-                        strong: const TextStyle(fontWeight: FontWeight.bold, color: EuphireColors.frostWhite),
-                        listBullet: TextStyle(
-                          color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                        strong: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w700,
+                          color: EuphireColors.ember,
+                        ),
+                        listBullet: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          color: EuphireColors.mist,
                         ),
                       ),
                     ),
@@ -591,13 +823,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   Widget _buildShimmerDots() {
     return AnimatedBuilder(
-      animation: _shimmerCtrl,
-      builder: (_, _) {
-        final value = _shimmerCtrl.value;
+      animation: _pulseCtrl,
+      builder: (context, child) {
+        final value = _pulseCtrl.value;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (i) {
-            final delay = i * 0.2;
+            final delay = i * 0.25;
             final opacity =
                 (0.3 + 0.7 * ((value + delay) % 1.0)).clamp(0.3, 1.0);
             return Padding(
@@ -608,7 +840,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: EuphireColors.aurora,
+                    color: EuphireColors.ember,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -620,88 +852,320 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     );
   }
 
+  void _showAssistantMenu(BuildContext context) {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: EuphireColors.nocturne,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).padding.bottom + 16,
+            top: 24,
+            left: 20,
+            right: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: EuphireColors.ember, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Narzędzia Asystenta',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: EuphireColors.mist),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Gotowe polecenia',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: EuphireColors.mist,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildPromptTile(ctx, '💡 Główny wątek w historii pacjenta?'),
+              _buildPromptTile(ctx, '🎭 Jakie emocje dominują u pacjenta?'),
+              _buildPromptTile(ctx, '📋 Podsumuj postępy w terapii'),
+              _buildPromptTile(ctx, '🎯 Cel na kolejną sesję'),
+              _buildPromptTile(ctx, '🧭 Od czego zacząć kolejną sesję?'),
+              const SizedBox(height: 24),
+              const Divider(color: EuphireColors.glassBorder),
+              const SizedBox(height: 12),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showReportPreferences(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: EuphireColors.obsidianBlack.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: EuphireColors.glassBorder.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.settings_outlined, color: EuphireColors.frostWhite, size: 20),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Preferencje formatowania raportów',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: EuphireColors.frostWhite,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: EuphireColors.mist.withValues(alpha: 0.5)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReportPreferences(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: EuphireColors.nocturne,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: EuphireColors.mist.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: ReportPreferencesSection(),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPromptTile(BuildContext context, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          AppHapticFeedback.selectionClick();
+          final cleanText = text.replaceFirst(RegExp(r'^[^\w\s\u00C0-\u024F]+'), '').trim();
+          _sendMessage(cleanText);
+          Navigator.of(context).pop();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B2D31).withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: EuphireColors.glassBorder.withValues(alpha: 0.3)),
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: EuphireColors.frostWhite,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinueChip() {
+    if (_isGenerating ||
+        !_isLastResponseTruncated ||
+        _messages.isEmpty ||
+        _messages.last.role != _MessageRole.ai) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ActionChip(
+          avatar: const Icon(Icons.play_arrow_rounded, size: 16, color: EuphireColors.ember),
+          label: const Text(
+            'Kontynuuj wypowiedź',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: EuphireColors.frostWhite,
+            ),
+          ),
+          backgroundColor: const Color(0xFF092629),
+          side: BorderSide(
+            color: const Color(0xFF00B37E).withValues(alpha: 0.5),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          onPressed: () {
+            _sendMessage('Kontynuuj od miejsca, w którym przerwałeś.');
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputBar() {
     final canSend = !_isLoading &&
         !_isGenerating &&
         _chatService != null;
 
     return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 8,
-        top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: EuphireColors.nocturne,
+        color: EuphireColors.nocturne.withValues(alpha: 0.9),
         border: Border(
           top: BorderSide(
-            color: EuphireColors.glassBorder.withValues(alpha: 0.5),
+            color: EuphireColors.glassBorder.withValues(alpha: 0.4),
             width: 0.5,
           ),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 120),
-              decoration: BoxDecoration(
-                color: EuphireColors.deepTealBackground,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: EuphireColors.glassBorder.withValues(alpha: 0.4),
+          _buildContinueChip(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
+                child: IconButton(
+                  icon: const Icon(Icons.add_circle_outline, color: EuphireColors.mist),
+                  onPressed: () => _showAssistantMenu(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ),
-              child: TextField(
-                controller: _textCtrl,
-                focusNode: _inputFocus,
-                maxLines: null,
-                textInputAction: TextInputAction.newline,
-                style: const TextStyle(
-                  fontFamily: 'Merriweather',
-                  fontSize: 14,
-                  color: EuphireColors.frostWhite,
-                ),
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context).ai_chat_input_hint,
-                  hintStyle: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 14,
-                    color: EuphireColors.mist.withValues(alpha: 0.5),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF071F22),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: _inputFocus.hasFocus
+                          ? EuphireColors.ember.withValues(alpha: 0.7)
+                          : EuphireColors.glassBorder.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  child: TextField(
+                    controller: _textCtrl,
+                    focusNode: _inputFocus,
+                    maxLines: null,
+                    textInputAction: TextInputAction.newline,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context).ai_chat_input_hint,
+                      hintStyle: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 14,
+                        color: EuphireColors.mist.withValues(alpha: 0.5),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                    ),
+                    enabled: canSend,
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
-                enabled: canSend,
-                onSubmitted: (_) => _sendMessage(),
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 44,
-            height: 44,
-            child: Material(
-              color: canSend ? EuphireColors.ember : EuphireColors.mist.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(22),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: canSend ? _sendMessage : null,
-                child: Icon(
-                  Icons.send_rounded,
-                  size: 20,
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44,
+                height: 44,
+                child: Material(
                   color: canSend
-                      ? EuphireColors.obsidianBlack
-                      : EuphireColors.mist.withValues(alpha: 0.4),
+                      ? EuphireColors.ember
+                      : EuphireColors.mist.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(22),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(22),
+                    onTap: canSend ? () => _sendMessage() : null,
+                    child: Icon(
+                      Icons.send_rounded,
+                      size: 20,
+                      color: canSend
+                          ? EuphireColors.obsidianBlack
+                          : EuphireColors.mist.withValues(alpha: 0.35),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
