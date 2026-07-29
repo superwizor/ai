@@ -113,6 +113,24 @@ service IdentityService {
   // AdminCreateOrganization. Same 7-day token + org_manager_invite
   // e-mail; reason >= 10 chars → audit_events.
   rpc AdminInviteOrgManager(AdminInviteOrgManagerRequest) returns (Invitation);
+  // Attaches an EXISTING therapist account to an organization by
+  // e-mail (docs/43 §5) — the admin counterpart of the manager-driven
+  // InviteTherapist → AcceptInvitation pair, for accounts that already
+  // exist and therefore cannot be invited again (users.email is
+  // globally UNIQUE).
+  //
+  // A therapist belongs to at most ONE organization (users.organization_id),
+  // so attaching an account that already sits in another org is a MOVE.
+  // That is never silent: the first call returns
+  // TRANSFER_CONFIRMATION_REQUIRED with the therapist's session history
+  // (total + billable) and writes NOTHING. The admin re-sends the same
+  // request with confirm_transfer=true to go through with it.
+  rpc AdminAssignTherapistToOrg(AdminAssignTherapistToOrgRequest) returns (AdminAssignTherapistToOrgResponse);
+  // Detaches a therapist from an organization: clears
+  // users.organization_id and closes the open seat_assignments row.
+  // The account itself stays active and keeps its kartoteki and
+  // sessions — this is NOT the soft-delete that RemoveTherapist does.
+  rpc AdminUnassignTherapistFromOrg(AdminUnassignTherapistFromOrgRequest) returns (google.protobuf.Empty);
   rpc AdminListOrganizations(AdminListOrganizationsRequest) returns (AdminListOrganizationsResponse);
   rpc AdminGetOrganization(AdminGetOrganizationRequest) returns (OrganizationDetails);
   rpc AdminSetOrganizationStatus(AdminSetOrganizationStatusRequest) returns (google.protobuf.Empty);
@@ -614,6 +632,67 @@ message AdminCreateOrganizationRequest {
 message AdminInviteOrgManagerRequest {
   string organization_id = 1;
   string email = 2;
+  string reason = 15;             // required, >= 10 chars
+}
+
+message AdminAssignTherapistToOrgRequest {
+  string organization_id = 1;
+  // The therapist's account e-mail. Matched case-insensitively against
+  // users.email (non-deleted). No account = NotFound; this RPC never
+  // creates users and never sends invitations.
+  string email = 2;
+  // Set true to go through with a move when the therapist already
+  // belongs to another organization. Without it the server answers
+  // TRANSFER_CONFIRMATION_REQUIRED and writes nothing.
+  bool confirm_transfer = 3;
+  // Which seat allocation to occupy. Optional: when the org has exactly
+  // one allocation the server picks it; with several, omitting this is
+  // an InvalidArgument. Orgs with no allocations get no seat row at
+  // all, matching the allocation-less invite path.
+  string seat_allocation_id = 4;
+  string reason = 15;             // required, >= 10 chars
+}
+
+enum AdminAssignTherapistStatus {
+  ADMIN_ASSIGN_THERAPIST_STATUS_UNSPECIFIED = 0;
+  // The therapist is now a member of the requested organization.
+  ADMIN_ASSIGN_THERAPIST_STATUS_ASSIGNED = 1;
+  // Nothing was written. The therapist belongs to another org; the
+  // response carries `transfer_warning` so the admin can see what
+  // moving would drag along, then retry with confirm_transfer=true.
+  ADMIN_ASSIGN_THERAPIST_STATUS_TRANSFER_CONFIRMATION_REQUIRED = 2;
+}
+
+// What an admin should see BEFORE moving a therapist out of their
+// current organization. Sessions and kartoteki stay with the therapist,
+// but the billing history stays with the OLD org — that asymmetry is
+// the reason this confirmation exists.
+message TherapistTransferWarning {
+  string current_organization_id = 1;
+  string current_organization_name = 2;
+  // Every session ever recorded by this therapist, across orgs.
+  int32 total_sessions = 3;
+  // Of those, the ones that consumed billing tokens (usage_events).
+  int32 billable_sessions = 4;
+  // Sum of usage_events.tokens_consumed for this therapist's sessions.
+  int32 tokens_consumed = 5;
+  google.protobuf.Timestamp last_session_at = 6;
+  // True when the therapist currently occupies a seat in the old org —
+  // that seat is released by the move.
+  bool holds_active_seat = 7;
+}
+
+message AdminAssignTherapistToOrgResponse {
+  AdminAssignTherapistStatus status = 1;
+  // Set when status = ASSIGNED.
+  User therapist = 2;
+  // Set when status = TRANSFER_CONFIRMATION_REQUIRED.
+  TherapistTransferWarning transfer_warning = 3;
+}
+
+message AdminUnassignTherapistFromOrgRequest {
+  string organization_id = 1;
+  string user_id = 2;
   string reason = 15;             // required, >= 10 chars
 }
 
