@@ -666,8 +666,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             final kartFilters = ref.watch(
                               kartotekaFiltersProvider(widget.patientId),
                             );
-                            final sessionsVisible = kartFilters.isEmpty ||
-                                kartFilters
+                            final sessionsVisible = kartFilters
                                     .contains(KartotekaFilter.sessions);
                             final visibleTimeline = _applyKartotekaFilter(
                               timeline,
@@ -2547,7 +2546,7 @@ class _TimelineItem {
 /// shaped is the therapist's own (free notes + action plans).
 List<_TimelineItem> _applyKartotekaFilter(
     List<_TimelineItem> items, Set<KartotekaFilter> active) {
-  if (active.isEmpty) return items;
+  if (active.isEmpty) return [];
   return items.where((i) {
     if (!i.isNote) return active.contains(KartotekaFilter.sessions);
     return i.note!.isClientNote

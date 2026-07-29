@@ -61,19 +61,21 @@ class PatientAvatarNotifier extends Notifier<Map<String, PatientAvatarConfig>> {
 
   @override
   Map<String, PatientAvatarConfig> build() {
-    _loadFromBackend();
+    ref.listen(currentUserProvider, (previous, next) {
+      final userId = next.value?.id;
+      if (userId != null && previous?.value?.id != userId) {
+        _loadFromBackend(userId);
+      }
+    }, fireImmediately: true);
     return {};
   }
 
   /// Load avatar configs from the backend patient files data.
   /// Each PatientFile now carries avatar_config as a JSON string.
-  Future<void> _loadFromBackend() async {
+  Future<void> _loadFromBackend(String therapistId) async {
     try {
-      final user = ref.read(currentUserProvider).value;
-      if (user == null) return;
-
       // Migrate local SharedPreferences configs to backend first.
-      await _migrateLocalToBackend(user.id);
+      await _migrateLocalToBackend(therapistId);
 
       // Avatar configs are now embedded in PatientFile responses —
       // they come back automatically from ListPatientFiles. The patient
@@ -82,7 +84,7 @@ class PatientAvatarNotifier extends Notifier<Map<String, PatientAvatarConfig>> {
       final client = ref.read(grpcClientsProvider).clinical;
       final res = await client.listPatientFiles(
         grpc_clinical.ListPatientFilesRequest(
-          therapistId: user.id,
+          therapistId: therapistId,
           pageSize: 500,
         ),
       );

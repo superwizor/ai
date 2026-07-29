@@ -31,7 +31,7 @@ const int _kMaxFullReports = 3;
 const int _kMaxSummaryOnlyReports = 20;
 
 /// The Gemini model to use for chat.
-const String _kModel = 'gemini-2.0-flash';
+const String _kModel = 'gemini-2.5-flash';
 
 // ── System Prompt ──────────────────────────────────────────
 

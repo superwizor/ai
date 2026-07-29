@@ -183,18 +183,17 @@ class PatientNotesMapNotifier
 
   @override
   Map<String, List<PatientNote>> build() {
-    _loadCache();
-    return const {};
+    return _loadCache();
   }
 
   // ── Read cache (Hive meta box) ──
 
-  void _loadCache() {
+  Map<String, List<PatientNote>> _loadCache() {
     try {
       final mgr = cacheManagerInstance();
       final metaBox = mgr.rawMetaBox();
       final raw = metaBox.get(_metaKey);
-      if (raw == null) return;
+      if (raw == null) return const {};
       final result = <String, List<PatientNote>>{};
       for (final entry in raw.entries) {
         final key = entry.key.toString();
@@ -206,10 +205,10 @@ class PatientNotesMapNotifier
             .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
-      state = result;
+      return result;
     } catch (e) {
       debugPrint('[patient-notes] cache load failed: $e');
-      state = const {};
+      return const {};
     }
   }
 

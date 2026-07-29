@@ -10,12 +10,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'ai_chat_report_screen.dart';
+
 import '../l10n/app_localizations.dart';
-import '../providers/grpc_provider.dart';
-import '../providers/patient_notes_provider.dart';
-import '../repositories/clinical_notes_repository.dart';
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
@@ -179,96 +179,139 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
     final l = AppLocalizations.of(context);
 
-    final result = await showDialog<String>(
+    final result = await showModalBottomSheet<String>(
       context: context,
-      barrierDismissible: false,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: EuphireColors.surfaceTeal,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            l.ai_chat_save_dialog_title,
-            style: const TextStyle(
-              fontFamily: 'Montserrat',
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: EuphireColors.frostWhite,
-            ),
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0A2326),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border(top: BorderSide(color: Colors.white10)),
           ),
-          content: Text(
-            l.ai_chat_save_dialog_body,
-            style: const TextStyle(
-              fontFamily: 'Merriweather',
-              fontSize: 14,
-              color: EuphireColors.mist,
-              height: 1.5,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'cancel'),
-              child: Text(l.ai_chat_save_cancel,
-                  style: const TextStyle(color: EuphireColors.mist, fontFamily: 'Montserrat')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'discard'),
-              child: Text(l.ai_chat_save_no,
-                  style: const TextStyle(color: EuphireColors.magma, fontFamily: 'Montserrat')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EuphireColors.ember,
-                foregroundColor: EuphireColors.obsidianBlack,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l.ai_chat_save_dialog_title,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l.ai_chat_save_dialog_body,
+                    style: const TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontSize: 14,
+                      color: EuphireColors.mist,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.aurora,
+                        foregroundColor: const Color(0xFF041416),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx, 'save'),
+                      child: const Text(
+                        'Podsumuj i zobacz',
+                        style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx, 'discard'),
+                      child: Text(
+                        l.ai_chat_save_no,
+                        style: const TextStyle(
+                            color: EuphireColors.magma,
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-              onPressed: () => Navigator.pop(ctx, 'save'),
-              child: Text(l.ai_chat_save_yes,
-                  style: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w600)),
             ),
-          ],
+          ),
         );
       },
     );
 
-    if (result == 'cancel') return false;
+    if (result == 'discard') return true;
     if (result == 'save') {
       await _saveAsNote();
     }
-    return true;
+    return false;
   }
 
   Future<void> _saveAsNote() async {
     if (_chatService == null) return;
 
-    final l = AppLocalizations.of(context);
-
-    // Show saving indicator
-    EuphireToast.info(context, message: '⏳ ${l.ai_chat_saving}');
+    EuphireToast.info(context, message: '⏳ Generowanie podsumowania...');
 
     try {
       final summary = await _chatService!.summarizeConversation();
 
-      final notesRepo = ClinicalNotesRepository(
-        ref.read(grpcClientsProvider).clinical,
-      );
-      await notesRepo.createNote(
-        widget.patientId,
-        l.ai_chat_note_title,
-        summary,
-        kind: 'FREE_NOTE',
-      );
+      if (!mounted) return;
 
-      // Refresh notes list
-      ref.invalidate(patientNotesProvider(widget.patientId));
+      final fullTranscript = _messages.map((m) {
+        final role = m.role == _MessageRole.user 
+            ? '**Terapeuta:**' 
+            : m.role == _MessageRole.ai 
+                ? '**AI:**' 
+                : '**System:**';
+        return '$role\n${m.text}';
+      }).join('\n\n---\n\n');
 
-      if (mounted) {
-        EuphireToast.success(context, message: l.ai_chat_saved_toast);
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => AiChatReportScreen(
+            patientId: widget.patientId,
+            initialSummary: summary,
+            fullTranscript: fullTranscript,
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
-        EuphireToast.error(context, message: 'Błąd zapisu: $e');
+        EuphireToast.error(context, message: 'Błąd generowania: $e');
       }
     }
   }
@@ -295,9 +338,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        final nav = Navigator.of(context);
         final canPop = await _onWillPop();
         if (canPop && mounted) {
-          Navigator.of(context).pop();
+          nav.pop();
         }
       },
       child: Scaffold(
@@ -460,17 +504,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                         width: 1)
                     : null,
               ),
-              child: SelectableText(
-                msg.text,
-                style: TextStyle(
-                  fontFamily: 'Merriweather',
-                  fontSize: 13.5,
-                  height: 1.6,
-                  color: isUser
-                      ? EuphireColors.frostWhite
-                      : isSystem
-                          ? EuphireColors.mist
-                          : EuphireColors.frostWhite.withValues(alpha: 0.92),
+              child: MarkdownBody(
+                data: msg.text,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 13.5,
+                    height: 1.6,
+                    color: isUser
+                        ? EuphireColors.frostWhite
+                        : isSystem
+                            ? EuphireColors.mist
+                            : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                  ),
+                  strong: const TextStyle(fontWeight: FontWeight.bold, color: EuphireColors.frostWhite),
+                  listBullet: TextStyle(
+                    color: isUser
+                        ? EuphireColors.frostWhite
+                        : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                  ),
                 ),
               ),
             ),
@@ -513,14 +566,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
               ),
               child: _streamingText.isEmpty
                   ? _buildShimmerDots()
-                  : SelectableText(
-                      _streamingText,
-                      style: TextStyle(
-                        fontFamily: 'Merriweather',
-                        fontSize: 13.5,
-                        height: 1.6,
-                        color:
-                            EuphireColors.frostWhite.withValues(alpha: 0.92),
+                  : MarkdownBody(
+                      data: _streamingText,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          fontFamily: 'Merriweather',
+                          fontSize: 13.5,
+                          height: 1.6,
+                          color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                        ),
+                        strong: const TextStyle(fontWeight: FontWeight.bold, color: EuphireColors.frostWhite),
+                        listBullet: TextStyle(
+                          color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                        ),
                       ),
                     ),
             ),

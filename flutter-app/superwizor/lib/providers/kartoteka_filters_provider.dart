@@ -24,7 +24,7 @@ class KartotekaFiltersNotifier extends Notifier<Set<KartotekaFilter>> {
   final String patientFileId;
 
   @override
-  Set<KartotekaFilter> build() => <KartotekaFilter>{};
+  Set<KartotekaFilter> build() => KartotekaFilter.values.toSet();
 
   /// Toggle a category in/out of the active set.
   void toggle(KartotekaFilter f) {
