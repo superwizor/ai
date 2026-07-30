@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <!-- Keeps the Dart upload runner at foreground process priority after a
+         session ends (docs/58). Separate permission from the microphone one:
+         API 34+ requires the permission that matches the service type. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <!-- Android 13+: required for the recording foreground-service
          notification to be visible. The service runs regardless; the
          notification just informs the user the session is recording. -->
@@ -44,6 +48,23 @@
             android:name=".RecordingForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- dataSync foreground service that keeps the Dart upload runner at
+             foreground process priority once the session (and with it the
+             microphone service and the wakelock) is already gone — docs/58.
+             No native uploader lives behind it; the queue stays in Dart.
+             Controlled via the ai.superwizor/upload_fgs MethodChannel and
+             reports an OS-cut window on ai.superwizor/upload_fgs_events.
+
+             stopWithTask: the runner is the Dart isolate of MainActivity's
+             engine, so a swipe-away kills the uploader — the service must go
+             with it instead of leaving a notification nothing is behind.
+             The recording service deliberately does NOT do this. -->
+        <service
+            android:name=".UploadForegroundService"
+            android:exported="false"
+            android:stopWithTask="true"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Home-screen widget that mirrors the active recording
              session status (timer, pause, report-ready). Updated

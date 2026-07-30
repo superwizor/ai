@@ -178,6 +178,25 @@ class UploadQueueRunner {
       for (final report in await bg.drainJournal()) {
         final row = _queue.getById(report.localId);
         if (row == null) continue; // wiersz już zdjęty (cancel/dismiss)
+
+        // Raport dla wiersza BEZ leasingu jest przedawniony i asymetria
+        // jest tu konieczna:
+        //
+        // • `failed` odrzucamy. Anulowanie z Darta (`cancel`) ląduje na
+        //   iOS w tym samym callbacku co prawdziwa porażka, więc każdy
+        //   anulowany-i-ponowiony wiersz dostałby po chwili fałszywy błąd
+        //   i niezasłużony backoff.
+        // • `success` przyjmujemy ZAWSZE. Jeśli w międzyczasie zdjęliśmy
+        //   leasing (obrona przed zgubionym raportem niżej), a system
+        //   jednak dowiózł bajty, to odrzucenie tej wiadomości kazałoby
+        //   Dartowi wysłać obiekt drugi raz — a `ifGenerationMatch=0` w
+        //   sesji resumable zwróci wtedy 412, które klasyfikator uznaje za
+        //   terminalne. Wiersz padłby dla obiektu, który jest już w GCS.
+        if (!report.success && row.nativeLeaseAt == null) {
+          debugPrint('[upload-runner] pomijam przedawniony raport failed '
+              'dla ${report.localId} (wiersz bez leasingu)');
+          continue;
+        }
         final next = await _worker.applyNativeReport(row, report);
         if (identical(next, row)) continue;
         await _queue.update(next);

@@ -247,6 +247,51 @@ void main() {
     await runner.dispose();
   });
 
+  test('przedawniony raport: failed bez leasingu ignorowany, success przyjmowany',
+      () async {
+    // Pułapka zgłoszona przez implementację iOS: `task.cancel()` ląduje w
+    // tym samym callbacku co prawdziwa porażka, więc anulowany wiersz
+    // zostawia w journalu wpis `failed`. Gdybyśmy go zastosowali, każdy
+    // anulowany-i-ponowiony upload dostawałby fałszywy błąd i niezasłużony
+    // backoff. Sukces jest odwrotnie: musi wejść nawet bez leasingu, bo
+    // inaczej Dart wysłałby obiekt drugi raz, a ifGenerationMatch=0 zwróci
+    // wtedy 412, które klasyfikator uznaje za terminalne.
+    final queue = UploadQueue(hiveBox: rawBox);
+    final io = _FakeIo();
+    final channel = _FakeChannel(handOffResult: false);
+    final runner = build(queue: queue, io: io, channel: channel);
+    await runner.start();
+
+    await queue.enqueue(_seed('f').copyWith(
+      phase: UploadPhase.pending,
+      nextAttemptAt: DateTime.now().toUtc().add(const Duration(minutes: 30)),
+      lastError: 'poprzedni błąd',
+    ));
+
+    channel.journal = [
+      const BackgroundUploadReport(
+          localId: 'f', success: false, httpStatus: 499),
+    ];
+    await runner.kick();
+
+    var row = queue.getById('f')!;
+    expect(row.lastError, 'poprzedni błąd',
+        reason: 'przedawniony failed nie może nadpisać stanu wiersza');
+    expect(row.phase, UploadPhase.pending);
+
+    channel.journal = [
+      const BackgroundUploadReport(
+          localId: 'f', success: true, httpStatus: 200, bytesSent: 10),
+    ];
+    await runner.kick();
+
+    row = queue.getById('f')!;
+    expect(row.phase, UploadPhase.completed,
+        reason: 'bajty są w GCS — powtórny upload skończyłby się 412');
+
+    await runner.dispose();
+  });
+
   test('zgubiony raport: leasing bez zadania w systemie wraca do kolejki',
       () async {
     final queue = UploadQueue(hiveBox: rawBox);
