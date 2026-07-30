@@ -26,6 +26,7 @@ import '../providers/services_provider.dart';
 import '../repositories/session_repository.dart';
 import '../services/billing_quota_cache.dart';
 import '../services/billing_quota_state.dart';
+import 'background_upload_channel.dart';
 import 'pending_upload.dart';
 import 'upload_io_grpc.dart';
 import 'upload_queue.dart';
@@ -96,10 +97,16 @@ final uploadQueueRunnerProvider =
     ingestion: ingestion,
     secureStorage: secureStorage,
   );
-  final worker = UploadWorker(io: io);
+  // Kanał platformowy z docs/58: na iOS oddaje bajty background
+  // URLSession, na Androidzie prosi o okno wykonania (FGS dataSync).
+  // Jeden obiekt dla workera i runnera — worker oddaje transfer, runner
+  // wciąga raporty z journala i domyka okno.
+  final background = BackgroundUploadChannel();
+  final worker = UploadWorker(io: io, background: background);
   final runner = UploadQueueRunner(
     queue: queue,
     worker: worker,
+    background: background,
     // Push-driven status: the runner subscribes to Firestore
     // `session_states/{sessionId}` (notification-svc mirrors
     // Pub/Sub events here per docs/08_FAZA_3_NOTIFICATIONS.md).
