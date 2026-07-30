@@ -289,25 +289,45 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // Uploading phase: signed URL obtained, PUT in progress.
     // Drive the stepper to 'uploading' so the label switches from
     // "Audio czeka w kolejce" to "Ładujemy audio na serwer".
-    if (row.phase == UploadPhase.created && _resolvedSessionId == null) {
-      if (mounted && _phase != SessionStepperPhase.uploading) {
+    // Bramka na FAZIE, nie na _resolvedSessionId: pod Option E sessionId
+    // jest już ustawiony w momencie phase=created, więc stary warunek
+    // `_resolvedSessionId == null` gubił stan `uploading` przy każdym
+    // ponownym wejściu na ekran (stepper wracał do „Audio czeka w kolejce"
+    // w trakcie PUT-a).
+    if (row.phase == UploadPhase.created &&
+        _phase == SessionStepperPhase.pending) {
+      if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploading);
       }
     }
 
-    // SessionId materialised — CompleteAudioUpload just succeeded.
-    // Hand off to the server-side processing listeners. The
-    // queue runner now subscribes to Firestore session_states for
-    // this row and will refresh patient + session caches itself
-    // when analysis terminates (see upload_queue_provider.dart).
+    // SessionId materialised → podpinamy nasłuchy serwerowe (Firestore +
+    // fallback poll). Komentarz „CompleteAudioUpload just succeeded" był
+    // nieprawdziwy od Option E: sessionId przychodzi z CreateAudioUpload,
+    // czyli RAZEM z phase=created — PRZED wysłaniem choćby jednego bajtu
+    // (upload_worker.dart:233-240). Przestawianie tu fazy na `uploaded`
+    // powodowało, że w tym samym callbacku drugi setState nadpisywał
+    // `uploading`, a ekran przez cały upload twierdził, że audio jest już
+    // na serwerze — i pokazywał „Analiza trwa na naszych serwerach",
+    // podczas gdy bajty leżały na telefonie (znalezione 2026-07-30).
     final newSid = row.sessionId;
     if (newSid != null && _resolvedSessionId == null) {
       _resolvedSessionId = newSid;
       SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
+      _startListeners();
+    }
+
+    // Bajty są na serwerze dopiero, gdy wiersz osiągnie phase=completed
+    // (albo legacy uploaded/converted z buildów przed Option F). Fazy nie
+    // cofamy — gdy Firestore już przestawił ekran na transcribing/analyzing,
+    // ten warunek nie może go ściągnąć wstecz.
+    if (row.phase.index >= UploadPhase.uploaded.index &&
+        row.phase != UploadPhase.failed &&
+        row.phase != UploadPhase.quotaBlocked &&
+        _phase.index < SessionStepperPhase.uploaded.index) {
       if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploaded);
       }
-      _startListeners();
     }
   }
 
