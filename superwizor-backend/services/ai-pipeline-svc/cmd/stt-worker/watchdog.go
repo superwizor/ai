@@ -189,12 +189,22 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Second responsibility (Option E, 2026-05-25): clean up orphan
-	// PENDING_UPLOAD session rows whose upload never completed.
-	// Runs after the stt_operations rescue so a transient DB error
-	// here doesn't block the more time-sensitive Chirp poll. Errors
-	// logged and ignored — next tick will retry.
-	_ = runOrphanSessionCleanup(ctx, logger)
+	// USUNIĘTE 2026-07-30 (docs/58 §3.1): runOrphanSessionCleanup
+	// hard-usuwał sesje w PENDING_UPLOAD starsze niż godzina. Powstało
+	// to jako obejście nieprzewidywalnego Chirp 3, który potrafił
+	// zdeadlockować przetwarzanie fragmentu na godziny i zawiesić całą
+	// sesję. Ten problem jest już rozwiązany po swojej stronie, a
+	// sprzątanie stało się miną: klient nie ma wykonania w tle, więc
+	// upload realnie zajmuje czasem godziny (incydent 2026-07-28:
+	// 19 h 52 min). Gdyby DELETE zadziałał, bajty trafiłyby do bucketa
+	// bez wiersza sesji, subskrybent zaacknowledgowałby wiadomość
+	// (subscriber.go:192-196), token zostałby spalony i nigdzie nie
+	// byłoby błędu. Zwis widoczny > cicha utrata danych.
+	//
+	// Fantomowe wiersze PENDING_UPLOAD po utracie boxa Hive (reinstall,
+	// wipe) zostają — to koszt, który świadomie przyjmujemy. Jeśli
+	// wrócą jako problem, właściwa odpowiedź to oznaczanie do przeglądu
+	// albo okno liczone w dniach, nie DELETE po godzinie.
 
 	// docs/21 WS2B: time-based give-up backstop for sessions whose
 	// pipeline message was lost entirely (the DLQ reaper never sees
