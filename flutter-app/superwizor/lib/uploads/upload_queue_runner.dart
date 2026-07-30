@@ -93,6 +93,11 @@ class UploadQueueRunner {
   final UploadQueue _queue;
   final UploadWorker _worker;
   final Duration _periodicInterval;
+
+  /// Backoff nakładany, gdy wiersz wyczerpie budżet przejść fazowych w
+  /// jednym ticku — patrz komentarz w `_tick`. Krótki, bo to nie jest
+  /// kara za błąd, tylko oddanie sterowania innym wierszom.
+  static const _phaseHopBudgetBackoff = Duration(minutes: 2);
   final Stream<List<ConnectivityResult>> _connectivityStream;
   final Future<bool> Function() _hasNetwork;
   final SessionStatusStream? _sessionStatusStream;
@@ -438,7 +443,37 @@ class UploadQueueRunner {
           current = repaired;
           changed = true;
         }
+        // Budżet iteracji na wiersz na tick (2026-07-29). Klasa
+        // signedUrlExpired ustawia phase=pending ORAZ
+        // nextAttemptAt=_clock() (upload_worker.dart:353-364), więc
+        // jedyne wyjście z tej pętli przez backoff (:527) jest
+        // STRUKTURALNIE nieosiągalne — porównanie `isAfter(now)` jest
+        // zawsze fałszywe. Wiersz, którego PUT wraca 403/410, kręci
+        // create → PUT → 403 → create w jednym ticku bez końca, głodząc
+        // każdy inny wiersz w kolejce (dueNow sortuje najstarsze
+        // pierwsze, przetwarzanie jest seryjne). 30-minutowy bezpiecznik
+        // z 13fd2c6f obejmuje JEDNO runOne, nie pętlę.
+        //
+        // Sześć przejść wystarcza na najdłuższą uczciwą ścieżkę
+        // (pending → created → uploaded → completed z jednym ponowieniem);
+        // po wyczerpaniu budżetu oddajemy wiersz następnemu tickowi
+        // z prawdziwym backoffem, żeby nie zamienić głodzenia w spam.
+        var phaseHops = 0;
+        const maxPhaseHopsPerTick = 6;
         while (_running) {
+          if (phaseHops++ >= maxPhaseHopsPerTick) {
+            debugPrint('[upload-runner] budżet $maxPhaseHopsPerTick przejść '
+                'wyczerpany dla ${current.localId} (${current.phase.name}) — '
+                'backoff do następnego ticka');
+            await _queue.update(current.copyWith(
+              attemptCount: current.attemptCount + 1,
+              nextAttemptAt: DateTime.now().toUtc().add(_phaseHopBudgetBackoff),
+              lastError: 'upload.phase_hop_budget_exceeded',
+            ));
+            changed = true;
+            _emitSnapshot();
+            break;
+          }
           // Deadlock breaker (2026-07-23): a single hung await inside
           // runOne (deadline-less gRPC in airplane mode, sesja a5ce601f)
           // held _tickInFlight forever and froze the ENTIRE queue with

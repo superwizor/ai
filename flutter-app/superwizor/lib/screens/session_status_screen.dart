@@ -833,6 +833,32 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
           activeStepContent: _buildActiveStepContent(),
         ),
+        // Zwis BEZ błędu (2026-07-29). Diagnostyka niżej jest bramkowana
+        // na attemptCount > 0 && lastError != null, a udany
+        // CreateAudioUpload zeruje licznik i czyści błąd
+        // (upload_worker.dart:246) — więc wiersz, który przeszedł create
+        // i stanął na PUT-cie, NIGDY nie zapala żadnego wskaźnika.
+        // Dokładnie tak wyglądało 19 h 52 min gołego spinnera. Wiek
+        // wiersza jest tu jedynym sygnałem, jaki mamy bez zmiany kształtu
+        // wiersza w Hive.
+        if (_stalledMinutes != null) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                t.sessionStatus_stalled_hint(_stalledMinutes!),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 12,
+                  height: 1.4,
+                  color: EuphireColors.ember.withValues(alpha: 0.9),
+                ),
+              ),
+            ),
+          ),
+        ],
         // Worker diagnostics — surfaced ONLY when attempts are failing
         // (attemptCount > 0 with a recorded error). "Czeka w kolejce" hid
         // a worker that was erroring every tick with no visible trace
@@ -868,9 +894,17 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
+              // Do fazy uploadu WŁĄCZNIE: transfer żyje w procesie
+              // aplikacji. iOS zawiesza proces po zejściu w tło, timery
+              // przestają tykać i bajty nie płyną do czasu powrotu na
+              // ekran (incydent 2026-07-28: 19 h 52 min, sesja
+              // cbd05c2a). Poprzednia kopia obiecywała dokładnie to,
+              // czego platforma nie dowozi. Analiza to inna sprawa —
+              // po PUT-cie pipeline jest serwerowy i tam obietnica jest
+              // prawdziwa.
               _phase == SessionStepperPhase.pending || _phase == SessionStepperPhase.uploading
-                  ? 'Możesz zamknąć aplikację. Przesyłanie trwa w tle.'
-                  : 'Możesz zamknąć aplikację. Analiza trwa w tle.',
+                  ? t.sessionStatus_keep_app_open
+                  : t.sessionStatus_analysis_on_server,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Merriweather',
@@ -1047,6 +1081,31 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
 
   bool get _isQuotaBlocked => _lastRow?.phase == UploadPhase.quotaBlocked;
+
+  /// Ile minut wiersz stoi w kolejce, jeśli stoi ZA DŁUGO — inaczej null.
+  ///
+  /// Liczone od `queuedAt`, bo to jedyny znacznik czasu, jaki wiersz ma,
+  /// i jedyny sygnał niezależny od `attemptCount`/`lastError` (te dwa są
+  /// zerowane przez udany create, patrz komentarz przy widgecie).
+  /// Zaparkowane na kwocie i terminalne wiersze mają własne komunikaty,
+  /// więc ich tu nie ruszamy.
+  ///
+  /// Próg 10 min: typowy upload kończy się w kilkanaście sekund
+  /// (produkcja: 45 z 52 w 20 s), więc dziesięć minut to już nie
+  /// „wolna sieć", tylko zatrzymany transfer.
+  static const _stallThreshold = Duration(minutes: 10);
+
+  int? get _stalledMinutes {
+    final row = _lastRow;
+    if (row == null || row.isTerminal || row.isParked) return null;
+    if (_phase != SessionStepperPhase.pending &&
+        _phase != SessionStepperPhase.uploading) {
+      return null;
+    }
+    final waited = DateTime.now().toUtc().difference(row.queuedAt);
+    if (waited < _stallThreshold) return null;
+    return waited.inMinutes;
+  }
 
   /// Bin-icon handler — confirm + CancelSession + leave the screen.
   Future<void> _onCancelPressed() async {

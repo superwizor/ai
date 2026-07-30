@@ -39,6 +39,10 @@ class _FakeIo implements UploadIo {
   int completeCalls = 0;
   Object? createUploadError;
   Object? putBytesError;
+  /// When true, [putBytesError] is NOT cleared after the first throw —
+  /// models a resumable session that is permanently dead (403/410 on every
+  /// PUT), which is what makes the signedUrlExpired class loop.
+  bool putBytesErrorSticky = false;
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
@@ -56,7 +60,9 @@ class _FakeIo implements UploadIo {
     putCalls++;
     if (putBytesError != null) {
       final err = putBytesError!;
-      putBytesError = null; // one-shot — clear so subsequent attempts succeed
+      if (!putBytesErrorSticky) {
+        putBytesError = null; // one-shot — clear so subsequent attempts succeed
+      }
       throw err;
     }
     completeCalls++;
@@ -232,6 +238,37 @@ void main() {
           reason: 'createUpload re-ran after signed URL refresh');
       expect(io.putCalls, greaterThanOrEqualTo(2),
           reason: 'PUT retried after URL refresh');
+
+      await runner.dispose();
+    });
+
+    test('permanently dead resumable session: phase-hop budget stops the loop',
+        () async {
+      // Regression (2026-07-29): signedUrlExpired sets phase=pending AND
+      // nextAttemptAt=now, so the runner's only backoff exit is
+      // structurally unreachable. With a STICKY 403 the inner advance loop
+      // used to spin create → PUT → 403 → create forever inside one tick,
+      // starving every other queued row. The per-tick hop budget must cut
+      // it off and hand the row a real backoff.
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo()
+        ..putBytesError = httpStatusError(403, 'SignatureExpired')
+        ..putBytesErrorSticky = true;
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('budget'));
+
+      final row = queue.getById('budget')!;
+      expect(row.phase, UploadPhase.pending,
+          reason: 'still retryable — the row is not failed, just deferred');
+      expect(row.lastError, 'upload.phase_hop_budget_exceeded');
+      expect(row.nextAttemptAt.isAfter(DateTime.now().toUtc()), isTrue,
+          reason: 'budget exhaustion must schedule a FUTURE attempt, '
+              'otherwise the next tick spins again');
+      // 6 hops ≈ 3 create+PUT laps. The exact number matters less than the
+      // bound: without the budget these counters grow without limit.
+      expect(io.putCalls, lessThanOrEqualTo(4));
+      expect(io.createCalls, lessThanOrEqualTo(4));
 
       await runner.dispose();
     });

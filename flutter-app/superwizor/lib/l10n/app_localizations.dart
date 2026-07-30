@@ -4764,6 +4764,24 @@ abstract class AppLocalizations {
   /// **'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.'**
   String get sessionStatus_bg_processing_notice;
 
+  /// No description provided for @sessionStatus_keep_app_open.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zostaw aplikację otwartą — przesyłanie wstrzymuje się, gdy aplikacja zejdzie w tło.'**
+  String get sessionStatus_keep_app_open;
+
+  /// No description provided for @sessionStatus_analysis_on_server.
+  ///
+  /// In pl, this message translates to:
+  /// **'Możesz zamknąć aplikację. Analiza trwa na naszych serwerach.'**
+  String get sessionStatus_analysis_on_server;
+
+  /// No description provided for @sessionStatus_stalled_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie czeka już {minutes} min. Zostaw ten ekran otwarty, aby je dokończyć.'**
+  String sessionStatus_stalled_hint(int minutes);
+
   /// No description provided for @sessionStatus_btn_delete_session.
   ///
   /// In pl, this message translates to:
