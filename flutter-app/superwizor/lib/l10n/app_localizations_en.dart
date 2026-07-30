@@ -2639,7 +2639,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionStatus_keep_app_open =>
-      'Keep the app open — the upload pauses when the app goes to the background.';
+      'Keep the app open until the data has been uploaded to our secure server';
 
   @override
   String get sessionStatus_analysis_on_server =>

@@ -2658,7 +2658,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get sessionStatus_keep_app_open =>
-      'Zostaw aplikację otwartą — przesyłanie wstrzymuje się, gdy aplikacja zejdzie w tło.';
+      'Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer';
 
   @override
   String get sessionStatus_analysis_on_server =>

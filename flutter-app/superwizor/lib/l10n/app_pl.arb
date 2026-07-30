@@ -1152,7 +1152,7 @@
   "sessionDetails_transcript_soon": "Transkrypcja — wkrótce",
   "sessionDetails_transcript_soon_desc": "Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.",
   "sessionStatus_bg_processing_notice": "Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.",
-  "sessionStatus_keep_app_open": "Zostaw aplikację otwartą — przesyłanie wstrzymuje się, gdy aplikacja zejdzie w tło.",
+  "sessionStatus_keep_app_open": "Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer",
   "sessionStatus_analysis_on_server": "Możesz zamknąć aplikację. Analiza trwa na naszych serwerach.",
   "sessionStatus_stalled_hint": "Przesyłanie czeka już {minutes} min. Zostaw ten ekran otwarty, aby je dokończyć.",
   "@sessionStatus_stalled_hint": {

@@ -4767,7 +4767,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionStatus_keep_app_open.
   ///
   /// In pl, this message translates to:
-  /// **'Zostaw aplikację otwartą — przesyłanie wstrzymuje się, gdy aplikacja zejdzie w tło.'**
+  /// **'Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer'**
   String get sessionStatus_keep_app_open;
 
   /// No description provided for @sessionStatus_analysis_on_server.
