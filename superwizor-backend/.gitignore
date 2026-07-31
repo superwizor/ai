@@ -54,6 +54,11 @@ Thumbs.db
 # Generated TS client manifest — declares the proto-es + Connect peer
 # deps so any TS workspace consuming gen/ts/ can resolve them.
 !gen/ts/package.json
+# Fixture odpowiedzi ElevenLabs — ksztalt prawdziwej odpowiedzi API
+# (typy word/spacing, speaker_id, znaczniki czasu) z SYNTETYCZNA trescia.
+# Bez tego wyjatku blanketowe *.json zjada plik i TestParse_RealResponseFixture
+# przechodzi wylacznie na maszynie autora, a w CI wywala sie na braku pliku.
+!services/ai-pipeline-svc/internal/elevenlabs/testdata/*.json
 .env
 .env.local
 
