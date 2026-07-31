@@ -338,7 +338,12 @@ func signAudioURL(objectPath string) (string, error) {
 // From then on the ordinary OBJECT_FINALIZE / watchdog machinery owns
 // the session. Callable from both the redelivery path and the watchdog.
 func fallbackToChirp(ctx context.Context, logger *slog.Logger, sessionUUID uuid.UUID, sourceURI, bcp47Lang string) error {
-	logger = logger.With("provider_fallback", "deepgram→chirp")
+	// The row's own provider names the engine we are failing away from.
+	// Reading it rather than hardcoding matters for observability: a
+	// fallback out of ElevenLabs logged as "deepgram→chirp" would send
+	// whoever reads the incident to the wrong provider.
+	from := currentRowProvider(ctx, sessionUUID)
+	logger = logger.With("provider_fallback", from+"→chirp")
 
 	// Transcript already exists → the prior attempt died between persist
 	// and the ops-row update. Just close the row.
@@ -376,9 +381,9 @@ func fallbackToChirp(ctx context.Context, logger *slog.Logger, sessionUUID uuid.
 				    chunk_count = $4, used_native_diarization = $5,
 				    fallback_attempted = TRUE, retry_count = 0,
 				    submitted_at = now(),
-				    finalize_error = 'deepgram fallback; prior request_id=' || COALESCE(request_id, 'n/a')
+				    finalize_error = $6 || ' fallback; prior request_id=' || COALESCE(request_id, 'n/a')
 				WHERE session_id = $1 AND chunk_index = 0`,
-				sessionUUID, opName, outputPrefix, len(chunks), useNativeDiarization); uerr != nil {
+				sessionUUID, opName, outputPrefix, len(chunks), useNativeDiarization, from); uerr != nil {
 				return fmt.Errorf("fallback repoint chunk 0: %w", uerr)
 			}
 		} else {
@@ -454,4 +459,20 @@ func loadChunkPlanBySession(ctx context.Context, sessionUUID uuid.UUID, fallback
 		return single, nil
 	}
 	return out, nil
+}
+
+// currentRowProvider reads the provider recorded on the session's chunk-0
+// ops row. Best-effort: an unreadable row yields "unknown", which is a
+// worse log line than the truth but better than a confidently wrong one.
+func currentRowProvider(ctx context.Context, sessionUUID uuid.UUID) string {
+	if dbPool == nil {
+		return "unknown"
+	}
+	var p string
+	if err := dbPool.QueryRow(ctx, `
+		SELECT provider FROM stt_operations
+		WHERE session_id = $1 AND chunk_index = 0`, sessionUUID).Scan(&p); err != nil || p == "" {
+		return "unknown"
+	}
+	return p
 }
