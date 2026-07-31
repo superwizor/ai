@@ -69,7 +69,21 @@ variable "stt_provider" {
   # Uwaga: dgClient nadal wstaje (DEEPGRAM_API_KEY zostaje zamontowany),
   # wiec jednorazowy fallback deepgram→chirp w deepgram_path.go dziala
   # bez zmian. Kill-switch w druga strone = zmiana tego defaulta.
-  default = "chirp"
+  #
+  # 2026-07-31, decyzja operatora: z powrotem na "deepgram". Kompromis
+  # jest swiadomy — Chirp nie diaryzuje pl-PL W OGOLE
+  # (Chirp3DiarizationLanguages["pl-PL"]=false, recognizer eu/_ odrzuca
+  # diarizationConfig bledem 400), a awarie nova-3 dotyczyly materialu
+  # monotonnego (ciagle liczenie), nie rozmowy terapeutycznej. Na
+  # nagraniach konwersacyjnych nova-3 dal 99,0-99,3% pokrycia i poprawna
+  # liczbe mowcow (2 i 3).
+  #
+  # RYZYKO, ktore zostaje: nova-3 nie ma zadnego zabezpieczenia przed
+  # urwaniem transkrypcji. Straznik pokrycia istnieje wylacznie na
+  # sciezce ElevenLabs (internal/elevenlabs/coverage.go) — sciezka
+  # Deepgram zapisze ucieta transkrypcje jako COMPLETED tak samo jak
+  # przed 2026-07-31. Docelowo przeniesc straznik do wspolnego miejsca.
+  default = "deepgram"
 }
 
 variable "stt_provider_allowlist" {
