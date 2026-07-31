@@ -19,12 +19,16 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { identityClient, billingClient } from "@/lib/connect/clients";
 import {
   AddressSchema,
+  AdminAssignTherapistStatus,
+  AdminAssignTherapistToOrgRequestSchema,
   AdminGetOrganizationRequestSchema,
   AdminInviteOrgManagerRequestSchema,
   AdminSetOrganizationStatusRequestSchema,
+  AdminUnassignTherapistFromOrgRequestSchema,
   AdminUpdateOrganizationRequestSchema,
   OrganizationType,
   type OrganizationDetails,
+  type TherapistTransferWarning,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import {
   AdminResetTokensRequestSchema,
@@ -54,6 +58,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const tEdit = useTranslations("admin.orgEdit");
   const tSeats = useTranslations("admin.orgSeats");
   const tMgr = useTranslations("admin.orgManagerInvite");
+  const tAssign = useTranslations("admin.orgTherapistAssign");
   const planName = usePlanName();
   const tErrors = useTranslations("errors");
   const locale = useLocale();
@@ -62,7 +67,16 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const [state, setState] = useState<LoadState>("loading");
   const [details, setDetails] = useState<OrganizationDetails | null>(null);
   const [openDialog, setOpenDialog] = useState<
-    null | "block" | "unblock" | "resetTokens" | "changePlan" | "edit" | "seats" | "inviteManager"
+    | null
+    | "block"
+    | "unblock"
+    | "resetTokens"
+    | "changePlan"
+    | "edit"
+    | "seats"
+    | "inviteManager"
+    | "assignTherapist"
+    | "unassignTherapist"
   >(null);
 
   // Form state for action-specific fields. Lives at this level so
@@ -100,6 +114,21 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   // render — React #310, surfaced as Next's "This page couldn't load"
   // right after admin sign-in (live-testing, 2026-07-04).
   const [managerEmail, setManagerEmail] = useState("");
+
+  // Przypisanie terapeuty po e-mailu. transferWarning trzyma odpowiedz
+  // backendu, gdy terapeuta nalezy juz do innej organizacji: serwer NIC
+  // wtedy nie zapisuje i zwraca TRANSFER_CONFIRMATION_REQUIRED razem
+  // z liczba sesji, ktore przenosiny pociagna. Dopiero druga proba
+  // — juz z confirmTransfer — faktycznie przepina konto.
+  const [therapistEmail, setTherapistEmail] = useState("");
+  const [transferWarning, setTransferWarning] =
+    useState<TherapistTransferWarning | null>(null);
+  // Terapeuta wybrany do odpiecia; trzymamy cala pare, bo dialog
+  // pokazuje imie i nazwisko, a RPC potrzebuje id.
+  const [unassignTarget, setUnassignTarget] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   const reload = useCallback(async () => {
     setState("loading");
@@ -306,6 +335,62 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     }
   };
 
+  // Przypisanie terapeuty. Dwustopniowe z premedytacja: pierwsze
+  // wywolanie moze wrocic z TRANSFER_CONFIRMATION_REQUIRED, co znaczy,
+  // ze NIC nie zostalo zapisane, a odpowiedz niesie liczbe sesji
+  // (w tym platnych), ktore przenosiny zabiora z soba. Pokazujemy je
+  // w dialogu i dopiero powtorne potwierdzenie wysyla confirmTransfer.
+  const onAssignTherapist = async (reason: string): Promise<ActionResult> => {
+    if (!therapistEmail.includes("@")) {
+      return { error: tAssign("emailInvalid") };
+    }
+    try {
+      const res = await identityClient.adminAssignTherapistToOrg(
+        create(AdminAssignTherapistToOrgRequestSchema, {
+          organizationId: org.id,
+          email: therapistEmail.trim(),
+          // Potwierdzamy tylko wtedy, gdy admin widzial juz ostrzezenie.
+          confirmTransfer: transferWarning !== null,
+          reason,
+        }),
+      );
+
+      if (
+        res.status ===
+        AdminAssignTherapistStatus.TRANSFER_CONFIRMATION_REQUIRED
+      ) {
+        // Dialog zostaje otwarty; children wyrenderuja ostrzezenie.
+        setTransferWarning(res.transferWarning ?? null);
+        return { error: tAssign("confirmNeeded") };
+      }
+
+      setTherapistEmail("");
+      setTransferWarning(null);
+      await reload();
+      return "success";
+    } catch (e) {
+      return { error: translateError(e, tErrors) };
+    }
+  };
+
+  const onUnassignTherapist = async (reason: string): Promise<ActionResult> => {
+    if (!unassignTarget) return { error: tAssign("unassignNoTarget") };
+    try {
+      await identityClient.adminUnassignTherapistFromOrg(
+        create(AdminUnassignTherapistFromOrgRequestSchema, {
+          organizationId: org.id,
+          userId: unassignTarget.id,
+          reason,
+        }),
+      );
+      setUnassignTarget(null);
+      await reload();
+      return "success";
+    } catch (e) {
+      return { error: translateError(e, tErrors) };
+    }
+  };
+
   const openEdit = () => {
     // Seed the draft from the loaded org. proto-es types
     // organization.type as the numeric enum but Connect-Web JSON ships
@@ -437,6 +522,17 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         <ActionBtn onClick={() => setOpenDialog("inviteManager")}>
           {tMgr("cta")}
         </ActionBtn>
+        <ActionBtn
+          onClick={() => {
+            // Czysty start: ostrzezenie z poprzedniego podejscia nie
+            // moze przeciec do nowego adresu, bo confirmTransfer
+            // wysylalby sie wtedy bez zgody admina na TEGO terapeute.
+            setTransferWarning(null);
+            setOpenDialog("assignTherapist");
+          }}
+        >
+          {tAssign("cta")}
+        </ActionBtn>
       </div>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -482,12 +578,28 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               {details.therapists.map((u) => (
                 <li
                   key={u.id}
-                  className="flex justify-between gap-3 font-serif text-sm"
+                  className="flex items-baseline justify-between gap-3 font-serif text-sm"
                 >
                   <span className="text-frost">
                     {u.firstName} {u.lastName}
                   </span>
-                  <span className="text-mist truncate">{u.email}</span>
+                  <span className="flex items-baseline gap-3 min-w-0">
+                    <span className="text-mist truncate">{u.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnassignTarget({
+                          id: u.id,
+                          label:
+                            `${u.firstName} ${u.lastName}`.trim() || u.email,
+                        });
+                        setOpenDialog("unassignTherapist");
+                      }}
+                      className="shrink-0 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition"
+                    >
+                      {tAssign("unassignCta")}
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -745,6 +857,94 @@ export function OrgDetail({ orgId }: { orgId: string }) {
           <p className="font-mono text-[10px] text-mist/60 mt-1.5">{tMgr("hint")}</p>
         </div>
       </ActionDialog>
+      <ActionDialog
+        open={openDialog === "assignTherapist"}
+        title={tAssign("dialogTitle")}
+        body={transferWarning ? tAssign("dialogBodyTransfer") : tAssign("dialogBody")}
+        onClose={() => {
+          setOpenDialog(null);
+          setTransferWarning(null);
+        }}
+        onConfirm={onAssignTherapist}
+      >
+        <div className="flex flex-col">
+          <label
+            htmlFor="assign-therapist-email"
+            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+          >
+            {tAssign("emailLabel")}
+          </label>
+          <input
+            id="assign-therapist-email"
+            type="email"
+            value={therapistEmail}
+            onChange={(e) => {
+              setTherapistEmail(e.target.value);
+              // Zmiana adresu uniewaznia zgode na przeniesienie —
+              // inaczej confirmTransfer poszedlby dla innej osoby.
+              setTransferWarning(null);
+            }}
+            placeholder="terapeuta@klinika.pl"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
+          />
+          <p className="font-mono text-[10px] text-mist/60 mt-1.5">
+            {tAssign("hint")}
+          </p>
+
+          {transferWarning && (
+            <div className="mt-4 border-l-2 border-ember pl-3.5 grid gap-1.5">
+              <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-ember">
+                {tAssign("warningTitle")}
+              </p>
+              <p className="font-serif text-sm text-frost">
+                {tAssign("warningCurrentOrg", {
+                  org:
+                    transferWarning.currentOrganizationName ||
+                    transferWarning.currentOrganizationId,
+                })}
+              </p>
+              <ul className="font-serif text-sm text-mist grid gap-1">
+                <li>
+                  {tAssign("warningSessions", {
+                    total: transferWarning.totalSessions,
+                    billable: transferWarning.billableSessions,
+                  })}
+                </li>
+                <li>
+                  {tAssign("warningTokens", {
+                    tokens: transferWarning.tokensConsumed,
+                  })}
+                </li>
+                {transferWarning.lastSessionAt && (
+                  <li>
+                    {tAssign("warningLastSession", {
+                      date: fmtDate(transferWarning.lastSessionAt),
+                    })}
+                  </li>
+                )}
+                {transferWarning.holdsActiveSeat && (
+                  <li className="text-ember">{tAssign("warningSeat")}</li>
+                )}
+              </ul>
+              <p className="font-serif text-sm text-frost mt-1">
+                {tAssign("warningConfirmHint")}
+              </p>
+            </div>
+          )}
+        </div>
+      </ActionDialog>
+      <ActionDialog
+        open={openDialog === "unassignTherapist"}
+        title={tAssign("unassignDialogTitle")}
+        body={tAssign("unassignDialogBody", {
+          name: unassignTarget?.label ?? "",
+        })}
+        onClose={() => {
+          setOpenDialog(null);
+          setUnassignTarget(null);
+        }}
+        onConfirm={onUnassignTherapist}
+      />
       <ActionDialog
         open={openDialog === "seats"}
         title={tSeats("dialogTitle")}

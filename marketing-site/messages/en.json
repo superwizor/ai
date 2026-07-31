@@ -630,6 +630,27 @@
       "emailLabel": "Manager e-mail",
       "emailInvalid": "Enter a valid e-mail address.",
       "hint": "Re-inviting the same address refreshes the link and re-sends the e-mail."
+    },
+    "orgTherapistAssign": {
+      "cta": "Assign therapist",
+      "dialogTitle": "Assign therapist to organization",
+      "dialogBody": "Enter the e-mail of an existing therapist account. It will be attached to this organization and start consuming its limits.",
+      "dialogBodyTransfer": "This therapist already belongs to another organization. Below is what the transfer would carry over. Confirm again to proceed.",
+      "emailLabel": "Therapist e-mail",
+      "emailInvalid": "Enter a valid e-mail address.",
+      "hint": "The account must already exist. The therapist keeps their patient files and sessions.",
+      "confirmNeeded": "Transfer confirmation required — review the details below.",
+      "warningTitle": "Warning: cross-organization transfer",
+      "warningCurrentOrg": "Current organization: {org}",
+      "warningSessions": "Sessions: {total} (billable: {billable})",
+      "warningTokens": "Tokens consumed: {tokens}",
+      "warningLastSession": "Last session: {date}",
+      "warningSeat": "The therapist holds an active seat — it will be released.",
+      "warningConfirmHint": "Patient files and sessions stay with the therapist. Only the billing assignment changes.",
+      "unassignCta": "Detach",
+      "unassignDialogTitle": "Detach therapist from organization",
+      "unassignDialogBody": "{name} will no longer belong to this organization and their seat will be released. Patient files, sessions and the account itself stay untouched — this is not a therapist removal.",
+      "unassignNoTarget": "No therapist selected."
     }
   },
   "errors": {
@@ -1642,7 +1663,6 @@
       "managerRevokeCta": "Cancel invite",
       "managerRevoked": "Invitation cancelled.",
       "colManager": "Manager",
-      "colStatus": "Status",
       "managerYou": "you",
       "managersEmpty": "No managers.",
       "period": "Billing period: {start} – {end}",

@@ -630,6 +630,27 @@
       "emailLabel": "E-mail managera",
       "emailInvalid": "Podaj poprawny adres e-mail.",
       "hint": "Ponowne zaproszenie tego samego adresu odświeża link i wysyła e-mail jeszcze raz."
+    },
+    "orgTherapistAssign": {
+      "cta": "Przypisz terapeutę",
+      "dialogTitle": "Przypisz terapeutę do organizacji",
+      "dialogBody": "Podaj adres e-mail istniejącego konta terapeuty. Konto zostanie przypięte do tej organizacji i zacznie zużywać jej limity.",
+      "dialogBodyTransfer": "Ten terapeuta należy już do innej organizacji. Poniżej widać, co przeniesienie ze sobą zabierze. Potwierdź ponownie, aby je wykonać.",
+      "emailLabel": "E-mail terapeuty",
+      "emailInvalid": "Podaj poprawny adres e-mail.",
+      "hint": "Konto musi już istnieć. Terapeuta zachowuje swoje kartoteki i sesje.",
+      "confirmNeeded": "Wymagane potwierdzenie przeniesienia — sprawdź szczegóły poniżej.",
+      "warningTitle": "Uwaga: przeniesienie między organizacjami",
+      "warningCurrentOrg": "Obecna organizacja: {org}",
+      "warningSessions": "Sesje: {total} (w tym płatnych: {billable})",
+      "warningTokens": "Zużyte tokeny: {tokens}",
+      "warningLastSession": "Ostatnia sesja: {date}",
+      "warningSeat": "Terapeuta zajmuje aktywne miejsce — zostanie ono zwolnione.",
+      "warningConfirmHint": "Kartoteki i sesje zostają przy terapeucie. Zmienia się wyłącznie przypisanie rozliczeniowe.",
+      "unassignCta": "Odepnij",
+      "unassignDialogTitle": "Odepnij terapeutę od organizacji",
+      "unassignDialogBody": "Konto {name} przestanie należeć do tej organizacji i zwolni zajmowane miejsce. Kartoteki, sesje i samo konto pozostają nietknięte — to nie jest usunięcie terapeuty.",
+      "unassignNoTarget": "Nie wybrano terapeuty."
     }
   },
   "errors": {
