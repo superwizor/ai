@@ -6,10 +6,11 @@
 //   - HealthCheck                       — Cloud Run probe
 //
 // Environment:
-//   PORT             default 8080
-//   DATABASE_URL     postgres DSN (required)
-//   GCP_PROJECT_ID   for Firebase Auth verification (required in prod)
-//   VERSION          shown in HealthCheck (CI passes git sha)
+//
+//	PORT             default 8080
+//	DATABASE_URL     postgres DSN (required)
+//	GCP_PROJECT_ID   for Firebase Auth verification (required in prod)
+//	VERSION          shown in HealthCheck (CI passes git sha)
 package main
 
 import (
@@ -29,16 +30,18 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
-	grpcadapter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/grpc"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
 	fswriter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/firestore"
+	grpcadapter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/grpc"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
 	emailpkg "github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// pkg/logging: bez mapowania level→severity Cloud Logging widzi
+	// wszystko jako DEFAULT.
+	logging.SetupDefault()
 
 	port := getenv("PORT", "8080")
 	version := getenv("VERSION", "dev")

@@ -11,12 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// pkg/logging: bez mapowania level→severity Cloud Logging widzi
+	// wszystko jako DEFAULT.
+	logging.SetupDefault()
 
 	slog.Info("Starting GDPR purger run")
 
