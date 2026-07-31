@@ -55,10 +55,21 @@ variable "e2e_token_minters" {
 
 variable "stt_provider" {
   type = string
-  # "deepgram" od 2026-07-17 (decyzja po walidacji e2e docs/39 Faza 2/3).
-  # Default utrwalony tutaj, zeby zwykly terragrunt apply bez TF_VAR nie
-  # cofnal providera na chirp. Rollback = zmiana tego defaulta.
-  default = "deepgram"
+  # "chirp" od 2026-07-31 — wycofanie z Deepgrama (bylo "deepgram" od
+  # 2026-07-17 po walidacji e2e docs/39 Faza 2/3).
+  #
+  # Powod: nova-3 deterministycznie urywa transkrypcje w polowie nagrania
+  # na monotonnym materiale. Sesja 7 (62 s liczenia) → 13 slow, koniec na
+  # 15,2 s; ten sam plik jako FLAC i jako m4a, z diarize/smart_format i
+  # bez nich — zawsze identycznie. nova-2 urywa na 13,7 s. Model
+  # "enhanced" (arch polaris) transkrybuje cale 62 s, ale to starsza
+  # generacja wypychana z cennika Deepgrama i ~1,6x drozsza, wiec nie jest
+  # to droga na produkcje.
+  #
+  # Uwaga: dgClient nadal wstaje (DEEPGRAM_API_KEY zostaje zamontowany),
+  # wiec jednorazowy fallback deepgram→chirp w deepgram_path.go dziala
+  # bez zmian. Kill-switch w druga strone = zmiana tego defaulta.
+  default = "chirp"
 }
 
 variable "stt_provider_allowlist" {
