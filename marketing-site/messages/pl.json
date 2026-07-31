@@ -650,7 +650,11 @@
       "unassignCta": "Odepnij",
       "unassignDialogTitle": "Odepnij terapeutę od organizacji",
       "unassignDialogBody": "Konto {name} przestanie należeć do tej organizacji i zwolni zajmowane miejsce. Kartoteki, sesje i samo konto pozostają nietknięte — to nie jest usunięcie terapeuty.",
-      "unassignNoTarget": "Nie wybrano terapeuty."
+      "unassignNoTarget": "Nie wybrano terapeuty.",
+      "seatLabel": "Przydział miejsc",
+      "seatPlaceholder": "— wybierz plan —",
+      "seatHint": "Ta organizacja ma kilka przydziałów. Wskaż, który plan ma obciążyć terapeuta.",
+      "seatRequired": "Wybierz przydział miejsc."
     }
   },
   "errors": {
@@ -682,7 +686,8 @@
       "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany).",
       "taxIdConflict": "Ten NIP jest już przypisany do innej organizacji. Użyj innego NIP lub otwórz istniejącą organizację na liście „Organizacje”.",
       "userHasSessions": "Nie można usunąć: ten użytkownik ma nagrane sesje. Zamiast tego dezaktywuj konto.",
-      "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto."
+      "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto.",
+      "seatAllocationRequired": "Organizacja ma kilka przydziałów miejsc — wskaż, który plan ma obciążyć terapeuta."
     }
   },
   "nav": {

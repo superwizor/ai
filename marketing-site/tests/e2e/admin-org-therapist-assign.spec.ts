@@ -57,22 +57,47 @@ async function mockOrgDetails(page: Page) {
   );
 }
 
-/** Pusty rachunek miejsc — komponent pyta o niego przy CLINIC. */
-async function mockSeatUsage(page: Page) {
+/**
+ * Rachunek miejsc. Domyślnie pusty; przy `many` zwraca DWA przydziały,
+ * bo dopiero wtedy backend odmawia zgadywania (resolveSeatAllocation
+ * w identity-svc: 0 → brak seatu, 1 → bierze automatycznie,
+ * >1 → INVALID_ARGUMENT "SEAT_ALLOCATION_REQUIRED").
+ */
+async function mockSeatUsage(page: Page, many = false) {
+  const allocations = many
+    ? [
+        {
+          allocationId: "alloc-1",
+          planTier: "PRO",
+          planCycle: "MONTHLY",
+          seats: 6,
+          seatsAssigned: 2,
+          seatsPending: 0,
+        },
+        {
+          allocationId: "alloc-2",
+          planTier: "CLINIC",
+          planCycle: "ANNUAL",
+          seats: 10,
+          seatsAssigned: 1,
+          seatsPending: 1,
+        },
+      ]
+    : [];
   await page.route(/billing\.v1\.BillingService\/AdminGetOrgSeatUsage/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ allocations: [] }),
+      body: JSON.stringify({ allocations }),
     });
   });
 }
 
-async function gotoOrgDetail(page: Page) {
+async function gotoOrgDetail(page: Page, manySeats = false) {
   await mockFirebaseAuth(page, ADMIN_USER);
   await mockGetMyProfile(page);
   await mockOrgDetails(page);
-  await mockSeatUsage(page);
+  await mockSeatUsage(page, manySeats);
   // Static-export: literalny segment [id] JEST strona; Firebase Hosting
   // przepisuje na nia prawdziwe identyfikatory, a OrgDetailClient czyta
   // useParams() w przegladarce. dynamicParams=false, wiec sciezka
@@ -155,5 +180,35 @@ test.describe("admin — przypisanie terapeuty", () => {
       path: "test-results/admin-org-therapist-transfer-warning.png",
       fullPage: true,
     });
+  });
+
+  // Regresja z produkcji (2026-08-01): przypisanie do organizacji
+  // z DWOMA przydzialami miejsc konczylo sie generycznym
+  // "Nieprawidlowe dane formularza". Backend odmawial zgadywania
+  // (SEAT_ALLOCATION_REQUIRED), a formularz nie mial czego poprawic —
+  // pola wyboru po prostu nie bylo.
+  test("przy wielu przydzialach miejsc admin musi wybrac plan", async ({
+    page,
+  }) => {
+    await gotoOrgDetail(page, true);
+
+    await page.getByRole("button", { name: "Przypisz terapeutę" }).click();
+    const seat = page.getByLabel("Przydział miejsc");
+    await expect(seat).toBeVisible();
+    // Oba przydzialy z wykorzystaniem miejsc, zeby admin wiedzial,
+    // ktory ma jeszcze wolne.
+    await expect(seat).toContainText("2/6");
+    await expect(seat).toContainText("2/10");
+
+    await page.screenshot({
+      path: "test-results/admin-org-therapist-seat-choice.png",
+      fullPage: true,
+    });
+  });
+
+  test("pojedynczy przydzial nie pyta o wybor", async ({ page }) => {
+    await gotoOrgDetail(page);
+    await page.getByRole("button", { name: "Przypisz terapeutę" }).click();
+    await expect(page.getByLabel("Przydział miejsc")).toHaveCount(0);
   });
 });

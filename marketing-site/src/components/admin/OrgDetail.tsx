@@ -121,6 +121,11 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   // z liczba sesji, ktore przenosiny pociagna. Dopiero druga proba
   // — juz z confirmTransfer — faktycznie przepina konto.
   const [therapistEmail, setTherapistEmail] = useState("");
+  // Do ktorego przydzialu miejsc wpiac terapeute. Backend zgaduje sam,
+  // gdy organizacja ma DOKLADNIE JEDEN przydzial; przy wiekszej liczbie
+  // odmawia bledem SEAT_ALLOCATION_REQUIRED, bo nie wie, ktory plan ma
+  // obciazyc. Wtedy wybor musi zrobic admin.
+  const [seatAllocationId, setSeatAllocationId] = useState("");
   const [transferWarning, setTransferWarning] =
     useState<TherapistTransferWarning | null>(null);
   // Terapeuta wybrany do odpiecia; trzymamy cala pare, bo dialog
@@ -229,6 +234,12 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   }
 
   const org = details.organization;
+
+  // Backend rozstrzyga przydzial miejsc sam tylko przy DOKLADNIE JEDNYM.
+  // Zero = organizacja bez miejsc (terapeuta wchodzi bez seatu), wiecej
+  // niz jeden = musi wybrac admin (identity-svc resolveSeatAllocation).
+  const seatAllocations = seatUsage?.allocations ?? [];
+  const needsSeatChoice = seatAllocations.length > 1;
 
   // Action handlers — each returns ActionResult so ActionDialog can
   // surface inline errors or close on success.
@@ -344,6 +355,11 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     if (!therapistEmail.includes("@")) {
       return { error: tAssign("emailInvalid") };
     }
+    // Przy wielu przydzialach miejsc wybor jest wymagany — bez niego
+    // backend i tak odmowi, tylko generycznym INVALID_ARGUMENT.
+    if (needsSeatChoice && !seatAllocationId) {
+      return { error: tAssign("seatRequired") };
+    }
     try {
       const res = await identityClient.adminAssignTherapistToOrg(
         create(AdminAssignTherapistToOrgRequestSchema, {
@@ -351,6 +367,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
           email: therapistEmail.trim(),
           // Potwierdzamy tylko wtedy, gdy admin widzial juz ostrzezenie.
           confirmTransfer: transferWarning !== null,
+          seatAllocationId: seatAllocationId || undefined,
           reason,
         }),
       );
@@ -366,6 +383,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
 
       setTherapistEmail("");
       setTransferWarning(null);
+      setSeatAllocationId("");
       await reload();
       return "success";
     } catch (e) {
@@ -528,6 +546,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
             // moze przeciec do nowego adresu, bo confirmTransfer
             // wysylalby sie wtedy bez zgody admina na TEGO terapeute.
             setTransferWarning(null);
+            setSeatAllocationId("");
             setOpenDialog("assignTherapist");
           }}
         >
@@ -890,6 +909,39 @@ export function OrgDetail({ orgId }: { orgId: string }) {
           <p className="font-mono text-[10px] text-mist/60 mt-1.5">
             {tAssign("hint")}
           </p>
+
+          {/* Wybór przydziału miejsc pokazujemy TYLKO gdy organizacja ma
+              ich więcej niż jeden — przy zerze lub jednym backend
+              rozstrzyga sam, a pusty select byłby zbędnym pytaniem. */}
+          {needsSeatChoice && (
+            <div className="flex flex-col mt-4">
+              <label
+                htmlFor="assign-therapist-seat"
+                className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+              >
+                {tAssign("seatLabel")}
+              </label>
+              <select
+                id="assign-therapist-seat"
+                value={seatAllocationId}
+                onChange={(e) => setSeatAllocationId(e.target.value)}
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
+              >
+                <option value="">{tAssign("seatPlaceholder")}</option>
+                {seatAllocations.map((a) => {
+                  const used = a.seatsAssigned + a.seatsPending;
+                  return (
+                    <option key={a.allocationId} value={a.allocationId}>
+                      {planName(a.planTier)} · {a.planCycle} ({used}/{a.seats})
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="font-mono text-[10px] text-mist/60 mt-1.5">
+                {tAssign("seatHint")}
+              </p>
+            </div>
+          )}
 
           {transferWarning && (
             <div className="mt-4 border-l-2 border-ember pl-3.5 grid gap-1.5">

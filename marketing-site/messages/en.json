@@ -650,7 +650,11 @@
       "unassignCta": "Detach",
       "unassignDialogTitle": "Detach therapist from organization",
       "unassignDialogBody": "{name} will no longer belong to this organization and their seat will be released. Patient files, sessions and the account itself stay untouched — this is not a therapist removal.",
-      "unassignNoTarget": "No therapist selected."
+      "unassignNoTarget": "No therapist selected.",
+      "seatLabel": "Seat allocation",
+      "seatPlaceholder": "— choose a plan —",
+      "seatHint": "This organization has several allocations. Pick which plan the therapist consumes.",
+      "seatRequired": "Choose a seat allocation."
     }
   },
   "errors": {
@@ -682,7 +686,8 @@
       "alreadyExists": "An entry like this already exists (for example the email is already registered).",
       "taxIdConflict": "This tax ID (NIP) already belongs to another organization. Use a different NIP or open the existing one from the \"Organizations\" list.",
       "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
-      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead."
+      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead.",
+      "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes."
     }
   },
   "nav": {
