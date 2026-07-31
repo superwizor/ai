@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/deepgram"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/elevenlabs"
 )
@@ -120,6 +121,36 @@ func TestNormalizeProvider(t *testing.T) {
 	for _, c := range cases {
 		if got := normalizeProvider(c.in); got != c.want {
 			t.Errorf("normalizeProvider(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// Regresja z pierwszej sesji na zywo (2026-07-31, 65 min): transkrypt
+// zapisal sie z PUSTYM language_code, bo lang.BCP47ize szuka w mapie
+// kluczy dwuliterowych, a API zwraca ISO-639-3. Test pilnuje, ze kod
+// wraca do dwoch liter, zanim trafi do BCP47ize.
+func TestISO639_3to1_RoundTripsElevenLabsLanguage(t *testing.T) {
+	for _, bcp47 := range []string{"pl-PL", "en-US", "de-DE", "uk-UA", "es-ES", "fr-FR"} {
+		three := elevenLabsLanguage(bcp47)
+		if three == "" {
+			t.Fatalf("elevenLabsLanguage(%q) puste — test bez sensu", bcp47)
+		}
+		two := iso639_3to1(three)
+		if len(two) != 2 {
+			t.Errorf("iso639_3to1(%q) = %q, chcemy kod dwuliterowy", three, two)
+		}
+		if got := lang.BCP47ize(two); got == "" {
+			t.Errorf("BCP47ize(%q) puste — language_code zapisze sie pusty (regresja)", two)
+		}
+	}
+}
+
+func TestISO639_3to1_PassesThroughUnknown(t *testing.T) {
+	// Kod juz dwuliterowy albo nieznany oddajemy bez zmian — decyzje
+	// zostawiamy BCP47ize, zamiast zgadywac.
+	for _, c := range []string{"pl", "xx", ""} {
+		if got := iso639_3to1(c); got != c {
+			t.Errorf("iso639_3to1(%q) = %q, chcemy bez zmian", c, got)
 		}
 	}
 }

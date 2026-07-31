@@ -74,6 +74,33 @@ func elevenLabsLanguage(bcp47 string) string {
 	return ""
 }
 
+// iso639_3to1 converts the ISO-639-3 code the API returns ("pol") back to
+// the two-letter form the rest of the platform speaks ("pl").
+//
+// Needed because lang.BCP47ize looks the value up in a map keyed by
+// two-letter codes, so it silently returns "" for "pol" — which is
+// exactly what happened on the first live session: the transcript landed
+// with an empty language_code. Round-trips elevenLabsLanguage.
+func iso639_3to1(code string) string {
+	switch strings.ToLower(strings.TrimSpace(code)) {
+	case "pol":
+		return "pl"
+	case "eng":
+		return "en"
+	case "deu", "ger":
+		return "de"
+	case "ukr":
+		return "uk"
+	case "spa":
+		return "es"
+	case "fra", "fre":
+		return "fr"
+	}
+	// Already two-letter (or something we don't know) — hand it over
+	// unchanged and let BCP47ize decide.
+	return code
+}
+
 // processAudioElevenLabs is the elevenlabs branch of ProcessAudio. The
 // caller has already: validated the event, passed the poison guard, set
 // sessions.status=TRANSCRIBING and resolved bcp47Lang.
@@ -173,10 +200,10 @@ func processAudioElevenLabs(ctx context.Context, logger *slog.Logger, ev AudioUp
 
 	tr := &TranscriptResult{
 		Words: res.Words,
-		// The API reports ISO-639-3 ("pol"); BCP47ize normalizes it the
-		// same way the Deepgram path normalizes its short code. Fall back
-		// to the session's own tag when detection returned nothing.
-		LanguageCode:         lang.BCP47ize(firstNonEmpty(res.LanguageCode, bcp47Lang)),
+		// The API reports ISO-639-3 ("pol"), which BCP47ize does not
+		// understand — hence the two-letter hop first. Falls back to the
+		// session's own tag when detection returned nothing.
+		LanguageCode:         lang.BCP47ize(firstNonEmpty(iso639_3to1(res.LanguageCode), bcp47Lang)),
 		WordCount:            res.WordCount,
 		ConfidenceAvg:        res.ConfidenceAvg,
 		HasNativeDiarization: res.SpeakerCount > 0,
