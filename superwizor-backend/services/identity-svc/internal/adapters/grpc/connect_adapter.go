@@ -259,6 +259,22 @@ func (a *ConnectAdapter) AdminGetOrganization(ctx context.Context, req *connect.
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminAssignTherapistToOrg(ctx context.Context, req *connect.Request[identityv1.AdminAssignTherapistToOrgRequest]) (*connect.Response[identityv1.AdminAssignTherapistToOrgResponse], error) {
+	resp, err := a.s.AdminAssignTherapistToOrg(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminUnassignTherapistFromOrg(ctx context.Context, req *connect.Request[identityv1.AdminUnassignTherapistFromOrgRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.AdminUnassignTherapistFromOrg(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminSetOrganizationStatus(ctx context.Context, req *connect.Request[identityv1.AdminSetOrganizationStatusRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.AdminSetOrganizationStatus(ctx, req.Msg)
 	if err != nil {
