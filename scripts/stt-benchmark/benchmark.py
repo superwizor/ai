@@ -292,7 +292,10 @@ def run_elevenlabs(case, path, _cfg):
         raise RuntimeError("brak ELEVENLABS_API_KEY")
     host = os.environ.get("ELEVENLABS_HOST", "https://api.eu.residency.elevenlabs.io")
     lang = {"pl": "pol", "en": "eng", "uk": "ukr"}.get(case.get("language", "pl"))
-    fields = {"model_id": "scribe_v1", "diarize": "true",
+    # scribe_v2 to model z aktualnego cennika ($0,22/h). Gdyby API zwrocilo
+    # 422 na nieznany model, sprobuj ELEVENLABS_MODEL=scribe_v1.
+    fields = {"model_id": os.environ.get("ELEVENLABS_MODEL", "scribe_v2"),
+              "diarize": "true",
               "timestamps_granularity": "word"}
     if lang:
         fields["language_code"] = lang
