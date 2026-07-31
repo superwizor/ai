@@ -3078,6 +3078,12 @@ abstract class AppLocalizations {
   /// **'Usunąć notatkę?'**
   String get note_delete_confirm;
 
+  /// No description provided for @note_delete_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka zostanie trwale usunięta z kartoteki klienta. Operacji nie można cofnąć.'**
+  String get note_delete_desc;
+
   /// No description provided for @note_deleted.
   ///
   /// In pl, this message translates to:
@@ -5798,7 +5804,7 @@ abstract class AppLocalizations {
   /// No description provided for @ai_chat_title.
   ///
   /// In pl, this message translates to:
-  /// **'Asystent AI'**
+  /// **'Superwizor AI'**
   String get ai_chat_title;
 
   /// No description provided for @ai_chat_fab_label.
@@ -5816,13 +5822,13 @@ abstract class AppLocalizations {
   /// No description provided for @ai_chat_input_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Zadaj pytanie o pacjenta...'**
+  /// **'Zadaj pytanie o klienta...'**
   String get ai_chat_input_hint;
 
   /// No description provided for @ai_chat_loading_context.
   ///
   /// In pl, this message translates to:
-  /// **'Ładuję kontekst sesji...'**
+  /// **'Przygotowuję kontekst rozmowy...'**
   String get ai_chat_loading_context;
 
   /// No description provided for @ai_chat_save_dialog_title.
@@ -5876,7 +5882,7 @@ abstract class AppLocalizations {
   /// No description provided for @ai_chat_system_intro.
   ///
   /// In pl, this message translates to:
-  /// **'Cześć! Jestem asystentem AI. Mam dostęp do raportów z sesji tego pacjenta. Mogę pomóc z analizą wzorców, przypomnieniem szczegółów lub przygotowaniem do kolejnej sesji. Jak mogę pomóc?'**
+  /// **'Mam kontekst dotychczasowych sesji z tym klientem. Mogę przypomnieć szczegóły, pokazać wzorce lub pomóc przygotować się do kolejnego spotkania.'**
   String get ai_chat_system_intro;
 
   /// No description provided for @ai_chat_note_title.

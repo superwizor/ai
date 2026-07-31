@@ -248,6 +248,21 @@ class PatientNotesMapNotifier
     }
   }
 
+  /// Same as [addNote] but returns the server-assigned note ID so callers
+  /// can later update the same note (e.g. AI chat continue-after-save).
+  Future<String> addNoteReturningId(
+      String patientFileId, String title, String text) async {
+    try {
+      final created =
+          await _repo.createNote(patientFileId, title.trim(), text.trim());
+      await refreshNotes(patientFileId);
+      return created.id;
+    } catch (e) {
+      debugPrint('[patient-notes] addNoteReturningId failed: $e');
+      rethrow;
+    }
+  }
+
   Future<void> updateNote(
       String patientFileId, String noteId, String title, String text) async {
     try {

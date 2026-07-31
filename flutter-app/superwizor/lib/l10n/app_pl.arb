@@ -760,6 +760,7 @@
   "note_body_hint": "Treść notatki…",
   "note_delete_action": "Usuń",
   "note_delete_confirm": "Usunąć notatkę?",
+  "note_delete_desc": "Notatka zostanie trwale usunięta z kartoteki klienta. Operacji nie można cofnąć.",
   "note_deleted": "Notatka usunięta",
   "note_discard_action": "Odrzuć",
   "note_discard_body": "Masz niezapisane zmiany. Chcesz je odrzucić?",
@@ -1436,11 +1437,11 @@
   "invite_client_revoke_confirm_title": "Cofnąć zaproszenie?",
   "invite_client_revoke_confirm_body": "Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.",
 
-  "ai_chat_title": "Asystent AI",
+  "ai_chat_title": "Superwizor AI",
   "ai_chat_fab_label": "Zapytaj AI",
   "ai_chat_fab_subtitle": "Czat z kontekstem sesji",
-  "ai_chat_input_hint": "Zadaj pytanie o pacjenta...",
-  "ai_chat_loading_context": "Ładuję kontekst sesji...",
+  "ai_chat_input_hint": "Zadaj pytanie o klienta...",
+  "ai_chat_loading_context": "Przygotowuję kontekst rozmowy...",
   "ai_chat_save_dialog_title": "Zapisać rozmowę?",
   "ai_chat_save_dialog_body": "Czy chcesz zapisać podsumowanie tej rozmowy jako notatkę kliniczną?",
   "ai_chat_save_yes": "Zapisz jako notatkę",
@@ -1449,6 +1450,6 @@
   "ai_chat_saving": "Generuję podsumowanie...",
   "ai_chat_saved_toast": "Notatka z rozmowy AI zapisana",
   "ai_chat_error_init": "Nie udało się zainicjalizować czatu AI. Sprawdź połączenie i spróbuj ponownie.",
-  "ai_chat_system_intro": "Cześć! Jestem asystentem AI. Mam dostęp do raportów z sesji tego pacjenta. Mogę pomóc z analizą wzorców, przypomnieniem szczegółów lub przygotowaniem do kolejnej sesji. Jak mogę pomóc?",
+  "ai_chat_system_intro": "Mam kontekst dotychczasowych sesji z tym klientem. Mogę przypomnieć szczegóły, pokazać wzorce lub pomóc przygotować się do kolejnego spotkania.",
   "ai_chat_note_title": "Notatka z rozmowy AI"
 }

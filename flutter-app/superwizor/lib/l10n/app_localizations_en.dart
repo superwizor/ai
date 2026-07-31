@@ -1684,6 +1684,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get note_delete_confirm => 'Delete note?';
 
   @override
+  String get note_delete_desc =>
+      'The note will be permanently deleted from the client file. This action cannot be undone.';
+
+  @override
   String get note_deleted => 'Note deleted';
 
   @override
@@ -3237,7 +3241,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The link in the sent e-mail will stop working immediately. You can send a new invitation afterwards.';
 
   @override
-  String get ai_chat_title => 'AI Assistant';
+  String get ai_chat_title => 'Superwizor AI';
 
   @override
   String get ai_chat_fab_label => 'Ask AI';
@@ -3246,10 +3250,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ai_chat_fab_subtitle => 'Chat with session context';
 
   @override
-  String get ai_chat_input_hint => 'Ask a question about the patient...';
+  String get ai_chat_input_hint => 'Ask about the client...';
 
   @override
-  String get ai_chat_loading_context => 'Loading session context...';
+  String get ai_chat_loading_context => 'Preparing conversation context...';
 
   @override
   String get ai_chat_save_dialog_title => 'Save the conversation?';
@@ -3279,7 +3283,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ai_chat_system_intro =>
-      'Hi! I\'m an AI assistant. I have access to this patient\'s session reports. I can help analyze patterns, recall details, or prepare for the next session. How can I help?';
+      'I have the context of past sessions with this client. I can recall details, show patterns, or help you prepare for the next meeting.';
 
   @override
   String get ai_chat_note_title => 'AI conversation note';

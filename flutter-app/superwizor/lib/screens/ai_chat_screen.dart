@@ -9,8 +9,10 @@
 // pulsing logo indicator during streaming.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +23,26 @@ import '../utils/haptics.dart';
 import '../widgets/euphire_toast.dart';
 import '../providers/patient_notes_provider.dart';
 import '../widgets/report_preferences_section.dart';
+
+// ── Thinking Phrases ───────────────────────────────────────
+
+const _kThinkingPhrases = [
+  'Przeglądam historię sesji...',
+  'Analizuję wzorce w rozmowach...',
+  'Porównuję z poprzednimi spotkaniami...',
+  'Szukam wspólnych wątków...',
+  'Przygotowuję odpowiedź...',
+  'Zagłębiam się w kontekst...',
+  'Łączę obserwacje z różnych sesji...',
+  'Przeglądam notatki z procesu...',
+  'Szukam kluczowych momentów...',
+  'Analizuję dynamikę procesu...',
+  'Badam ciągłość wątków...',
+  'Odnajduję istotne szczegóły...',
+  'Przygotowuję wgląd...',
+  'Czytam między wierszami sesji...',
+  'Składam obraz z fragmentów...',
+];
 
 // ── Chat Message Model ─────────────────────────────────────
 
@@ -44,12 +66,16 @@ class AiChatScreen extends ConsumerStatefulWidget {
   final String patientId;
   final String patientAlias;
   final String therapistId;
+  final String? initialNoteId;
+  final String? initialTranscript;
 
   const AiChatScreen({
     super.key,
     required this.patientId,
     required this.patientAlias,
     required this.therapistId,
+    this.initialNoteId,
+    this.initialTranscript,
   });
 
   @override
@@ -57,7 +83,7 @@ class AiChatScreen extends ConsumerStatefulWidget {
 }
 
 class _AiChatScreenState extends ConsumerState<AiChatScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _textCtrl = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
   final ScrollController _scrollCtrl = ScrollController();
@@ -69,16 +95,30 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   bool _isLastResponseTruncated = false; // AI response was cut off / truncated
   String _streamingText = ''; // partial response text
   StreamSubscription<AiChatStreamEvent>? _streamSub;
+  bool _isUserScrolledUp = false; // smart scroll-lock (Gemini/ChatGPT pattern)
+  String _thinkingPhrase = _kThinkingPhrases[0];
+  Timer? _thinkingTimer;
+
+  // ── Persist-and-continue state ───────────────────────────
+  String? _savedNoteId;           // null = not saved yet
+  String? _savedNoteText;         // full note text at last save
+  int _lastSavedMessageCount = 0; // messages count at last save
+
+  // ── Copy feedback state ──────────────────────────────────
+  int? _copiedIndex;
+  Timer? _copiedTimer;
 
   late AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scrollCtrl.addListener(_onScrollPositionChanged);
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
     _initChat();
   }
 
@@ -100,6 +140,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           role: _MessageRole.system,
           text: l.ai_chat_system_intro,
         ));
+
+        if (widget.initialNoteId != null && widget.initialNoteId!.isNotEmpty) {
+          _savedNoteId = widget.initialNoteId;
+        }
+        if (widget.initialTranscript != null &&
+            widget.initialTranscript!.isNotEmpty) {
+          final parsed = _parseTranscriptToMessages(widget.initialTranscript!);
+          if (parsed.isNotEmpty) {
+            _messages.addAll(parsed);
+            _lastSavedMessageCount = _messages.length;
+            _savedNoteText = widget.initialTranscript;
+          }
+        }
       });
       _scrollToBottom();
     } catch (e) {
@@ -117,12 +170,62 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _streamSub?.cancel();
+    _thinkingTimer?.cancel();
+    _copiedTimer?.cancel();
     _textCtrl.dispose();
     _inputFocus.dispose();
+    _scrollCtrl.removeListener(_onScrollPositionChanged);
     _scrollCtrl.dispose();
     _pulseCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _autoSaveAndClose();
+    }
+  }
+
+  // ── Stop / Thinking Phrases ──────────────────────────────
+
+  void _stopGenerating() {
+    _streamSub?.cancel();
+    _stopThinkingPhraseRotation();
+    if (!mounted) return;
+    final finalText = _streamingText.trim();
+    setState(() {
+      if (finalText.isNotEmpty) {
+        _messages.add(_ChatMessage(role: _MessageRole.ai, text: finalText));
+      }
+      _streamingText = '';
+      _isGenerating = false;
+      _isLastResponseTruncated = false;
+    });
+    _scrollToBottom();
+    AppHapticFeedback.lightImpact();
+  }
+
+  void _startThinkingPhraseRotation() {
+    final rng = Random();
+    final shuffled = List<String>.from(_kThinkingPhrases)..shuffle(rng);
+    var idx = 0;
+    setState(() => _thinkingPhrase = shuffled[idx]);
+    _thinkingTimer?.cancel();
+    _thinkingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      idx = (idx + 1) % shuffled.length;
+      setState(() => _thinkingPhrase = shuffled[idx]);
+    });
+  }
+
+  void _stopThinkingPhraseRotation() {
+    _thinkingTimer?.cancel();
+    _thinkingTimer = null;
   }
 
   // ── Send Message ─────────────────────────────────────────
@@ -138,11 +241,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       _isGenerating = true;
       _isLastResponseTruncated = false;
       _streamingText = '';
+      _isUserScrolledUp = false; // user sent a message → re-engage auto-scroll
     });
     if (overrideText == null) {
       _textCtrl.clear();
     }
-    _scrollToBottom();
+    _scrollToBottom(force: true);
+    _startThinkingPhraseRotation();
 
     bool lastWasTruncated = false;
     _streamSub?.cancel();
@@ -155,6 +260,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       },
       onDone: () {
         if (!mounted) return;
+        _stopThinkingPhraseRotation();
         final finalText = _streamingText.trim();
         final endsWithSentencePunctuation =
             RegExp(r'[\.\!\?\:\)\"”\*]$').hasMatch(finalText);
@@ -172,9 +278,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           _isGenerating = false;
         });
         _scrollToBottom();
+        _saveAsNote(silent: true);
       },
       onError: (e) {
         if (!mounted) return;
+        _stopThinkingPhraseRotation();
         setState(() {
           _messages.add(_ChatMessage(
             role: _MessageRole.system,
@@ -189,151 +297,153 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     );
   }
 
-  // ── Close / Save Dialog ──────────────────────────────────
+  // ── Auto Save & Close ──────────────────────────────────
 
-  Future<bool> _showExitDialog() async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0A2326),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border(top: BorderSide(color: Colors.white10)),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  _buildSuperwizorAvatar(size: 56, isPulsing: false),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'ZAPISANA ROZMOWA TRAFI DO KARTOTEKI PACJENTA',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: EuphireColors.frostWhite,
-                      letterSpacing: 0.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: EuphireColors.ember,
-                        foregroundColor: EuphireColors.obsidianBlack,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(ctx, 'save'),
-                      child: const Text(
-                        'Zapisz do profilu',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(ctx, 'discard'),
-                      child: const Text(
-                        'Odrzuć',
-                        style: TextStyle(
-                          color: EuphireColors.magma,
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (result == 'discard') return true;
-    if (result == 'save') {
-      await _saveAsNote();
+  Future<void> _autoSaveAndClose() async {
+    final hasUnsaved = _messages.length > _lastSavedMessageCount &&
+        _messages.any((m) => m.role != _MessageRole.system);
+    if (hasUnsaved) {
+      await _saveAsNote(silent: true);
     }
-    return false;
   }
 
-  Future<void> _saveAsNote() async {
-    if (_chatService == null) return;
+  /// Builds the full transcript markdown from all non-system messages.
+  String _buildTranscript({
+    int fromIndex = 0,
+    bool includeHeader = true,
+  }) {
+    final chatMessages = _messages
+        .skip(fromIndex)
+        .where((m) => m.role != _MessageRole.system);
+    if (_streamingText.trim().isNotEmpty) {
+      // include any partial streaming text
+    }
+    final transcript = chatMessages.map((m) {
+      final role = m.role == _MessageRole.user
+          ? '**Terapeuta:**'
+          : '**Superwizor AI:**';
+      return '$role\n${m.text}';
+    }).join('\n\n---\n\n');
+    if (includeHeader) {
+      return '### Zapis rozmowy z AI\n$transcript';
+    }
+    return transcript;
+  }
 
-    EuphireToast.info(context, message: 'Zapisywanie notatki...');
+  List<_ChatMessage> _parseTranscriptToMessages(String transcript) {
+    final List<_ChatMessage> result = [];
+
+    final roleRegex = RegExp(
+      r'^\*\*(Terapeuta|Superwizor AI|AI|System):\*\*',
+      multiLine: true,
+    );
+
+    final matches = roleRegex.allMatches(transcript).toList();
+    if (matches.isEmpty) {
+      final trimmed = transcript
+          .replaceFirst(RegExp(r'^###\s*Zapis rozmowy z AI\s*\n*'), '')
+          .trim();
+      if (trimmed.isNotEmpty) {
+        result.add(_ChatMessage(role: _MessageRole.ai, text: trimmed));
+      }
+      return result;
+    }
+
+    for (int i = 0; i < matches.length; i++) {
+      final match = matches[i];
+      final roleName = match.group(1);
+
+      final startPos = match.end;
+      final endPos =
+          (i + 1 < matches.length) ? matches[i + 1].start : transcript.length;
+
+      var text = transcript.substring(startPos, endPos).trim();
+      text = text.replaceFirst(RegExp(r'\n*\s*---+\s*$'), '').trim();
+
+      if (text.isEmpty) continue;
+
+      if (roleName == 'Terapeuta') {
+        result.add(_ChatMessage(role: _MessageRole.user, text: text));
+      } else if (roleName == 'Superwizor AI' || roleName == 'AI') {
+        result.add(_ChatMessage(role: _MessageRole.ai, text: text));
+      }
+    }
+    return result;
+  }
+
+  Future<void> _saveAsNote({bool silent = false}) async {
+    if (_chatService == null) return;
+    if (_messages.length <= _lastSavedMessageCount) return;
+
+    if (!silent && mounted) {
+      EuphireToast.info(context, message: 'Zapisywanie notatki...');
+    }
 
     try {
-      final List<_ChatMessage> allMessages = List.from(_messages);
-      if (_streamingText.trim().isNotEmpty) {
-        allMessages.add(_ChatMessage(role: _MessageRole.ai, text: _streamingText.trim()));
-      }
-      final chatMessagesToSave = allMessages.where((m) => m.role != _MessageRole.system);
-      final fullTranscript = chatMessagesToSave.map((m) {
-        final role = m.role == _MessageRole.user 
-            ? '**Terapeuta:**' 
-            : '**Superwizor AI:**';
-        return '$role\n${m.text}';
-      }).join('\n\n---\n\n');
-
       final l = AppLocalizations.of(context);
 
-      final combinedText = '### Zapis rozmowy z AI\n$fullTranscript'.trim();
+      if (_savedNoteId == null) {
+        // ── First save: create a new note ──
+        final combinedText = _buildTranscript().trim();
+        final noteId = await ref
+            .read(patientNotesMapProvider.notifier)
+            .addNoteReturningId(
+              widget.patientId,
+              l.ai_chat_note_title,
+              combinedText,
+            );
+        _savedNoteId = noteId;
+        _savedNoteText = combinedText;
+        _lastSavedMessageCount = _messages.length;
+      } else {
+        // ── Subsequent save: update with clean separator ──
+        final newPart = _buildTranscript(
+          fromIndex: _lastSavedMessageCount,
+          includeHeader: false,
+        );
 
-      await ref.read(patientNotesMapProvider.notifier).addNote(
-        widget.patientId,
-        l.ai_chat_note_title,
-        combinedText,
-      );
+        final baseText = _savedNoteText ??
+            _buildTranscript(fromIndex: 0, includeHeader: true);
+        final fullText = '${baseText.trim()}\n\n---\n\n${newPart.trim()}';
 
-      if (!mounted) return;
+        await ref.read(patientNotesMapProvider.notifier).updateNote(
+              widget.patientId,
+              _savedNoteId!,
+              l.ai_chat_note_title,
+              fullText,
+            );
+        _savedNoteText = fullText;
+        _lastSavedMessageCount = _messages.length;
+      }
 
-      EuphireToast.success(context, message: 'Zapisano rozmowę z AI');
-      Navigator.of(context).pop(); // Zamknięcie ekranu czatu
+      if (!silent && mounted) {
+        EuphireToast.success(context, message: 'Zapisano rozmowę z AI');
+      }
     } catch (e) {
-      if (mounted) {
-        EuphireToast.error(context, message: 'Wystąpił błąd podczas zapisywania notatki: $e');
+      if (!silent && mounted) {
+        EuphireToast.error(
+            context, message: 'Wystąpił błąd podczas zapisywania notatki: $e');
       }
     }
   }
 
   // ── Helpers ──────────────────────────────────────────────
 
-  void _scrollToBottom() {
+  /// Re-engages auto-scroll when the user scrolls back near the bottom.
+  void _onScrollPositionChanged() {
+    if (!_scrollCtrl.hasClients) return;
+    final pos = _scrollCtrl.position;
+    final isNearBottom = pos.maxScrollExtent - pos.pixels < 80;
+    if (_isUserScrolledUp && isNearBottom) {
+      setState(() => _isUserScrolledUp = false);
+    }
+  }
+
+  /// Scrolls to the bottom of the message list.
+  /// Respects scroll-lock: if the user scrolled up, this is a no-op
+  /// unless [force] is true (e.g. after sending a message).
+  void _scrollToBottom({bool force = false}) {
+    if (_isUserScrolledUp && !force) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
@@ -387,7 +497,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     return AnimatedBuilder(
       animation: _pulseCtrl,
       builder: (context, child) {
-        final glowVal = 0.2 + (0.45 * _pulseCtrl.value);
+        // Sinusoidal breathing curve — like a water ripple
+        final breathVal = (sin(_pulseCtrl.value * pi) + 1) / 2; // 0..1 smooth
+        final glowAlpha = 0.12 + (0.3 * breathVal);
         return Container(
           width: size,
           height: size,
@@ -395,17 +507,15 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: EuphireColors.ember.withValues(alpha: glowVal),
-                blurRadius: 10 * _pulseCtrl.value + 4,
-                spreadRadius: 2 * _pulseCtrl.value,
+                color: EuphireColors.ember.withValues(alpha: glowAlpha),
+                blurRadius: 10 + 10 * breathVal,
+                spreadRadius: 1 + 3 * breathVal,
               ),
             ],
             border: Border.all(
-              color: Color.lerp(
-                EuphireColors.ember.withValues(alpha: 0.6),
-                EuphireColors.ember,
-                _pulseCtrl.value,
-              )!,
+              color: EuphireColors.ember.withValues(
+                alpha: 0.45 + 0.35 * breathVal,
+              ),
               width: 1.5,
             ),
           ),
@@ -432,8 +542,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final nav = Navigator.of(context);
-        final canPop = await _showExitDialog();
-        if (canPop && mounted) {
+        await _autoSaveAndClose();
+        if (mounted) {
           nav.pop();
         }
       },
@@ -453,7 +563,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             child: Column(
               children: [
                 _buildAppBar(),
-                Expanded(child: _buildMessageList()),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      _buildMessageList(),
+                      _buildScrollToBottomButton(),
+                    ],
+                  ),
+                ),
                 _buildInputBar(),
               ],
             ),
@@ -481,8 +598,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             icon: const Icon(Icons.arrow_back_ios_new_rounded,
                 color: EuphireColors.mist, size: 20),
             onPressed: () async {
-              final canPop = await _showExitDialog();
-              if (canPop && mounted) {
+              await _autoSaveAndClose();
+              if (mounted) {
                 Navigator.of(context).pop();
               }
             },
@@ -579,21 +696,81 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       );
     }
 
-    return ListView.builder(
-      controller: _scrollCtrl,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: _messages.length + (_isGenerating ? 1 : 0),
-      itemBuilder: (ctx, index) {
-        // Streaming bubble (last item while generating)
-        if (index == _messages.length && _isGenerating) {
-          return _buildStreamingBubble();
-        }
-        return _buildMessageBubble(_messages[index]);
-      },
+    return SelectionArea(
+      child: NotificationListener<ScrollUpdateNotification>(
+        onNotification: (notification) {
+          // Detect user-initiated scroll (drag) vs programmatic scroll.
+          // DragUpdateDetails is present only when the user is actively dragging.
+          if (notification.dragDetails != null && _isGenerating) {
+            final pos = _scrollCtrl.position;
+            final isNearBottom = pos.maxScrollExtent - pos.pixels < 80;
+            if (!isNearBottom && !_isUserScrolledUp) {
+              setState(() => _isUserScrolledUp = true);
+            }
+          }
+          return false; // don't consume the notification
+        },
+        child: ListView.builder(
+          controller: _scrollCtrl,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          itemCount: _messages.length + (_isGenerating ? 1 : 0),
+          itemBuilder: (ctx, index) {
+            // Streaming bubble (last item while generating)
+            if (index == _messages.length && _isGenerating) {
+              return _buildStreamingBubble();
+            }
+            return _buildMessageBubble(_messages[index], index);
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildMessageBubble(_ChatMessage msg) {
+  /// Floating button shown when user has scrolled up during streaming.
+  /// Tapping it re-engages auto-scroll and jumps to bottom.
+  Widget _buildScrollToBottomButton() {
+    if (!_isUserScrolledUp) return const SizedBox.shrink();
+    return Positioned(
+      right: 16,
+      bottom: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            setState(() => _isUserScrolledUp = false);
+            _scrollToBottom(force: true);
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: EuphireColors.nocturne.withValues(alpha: 0.95),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: EuphireColors.ember.withValues(alpha: 0.6),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.keyboard_double_arrow_down_rounded,
+              color: EuphireColors.ember,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(_ChatMessage msg, int index) {
     final isUser = msg.role == _MessageRole.user;
     final isSystem = msg.role == _MessageRole.system;
 
@@ -619,7 +796,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Asystent Kliniczny Superwizor AI',
+                      'Superwizor AI',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 12,
@@ -648,119 +825,124 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            _buildSuperwizorAvatar(size: 30, isPulsing: false),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: isUser
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF35250E),
-                          Color(0xFF221607),
-                        ],
-                      )
-                    : const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF0D2D31),
-                          Color(0xFF071D20),
-                        ],
-                      ),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
-                ),
-                border: Border.all(
-                  color: isUser
-                      ? EuphireColors.ember.withValues(alpha: 0.4)
-                      : const Color(0xFF1E4348),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  MarkdownBody(
-                    data: msg.text,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 13.5,
-                        height: 1.55,
-                        color: isUser
-                            ? EuphireColors.frostWhite
-                            : EuphireColors.frostWhite.withValues(alpha: 0.92),
-                      ),
-                      strong: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.ember,
-                      ),
-                      h1: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
-                      ),
-                      h2: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
-                      ),
-                      h3: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.ember,
-                      ),
-                      listBullet: TextStyle(
-                        fontFamily: 'Montserrat',
-                        color: isUser
-                            ? EuphireColors.ember
-                            : EuphireColors.mist,
-                      ),
+          Row(
+            mainAxisAlignment:
+                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser) ...[
+                _buildSuperwizorAvatar(size: 30, isPulsing: false),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: isUser
+                        ? const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF35250E),
+                              Color(0xFF221607),
+                            ],
+                          )
+                        : const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF0D2D31),
+                              Color(0xFF071D20),
+                            ],
+                          ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isUser ? 18 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 18),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Text(
-                      _formatTime(msg.timestamp),
-                      style: TextStyle(
-                        fontFamily: 'RobotoMono',
-                        fontSize: 10,
-                        color: EuphireColors.mist.withValues(alpha: 0.45),
-                      ),
+                    border: Border.all(
+                      color: isUser
+                          ? EuphireColors.ember.withValues(alpha: 0.4)
+                          : const Color(0xFF1E4348),
+                      width: 1,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MarkdownBody(
+                        data: msg.text,
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13.5,
+                            height: 1.55,
+                            color: isUser
+                                ? EuphireColors.frostWhite
+                                : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                          ),
+                          strong: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.ember,
+                          ),
+                          h1: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.frostWhite,
+                          ),
+                          h2: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.frostWhite,
+                          ),
+                          h3: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.ember,
+                          ),
+                          listBullet: TextStyle(
+                            fontFamily: 'Montserrat',
+                            color: isUser
+                                ? EuphireColors.ember
+                                : EuphireColors.mist,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          _formatTime(msg.timestamp),
+                          style: TextStyle(
+                            fontFamily: 'RobotoMono',
+                            fontSize: 10,
+                            color: EuphireColors.mist.withValues(alpha: 0.45),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              if (isUser) const SizedBox(width: 4),
+            ],
           ),
-          if (isUser) const SizedBox(width: 4),
+          if (!isUser) _buildMessageActions(msg, index),
         ],
       ),
     );
@@ -792,10 +974,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                 ),
               ),
               child: _streamingText.isEmpty
-                  ? _buildShimmerDots()
+                  ? _buildThinkingIndicator()
                   : MarkdownBody(
                       data: _streamingText,
-                      selectable: true,
                       styleSheet: MarkdownStyleSheet(
                         p: TextStyle(
                           fontFamily: 'Montserrat',
@@ -821,35 +1002,164 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     );
   }
 
+  /// Thinking indicator: sinusoidal shimmer dots + rotating context phrase.
+  Widget _buildThinkingIndicator() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildShimmerDots(),
+        const SizedBox(height: 8),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          child: Text(
+            _thinkingPhrase,
+            key: ValueKey(_thinkingPhrase),
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 11.5,
+              fontStyle: FontStyle.italic,
+              color: EuphireColors.mist.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildShimmerDots() {
     return AnimatedBuilder(
       animation: _pulseCtrl,
       builder: (context, child) {
         final value = _pulseCtrl.value;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            final delay = i * 0.25;
-            final opacity =
-                (0.3 + 0.7 * ((value + delay) % 1.0)).clamp(0.3, 1.0);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Opacity(
-                opacity: opacity,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: EuphireColors.ember,
-                    shape: BoxShape.circle,
+        return SizedBox(
+          height: 14,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final delay = i * 0.25;
+              final t = (value - delay) % 1.0;
+              final normalizedT = t < 0 ? t + 1.0 : t;
+              final wave = (sin(normalizedT * 2 * pi) + 1) / 2;
+              final liftY = -3.5 * wave;
+              final opacity = 0.35 + 0.65 * wave;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                child: Transform.translate(
+                  offset: Offset(0, liftY),
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Container(
+                      width: 6.5,
+                      height: 6.5,
+                      decoration: const BoxDecoration(
+                        color: EuphireColors.ember,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         );
       },
     );
+  }
+
+  /// Action buttons under AI message bubbles: copy + regenerate.
+  Widget _buildMessageActions(_ChatMessage msg, int index) {
+    if (msg.role != _MessageRole.ai) return const SizedBox.shrink();
+    final isCopied = _copiedIndex == index;
+    return Padding(
+      padding: const EdgeInsets.only(left: 46, bottom: 8, top: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildActionIcon(
+            icon: isCopied ? Icons.check_rounded : Icons.copy_rounded,
+            color: isCopied
+                ? EuphireColors.ember
+                : EuphireColors.mist.withValues(alpha: 0.7),
+            tooltip: isCopied ? 'Skopiowano!' : 'Kopiuj odpowiedź',
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: msg.text));
+              AppHapticFeedback.mediumImpact();
+              EuphireToast.info(context, message: 'Skopiowano treść odpowiedzi');
+              _copiedTimer?.cancel();
+              setState(() => _copiedIndex = index);
+              _copiedTimer = Timer(const Duration(milliseconds: 2000), () {
+                if (mounted) setState(() => _copiedIndex = null);
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+          _buildActionIcon(
+            icon: Icons.refresh_rounded,
+            color: _isGenerating
+                ? EuphireColors.mist.withValues(alpha: 0.3)
+                : EuphireColors.mist.withValues(alpha: 0.7),
+            tooltip: 'Wygeneruj ponownie',
+            onTap: _isGenerating
+                ? () {}
+                : () {
+                    AppHapticFeedback.mediumImpact();
+                    _regenerateResponse(index);
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionIcon({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          splashColor: EuphireColors.ember.withValues(alpha: 0.2),
+          highlightColor: EuphireColors.ember.withValues(alpha: 0.1),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+              child: Icon(
+                icon,
+                key: ValueKey(icon),
+                size: 16,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _regenerateResponse(int aiMessageIndex) {
+    // Find the user message that preceded this AI response
+    String? lastUserText;
+    for (var i = aiMessageIndex - 1; i >= 0; i--) {
+      if (_messages[i].role == _MessageRole.user) {
+        lastUserText = _messages[i].text;
+        break;
+      }
+    }
+    if (lastUserText == null || _isGenerating) return;
+    AppHapticFeedback.lightImpact();
+    setState(() => _messages.removeAt(aiMessageIndex));
+    _sendMessage(lastUserText);
   }
 
   void _showAssistantMenu(BuildContext context) {
@@ -878,7 +1188,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   const Icon(Icons.auto_awesome, color: EuphireColors.ember, size: 20),
                   const SizedBox(width: 8),
                   const Text(
-                    'Narzędzia Asystenta',
+                    'Gotowe polecenia',
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 18,
@@ -905,8 +1215,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              _buildPromptTile(ctx, '💡 Główny wątek w historii pacjenta?'),
-              _buildPromptTile(ctx, '🎭 Jakie emocje dominują u pacjenta?'),
+              _buildPromptTile(ctx, '💡 Główny wątek w historii klienta?'),
+              _buildPromptTile(ctx, '🎭 Jakie emocje dominują u klienta?'),
               _buildPromptTile(ctx, '📋 Podsumuj postępy w terapii'),
               _buildPromptTile(ctx, '🎯 Cel na kolejną sesję'),
               _buildPromptTile(ctx, '🧭 Od czego zacząć kolejną sesję?'),
@@ -1147,23 +1457,37 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                 duration: const Duration(milliseconds: 200),
                 width: 44,
                 height: 44,
-                child: Material(
-                  color: canSend
-                      ? EuphireColors.ember
-                      : EuphireColors.mist.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(22),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(22),
-                    onTap: canSend ? () => _sendMessage() : null,
-                    child: Icon(
-                      Icons.send_rounded,
-                      size: 20,
-                      color: canSend
-                          ? EuphireColors.obsidianBlack
-                          : EuphireColors.mist.withValues(alpha: 0.35),
-                    ),
-                  ),
-                ),
+                child: _isGenerating
+                    ? Material(
+                        color: const Color(0xFF8B2500),
+                        borderRadius: BorderRadius.circular(22),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(22),
+                          onTap: _stopGenerating,
+                          child: const Icon(
+                            Icons.stop_rounded,
+                            size: 22,
+                            color: EuphireColors.frostWhite,
+                          ),
+                        ),
+                      )
+                    : Material(
+                        color: canSend
+                            ? EuphireColors.ember
+                            : EuphireColors.mist.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(22),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(22),
+                          onTap: canSend ? () => _sendMessage() : null,
+                          child: Icon(
+                            Icons.send_rounded,
+                            size: 20,
+                            color: canSend
+                                ? EuphireColors.obsidianBlack
+                                : EuphireColors.mist.withValues(alpha: 0.35),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ),

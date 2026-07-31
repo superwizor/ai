@@ -10,6 +10,7 @@ import '../widgets/euphire_toast.dart';
 import '../utils/haptics.dart';
 import '../providers/patient_notes_provider.dart';
 import '../services/ai_chat_service.dart';
+import 'ai_chat_screen.dart';
 
 // ── Model for parsed transcript messages ───────────────────
 
@@ -25,6 +26,7 @@ class AiChatReportScreen extends ConsumerStatefulWidget {
   final String initialSummary;
   final String fullTranscript;
   final String? noteId;
+  final String? patientAlias;
 
   const AiChatReportScreen({
     super.key,
@@ -32,6 +34,7 @@ class AiChatReportScreen extends ConsumerStatefulWidget {
     required this.initialSummary,
     required this.fullTranscript,
     this.noteId,
+    this.patientAlias,
   });
 
   @override
@@ -43,6 +46,7 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
   String _activeTab = 'transcript'; // Default to transcript if summary is empty
   bool _isSaving = false;
   bool _isGeneratingSummary = false;
+  bool _isBannerDismissed = false;
 
   @override
   void initState() {
@@ -946,6 +950,78 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: _isBannerDismissed
+          ? null
+          : Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: EuphireColors.nocturne.withValues(alpha: 0.95),
+                border: Border(
+                  top: BorderSide(
+                    color: EuphireColors.glassBorder.withValues(alpha: 0.4),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D54),
+                          foregroundColor: EuphireColors.frostWhite,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: const Color(0xFF00B37E).withValues(alpha: 0.6),
+                            ),
+                          ),
+                          elevation: 2,
+                        ),
+                        icon: _buildSuperwizorAvatar(size: 20),
+                        label: const Text(
+                          'Wznów rozmowę z AI',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        onPressed: () {
+                          AppHapticFeedback.mediumImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AiChatScreen(
+                                patientId: widget.patientId,
+                                patientAlias: widget.patientAlias ?? 'Klient',
+                                therapistId: '',
+                                initialNoteId: widget.noteId,
+                                initialTranscript: widget.fullTranscript,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: EuphireColors.mist.withValues(alpha: 0.6),
+                        size: 20,
+                      ),
+                      tooltip: 'Zamknij',
+                      onPressed: () {
+                        setState(() => _isBannerDismissed = true);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 }

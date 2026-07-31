@@ -1701,6 +1701,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get note_delete_confirm => 'Usunąć notatkę?';
 
   @override
+  String get note_delete_desc =>
+      'Notatka zostanie trwale usunięta z kartoteki klienta. Operacji nie można cofnąć.';
+
+  @override
   String get note_deleted => 'Notatka usunięta';
 
   @override
@@ -3260,7 +3264,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.';
 
   @override
-  String get ai_chat_title => 'Asystent AI';
+  String get ai_chat_title => 'Superwizor AI';
 
   @override
   String get ai_chat_fab_label => 'Zapytaj AI';
@@ -3269,10 +3273,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get ai_chat_fab_subtitle => 'Czat z kontekstem sesji';
 
   @override
-  String get ai_chat_input_hint => 'Zadaj pytanie o pacjenta...';
+  String get ai_chat_input_hint => 'Zadaj pytanie o klienta...';
 
   @override
-  String get ai_chat_loading_context => 'Ładuję kontekst sesji...';
+  String get ai_chat_loading_context => 'Przygotowuję kontekst rozmowy...';
 
   @override
   String get ai_chat_save_dialog_title => 'Zapisać rozmowę?';
@@ -3302,7 +3306,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get ai_chat_system_intro =>
-      'Cześć! Jestem asystentem AI. Mam dostęp do raportów z sesji tego pacjenta. Mogę pomóc z analizą wzorców, przypomnieniem szczegółów lub przygotowaniem do kolejnej sesji. Jak mogę pomóc?';
+      'Mam kontekst dotychczasowych sesji z tym klientem. Mogę przypomnieć szczegóły, pokazać wzorce lub pomóc przygotować się do kolejnego spotkania.';
 
   @override
   String get ai_chat_note_title => 'Notatka z rozmowy AI';
