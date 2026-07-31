@@ -1,0 +1,32 @@
+[
+ {
+  "id": "sesja7",
+  "path": "audio/sesja7.flac",
+  "language": "pl",
+  "format": "flac",
+  "expected_speakers": 1,
+  "session_id": "6f9b1631-8b93-4cb4-bd65-b852ebf1d2d3",
+  "gcs_generation": "gs://superwizor-ai-25ecd-audio-uploads/d7a5c421-2024-43eb-b068-81a54797e37f/6f9b1631-8b93-4cb4-bd65-b852ebf1d2d3/1785482361.flac#1785482363858138",
+  "note": "62,08 s ciaglego liczenia, jeden mowca. Test POKRYCIA, nie diaryzacji: nova-3 dawal 13 slow do 15,2 s (pokrycie 24%), chirp_3 60 slow do 62,0 s. Kazdy dostawca ponizej ~95% pokrycia odpada z miejsca."
+ },
+ {
+  "id": "sesja9",
+  "path": "audio/sesja9.flac",
+  "language": "pl",
+  "format": "flac",
+  "expected_speakers": 2,
+  "session_id": "DO_UZUPELNIENIA",
+  "gcs_generation": "DO_UZUPELNIENIA",
+  "note": "Dwoje mowcow. nova-3 diaryzuje BLEDNIE — to jest przypadek, ktory ma rozstrzygnac wybor dostawcy. Pokrycie nova-3 bylo tu dobre (101 slow do 72,0 s), wiec sesja izoluje sama diaryzacje."
+ },
+ {
+  "id": "sesja10",
+  "path": "audio/sesja10.flac",
+  "language": "pl",
+  "format": "flac",
+  "expected_speakers": 3,
+  "session_id": "DO_UZUPELNIENIA",
+  "gcs_generation": "DO_UZUPELNIENIA",
+  "note": "Troje mowcow. nova-3 diaryzuje POPRAWNIE — kontrola negatywna: dostawca, ktory psuje ten przypadek, jest gorszy od tego, co juz mielismy."
+ }
+]
