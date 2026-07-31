@@ -124,9 +124,14 @@ func processAudioElevenLabs(ctx context.Context, logger *slog.Logger, ev AudioUp
 		logger.Info("another elevenlabs attempt in flight; NACK for later redelivery")
 		return errDeepgramInFlight
 	case dgClaimExhausted:
-		logger.Warn("elevenlabs attempts exhausted; failing over to chirp",
-			"attempts", claim.attempt)
-		return fallbackToChirp(ctx, logger, sessionUUID, sourceURI, bcp47Lang)
+		// Lancuch elevenlabs → deepgram → chirp (stt_fallback.go).
+		// Deepgram przed Chirpem, bo Chirp nie diaryzuje polskiego —
+		// spadek wprost na niego oddawal transkrypt bez rozdzielenia
+		// terapeuty i klienta.
+		next := nextFallbackProvider(providerElevenLabs)
+		logger.Warn("elevenlabs attempts exhausted; failing over",
+			"attempts", claim.attempt, "fallback_to", next)
+		return fallbackFrom(ctx, logger, sessionUUID, providerElevenLabs, sourceURI, bcp47Lang)
 	}
 
 	logger.Info("elevenlabs attempt claimed", "attempt", claim.attempt)
