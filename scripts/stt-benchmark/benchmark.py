@@ -161,12 +161,18 @@ def run_chirp3(case, path, cfg):
     recognizer eu/_ zwraca 400 "Recognizer does not support feature:
     speaker_diarization". To nie jest ograniczenie harnessu, tylko
     Chirpa, i wlasnie dlatego szukamy alternatywy.
+
+    Wynik idzie przez gcsOutputConfig, nie inline: inline ma limit 20
+    minut ("File is too long. Only audio files up to 20 minutes long are
+    supported"), a sesje terapeutyczne trwaja 50. Produkcja robi to tak
+    samo, wiec ta sciezka jest zarazem wierniejsza.
     """
     prefix = cfg.get("gcs_prefix") or os.environ.get("BENCH_GCS_PREFIX")
     if not prefix:
         raise RuntimeError("ustaw BENCH_GCS_PREFIX=gs://<bucket>/<sciezka>")
     project = cfg.get("project", "superwizor-ai-25ecd")
     uri = "%s/%s-%s" % (prefix.rstrip("/"), case["id"], os.path.basename(path))
+    out_dir = "%s/out-%s" % (prefix.rstrip("/"), case["id"])
     subprocess.run(["gcloud", "storage", "cp", path, uri, "--project", project],
                    capture_output=True, check=True)
     try:
@@ -183,43 +189,71 @@ def run_chirp3(case, path, cfg):
                              "enableWordTimeOffsets": True},
             },
             "files": [{"uri": uri}],
-            "recognitionOutputConfig": {"inlineResponseConfig": {}},
+            "recognitionOutputConfig": {
+                "gcsOutputConfig": {"uri": out_dir},
+            },
         }
-        st, body = _http(
-            "https://eu-speech.googleapis.com/v2/projects/%s/locations/eu/"
-            "recognizers/_:batchRecognize" % project,
-            data=json.dumps(req).encode(),
-            headers={"Authorization": "Bearer " + tok,
-                     "Content-Type": "application/json"},
-        )
-        op = json.loads(body)
-        if st != 200:
-            raise RuntimeError("HTTP %s: %s" % (st, str(op)[:300]))
-        deadline = time.time() + 1800
-        while time.time() < deadline:
-            st, body = _http("https://eu-speech.googleapis.com/v2/" + op["name"],
-                             headers={"Authorization": "Bearer " + tok})
-            raw = json.loads(body)
-            if raw.get("done"):
-                break
-            time.sleep(5)
+        # code 13 "An internal error occurred" bywa przejsciowy po stronie
+        # Google — jedno ponowienie odroznia awarie modelu od czkawki.
+        last = None
+        for attempt in range(2):
+            st, body = _http(
+                "https://eu-speech.googleapis.com/v2/projects/%s/locations/eu/"
+                "recognizers/_:batchRecognize" % project,
+                data=json.dumps(req).encode(),
+                headers={"Authorization": "Bearer " + tok,
+                         "Content-Type": "application/json"},
+            )
+            op = json.loads(body)
+            if st != 200:
+                raise RuntimeError("HTTP %s: %s" % (st, str(op)[:300]))
+            deadline = time.time() + 3600
+            while time.time() < deadline:
+                st, body = _http("https://eu-speech.googleapis.com/v2/" + op["name"],
+                                 headers={"Authorization": "Bearer " + tok})
+                raw = json.loads(body)
+                if raw.get("done"):
+                    break
+                time.sleep(5)
+            else:
+                raise RuntimeError("operacja Chirpa nie zakonczyla sie w 60 min")
+            if raw.get("error"):
+                raise RuntimeError(str(raw["error"])[:300])
+            per_file = list(raw.get("response", {}).get("results", {}).values())
+            err = per_file[0].get("error") if per_file else None
+            if err and err.get("code") == 13 and attempt == 0:
+                last = err
+                continue
+            if err:
+                raise RuntimeError("blad pliku: %s" % str(err)[:300])
+            break
         else:
-            raise RuntimeError("operacja Chirpa nie zakonczyla sie w 30 min")
-        if raw.get("error"):
-            raise RuntimeError(str(raw["error"])[:300])
+            raise RuntimeError("blad pliku po ponowieniu: %s" % str(last)[:300])
+
+        # Chirp zapisuje wynik do obiektu w GCS i zwraca do niego URI.
         words = []
-        for _uri, v in raw.get("response", {}).get("results", {}).items():
-            for r in v.get("transcript", {}).get("results", []):
+        for _src, v in raw.get("response", {}).get("results", {}).items():
+            ouri = v.get("uri")
+            if not ouri:
+                continue
+            got = subprocess.run(
+                ["gcloud", "storage", "cat", ouri, "--project", project],
+                capture_output=True, check=True)
+            doc = json.loads(got.stdout)
+            for r in doc.get("results", []):
                 for a in r.get("alternatives", [])[:1]:
                     for w in a.get("words", []):
                         words.append({
                             "end": float(str(w.get("endOffset", "0s")).rstrip("s") or 0),
                             "speaker": w.get("speakerLabel") or None,
                         })
+            raw.setdefault("_transcripts", []).append(doc)
         return words, raw
     finally:
         subprocess.run(["gcloud", "storage", "rm", uri, "--project", project],
                        capture_output=True)
+        subprocess.run(["gcloud", "storage", "rm", "--recursive", out_dir,
+                        "--project", project], capture_output=True)
 
 
 def run_speechmatics(case, path, cfg):

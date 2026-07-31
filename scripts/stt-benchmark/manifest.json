@@ -1,32 +1,43 @@
 [
  {
-  "id": "sesja7",
-  "path": "audio/sesja7.flac",
+  "id": "s7-liczenie",
+  "path": "audio/s7_oryginal.flac",
   "language": "pl",
   "format": "flac",
   "expected_speakers": 1,
   "session_id": "6f9b1631-8b93-4cb4-bd65-b852ebf1d2d3",
-  "gcs_generation": "gs://superwizor-ai-25ecd-audio-uploads/d7a5c421-2024-43eb-b068-81a54797e37f/6f9b1631-8b93-4cb4-bd65-b852ebf1d2d3/1785482361.flac#1785482363858138",
-  "note": "62,08 s ciaglego liczenia, jeden mowca. Test POKRYCIA, nie diaryzacji: nova-3 dawal 13 slow do 15,2 s (pokrycie 24%), chirp_3 60 slow do 62,0 s. Kazdy dostawca ponizej ~95% pokrycia odpada z miejsca."
+  "note": "62,07 s ciaglego liczenia, jeden mowca. Test POKRYCIA, nie diaryzacji: nova-3 dawal 13 slow do 15,2 s (24%), chirp_3 61 slow do 62,0 s, scribe 94 slowa do 62,0 s. Dostawca ponizej ~95% pokrycia odpada z miejsca."
  },
  {
-  "id": "sesja9",
-  "path": "audio/sesja9.flac",
+  "id": "s7-converted",
+  "path": "audio/s7_converted.flac",
   "language": "pl",
   "format": "flac",
+  "expected_speakers": 1,
+  "note": "To samo audio co s7-liczenie, ale przepuszczone przez ffmpeg (jak robi to ingestion-svc). Roznica jest w naglowku: oryginal z telefonu ma total_samples=0, konwersja wpisuje 993226 (62,08 s). Speechmatics odrzuca oryginal bledem 'Job rejected due to invalid audio' — ten przypadek sprawdza, czy konwersja to naprawia. Wazne, bo produkcja i tak konwertuje, ale FLAC z telefonu trafia do STT takze bez konwersji."
+ },
+ {
+  "id": "lilith",
+  "path": "audio/lilith.m4a",
+  "language": "pl",
+  "format": "mp4",
   "expected_speakers": 2,
-  "session_id": "DO_UZUPELNIENIA",
-  "gcs_generation": "DO_UZUPELNIENIA",
-  "note": "Dwoje mowcow. nova-3 diaryzuje BLEDNIE — to jest przypadek, ktory ma rozstrzygnac wybor dostawcy. Pokrycie nova-3 bylo tu dobre (101 slow do 72,0 s), wiec sesja izoluje sama diaryzacje."
+  "note": "72,98 s, aac mono 48 kHz. Krotki test diaryzacji dwoch osob — nova-3 rozdzielal mowcow blednie."
  },
  {
-  "id": "sesja10",
-  "path": "audio/sesja10.flac",
+  "id": "gabriela-cbt",
+  "path": "audio/gabriela-cbt.mp3",
+  "language": "en",
+  "format": "mpeg",
+  "expected_speakers": 2,
+  "note": "13:40, mp3 stereo 44,1 kHz. Pierwsza sesja z klientem z objawami depresji, model CBT. Material demonstracyjny, nie dane pacjenta. UWAGA: nagranie jest po ANGIELSKU — pierwszy przebieg poszedl bledem z language=pl i wypaczyl wynik (Deepgram zwrocil 0 slow, Speechmatics sieczke). Chirp i ElevenLabs przetranskrybowaly je poprawnie mimo zlego tagu jezyka, co samo w sobie jest wynikiem: odpornosc na bledny language_code."
+ },
+ {
+  "id": "konsultacja-pary",
+  "path": "audio/konsultacja-pary.mp3",
   "language": "pl",
-  "format": "flac",
+  "format": "mpeg",
   "expected_speakers": 3,
-  "session_id": "DO_UZUPELNIENIA",
-  "gcs_generation": "DO_UZUPELNIENIA",
-  "note": "Troje mowcow. nova-3 diaryzuje POPRAWNIE — kontrola negatywna: dostawca, ktory psuje ten przypadek, jest gorszy od tego, co juz mielismy."
+  "note": "26:26, mp3 stereo 44,1 kHz. Wstepna konsultacja pary — terapeuta + dwoje partnerow. Najtrudniejszy przypadek diaryzacji; nova-3 radzil sobie z nim poprawnie, wiec dostawca, ktory go psuje, jest gorszy od punktu wyjscia."
  }
 ]
