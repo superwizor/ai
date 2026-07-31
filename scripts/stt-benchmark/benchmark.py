@@ -26,8 +26,10 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -104,7 +106,17 @@ def summarize(words, duration):
     tego ksztaltu, zeby porownanie bylo miedzy dostawcami, a nie miedzy
     ich formatami JSON.
     """
-    last = max((w["end"] for w in words), default=0.0)
+    # Pokrycie liczone z MAKSIMUM jest kruche: Chirp potrafi wyemitowac
+    # pojedynczy uszkodzony endOffset (zaobserwowane 8486,92 s w nagraniu
+    # 820 s — jedno slowo na 2387, sasiedzi poprawni). Takie maksimum
+    # dalo pokrycie 1034,7% i zamaskowalo prawidlowy wynik. Znaczniki
+    # poza dlugoscia audio sa wiec odrzucane z metryki i raportowane
+    # osobno jako bogus_timestamps — bo to tez jest informacja o jakosci
+    # dostawcy, tylko innego rodzaju.
+    tol = (duration or 0) * 1.02
+    sane = [w["end"] for w in words if not duration or w["end"] <= tol]
+    bogus = len(words) - len(sane)
+    last = max(sane, default=0.0)
     spk = {}
     for w in words:
         s = w.get("speaker")
@@ -116,6 +128,7 @@ def summarize(words, duration):
         "word_count": len(words),
         "last_word_end_s": round(last, 2),
         "coverage_pct": round(100.0 * last / duration, 1) if duration else None,
+        "bogus_timestamps": bogus,
         "speaker_count": len(spk) if spk else None,
         "words_per_speaker": spk or None,
     }
@@ -171,10 +184,35 @@ def run_chirp3(case, path, cfg):
     if not prefix:
         raise RuntimeError("ustaw BENCH_GCS_PREFIX=gs://<bucket>/<sciezka>")
     project = cfg.get("project", "superwizor-ai-25ecd")
-    uri = "%s/%s-%s" % (prefix.rstrip("/"), case["id"], os.path.basename(path))
+    # BatchRecognize odrzuca pliki dluzsze niz 20 minut ("File is too
+    # long"). Sesje terapeutyczne trwaja 50, wiec produkcja tnie audio na
+    # kawalki — w buckecie widac obiekty *_chunk_0, *_chunk_1. Robimy tak
+    # samo, inaczej porownanie karaloby Chirpa za limit, ktory produkcja
+    # juz obchodzi. Przesuniecia chunkow sa dodawane z powrotem do
+    # znacznikow czasu, zeby pokrycie liczylo sie wzgledem calosci.
+    dur = audio_duration_s(path) or 0
+    chunk_s = int(cfg.get("chunk_seconds", 900))
     out_dir = "%s/out-%s" % (prefix.rstrip("/"), case["id"])
-    subprocess.run(["gcloud", "storage", "cp", path, uri, "--project", project],
-                   capture_output=True, check=True)
+    tmpdir = None
+    parts = []  # (gcs_uri, offset_s)
+    if dur > 1150:
+        tmpdir = tempfile.mkdtemp(prefix="chirpchunk_")
+        n = int(dur // chunk_s) + (1 if dur % chunk_s else 0)
+        for i in range(n):
+            seg = os.path.join(tmpdir, "%s_chunk_%d.flac" % (case["id"], i))
+            subprocess.run(
+                ["ffmpeg", "-y", "-v", "error", "-ss", str(i * chunk_s),
+                 "-t", str(chunk_s), "-i", path, "-c:a", "flac", seg],
+                check=True, capture_output=True)
+            u = "%s/%s-chunk%d.flac" % (prefix.rstrip("/"), case["id"], i)
+            subprocess.run(["gcloud", "storage", "cp", seg, u, "--project", project],
+                           capture_output=True, check=True)
+            parts.append((u, i * chunk_s))
+    else:
+        u = "%s/%s-%s" % (prefix.rstrip("/"), case["id"], os.path.basename(path))
+        subprocess.run(["gcloud", "storage", "cp", path, u, "--project", project],
+                       capture_output=True, check=True)
+        parts.append((u, 0))
     try:
         tok = subprocess.run(["gcloud", "auth", "print-access-token"],
                              capture_output=True, text=True, check=True).stdout.strip()
@@ -188,7 +226,7 @@ def run_chirp3(case, path, cfg):
                 "features": {"enableAutomaticPunctuation": True,
                              "enableWordTimeOffsets": True},
             },
-            "files": [{"uri": uri}],
+            "files": [{"uri": u} for u, _off in parts],
             "recognitionOutputConfig": {
                 "gcsOutputConfig": {"uri": out_dir},
             },
@@ -220,22 +258,24 @@ def run_chirp3(case, path, cfg):
             if raw.get("error"):
                 raise RuntimeError(str(raw["error"])[:300])
             per_file = list(raw.get("response", {}).get("results", {}).values())
-            err = per_file[0].get("error") if per_file else None
-            if err and err.get("code") == 13 and attempt == 0:
-                last = err
+            errs = [v["error"] for v in per_file if v.get("error")]
+            if errs and errs[0].get("code") == 13 and attempt == 0:
+                last = errs[0]
                 continue
-            if err:
-                raise RuntimeError("blad pliku: %s" % str(err)[:300])
+            if errs:
+                raise RuntimeError("blad pliku: %s" % str(errs[0])[:300])
             break
         else:
             raise RuntimeError("blad pliku po ponowieniu: %s" % str(last)[:300])
 
         # Chirp zapisuje wynik do obiektu w GCS i zwraca do niego URI.
+        offsets = dict(parts)
         words = []
-        for _src, v in raw.get("response", {}).get("results", {}).items():
+        for src, v in raw.get("response", {}).get("results", {}).items():
             ouri = v.get("uri")
             if not ouri:
                 continue
+            off = offsets.get(src, 0)
             got = subprocess.run(
                 ["gcloud", "storage", "cat", ouri, "--project", project],
                 capture_output=True, check=True)
@@ -244,16 +284,21 @@ def run_chirp3(case, path, cfg):
                 for a in r.get("alternatives", [])[:1]:
                     for w in a.get("words", []):
                         words.append({
-                            "end": float(str(w.get("endOffset", "0s")).rstrip("s") or 0),
+                            "end": off + float(str(w.get("endOffset", "0s")).rstrip("s") or 0),
                             "speaker": w.get("speakerLabel") or None,
                         })
+            doc["_chunk_offset_s"] = off
             raw.setdefault("_transcripts", []).append(doc)
+        words.sort(key=lambda w: w["end"])
         return words, raw
     finally:
-        subprocess.run(["gcloud", "storage", "rm", uri, "--project", project],
-                       capture_output=True)
+        for u, _off in parts:
+            subprocess.run(["gcloud", "storage", "rm", u, "--project", project],
+                           capture_output=True)
         subprocess.run(["gcloud", "storage", "rm", "--recursive", out_dir,
                         "--project", project], capture_output=True)
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def run_speechmatics(case, path, cfg):
