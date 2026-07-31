@@ -1,0 +1,15 @@
+SESJA             DOSTAWCA      POKRYCIE    SLOW  SLOW/s MAX LUKA ZLE-TS   MOWCY     CZAS
+--------------------------------------------------------------------------------------------
+s7-liczenie       elevenlabs       99.9%      94    1.51     2.3s      0   1 OK     4.2s
+
+s7-converted      elevenlabs       99.9%      94    1.51     2.3s      0   1 OK     4.3s
+
+lilith            elevenlabs       98.7%     127    1.74     2.2s      0   2 OK     4.9s
+
+gabriela-cbt      elevenlabs       99.0%    2405    2.93     5.7s      0   2 OK    31.0s
+
+konsultacja-pary  elevenlabs       99.4%    3252    2.05     6.8s      0   3 OK    38.0s
+
+ZLE-TS = znaczniki czasu poza dlugoscia audio, odrzucone z pokrycia.
+SLOW/s i MAX LUKA lapia to, czego POKRYCIE nie widzi: zgubiony
+srodek nagrania przy poprawnie zakonczonej koncowce.
