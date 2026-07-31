@@ -33,6 +33,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/deepgram"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/elevenlabs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/sttgcs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
@@ -55,16 +56,17 @@ type PubSubMessage struct {
 }
 
 var (
-	dbPool             *pgxpool.Pool
-	speechClient       *speech.Client
-	pubsubClient       *pubsub.Client
-	gcsClient          *gcs.Client
-	crypto             cryptobox.CryptoBox
-	bucketName         string // audio uploads bucket (Chirp input source)
-	transcriptsRawBkt  string // Chirp output destination (Stage 1)
-	projectID          string
-	billingClient      billingv1.BillingServiceClient // nil = billing hook disabled
-	dgClient           *deepgram.Client               // nil = deepgram provider disabled
+	dbPool            *pgxpool.Pool
+	speechClient      *speech.Client
+	pubsubClient      *pubsub.Client
+	gcsClient         *gcs.Client
+	crypto            cryptobox.CryptoBox
+	bucketName        string // audio uploads bucket (Chirp input source)
+	transcriptsRawBkt string // Chirp output destination (Stage 1)
+	projectID         string
+	billingClient     billingv1.BillingServiceClient // nil = billing hook disabled
+	dgClient          *deepgram.Client               // nil = deepgram provider disabled
+	elClient          *elevenlabs.Client             // nil = elevenlabs provider disabled
 )
 
 func init() {
@@ -175,6 +177,26 @@ func init() {
 			"provider_default", os.Getenv("STT_PROVIDER"))
 	}
 
+	// ElevenLabs provider (docs/59). Same posture as Deepgram above: the
+	// endpoint is pinned to the EU data-residency host and the worker
+	// REFUSES TO START on any other value. One typo in an env var must
+	// not send special-category health data outside the EU.
+	if elKey := os.Getenv("ELEVENLABS_API_KEY"); elKey != "" {
+		elURL := os.Getenv("ELEVENLABS_API_URL")
+		if elURL == "" {
+			elURL = elevenlabs.DefaultBaseURL
+		}
+		if !elevenlabs.IsEUEndpoint(elURL) {
+			slog.Error("ELEVENLABS_API_URL is not the EU data-residency endpoint; refusing to start",
+				"url", elURL)
+			os.Exit(1)
+		}
+		elClient = elevenlabs.New(elKey, elURL)
+		slog.Info("stt-worker: elevenlabs client wired", "url", elURL,
+			"provider_default", os.Getenv("STT_PROVIDER"),
+			"provider_canary", os.Getenv("STT_PROVIDER_CANARY"))
+	}
+
 	functions.CloudEvent("ProcessAudio", ProcessAudio)
 }
 
@@ -282,10 +304,14 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return nil
 	}
 
-	// Provider fork (docs/39 §4). The deepgram branch is synchronous and
-	// self-contained (claim → signed URL → /v1/listen → completeTranscript);
-	// everything below this if is the Chirp submit/finalize machinery.
-	if provider := resolveSTTProvider(ctx, event.SessionID); provider == "deepgram" {
+	// Provider fork (docs/59 §4). Both non-Chirp branches are synchronous
+	// and self-contained (claim → signed URL → HTTP call →
+	// completeTranscript); everything below this switch is the Chirp
+	// submit/finalize machinery.
+	switch provider := resolveSTTProvider(ctx, event.SessionID); provider {
+	case providerElevenLabs:
+		return processAudioElevenLabs(ctx, logger, event, sessionUUID, bcp47Lang)
+	case providerDeepgram:
 		return processAudioDeepgram(ctx, logger, event, sessionUUID, bcp47Lang)
 	}
 
@@ -432,10 +458,10 @@ func loadChunkPlan(ctx context.Context, uploadIDStr string, fallbackObjectPath s
 	var out []ChunkPlan
 	for rows.Next() {
 		var (
-			idx                                int32
-			bkt, obj                           string
-			start, seam, end                   int64
-			overlap                            int32
+			idx              int32
+			bkt, obj         string
+			start, seam, end int64
+			overlap          int32
 		)
 		if err := rows.Scan(&idx, &bkt, &obj, &start, &seam, &end, &overlap); err != nil {
 			return nil, fmt.Errorf("scan audio_chunks: %w", err)
