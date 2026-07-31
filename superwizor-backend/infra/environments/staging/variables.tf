@@ -55,14 +55,71 @@ variable "e2e_token_minters" {
 
 variable "stt_provider" {
   type = string
-  # "deepgram" od 2026-07-17 (decyzja po walidacji e2e docs/39 Faza 2/3).
-  # Default utrwalony tutaj, zeby zwykly terragrunt apply bez TF_VAR nie
-  # cofnal providera na chirp. Rollback = zmiana tego defaulta.
+  # "chirp" od 2026-07-31 — wycofanie z Deepgrama (bylo "deepgram" od
+  # 2026-07-17 po walidacji e2e docs/39 Faza 2/3).
+  #
+  # Powod: nova-3 deterministycznie urywa transkrypcje w polowie nagrania
+  # na monotonnym materiale. Sesja 7 (62 s liczenia) → 13 slow, koniec na
+  # 15,2 s; ten sam plik jako FLAC i jako m4a, z diarize/smart_format i
+  # bez nich — zawsze identycznie. nova-2 urywa na 13,7 s. Model
+  # "enhanced" (arch polaris) transkrybuje cale 62 s, ale to starsza
+  # generacja wypychana z cennika Deepgrama i ~1,6x drozsza, wiec nie jest
+  # to droga na produkcje.
+  #
+  # Uwaga: dgClient nadal wstaje (DEEPGRAM_API_KEY zostaje zamontowany),
+  # wiec jednorazowy fallback deepgram→chirp w deepgram_path.go dziala
+  # bez zmian. Kill-switch w druga strone = zmiana tego defaulta.
+  #
+  # 2026-07-31, decyzja operatora: z powrotem na "deepgram". Kompromis
+  # jest swiadomy — Chirp nie diaryzuje pl-PL W OGOLE
+  # (Chirp3DiarizationLanguages["pl-PL"]=false, recognizer eu/_ odrzuca
+  # diarizationConfig bledem 400), a awarie nova-3 dotyczyly materialu
+  # monotonnego (ciagle liczenie), nie rozmowy terapeutycznej. Na
+  # nagraniach konwersacyjnych nova-3 dal 99,0-99,3% pokrycia i poprawna
+  # liczbe mowcow (2 i 3).
+  #
+  # RYZYKO, ktore zostaje: nova-3 nie ma zadnego zabezpieczenia przed
+  # urwaniem transkrypcji. Straznik pokrycia istnieje wylacznie na
+  # sciezce ElevenLabs (internal/elevenlabs/coverage.go) — sciezka
+  # Deepgram zapisze ucieta transkrypcje jako COMPLETED tak samo jak
+  # przed 2026-07-31. Docelowo przeniesc straznik do wspolnego miejsca.
   default = "deepgram"
 }
 
 variable "stt_provider_allowlist" {
   type    = string
+  default = ""
+}
+
+variable "stt_provider_canary" {
+  type = string
+  # Silnik, na ktory allowlista kieruje wskazanych terapeutow/organizacje.
+  # Pusty = allowlista bezczynna (worker to loguje). Do canary Fazy 3
+  # docs/59: TF_VAR_stt_provider_canary=elevenlabs razem z allowlista.
+  default = ""
+}
+
+variable "elevenlabs_api_url" {
+  type = string
+  # Domyslnie host rezydencji EU. Przelaczenie na globalny wymaga RAZEM
+  # z tym elevenlabs_allow_non_eu="true" — celowa podwojna zgoda,
+  # inaczej worker odmowi startu.
+  default = "https://api.eu.residency.elevenlabs.io"
+}
+
+variable "elevenlabs_allow_non_eu" {
+  type = string
+  # "true" = audio terapii opuszcza UE. TYLKO material testowy.
+  # Wylaczyc natychmiast po uruchomieniu tenanta EU.
+  default = ""
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  type = string
+  # Pusty = provider ElevenLabs wylaczony: sekret nie jest montowany,
+  # elClient zostaje nil, a STT_PROVIDER=elevenlabs wraca na chirpa
+  # zamiast wywracac sesje. Ustawic na "elevenlabs-api-key" dopiero po
+  # utworzeniu sekretu (docs/59 Faza 0 krok 3).
   default = ""
 }
 

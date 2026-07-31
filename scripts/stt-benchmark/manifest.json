@@ -1,0 +1,43 @@
+[
+ {
+  "id": "s7-liczenie",
+  "path": "audio/s7_oryginal.flac",
+  "language": "pl",
+  "format": "flac",
+  "expected_speakers": 1,
+  "session_id": "6f9b1631-8b93-4cb4-bd65-b852ebf1d2d3",
+  "note": "62,07 s ciaglego liczenia, jeden mowca. Test POKRYCIA, nie diaryzacji: nova-3 dawal 13 slow do 15,2 s (24%), chirp_3 61 slow do 62,0 s, scribe 94 slowa do 62,0 s. Dostawca ponizej ~95% pokrycia odpada z miejsca."
+ },
+ {
+  "id": "s7-converted",
+  "path": "audio/s7_converted.flac",
+  "language": "pl",
+  "format": "flac",
+  "expected_speakers": 1,
+  "note": "To samo audio co s7-liczenie, ale przepuszczone przez ffmpeg (jak robi to ingestion-svc). Roznica jest w naglowku: oryginal z telefonu ma total_samples=0, konwersja wpisuje 993226 (62,08 s). Speechmatics odrzuca oryginal bledem 'Job rejected due to invalid audio' — ten przypadek sprawdza, czy konwersja to naprawia. Wazne, bo produkcja i tak konwertuje, ale FLAC z telefonu trafia do STT takze bez konwersji."
+ },
+ {
+  "id": "lilith",
+  "path": "audio/lilith.m4a",
+  "language": "pl",
+  "format": "mp4",
+  "expected_speakers": 2,
+  "note": "72,98 s, aac mono 48 kHz. Krotki test diaryzacji dwoch osob — nova-3 rozdzielal mowcow blednie."
+ },
+ {
+  "id": "gabriela-cbt",
+  "path": "audio/gabriela-cbt.mp3",
+  "language": "en",
+  "format": "mpeg",
+  "expected_speakers": 2,
+  "note": "13:40, mp3 stereo 44,1 kHz. Pierwsza sesja z klientem z objawami depresji, model CBT. Material demonstracyjny, nie dane pacjenta. UWAGA: nagranie jest po ANGIELSKU — pierwszy przebieg poszedl bledem z language=pl i wypaczyl wynik (Deepgram zwrocil 0 slow, Speechmatics sieczke). Chirp i ElevenLabs przetranskrybowaly je poprawnie mimo zlego tagu jezyka, co samo w sobie jest wynikiem: odpornosc na bledny language_code."
+ },
+ {
+  "id": "konsultacja-pary",
+  "path": "audio/konsultacja-pary.mp3",
+  "language": "pl",
+  "format": "mpeg",
+  "expected_speakers": 3,
+  "note": "26:26, mp3 stereo 44,1 kHz. Wstepna konsultacja pary — terapeuta + dwoje partnerow. Najtrudniejszy przypadek diaryzacji; nova-3 radzil sobie z nim poprawnie, wiec dostawca, ktory go psuje, jest gorszy od punktu wyjscia."
+ }
+]

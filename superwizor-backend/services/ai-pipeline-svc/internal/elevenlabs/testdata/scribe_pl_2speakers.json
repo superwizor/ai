@@ -1,0 +1,121 @@
+{
+ "language_code": "pol",
+ "language_probability": 1.0,
+ "transcription_id": "fixture-not-a-real-id",
+ "audio_duration_secs": 72.98,
+ "text": "Pierwsze drugie trzecie czwarte piate szoste siodme",
+ "words": [
+  {
+   "text": "Pierwsze",
+   "start": 1.539,
+   "end": 1.659,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -6.451391818700359e-05
+  },
+  {
+   "text": " ",
+   "start": 1.659,
+   "end": 1.699,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -3.3378546504536644e-06
+  },
+  {
+   "text": "drugie",
+   "start": 1.699,
+   "end": 1.86,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -3.3378546504536644e-06
+  },
+  {
+   "text": " ",
+   "start": 1.86,
+   "end": 1.919,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -0.026791492477059364
+  },
+  {
+   "text": "trzecie",
+   "start": 1.919,
+   "end": 2.079,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -0.026791492477059364
+  },
+  {
+   "text": " ",
+   "start": 2.079,
+   "end": 2.139,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -0.00012003655137959868
+  },
+  {
+   "text": "czwarte",
+   "start": 2.139,
+   "end": 2.72,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -0.0024722213664517766
+  },
+  {
+   "text": " ",
+   "start": 2.72,
+   "end": 3.079,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -0.04659164324402809
+  },
+  {
+   "text": "piate",
+   "start": 3.079,
+   "end": 3.119,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -0.01660087665853401
+  },
+  {
+   "text": " ",
+   "start": 3.119,
+   "end": 3.459,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -0.011285518296062946
+  },
+  {
+   "text": "szoste",
+   "start": 3.46,
+   "end": 3.699,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -0.00677193086544321
+  },
+  {
+   "text": " ",
+   "start": 3.699,
+   "end": 3.739,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": 0.0
+  },
+  {
+   "text": "siodme",
+   "start": 3.74,
+   "end": 4.179,
+   "type": "word",
+   "speaker_id": "speaker_0",
+   "logprob": -1.8543652105209833e-07
+  },
+  {
+   "text": " ",
+   "start": 4.179,
+   "end": 5.0,
+   "type": "spacing",
+   "speaker_id": "speaker_0",
+   "logprob": -0.00016723664884921163
+  }
+ ]
+}

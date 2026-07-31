@@ -111,8 +111,55 @@ variable "stt_provider" {
 
 variable "stt_provider_allowlist" {
   type = string
-  # CSV of therapist/org UUIDs canaried onto deepgram while the default
-  # stays chirp. Empty = no canary.
+  # CSV of therapist/org UUIDs routed to stt_provider_canary while the
+  # default stays whatever stt_provider says. Empty = no canary.
+  # NOTE: an allowlist without stt_provider_canary is INERT (the worker
+  # logs a warning) — the canary target used to be implicitly "deepgram"
+  # and that trap is closed as of docs/59.
+  default = ""
+}
+
+variable "stt_provider_canary" {
+  type = string
+  # Provider the allowlist routes to: "" | "chirp" | "deepgram" |
+  # "elevenlabs". Kept separate from stt_provider so a canary can run a
+  # NEW engine while the default stays on the proven one.
+  default = ""
+}
+
+# ── ElevenLabs Scribe v2 provider (docs/59) ───────────────────────────
+
+variable "elevenlabs_api_url" {
+  type = string
+  # EU data-residency endpoint. The worker REFUSES TO START on any other
+  # value (init-time guard, same posture as the Deepgram pin above).
+  # Do NOT parameterize this to the global host — therapy audio is
+  # special-category health data.
+  default = "https://api.eu.residency.elevenlabs.io"
+}
+
+variable "elevenlabs_allow_non_eu" {
+  type = string
+  # "true" wylacza bramke rezydencji EU i pozwala uderzac w host
+  # globalny. DOMYSLNIE PUSTE i tak ma zostac.
+  #
+  # Wlaczenie oznacza, ze audio terapii — dane szczegolnej kategorii wg
+  # GDPR art. 9 — opuszcza UE. Tylko material testowy. Wprowadzone
+  # 2026-07-31, bo tenant EU nie jest udostepniony na koncie: host
+  # rezydencji zwraca 400 invalid_api_key dla klucza, ktory globalnie
+  # dziala. Wylaczyc natychmiast po uruchomieniu rezydencji.
+  default = ""
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  type = string
+  # Secret Manager secret name holding the ElevenLabs API key. Empty
+  # disables the provider entirely (no secret mount, no IAM binding, and
+  # the worker leaves elClient nil so the flag cannot select it).
+  #
+  # Defaults to EMPTY on purpose, unlike deepgram_api_key_secret_id: the
+  # secret does not exist yet, and mounting a non-existent secret fails
+  # the deploy. Set to "elevenlabs-api-key" once Faza 0 creates it.
   default = ""
 }
 

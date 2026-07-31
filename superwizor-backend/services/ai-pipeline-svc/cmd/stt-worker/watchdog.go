@@ -170,14 +170,20 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 			"chunk_index", op.ChunkIndex,
 			"operation_id", op.OperationID,
 		)
-		if op.Provider == "deepgram" {
-			// Deepgram rows have no long-running operation to poll — a
-			// pending row past the stuck threshold means the synchronous
+		if op.Provider == providerDeepgram || op.Provider == providerElevenLabs {
+			// Synchronous providers have no long-running operation to
+			// poll — a pending row past the stuck threshold means the
 			// attempts (and their Pub/Sub redeliveries) dried up. One-shot
-			// fallback to Chirp (docs/39 §4); the transcript-exists guard
+			// fallback to Chirp (docs/59 §4); the transcript-exists guard
 			// inside handles the persisted-but-unmarked edge.
-			if err := rescueDeepgramOperation(ctx, opLogger, op); err != nil {
-				opLogger.Warn("deepgram rescue failed; will retry next tick", "error", err)
+			//
+			// For ElevenLabs this is also where a session lands after the
+			// coverage guard rejected every attempt: the transcript was
+			// never persisted, the row stayed pending, and Chirp gets a
+			// turn at audio that Scribe could not read to the end.
+			if err := rescueSyncOperation(ctx, opLogger, op); err != nil {
+				opLogger.Warn("sync provider rescue failed; will retry next tick",
+					"provider", op.Provider, "error", err)
 			}
 			continue
 		}
@@ -525,19 +531,22 @@ func truncateOpError(msg string) string {
 	return msg
 }
 
-// rescueDeepgramOperation handles a stuck provider='deepgram' row. By
-// the time the watchdog sees one (pending > 30 min), the redelivery-
-// driven takeover in processAudioDeepgram has stopped making progress —
-// fail the session over to Chirp exactly once. fallback_attempted rows
-// should not exist here (the fallback rewrites provider to 'chirp'),
-// but guard anyway so a partial failover can't loop.
-func rescueDeepgramOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) error {
+// rescueSyncOperation handles a stuck row belonging to a synchronous
+// provider (deepgram or elevenlabs). By the time the watchdog sees one
+// (pending > 30 min), the redelivery-driven takeover in the provider
+// branch has stopped making progress — fail the session over to Chirp
+// exactly once. fallback_attempted rows should not exist here (the
+// fallback rewrites provider to 'chirp'), but guard anyway so a partial
+// failover can't loop.
+func rescueSyncOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) error {
 	if op.FallbackAttempted {
-		logger.Warn("deepgram row already failed over but still pending; leaving for give-up reaper")
+		logger.Warn("row already failed over but still pending; leaving for give-up reaper",
+			"provider", op.Provider)
 		return nil
 	}
 	if op.SourceAudioURI == "" {
-		logger.Warn("deepgram row has no source_audio_uri; cannot fall back — leaving for give-up reaper")
+		logger.Warn("row has no source_audio_uri; cannot fall back — leaving for give-up reaper",
+			"provider", op.Provider)
 		return nil
 	}
 	return fallbackToChirp(ctx, logger, op.SessionID, op.SourceAudioURI, op.LanguageCode)
