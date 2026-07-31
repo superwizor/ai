@@ -230,6 +230,9 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # Same posture as DEEPGRAM_API_URL above: pinned to the EU
       # data-residency host, worker refuses to start on anything else.
       ELEVENLABS_API_URL = var.elevenlabs_api_url
+      # "true" wylacza bramke rezydencji EU — audio opuszcza UE.
+      # Material testowy. Patrz komentarz przy zmiennej.
+      ELEVENLABS_ALLOW_NON_EU = var.elevenlabs_allow_non_eu
       # Engine selection: "chirp" (default) | "deepgram" | "elevenlabs".
       # Kill-switch = flip back to chirp; no DB change (docs/59 §4).
       STT_PROVIDER = var.stt_provider

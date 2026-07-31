@@ -138,6 +138,19 @@ variable "elevenlabs_api_url" {
   default = "https://api.eu.residency.elevenlabs.io"
 }
 
+variable "elevenlabs_allow_non_eu" {
+  type = string
+  # "true" wylacza bramke rezydencji EU i pozwala uderzac w host
+  # globalny. DOMYSLNIE PUSTE i tak ma zostac.
+  #
+  # Wlaczenie oznacza, ze audio terapii — dane szczegolnej kategorii wg
+  # GDPR art. 9 — opuszcza UE. Tylko material testowy. Wprowadzone
+  # 2026-07-31, bo tenant EU nie jest udostepniony na koncie: host
+  # rezydencji zwraca 400 invalid_api_key dla klucza, ktory globalnie
+  # dziala. Wylaczyc natychmiast po uruchomieniu rezydencji.
+  default = ""
+}
+
 variable "elevenlabs_api_key_secret_id" {
   type = string
   # Secret Manager secret name holding the ElevenLabs API key. Empty

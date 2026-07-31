@@ -187,9 +187,25 @@ func init() {
 			elURL = elevenlabs.DefaultBaseURL
 		}
 		if !elevenlabs.IsEUEndpoint(elURL) {
-			slog.Error("ELEVENLABS_API_URL is not the EU data-residency endpoint; refusing to start",
+			// Escape hatch for validating against the global endpoint
+			// while the EU tenant is not yet provisioned (2026-07-31: the
+			// residency host returns 400 invalid_api_key for a key that
+			// works globally). Default OFF, and it stays a conscious act:
+			// a non-EU endpoint means therapy audio — special-category
+			// health data under GDPR art. 9 — leaves the EU.
+			//
+			// ONLY for test recordings. Turning this on with real patient
+			// audio breaks the residency requirement the product is sold
+			// on and the consent patients actually signed.
+			if os.Getenv("ELEVENLABS_ALLOW_NON_EU") != "true" {
+				slog.Error("ELEVENLABS_API_URL is not the EU data-residency endpoint; refusing to start",
+					"url", elURL,
+					"hint", "set ELEVENLABS_ALLOW_NON_EU=true to override — TEST MATERIAL ONLY")
+				os.Exit(1)
+			}
+			slog.Warn("elevenlabs_non_eu_endpoint — EU residency guard DISABLED by operator; "+
+				"audio will leave the EU. Test material only.",
 				"url", elURL)
-			os.Exit(1)
 		}
 		elClient = elevenlabs.New(elKey, elURL)
 		slog.Info("stt-worker: elevenlabs client wired", "url", elURL,

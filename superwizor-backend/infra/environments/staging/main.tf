@@ -95,6 +95,8 @@ module "cloud_functions" {
   # Pusty secret id = provider wylaczony (klucz nie trafia do workera).
   # Ustawic na "elevenlabs-api-key" dopiero gdy sekret istnieje.
   elevenlabs_api_key_secret_id   = var.elevenlabs_api_key_secret_id
+  elevenlabs_api_url             = var.elevenlabs_api_url
+  elevenlabs_allow_non_eu        = var.elevenlabs_allow_non_eu
   stt_order_gate                 = var.stt_order_gate
   llm_pseudonymize               = var.llm_pseudonymize
   llm_pseudonymize_canonical     = var.llm_pseudonymize_canonical

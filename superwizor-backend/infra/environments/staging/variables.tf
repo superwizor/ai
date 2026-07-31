@@ -99,6 +99,21 @@ variable "stt_provider_canary" {
   default = ""
 }
 
+variable "elevenlabs_api_url" {
+  type = string
+  # Domyslnie host rezydencji EU. Przelaczenie na globalny wymaga RAZEM
+  # z tym elevenlabs_allow_non_eu="true" — celowa podwojna zgoda,
+  # inaczej worker odmowi startu.
+  default = "https://api.eu.residency.elevenlabs.io"
+}
+
+variable "elevenlabs_allow_non_eu" {
+  type = string
+  # "true" = audio terapii opuszcza UE. TYLKO material testowy.
+  # Wylaczyc natychmiast po uruchomieniu tenanta EU.
+  default = ""
+}
+
 variable "elevenlabs_api_key_secret_id" {
   type = string
   # Pusty = provider ElevenLabs wylaczony: sekret nie jest montowany,
