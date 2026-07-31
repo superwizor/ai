@@ -70,20 +70,24 @@ variable "stt_provider" {
   # wiec jednorazowy fallback deepgram→chirp w deepgram_path.go dziala
   # bez zmian. Kill-switch w druga strone = zmiana tego defaulta.
   #
-  # 2026-07-31, decyzja operatora: z powrotem na "deepgram". Kompromis
-  # jest swiadomy — Chirp nie diaryzuje pl-PL W OGOLE
-  # (Chirp3DiarizationLanguages["pl-PL"]=false, recognizer eu/_ odrzuca
-  # diarizationConfig bledem 400), a awarie nova-3 dotyczyly materialu
-  # monotonnego (ciagle liczenie), nie rozmowy terapeutycznej. Na
-  # nagraniach konwersacyjnych nova-3 dal 99,0-99,3% pokrycia i poprawna
-  # liczbe mowcow (2 i 3).
+  # 2026-07-31, decyzja operatora: "elevenlabs" dla wszystkich.
   #
-  # RYZYKO, ktore zostaje: nova-3 nie ma zadnego zabezpieczenia przed
-  # urwaniem transkrypcji. Straznik pokrycia istnieje wylacznie na
-  # sciezce ElevenLabs (internal/elevenlabs/coverage.go) — sciezka
-  # Deepgram zapisze ucieta transkrypcje jako COMPLETED tak samo jak
-  # przed 2026-07-31. Docelowo przeniesc straznik do wspolnego miejsca.
-  default = "deepgram"
+  # Podstawa: canary na jednym terapeucie przeszedl trzy sesje, w tym
+  # 65-minutowa — pokrycie 0,99996 (werdykt accept), 8535 slow, 4 mowcow,
+  # 67 s przetwarzania, zero prob ponownych i zero fallbackow. Wczesniej
+  # benchmark na czterech nagraniach dal 5/5 poprawnej diaryzacji przy
+  # pokryciu 98,7-99,9%.
+  #
+  # Alternatywy odpadly: Chirp NIE diaryzuje pl-PL w ogole
+  # (Chirp3DiarizationLanguages["pl-PL"]=false, recognizer eu/_ odrzuca
+  # diarizationConfig bledem 400), a nova-3 urywal transkrypcje na
+  # monotonnym materiale (sesja 62 s -> 24,5% pokrycia) i myli mowcow
+  # (2 osoby -> 1).
+  #
+  # UWAGA co do fallbacku: gdy ElevenLabs zawiedzie trzy razy, watchdog
+  # przerzuca sesje na Chirpa — a ten nie diaryzuje polskiego. Fallback
+  # oznacza wiec degradacje jakosci, nie samo opoznienie.
+  default = "elevenlabs"
 }
 
 variable "stt_provider_allowlist" {
@@ -101,26 +105,43 @@ variable "stt_provider_canary" {
 
 variable "elevenlabs_api_url" {
   type = string
-  # Domyslnie host rezydencji EU. Przelaczenie na globalny wymaga RAZEM
-  # z tym elevenlabs_allow_non_eu="true" — celowa podwojna zgoda,
-  # inaczej worker odmowi startu.
-  default = "https://api.eu.residency.elevenlabs.io"
+  # DOCELOWO host rezydencji EU. Dzis globalny, bo tenant EU nie jest
+  # udostepniony na koncie: ten sam klucz daje HTTP 200 na
+  # api.elevenlabs.io i 400 invalid_api_key na
+  # api.eu.residency.elevenlabs.io (smieciowy klucz dostaje tam 401,
+  # wiec endpoint rozroznia nasz klucz i odmawia mu dostepu).
+  #
+  # Przelaczenie na globalny wymaga RAZEM z tym
+  # elevenlabs_allow_non_eu="true" — celowa podwojna zgoda; sam
+  # zmieniony URL bez flagi konczy sie odmowa startu workera.
+  #
+  # PRZYWROCIC na host rezydencji, gdy tenant EU ruszy. To jest jedna
+  # linia i powinna byc pierwsza rzecza po potwierdzeniu od ElevenLabs.
+  default = "https://api.elevenlabs.io"
 }
 
 variable "elevenlabs_allow_non_eu" {
   type = string
-  # "true" = audio terapii opuszcza UE. TYLKO material testowy.
-  # Wylaczyc natychmiast po uruchomieniu tenanta EU.
-  default = ""
+  # "true" = audio terapii OPUSZCZA UE.
+  #
+  # 2026-07-31, decyzja operatora: wlaczone jako default razem z
+  # przelaczeniem stt_provider na elevenlabs, z zastrzezeniem, ze
+  # rezydencje pokryje kontrakt zawierany offline. Od tego momentu
+  # dotyczy to nagran PRAWDZIWYCH sesji, nie tylko materialu testowego —
+  # audio terapii to dane szczegolnej kategorii wg GDPR art. 9.
+  #
+  # Wylaczyc razem z przywroceniem elevenlabs_api_url na host
+  # rezydencji, gdy tenant EU bedzie dzialal.
+  default = "true"
 }
 
 variable "elevenlabs_api_key_secret_id" {
   type = string
-  # Pusty = provider ElevenLabs wylaczony: sekret nie jest montowany,
-  # elClient zostaje nil, a STT_PROVIDER=elevenlabs wraca na chirpa
-  # zamiast wywracac sesje. Ustawic na "elevenlabs-api-key" dopiero po
-  # utworzeniu sekretu (docs/59 Faza 0 krok 3).
-  default = ""
+  # Sekret utworzony 2026-07-31 (wersja 2; wersja 1 z bledna wartoscia
+  # wylaczona). Pusty wylaczalby providera: sekret nie bylby montowany,
+  # elClient zostalby nil, a STT_PROVIDER=elevenlabs wrocilby na chirpa
+  # zamiast wywracac sesje.
+  default = "elevenlabs-api-key"
 }
 
 variable "stt_order_gate" {

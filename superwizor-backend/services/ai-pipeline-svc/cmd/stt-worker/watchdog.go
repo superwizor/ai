@@ -549,5 +549,7 @@ func rescueSyncOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) 
 			"provider", op.Provider)
 		return nil
 	}
-	return fallbackToChirp(ctx, logger, op.SessionID, op.SourceAudioURI, op.LanguageCode)
+	// Lancuch zalezy od tego, KTORY silnik zawiodl: elevenlabs spada na
+	// deepgrama (ma diaryzacje polskiego), deepgram na chirpa.
+	return fallbackFrom(ctx, logger, op.SessionID, op.Provider, op.SourceAudioURI, op.LanguageCode)
 }
