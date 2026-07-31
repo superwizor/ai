@@ -2638,6 +2638,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can safely leave this screen,\nthe session will process in the background.';
 
   @override
+  String get sessionStatus_keep_app_open =>
+      'Keep the app open until the data has been uploaded to our secure server';
+
+  @override
+  String get sessionStatus_analysis_on_server =>
+      'You can close the app. The analysis runs on our servers.';
+
+  @override
+  String sessionStatus_stalled_hint(int minutes) {
+    return 'The upload has been waiting $minutes min. Keep this screen open to finish it.';
+  }
+
+  @override
   String get sessionStatus_btn_delete_session => 'Delete session';
 
   @override

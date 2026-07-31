@@ -1151,6 +1151,16 @@
   "sessionDetails_transcript_soon": "Transcription — coming soon",
   "sessionDetails_transcript_soon_desc": "Automatic transcription with speaker recognition\nwill be available in the next update.",
   "sessionStatus_bg_processing_notice": "You can safely leave this screen,\nthe session will process in the background.",
+  "sessionStatus_keep_app_open": "Keep the app open until the data has been uploaded to our secure server",
+  "sessionStatus_analysis_on_server": "You can close the app. The analysis runs on our servers.",
+  "sessionStatus_stalled_hint": "The upload has been waiting {minutes} min. Keep this screen open to finish it.",
+  "@sessionStatus_stalled_hint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "sessionStatus_btn_delete_session": "Delete session",
   "sessionStatus_report_failed_contact": "If the situation persists, please let us know.",
   "sessionStatus_report_failed_perm": "Could not generate report for this session.\n\n",

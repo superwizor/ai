@@ -289,25 +289,45 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // Uploading phase: signed URL obtained, PUT in progress.
     // Drive the stepper to 'uploading' so the label switches from
     // "Audio czeka w kolejce" to "Ładujemy audio na serwer".
-    if (row.phase == UploadPhase.created && _resolvedSessionId == null) {
-      if (mounted && _phase != SessionStepperPhase.uploading) {
+    // Bramka na FAZIE, nie na _resolvedSessionId: pod Option E sessionId
+    // jest już ustawiony w momencie phase=created, więc stary warunek
+    // `_resolvedSessionId == null` gubił stan `uploading` przy każdym
+    // ponownym wejściu na ekran (stepper wracał do „Audio czeka w kolejce"
+    // w trakcie PUT-a).
+    if (row.phase == UploadPhase.created &&
+        _phase == SessionStepperPhase.pending) {
+      if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploading);
       }
     }
 
-    // SessionId materialised — CompleteAudioUpload just succeeded.
-    // Hand off to the server-side processing listeners. The
-    // queue runner now subscribes to Firestore session_states for
-    // this row and will refresh patient + session caches itself
-    // when analysis terminates (see upload_queue_provider.dart).
+    // SessionId materialised → podpinamy nasłuchy serwerowe (Firestore +
+    // fallback poll). Komentarz „CompleteAudioUpload just succeeded" był
+    // nieprawdziwy od Option E: sessionId przychodzi z CreateAudioUpload,
+    // czyli RAZEM z phase=created — PRZED wysłaniem choćby jednego bajtu
+    // (upload_worker.dart:233-240). Przestawianie tu fazy na `uploaded`
+    // powodowało, że w tym samym callbacku drugi setState nadpisywał
+    // `uploading`, a ekran przez cały upload twierdził, że audio jest już
+    // na serwerze — i pokazywał „Analiza trwa na naszych serwerach",
+    // podczas gdy bajty leżały na telefonie (znalezione 2026-07-30).
     final newSid = row.sessionId;
     if (newSid != null && _resolvedSessionId == null) {
       _resolvedSessionId = newSid;
       SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
+      _startListeners();
+    }
+
+    // Bajty są na serwerze dopiero, gdy wiersz osiągnie phase=completed
+    // (albo legacy uploaded/converted z buildów przed Option F). Fazy nie
+    // cofamy — gdy Firestore już przestawił ekran na transcribing/analyzing,
+    // ten warunek nie może go ściągnąć wstecz.
+    if (row.phase.index >= UploadPhase.uploaded.index &&
+        row.phase != UploadPhase.failed &&
+        row.phase != UploadPhase.quotaBlocked &&
+        _phase.index < SessionStepperPhase.uploaded.index) {
       if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploaded);
       }
-      _startListeners();
     }
   }
 
@@ -833,6 +853,32 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
           activeStepContent: _buildActiveStepContent(),
         ),
+        // Zwis BEZ błędu (2026-07-29). Diagnostyka niżej jest bramkowana
+        // na attemptCount > 0 && lastError != null, a udany
+        // CreateAudioUpload zeruje licznik i czyści błąd
+        // (upload_worker.dart:246) — więc wiersz, który przeszedł create
+        // i stanął na PUT-cie, NIGDY nie zapala żadnego wskaźnika.
+        // Dokładnie tak wyglądało 19 h 52 min gołego spinnera. Wiek
+        // wiersza jest tu jedynym sygnałem, jaki mamy bez zmiany kształtu
+        // wiersza w Hive.
+        if (_stalledMinutes != null) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                t.sessionStatus_stalled_hint(_stalledMinutes!),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 12,
+                  height: 1.4,
+                  color: EuphireColors.ember.withValues(alpha: 0.9),
+                ),
+              ),
+            ),
+          ),
+        ],
         // Worker diagnostics — surfaced ONLY when attempts are failing
         // (attemptCount > 0 with a recorded error). "Czeka w kolejce" hid
         // a worker that was erroring every tick with no visible trace
@@ -868,9 +914,17 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
+              // Do fazy uploadu WŁĄCZNIE: transfer żyje w procesie
+              // aplikacji. iOS zawiesza proces po zejściu w tło, timery
+              // przestają tykać i bajty nie płyną do czasu powrotu na
+              // ekran (incydent 2026-07-28: 19 h 52 min, sesja
+              // cbd05c2a). Poprzednia kopia obiecywała dokładnie to,
+              // czego platforma nie dowozi. Analiza to inna sprawa —
+              // po PUT-cie pipeline jest serwerowy i tam obietnica jest
+              // prawdziwa.
               _phase == SessionStepperPhase.pending || _phase == SessionStepperPhase.uploading
-                  ? 'Możesz zamknąć aplikację. Przesyłanie trwa w tle.'
-                  : 'Możesz zamknąć aplikację. Analiza trwa w tle.',
+                  ? t.sessionStatus_keep_app_open
+                  : t.sessionStatus_analysis_on_server,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Merriweather',
@@ -1047,6 +1101,31 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
 
   bool get _isQuotaBlocked => _lastRow?.phase == UploadPhase.quotaBlocked;
+
+  /// Ile minut wiersz stoi w kolejce, jeśli stoi ZA DŁUGO — inaczej null.
+  ///
+  /// Liczone od `queuedAt`, bo to jedyny znacznik czasu, jaki wiersz ma,
+  /// i jedyny sygnał niezależny od `attemptCount`/`lastError` (te dwa są
+  /// zerowane przez udany create, patrz komentarz przy widgecie).
+  /// Zaparkowane na kwocie i terminalne wiersze mają własne komunikaty,
+  /// więc ich tu nie ruszamy.
+  ///
+  /// Próg 10 min: typowy upload kończy się w kilkanaście sekund
+  /// (produkcja: 45 z 52 w 20 s), więc dziesięć minut to już nie
+  /// „wolna sieć", tylko zatrzymany transfer.
+  static const _stallThreshold = Duration(minutes: 10);
+
+  int? get _stalledMinutes {
+    final row = _lastRow;
+    if (row == null || row.isTerminal || row.isParked) return null;
+    if (_phase != SessionStepperPhase.pending &&
+        _phase != SessionStepperPhase.uploading) {
+      return null;
+    }
+    final waited = DateTime.now().toUtc().difference(row.queuedAt);
+    if (waited < _stallThreshold) return null;
+    return waited.inMinutes;
+  }
 
   /// Bin-icon handler — confirm + CancelSession + leave the screen.
   Future<void> _onCancelPressed() async {
