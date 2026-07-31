@@ -159,6 +159,14 @@ resource "google_secret_manager_secret_iam_member" "stt_worker_deepgram_key" {
   member    = "serviceAccount:${var.stt_worker_sa_email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "stt_worker_elevenlabs_key" {
+  count     = var.elevenlabs_api_key_secret_id != "" ? 1 : 0
+  project   = var.project_id
+  secret_id = var.elevenlabs_api_key_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
 resource "google_cloudfunctions2_function" "stt_worker" {
   name        = "stt-worker"
   location    = var.region
@@ -218,12 +226,21 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # TO START on any other value (init-time guard, mirrors the
       # europe-west4 Vertex pin). Do not parameterize to a US host.
       DEEPGRAM_API_URL = var.deepgram_api_url
-      # Engine selection: "chirp" (default) | "deepgram". Kill-switch =
-      # flip back to chirp; no DB change (docs/39 §4).
+      # ── ElevenLabs provider (docs/59) ──────────────────────────────
+      # Same posture as DEEPGRAM_API_URL above: pinned to the EU
+      # data-residency host, worker refuses to start on anything else.
+      ELEVENLABS_API_URL = var.elevenlabs_api_url
+      # Engine selection: "chirp" (default) | "deepgram" | "elevenlabs".
+      # Kill-switch = flip back to chirp; no DB change (docs/59 §4).
       STT_PROVIDER = var.stt_provider
-      # Canary allowlist: CSV of therapist/org UUIDs routed to deepgram
-      # while STT_PROVIDER stays "chirp".
+      # Canary allowlist: CSV of therapist/org UUIDs routed to
+      # STT_PROVIDER_CANARY while STT_PROVIDER stays the default.
       STT_PROVIDER_ALLOWLIST = var.stt_provider_allowlist
+      # Which engine the allowlist routes to. Empty = allowlist inert.
+      # Explicit since docs/59: it used to be hardcoded to deepgram, so a
+      # canary for a new provider would have sent traffic to the engine
+      # being migrated away from.
+      STT_PROVIDER_CANARY = var.stt_provider_canary
       # ── Per-patient-file ordering gate (docs/40) ───────────────────
       # When "on", ProcessAudio NACKs sessions whose earlier sibling
       # (same patient_file) is still in the pipeline. THE NACKS ARE
@@ -255,6 +272,20 @@ resource "google_cloudfunctions2_function" "stt_worker" {
         key        = "DEEPGRAM_API_KEY"
         project_id = var.project_id
         secret     = var.deepgram_api_key_secret_id
+        version    = "latest"
+      }
+    }
+
+    dynamic "secret_environment_variables" {
+      # Same conditional mount for ElevenLabs. Empty secret id (the
+      # default) means the key never reaches the worker, elClient stays
+      # nil, and STT_PROVIDER=elevenlabs falls back to chirp rather than
+      # failing sessions.
+      for_each = var.elevenlabs_api_key_secret_id != "" ? [1] : []
+      content {
+        key        = "ELEVENLABS_API_KEY"
+        project_id = var.project_id
+        secret     = var.elevenlabs_api_key_secret_id
         version    = "latest"
       }
     }

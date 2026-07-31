@@ -66,6 +66,23 @@ variable "stt_provider_allowlist" {
   default = ""
 }
 
+variable "stt_provider_canary" {
+  type = string
+  # Silnik, na ktory allowlista kieruje wskazanych terapeutow/organizacje.
+  # Pusty = allowlista bezczynna (worker to loguje). Do canary Fazy 3
+  # docs/59: TF_VAR_stt_provider_canary=elevenlabs razem z allowlista.
+  default = ""
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  type = string
+  # Pusty = provider ElevenLabs wylaczony: sekret nie jest montowany,
+  # elClient zostaje nil, a STT_PROVIDER=elevenlabs wraca na chirpa
+  # zamiast wywracac sesje. Ustawic na "elevenlabs-api-key" dopiero po
+  # utworzeniu sekretu (docs/59 Faza 0 krok 3).
+  default = ""
+}
+
 variable "stt_order_gate" {
   type = string
   # "on" od 2026-07-17 (walidacja e2e docs/40: serialization held,
