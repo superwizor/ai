@@ -26,6 +26,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/pseudonymize"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
@@ -157,8 +158,8 @@ var (
 
 func init() {
 	ctx := context.Background()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// Patrz pkg/logging: bez tego Cloud Logging nie widzi severity.
+	logging.SetupDefault()
 
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	dbDSN := os.Getenv("DATABASE_URL")
@@ -1460,7 +1461,7 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		rag = r.Summary
 	}
 	return ReportPayload{
-		PIIEntities: r.PIIEntities,
+		PIIEntities:     r.PIIEntities,
 		Title:           r.Title,
 		SummaryShort:    r.Summary,
 		RAGSummaryChunk: rag,

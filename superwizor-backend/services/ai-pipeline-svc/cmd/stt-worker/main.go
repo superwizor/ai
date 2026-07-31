@@ -31,6 +31,7 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/deepgram"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/elevenlabs"
@@ -71,8 +72,11 @@ var (
 
 func init() {
 	ctx := context.Background()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// Cloud Logging reads severity from a field named "severity"; slog's
+	// JSONHandler writes "level", so without this every line — including
+	// the coverage guard's stt_low_coverage — lands as DEFAULT severity
+	// and no severity-based alert can ever fire (pkg/logging).
+	logging.SetupDefault()
 
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	bucketName = os.Getenv("AUDIO_BUCKET_NAME")
