@@ -82,8 +82,20 @@ type Querier interface {
 	// rezerwację — drugi dostanie unique-violation i handler przechwyci.
 	CreateReservation(ctx context.Context, arg CreateReservationParams) (PendingReservation, error)
 	// Per-seat counter, minted by AdminSetSeatAllocations for already-seated
-	// therapists and lazily by the debit path for later joiners. UNIQUE
-	// (subscription_id, therapist_id, period_start) absorbs races.
+	// therapists and lazily by the debit path for later joiners.
+	//
+	// ON CONFLICT DO NOTHING is load-bearing, not just tidy: without it a
+	// duplicate insert raises 23505, which ABORTS the enclosing pgx
+	// transaction. Both callers "tolerate" the unique violation and keep
+	// going, but the next statement on the poisoned tx fails with 25P02
+	// ("current transaction is aborted") → codes.Internal → the caller 500s.
+	// This is the AdminSetSeatAllocations 500 on EDIT: an org whose seated
+	// therapists already have counters violates on the first insert and
+	// poisons the tx. DO NOTHING makes the insert a no-op on conflict — no
+	// error raised, tx stays healthy. On conflict RETURNING yields no row,
+	// so callers get pgx.ErrNoRows (meaning "already exists"); on a fresh
+	// insert they get the new row. The partial-index predicate is repeated
+	// so ON CONFLICT targets uq_usage_counters_therapist_period.
 	CreateTherapistUsageCounter(ctx context.Context, arg CreateTherapistUsageCounterParams) (UsageCounter, error)
 	// Tworzy nowy bucket licznika dla rozpoczętego okresu. UNIQUE (subscription_id,
 	// period_start) chroni przed double-create przy concurrent renewal.
@@ -148,6 +160,15 @@ type Querier interface {
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
 	ListActivePlans(ctx context.Context) ([]ListActivePlansRow, error)
 	// Per-therapist usage for the current period (GetMyOrgSeatUsage).
+	//
+	// Membership predicate (u.organization_id = s.organization_id) is NOT
+	// decoration. A counter row outlives the membership that created it:
+	// leaving the org sets users.organization_id = NULL but the counter for
+	// the open period stays, so joining on subscription_id alone kept
+	// rendering departed therapists in the org panel's SUBSKRYPCJA tab
+	// (2026-08-01: "Xi Pong" listed in Fenix 666 long after removal).
+	// We keep the counter row — billing history must not be rewritten — and
+	// filter it out of the roster view instead.
 	ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
 	// których bieżący okres rozliczeniowy się skończył (period_end < now).

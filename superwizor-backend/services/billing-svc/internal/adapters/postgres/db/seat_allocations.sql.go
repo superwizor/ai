@@ -186,8 +186,11 @@ SELECT c.therapist_id, c.tokens_used, c.tokens_reserved, c.tokens_limit,
        u.first_name, u.last_name, u.is_active
 FROM usage_counters c
 JOIN users u ON u.id = c.therapist_id
+JOIN subscriptions s ON s.id = c.subscription_id
 WHERE c.subscription_id = $1
   AND c.therapist_id IS NOT NULL
+  AND u.organization_id = s.organization_id
+  AND u.deleted_at IS NULL
   AND c.period_start <= now()
   AND c.period_end > now()
 ORDER BY u.last_name, u.first_name
@@ -204,6 +207,15 @@ type ListActiveTherapistCountersRow struct {
 }
 
 // Per-therapist usage for the current period (GetMyOrgSeatUsage).
+//
+// Membership predicate (u.organization_id = s.organization_id) is NOT
+// decoration. A counter row outlives the membership that created it:
+// leaving the org sets users.organization_id = NULL but the counter for
+// the open period stays, so joining on subscription_id alone kept
+// rendering departed therapists in the org panel's SUBSKRYPCJA tab
+// (2026-08-01: "Xi Pong" listed in Fenix 666 long after removal).
+// We keep the counter row — billing history must not be rewritten — and
+// filter it out of the roster view instead.
 func (q *Queries) ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error) {
 	rows, err := q.db.Query(ctx, listActiveTherapistCounters, subscriptionID)
 	if err != nil {

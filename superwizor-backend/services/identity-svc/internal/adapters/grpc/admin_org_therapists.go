@@ -21,6 +21,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -140,6 +141,29 @@ func (s *Server) AdminAssignTherapistToOrg(
 			return nil, status.Errorf(codes.Internal, "create seat assignment: %v", err)
 		}
 	}
+
+	// The org may have already invited this person by e-mail. Linking the
+	// account here bypasses AcceptInvitation, so that row would stay open
+	// forever: the panel listed the same therapist twice — active AND
+	// "zaproszenie wysłane" — and the dead invite kept reserving a seat
+	// in the occupancy count. Inside the tx so membership and invitation
+	// can't disagree.
+	consumed, err := qtx.ConsumePendingInvitationsForEmail(ctx,
+		db.ConsumePendingInvitationsForEmailParams{
+			OrganizationID: orgID,
+			Email:          email,
+			AcceptedUserID: pgtype.UUID{Bytes: user.ID, Valid: true},
+		})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "consume invitations: %v", err)
+	}
+	if consumed > 0 {
+		slog.InfoContext(ctx, "admin assign consumed pending invitations",
+			"organization_id", orgID.String(),
+			"user_id", user.ID.String(),
+			"invitations_consumed", consumed)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "tx commit: %v", err)
 	}

@@ -87,8 +87,14 @@ func (s *Server) GetMyBillingState(ctx context.Context, _ *emptypb.Empty) (*bill
 		}
 	}
 
+	// TherapistId is what makes this "MY" billing state. Without it
+	// billing-svc answers with the organization-wide counter, which for
+	// a seat-based org is a different budget than the one this therapist
+	// actually spends from — the app showed the org's 40/0 while the
+	// person's own seat stood at 30/1 (reported 2026-08-01).
 	sub, err := s.billing.GetSubscription(ctx, &billingv1.GetSubscriptionRequest{
 		OrganizationId: orgIDStr,
+		TherapistId:    therapistIDStr,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "GetMyBillingState: billing.GetSubscription failed",
