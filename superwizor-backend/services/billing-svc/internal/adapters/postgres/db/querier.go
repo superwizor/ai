@@ -170,6 +170,33 @@ type Querier interface {
 	// We keep the counter row — billing history must not be rewritten — and
 	// filter it out of the roster view instead.
 	ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error)
+	// Weekly safety-check, drugi detektor: otwarte liczniki, które dają
+	// MNIEJ sesji, niż obiecuje plan subskrypcji.
+	//
+	// tokens_limit jest migawką z chwili powstania licznika, nie odczytem
+	// planu na żywo. Przecena katalogu (migracja 000070: PRO Monthly 40→90)
+	// nie propaguje się do liczników otwartego okresu, więc klient przez
+	// cały okres widzi stary, niższy limit. Tak właśnie wyszedł na jaw
+	// rozjazd zgłoszony 2026-08-01 — i wyszedł od użytkownika, nie od nas.
+	//
+	// Celowo TYLKO kierunek "<". Nadania administracyjne zawsze podnoszą
+	// limit ponad plan (limit 50 przy planie 30) i są zamierzone; alert na
+	// nich zamieniłby ten detektor w szum, który wszyscy wyciszą.
+	// Nic tu nie naprawiamy automatycznie: podniesienie limitu to decyzja
+	// handlowa, a obniżenie może wyrzucić klienta ponad zużycie.
+	//
+	// Tylko wiersze org-level. Licznik per-terapeutowy bierze limit z planu
+	// JEGO MIEJSCA (docs/38), a nie z planu subskrypcji — terapeuta na
+	// miejscu SOLO (30) w organizacji na PRO (90) jest poprawny, więc
+	// porównanie z planem subskrypcji dałoby tu fałszywy alarm.
+	//
+	// TRIAL jest wyłączony i to nie jest wygodne uproszczenie. Liczniki
+	// trialowe są zakładane z realnym progiem próbnym (3 lub 5), podczas
+	// gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny jest KATALOG,
+	// nie licznik. Bez tego wyłączenia detektor zgłaszał ~190 organizacji
+	// próbnych naraz (sprawdzone na stagingu 2026-08-01) i utonąłby
+	// w szumie razem z dwoma prawdziwymi trafieniami.
+	ListCountersBelowPlanLimit(ctx context.Context) ([]ListCountersBelowPlanLimitRow, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
 	// których bieżący okres rozliczeniowy się skończył (period_end < now).
 	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).

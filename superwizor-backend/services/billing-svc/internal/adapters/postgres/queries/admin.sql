@@ -50,6 +50,51 @@ WHERE s.status IN ('ACTIVE', 'TRIALING')
       AND c.period_end > now()
 );
 
+-- name: ListCountersBelowPlanLimit :many
+-- Weekly safety-check, drugi detektor: otwarte liczniki, które dają
+-- MNIEJ sesji, niż obiecuje plan subskrypcji.
+--
+-- tokens_limit jest migawką z chwili powstania licznika, nie odczytem
+-- planu na żywo. Przecena katalogu (migracja 000070: PRO Monthly 40→90)
+-- nie propaguje się do liczników otwartego okresu, więc klient przez
+-- cały okres widzi stary, niższy limit. Tak właśnie wyszedł na jaw
+-- rozjazd zgłoszony 2026-08-01 — i wyszedł od użytkownika, nie od nas.
+--
+-- Celowo TYLKO kierunek "<". Nadania administracyjne zawsze podnoszą
+-- limit ponad plan (limit 50 przy planie 30) i są zamierzone; alert na
+-- nich zamieniłby ten detektor w szum, który wszyscy wyciszą.
+-- Nic tu nie naprawiamy automatycznie: podniesienie limitu to decyzja
+-- handlowa, a obniżenie może wyrzucić klienta ponad zużycie.
+--
+-- Tylko wiersze org-level. Licznik per-terapeutowy bierze limit z planu
+-- JEGO MIEJSCA (docs/38), a nie z planu subskrypcji — terapeuta na
+-- miejscu SOLO (30) w organizacji na PRO (90) jest poprawny, więc
+-- porównanie z planem subskrypcji dałoby tu fałszywy alarm.
+--
+-- TRIAL jest wyłączony i to nie jest wygodne uproszczenie. Liczniki
+-- trialowe są zakładane z realnym progiem próbnym (3 lub 5), podczas
+-- gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny jest KATALOG,
+-- nie licznik. Bez tego wyłączenia detektor zgłaszał ~190 organizacji
+-- próbnych naraz (sprawdzone na stagingu 2026-08-01) i utonąłby
+-- w szumie razem z dwoma prawdziwymi trafieniami.
+SELECT c.id AS counter_id,
+       s.id AS subscription_id,
+       s.organization_id,
+       c.therapist_id,
+       c.tokens_limit,
+       p.tokens_per_period AS plan_tokens_per_period,
+       p.tier,
+       p.cycle
+FROM usage_counters c
+JOIN subscriptions s ON s.id = c.subscription_id
+JOIN subscription_plans p ON p.id = s.plan_id
+WHERE s.status IN ('ACTIVE', 'TRIALING')
+  AND c.period_start <= now()
+  AND c.period_end > now()
+  AND c.therapist_id IS NULL
+  AND p.tier <> 'TRIAL'
+  AND c.tokens_limit < p.tokens_per_period;
+
 -- ──────────────────────────────────────────────────────────────────
 -- Web-admin RPCs (docs/18 §13.7) — SUPERWIZOR_ADMIN actions.
 -- ──────────────────────────────────────────────────────────────────
