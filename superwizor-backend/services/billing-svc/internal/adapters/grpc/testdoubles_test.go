@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 
@@ -39,6 +40,8 @@ type fakeQuerier struct {
 	adminChangePlanFn    func(ctx context.Context, arg db.AdminChangeSubscriptionPlanParams) (db.Subscription, error)
 	adminUpdateCounterFn func(ctx context.Context, arg db.AdminUpdateCounterParams) (db.UsageCounter, error)
 	createAuditFn        func(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error)
+	createCounterFn      func(ctx context.Context, arg db.CreateUsageCounterParams) (db.UsageCounter, error)
+	resetTherapistFn     func(ctx context.Context, arg db.AdminResetTherapistCountersParams) (int64, error)
 
 	// Call recorders
 	createTherapistCounterCalls []db.CreateTherapistUsageCounterParams
@@ -48,6 +51,8 @@ type fakeQuerier struct {
 	releaseReservedCalls        []db.ReleaseReservedTokensParams
 	commitTokensCalls           []db.CommitTokensParams
 	advisoryLockCalls           []string
+	createCounterCalls          []db.CreateUsageCounterParams
+	auditCalls                  []map[string]any
 	adminChangePlanCalls        []db.AdminChangeSubscriptionPlanParams
 }
 
@@ -181,10 +186,35 @@ func (f *fakeQuerier) AdminUpdateCounter(ctx context.Context, arg db.AdminUpdate
 }
 
 func (f *fakeQuerier) CreateBillingAuditEvent(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error) {
+	// Metadane audytu rozpakowujemy tutaj, żeby testy mogły asertować
+	// na ich TREŚCI. Wpis "before=40, after=40" z 2026-07-05 opisywał
+	// świeżo wstawiony wiersz jako stan sprzed operacji — bez zajrzenia
+	// do środka metadanych taki błąd jest niewidoczny dla testów.
+	if len(arg.Metadata) > 0 {
+		var m map[string]any
+		if err := json.Unmarshal(arg.Metadata, &m); err == nil {
+			f.auditCalls = append(f.auditCalls, m)
+		}
+	}
 	if f.createAuditFn != nil {
 		return f.createAuditFn(ctx, arg)
 	}
 	return db.AuditEvent{}, nil
+}
+
+func (f *fakeQuerier) CreateUsageCounter(ctx context.Context, arg db.CreateUsageCounterParams) (db.UsageCounter, error) {
+	f.createCounterCalls = append(f.createCounterCalls, arg)
+	if f.createCounterFn != nil {
+		return f.createCounterFn(ctx, arg)
+	}
+	return db.UsageCounter{ID: uuid.New(), SubscriptionID: arg.SubscriptionID, TokensLimit: arg.TokensLimit}, nil
+}
+
+func (f *fakeQuerier) AdminResetTherapistCounters(ctx context.Context, arg db.AdminResetTherapistCountersParams) (int64, error) {
+	if f.resetTherapistFn != nil {
+		return f.resetTherapistFn(ctx, arg)
+	}
+	return 0, nil
 }
 
 // ---------- fakeTxOpener ----------
