@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -451,4 +452,16 @@ func (a *ConnectAdapter) SplitTranscriptSegment(ctx context.Context, req *connec
 		return nil, err
 	}
 	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) GenerateSessionBrief(ctx context.Context, req *connect.Request[clinicalv1.GenerateSessionBriefRequest]) (*connect.Response[clinicalv1.GenerateSessionBriefResponse], error) {
+	resp, err := a.s.GenerateSessionBrief(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AskPatientQuestion(ctx context.Context, req *connect.Request[clinicalv1.AskPatientQuestionRequest], stream *connect.ServerStream[clinicalv1.AskPatientQuestionResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("AskPatientQuestion streaming not implemented yet"))
 }

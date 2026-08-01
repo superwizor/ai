@@ -93,7 +93,7 @@ func (s *Server) GenerateSessionBrief(ctx context.Context, req *clinicalv1.Gener
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "patient file not found")
 	}
-	therapistID := uuid.UUID(pf.TherapistID.Bytes)
+	therapistID := pf.TherapistID
 	if err := s.requireTherapistDataAccess(ctx, therapistID); err != nil {
 		return nil, err // already a gRPC status
 	}
