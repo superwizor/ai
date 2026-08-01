@@ -121,6 +121,17 @@ func (a *ConnectAdapter) GetActionPlanDraft(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+// GenerateSessionBrief — drugie z RPC asystenta AI (obok strumieniowego
+// AskPatientQuestion w connect_adapter_stream.go). Handler istniał od
+// feat/chat-window, brakowało tylko opakowania Connect.
+func (a *ConnectAdapter) GenerateSessionBrief(ctx context.Context, req *connect.Request[clinicalv1.GenerateSessionBriefRequest]) (*connect.Response[clinicalv1.GenerateSessionBriefResponse], error) {
+	resp, err := a.s.GenerateSessionBrief(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) SavePatientNote(ctx context.Context, req *connect.Request[clinicalv1.SavePatientNoteRequest]) (*connect.Response[clinicalv1.SavePatientNoteResponse], error) {
 	resp, err := a.s.SavePatientNote(ctx, req.Msg)
 	if err != nil {

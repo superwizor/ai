@@ -93,7 +93,10 @@ func (s *Server) GenerateSessionBrief(ctx context.Context, req *clinicalv1.Gener
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "patient file not found")
 	}
-	therapistID := uuid.UUID(pf.TherapistID.Bytes)
+	// PatientFile.TherapistID jest juz uuid.UUID — gałąź czatu pisana
+	// byla pod starszy wygenerowany model, gdzie siedzial tam
+	// pgtype.UUID z polem .Bytes. Konwersja przestala byc potrzebna.
+	therapistID := pf.TherapistID
 	if err := s.requireTherapistDataAccess(ctx, therapistID); err != nil {
 		return nil, err // already a gRPC status
 	}
@@ -127,8 +130,8 @@ func (s *Server) GenerateSessionBrief(ctx context.Context, req *clinicalv1.Gener
 	// Until wired, return Unimplemented.
 	// ──────────────────────────────────────────────────────────
 
-	_ = queryText    // will be used for embedding
-	_ = therapistID  // will be used for audit
+	_ = queryText     // will be used for embedding
+	_ = therapistID   // will be used for audit
 	_ = patientFileID // will be used for RAG pool query
 
 	// Placeholder: The full flow is documented in implementation_plan.md.
@@ -177,19 +180,20 @@ func (s *Server) AskPatientQuestion(req *clinicalv1.AskPatientQuestionRequest, s
 // pool/queries rather than a package-level global.
 //
 // Query shape (from ai-pipeline-svc):
-//   WITH recent_sessions AS (
-//     SELECT source_session_id, max(created_at) AS session_at
-//     FROM rag_memories
-//     WHERE patient_file_id = $1 AND NOT is_compacted
-//       AND source_session_id IS NOT NULL
-//     GROUP BY source_session_id
-//     ORDER BY session_at DESC
-//     LIMIT $2  -- rag.LookbackSessions (36)
-//   )
-//   SELECT m.id, m.source_session_id, m.chunk_type, m.created_at, m.embedding::text
-//   FROM rag_memories m
-//   JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
-//   WHERE m.patient_file_id = $1 AND NOT m.is_compacted
+//
+//	WITH recent_sessions AS (
+//	  SELECT source_session_id, max(created_at) AS session_at
+//	  FROM rag_memories
+//	  WHERE patient_file_id = $1 AND NOT is_compacted
+//	    AND source_session_id IS NOT NULL
+//	  GROUP BY source_session_id
+//	  ORDER BY session_at DESC
+//	  LIMIT $2  -- rag.LookbackSessions (36)
+//	)
+//	SELECT m.id, m.source_session_id, m.chunk_type, m.created_at, m.embedding::text
+//	FROM rag_memories m
+//	JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
+//	WHERE m.patient_file_id = $1 AND NOT m.is_compacted
 //
 // Returns the pool and the anchor ID (most recent summary row).
 func loadRAGPoolDoc() {
