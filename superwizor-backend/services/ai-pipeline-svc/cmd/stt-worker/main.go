@@ -31,8 +31,10 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/deepgram"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/elevenlabs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/sttgcs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
@@ -55,22 +57,26 @@ type PubSubMessage struct {
 }
 
 var (
-	dbPool             *pgxpool.Pool
-	speechClient       *speech.Client
-	pubsubClient       *pubsub.Client
-	gcsClient          *gcs.Client
-	crypto             cryptobox.CryptoBox
-	bucketName         string // audio uploads bucket (Chirp input source)
-	transcriptsRawBkt  string // Chirp output destination (Stage 1)
-	projectID          string
-	billingClient      billingv1.BillingServiceClient // nil = billing hook disabled
-	dgClient           *deepgram.Client               // nil = deepgram provider disabled
+	dbPool            *pgxpool.Pool
+	speechClient      *speech.Client
+	pubsubClient      *pubsub.Client
+	gcsClient         *gcs.Client
+	crypto            cryptobox.CryptoBox
+	bucketName        string // audio uploads bucket (Chirp input source)
+	transcriptsRawBkt string // Chirp output destination (Stage 1)
+	projectID         string
+	billingClient     billingv1.BillingServiceClient // nil = billing hook disabled
+	dgClient          *deepgram.Client               // nil = deepgram provider disabled
+	elClient          *elevenlabs.Client             // nil = elevenlabs provider disabled
 )
 
 func init() {
 	ctx := context.Background()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// Cloud Logging reads severity from a field named "severity"; slog's
+	// JSONHandler writes "level", so without this every line — including
+	// the coverage guard's stt_low_coverage — lands as DEFAULT severity
+	// and no severity-based alert can ever fire (pkg/logging).
+	logging.SetupDefault()
 
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	bucketName = os.Getenv("AUDIO_BUCKET_NAME")
@@ -173,6 +179,42 @@ func init() {
 		dgClient = deepgram.New(dgKey, dgURL)
 		slog.Info("stt-worker: deepgram client wired", "url", dgURL,
 			"provider_default", os.Getenv("STT_PROVIDER"))
+	}
+
+	// ElevenLabs provider (docs/59). Same posture as Deepgram above: the
+	// endpoint is pinned to the EU data-residency host and the worker
+	// REFUSES TO START on any other value. One typo in an env var must
+	// not send special-category health data outside the EU.
+	if elKey := os.Getenv("ELEVENLABS_API_KEY"); elKey != "" {
+		elURL := os.Getenv("ELEVENLABS_API_URL")
+		if elURL == "" {
+			elURL = elevenlabs.DefaultBaseURL
+		}
+		if !elevenlabs.IsEUEndpoint(elURL) {
+			// Escape hatch for validating against the global endpoint
+			// while the EU tenant is not yet provisioned (2026-07-31: the
+			// residency host returns 400 invalid_api_key for a key that
+			// works globally). Default OFF, and it stays a conscious act:
+			// a non-EU endpoint means therapy audio — special-category
+			// health data under GDPR art. 9 — leaves the EU.
+			//
+			// ONLY for test recordings. Turning this on with real patient
+			// audio breaks the residency requirement the product is sold
+			// on and the consent patients actually signed.
+			if os.Getenv("ELEVENLABS_ALLOW_NON_EU") != "true" {
+				slog.Error("ELEVENLABS_API_URL is not the EU data-residency endpoint; refusing to start",
+					"url", elURL,
+					"hint", "set ELEVENLABS_ALLOW_NON_EU=true to override — TEST MATERIAL ONLY")
+				os.Exit(1)
+			}
+			slog.Warn("elevenlabs_non_eu_endpoint — EU residency guard DISABLED by operator; "+
+				"audio will leave the EU. Test material only.",
+				"url", elURL)
+		}
+		elClient = elevenlabs.New(elKey, elURL)
+		slog.Info("stt-worker: elevenlabs client wired", "url", elURL,
+			"provider_default", os.Getenv("STT_PROVIDER"),
+			"provider_canary", os.Getenv("STT_PROVIDER_CANARY"))
 	}
 
 	functions.CloudEvent("ProcessAudio", ProcessAudio)
@@ -282,10 +324,14 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return nil
 	}
 
-	// Provider fork (docs/39 §4). The deepgram branch is synchronous and
-	// self-contained (claim → signed URL → /v1/listen → completeTranscript);
-	// everything below this if is the Chirp submit/finalize machinery.
-	if provider := resolveSTTProvider(ctx, event.SessionID); provider == "deepgram" {
+	// Provider fork (docs/59 §4). Both non-Chirp branches are synchronous
+	// and self-contained (claim → signed URL → HTTP call →
+	// completeTranscript); everything below this switch is the Chirp
+	// submit/finalize machinery.
+	switch provider := resolveSTTProvider(ctx, event.SessionID); provider {
+	case providerElevenLabs:
+		return processAudioElevenLabs(ctx, logger, event, sessionUUID, bcp47Lang)
+	case providerDeepgram:
 		return processAudioDeepgram(ctx, logger, event, sessionUUID, bcp47Lang)
 	}
 
@@ -432,10 +478,10 @@ func loadChunkPlan(ctx context.Context, uploadIDStr string, fallbackObjectPath s
 	var out []ChunkPlan
 	for rows.Next() {
 		var (
-			idx                                int32
-			bkt, obj                           string
-			start, seam, end                   int64
-			overlap                            int32
+			idx              int32
+			bkt, obj         string
+			start, seam, end int64
+			overlap          int32
 		)
 		if err := rows.Scan(&idx, &bkt, &obj, &start, &seam, &end, &overlap); err != nil {
 			return nil, fmt.Errorf("scan audio_chunks: %w", err)

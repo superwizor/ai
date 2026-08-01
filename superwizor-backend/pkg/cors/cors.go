@@ -51,6 +51,12 @@ var defaultAllowedHeaders = []string{
 	"X-User-Agent",
 	// Idempotency-Key header used on mutation RPCs (pkg/idempotency).
 	"Idempotency-Key",
+	// Platform marker set by the Flutter AuthInterceptor. On gRPC-Web
+	// every gRPC metadata key becomes an HTTP header, so anything the
+	// client attaches MUST be listed here or the browser rejects the
+	// pre-flight and never sends the request (2026-07-24 incident:
+	// x-client-platform took down every RPC from superwizor-app.web.app).
+	"X-Client-Platform",
 }
 
 // Default headers we expose to the browser so the Connect client can

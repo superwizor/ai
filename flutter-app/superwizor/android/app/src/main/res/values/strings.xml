@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Powiadomienie serwisu dataSync, który trzyma priorytet procesu na
+         czas wysyłania nagrań w tle (docs/58). Tekst zostaje po stronie
+         natywnej — Dart podaje wyłącznie licznik — więc nie ma round-tripu
+         i18n w trakcie uploadu. Polski jest podstawowy, jak w
+         RecordingForegroundService. -->
+    <string name="upload_fgs_title_one">Wysyłanie nagrania…</string>
+    <string name="upload_fgs_title_many">Wysyłanie %1$d nagrań…</string>
+    <string name="upload_fgs_body">Nie zamykaj aplikacji do końca wysyłki.</string>
+
+    <string name="upload_fgs_channel_name">Wysyłanie nagrań</string>
+    <string name="upload_fgs_channel_description">Powiadomienie aktywne podczas wysyłania nagrania na serwer.</string>
+</resources>

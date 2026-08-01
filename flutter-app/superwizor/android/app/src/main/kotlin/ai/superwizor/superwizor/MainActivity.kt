@@ -2,8 +2,10 @@ package ai.superwizor.superwizor
 
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import android.media.MediaPlayer
 import android.media.AudioAttributes
@@ -20,6 +22,8 @@ class MainActivity : FlutterFragmentActivity() {
     private val fgsChannel = "superwizor/recording_fgs"
     private val liveActivityChannel = "ai.superwizor/live_activity"
     private val reminderChannel = "ai.superwizor/reminder_service"
+    private val uploadFgsChannel = "ai.superwizor/upload_fgs"
+    private val uploadFgsEventsChannel = "ai.superwizor/upload_fgs_events"
     
     private var reminderTimer: Timer? = null
     private var reminderMediaPlayer: MediaPlayer? = null
@@ -94,6 +98,42 @@ class MainActivity : FlutterFragmentActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // Upload-window control (docs/58). Not an uploader: the queue stays
+        // in Dart and this only asks for a dataSync foreground service so the
+        // isolate keeps foreground process priority once the recording FGS
+        // and the wakelock are gone. See UploadForegroundService.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            uploadFgsChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    val pendingCount = call.argument<Int>("pendingCount") ?: 1
+                    result.success(startUploadWindow(pendingCount))
+                }
+                "stop" -> {
+                    stopUploadWindow()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // The only thing the service reports back: the OS cutting the
+        // dataSync window short (Android 15, 6 h per 24 h).
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            uploadFgsEventsChannel,
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                UploadForegroundService.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                UploadForegroundService.setEventSink(null)
+            }
+        })
 
         // Live Activity / AppWidget control — mirrors recording state
         // to the home-screen widget so therapists can see session
@@ -202,6 +242,67 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
     
+    /**
+     * Asks for the upload window. Returns false — never an exception across
+     * the channel — when the OS refuses, so Dart can just keep uploading in
+     * the foreground.
+     */
+    private fun startUploadWindow(pendingCount: Int): Boolean {
+        val intent = Intent(this, UploadForegroundService::class.java).apply {
+            action = UploadForegroundService.ACTION_START
+            putExtra(UploadForegroundService.EXTRA_PENDING_COUNT, pendingCount)
+        }
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            true
+        } catch (e: Exception) {
+            // API 31+ throws ForegroundServiceStartNotAllowedException when
+            // the call reaches us with the app already in the background
+            // (API 34+ forbids background-started dataSync outright), and
+            // API 35 refuses once the 6 h/24 h budget is spent. Caught as
+            // Exception on purpose: naming that class in the catch clause
+            // would reference a type that does not exist below API 31, and
+            // no start failure is worth a PlatformException here.
+            Log.w(TAG, "upload window refused: ${e.javaClass.simpleName}", e)
+            false
+        }
+    }
+
+    /**
+     * stopService (not an ACTION_STOP intent like the recording service uses)
+     * because the queue usually drains while the app is in the background,
+     * and a background startService() would itself be illegal on API 26+.
+     * onDestroy in the service removes the notification.
+     */
+    private fun stopUploadWindow() {
+        try {
+            stopService(Intent(this, UploadForegroundService::class.java))
+        } catch (e: Exception) {
+            Log.w(TAG, "stopping upload window failed: ${e.javaClass.simpleName}", e)
+        }
+    }
+
+    override fun onDestroy() {
+        // The isolate that owns the upload queue dies with this engine, so
+        // nothing should be written into a stale sink afterwards.
+        UploadForegroundService.setEventSink(null)
+        // …and the window itself is worthless without that isolate: left
+        // running it would show "Wysyłanie…" with nothing behind it. Only
+        // a swipe-away is covered by android:stopWithTask; a back-press
+        // finish lands here instead. Backgrounding — the case this whole
+        // feature exists for — is onStop, not onDestroy, so the window
+        // survives it. A configuration-change recreation keeps the service
+        // and the new engine picks the queue straight back up.
+        if (!isChangingConfigurations) {
+            stopUploadWindow()
+        }
+        super.onDestroy()
+    }
+
     private fun startReminderTimer() {
         stopReminderTimer()
         if (reminderMediaPlayer == null) {
@@ -262,5 +363,11 @@ class MainActivity : FlutterFragmentActivity() {
                 vibrator.vibrate(500)
             }
         }
+    }
+
+    private companion object {
+        // Same tag as UploadForegroundService so one logcat filter covers
+        // the whole upload window: adb logcat -s UploadFgs
+        const val TAG = "UploadFgs"
     }
 }

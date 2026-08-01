@@ -55,6 +55,7 @@ require (
 	github.com/superwizor-ai/backend/gen/go v0.0.0
 	github.com/superwizor-ai/backend/pkg/connectmd v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/cryptobox v0.0.0-00010101000000-000000000000
+	github.com/superwizor-ai/backend/pkg/logging v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
@@ -75,3 +76,5 @@ replace github.com/superwizor-ai/backend/pkg/cryptobox => ../../pkg/cryptobox
 replace github.com/superwizor-ai/backend/pkg/cors => ../../pkg/cors
 
 replace github.com/superwizor-ai/backend/pkg/connectmd => ../../pkg/connectmd
+
+replace github.com/superwizor-ai/backend/pkg/logging => ../../pkg/logging

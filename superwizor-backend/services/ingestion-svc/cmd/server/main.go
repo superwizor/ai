@@ -24,6 +24,7 @@ import (
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 	"github.com/superwizor-ai/backend/pkg/analytics"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	grpcadapter "github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/pubsub"
@@ -31,8 +32,10 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// pkg/logging: Cloud Logging czyta severity z pola o tej nazwie, a
+	// slog pisze "level" — bez tego kazdy log jest DEFAULT i alerty
+	// oparte na severity nie odpalaja.
+	logging.SetupDefault()
 
 	ctx := context.Background()
 

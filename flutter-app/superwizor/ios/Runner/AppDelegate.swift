@@ -40,6 +40,33 @@ import UIKit
     super.application(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
   }
 
+  // ── Background URLSession hand-back ─────────────────────────────
+  //
+  // The OS relaunches (or un-suspends) the app purely to tell us a
+  // background upload finished, and this is where it knocks. It has no
+  // UIScene equivalent, so it stays on AppDelegate even though the app is
+  // scene-based. FlutterAppDelegate already implements it — it fans the
+  // callback out to plugins — hence the override + super for identifiers
+  // that are not ours.
+  //
+  // BackgroundUploader stores the handler and calls it once every task has
+  // reported (and written its journal). Missing the handler call gets the
+  // app throttled or killed by the watchdog.
+  override func application(
+    _ application: UIApplication,
+    handleEventsForBackgroundURLSession identifier: String,
+    completionHandler: @escaping () -> Void
+  ) {
+    if BackgroundUploader.shared.handleBackgroundSessionEvents(
+      identifier: identifier, completionHandler: completionHandler) {
+      return
+    }
+    super.application(
+      application,
+      handleEventsForBackgroundURLSession: identifier,
+      completionHandler: completionHandler)
+  }
+
   @available(iOS 16.2, *)
   private func handleLiveActivityPush(_ userInfo: [AnyHashable: Any]) {
     // FCM data-dict fields are at the TOP level of userInfo (not
@@ -99,6 +126,14 @@ import UIKit
     // Background-safe timer for session reminders (bypasses Flutter MethodChannel freeze).
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ReminderManager") {
       ReminderManager.register(with: registrar.messenger())
+    }
+    // Background upload channel — hands the recording PUT to
+    // nsurlsessiond so it survives suspension (docs/58). Registering here
+    // also re-attaches the session delegate on a cold start, which is how
+    // completions from the previous launch get journalled.
+    // See ios/Runner/BackgroundUploader.swift.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BackgroundUploader") {
+      BackgroundUploader.register(with: registrar.messenger())
     }
   }
 }

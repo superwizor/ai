@@ -76,6 +76,47 @@ func TestNew_PreflightShortCircuits(t *testing.T) {
 	}
 }
 
+// Every header a browser client attaches must be on the allowlist —
+// one that isn't makes the browser reject the pre-flight response and
+// silently skip the real request (XHR status 0, which package:grpc
+// surfaces as "code 2 UNKNOWN: HTTP request completed without a status
+// (potential CORS issue)"). That took down every RPC from
+// superwizor-app.web.app on 2026-07-24, so the exact key set the
+// Flutter client sends is pinned here.
+//
+// Flutter's AuthInterceptor (flutter-app/superwizor/lib/services/
+// grpc_client.dart) sets `authorization` and `x-client-platform`; the
+// gRPC-Web transport adds content-type, x-user-agent and x-grpc-web.
+// Keep this list in sync when the interceptor gains a key.
+func TestNew_PreflightAllowsEveryHeaderTheFlutterClientSends(t *testing.T) {
+	mw := New(Config{
+		AllowedOrigins: []string{"https://superwizor-app.web.app"},
+	})
+	h := mw(&passthrough{})
+
+	sent := []string{
+		"authorization",
+		"x-client-platform",
+		"content-type",
+		"x-user-agent",
+		"x-grpc-web",
+	}
+
+	req := httptest.NewRequest(http.MethodOptions, "/clinical.v1.ClinicalService/ListPatientFiles", nil)
+	req.Header.Set("Origin", "https://superwizor-app.web.app")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	req.Header.Set("Access-Control-Request-Headers", strings.Join(sent, ","))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	allowed := strings.ToLower(rec.Header().Get("Access-Control-Allow-Headers"))
+	for _, h := range sent {
+		if !strings.Contains(allowed, h) {
+			t.Errorf("Allow-Headers is missing %q — the browser will drop the request; got %q", h, allowed)
+		}
+	}
+}
+
 func TestNew_DisallowedOriginPreflightReturns403(t *testing.T) {
 	mw := New(Config{
 		AllowedOrigins: []string{"https://app.superwizor.ai"},

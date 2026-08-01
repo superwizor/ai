@@ -630,6 +630,31 @@
       "emailLabel": "Manager e-mail",
       "emailInvalid": "Enter a valid e-mail address.",
       "hint": "Re-inviting the same address refreshes the link and re-sends the e-mail."
+    },
+    "orgTherapistAssign": {
+      "cta": "Assign therapist",
+      "dialogTitle": "Assign therapist to organization",
+      "dialogBody": "Enter the e-mail of an existing therapist account. It will be attached to this organization and start consuming its limits.",
+      "dialogBodyTransfer": "This therapist already belongs to another organization. Below is what the transfer would carry over. Confirm again to proceed.",
+      "emailLabel": "Therapist e-mail",
+      "emailInvalid": "Enter a valid e-mail address.",
+      "hint": "The account must already exist. The therapist keeps their patient files and sessions.",
+      "confirmNeeded": "Transfer confirmation required — review the details below.",
+      "warningTitle": "Warning: cross-organization transfer",
+      "warningCurrentOrg": "Current organization: {org}",
+      "warningSessions": "Sessions: {total} (billable: {billable})",
+      "warningTokens": "Tokens consumed: {tokens}",
+      "warningLastSession": "Last session: {date}",
+      "warningSeat": "The therapist holds an active seat — it will be released.",
+      "warningConfirmHint": "Patient files and sessions stay with the therapist. Only the billing assignment changes.",
+      "unassignCta": "Detach",
+      "unassignDialogTitle": "Detach therapist from organization",
+      "unassignDialogBody": "{name} will no longer belong to this organization and their seat will be released. Patient files, sessions and the account itself stay untouched — this is not a therapist removal.",
+      "unassignNoTarget": "No therapist selected.",
+      "seatLabel": "Seat allocation",
+      "seatPlaceholder": "— choose a plan —",
+      "seatHint": "This organization has several allocations. Pick which plan the therapist consumes.",
+      "seatRequired": "Choose a seat allocation."
     }
   },
   "errors": {
@@ -661,7 +686,8 @@
       "alreadyExists": "An entry like this already exists (for example the email is already registered).",
       "taxIdConflict": "This tax ID (NIP) already belongs to another organization. Use a different NIP or open the existing one from the \"Organizations\" list.",
       "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
-      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead."
+      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead.",
+      "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes."
     }
   },
   "nav": {
@@ -1642,7 +1668,6 @@
       "managerRevokeCta": "Cancel invite",
       "managerRevoked": "Invitation cancelled.",
       "colManager": "Manager",
-      "colStatus": "Status",
       "managerYou": "you",
       "managersEmpty": "No managers.",
       "period": "Billing period: {start} – {end}",
