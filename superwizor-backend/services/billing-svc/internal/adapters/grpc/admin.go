@@ -132,6 +132,27 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		}
 		return nil, status.Errorf(codes.Internal, "load subscription: %v", err)
 	}
+	// Limit poniżej planu to zawsze pomyłka, a kosztuje płacącego
+	// klienta cały okres. Walidacja przy wejściu (req.TokensLimit > 0)
+	// nie mogła tego złapać, bo plan jest znany dopiero tutaj.
+	//
+	// Tak powstało 40 w organizacji na planie PRO Monthly (90): reset
+	// z reason "testujemy czy dziala" wpisał wartość spoza katalogu, a
+	// gałąź mintująca poniżej założyła z nią wiersz org-level. Nikt
+	// tego nie zauważył przez miesiąc — zgłosił to klient. Wartości
+	// POWYŻEJ planu przepuszczamy: to świadome nadania handlowe.
+	//
+	// TRIAL wyłączony: liczniki próbne chodzą z realnym progiem (3-5),
+	// podczas gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny
+	// jest katalog, więc ta reguła blokowałaby poprawne resety triali.
+	if req.TokensLimit != -1 && sub.PlanTier != db.PlanTierTRIAL &&
+		req.TokensLimit < sub.PlanTokensPerPeriod {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"tokens_limit %d jest poniżej limitu planu %s (%d) — "+
+				"zmień plan albo alokację miejsc zamiast zaniżać licznik",
+			req.TokensLimit, sub.PlanTier, sub.PlanTokensPerPeriod)
+	}
+
 	if err := q.AcquireSubscriptionLock(ctx, sub.ID.String()); err != nil {
 		return nil, status.Errorf(codes.Internal, "advisory lock: %v", err)
 	}
@@ -155,6 +176,10 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 
 	var updated db.UsageCounter
 	orgCounterFound := true
+	// Rozdzielone od orgCounterFound: wiersz ISTNIEJE po tej operacji
+	// (więc migawka odpowiedzi liczy się z niego normalnie), ale NIE
+	// istniał przed nią — a tylko to rozróżnienie czyni audyt uczciwym.
+	orgCounterMinted := false
 	counter, err := q.LockActiveCounter(ctx, sub.ID)
 	switch {
 	case err == nil:
@@ -200,6 +225,16 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 				}
 			}
 			counter = updated
+			// NIE ustawiamy orgCounterFound — wiersza przed tym
+			// wywołaniem nie było, więc "tokens_limit_before" nie ma
+			// czego opisywać. Wcześniej metadane raportowały tu
+			// counter.TokensLimit, czyli wartość DOPIERO CO wstawioną,
+			// jako stan sprzed operacji. Ślad audytu twierdził wtedy
+			// "before=40, after=40" i wyglądał jak reset, który niczego
+			// nie zmienił — przez co wygenerowanie 40 przez ten właśnie
+			// mint było w audycie nie do odróżnienia od zastanej
+			// wartości. Kosztowało to całe dochodzenie 2026-08-01.
+			orgCounterMinted = true
 			break
 		}
 		orgCounterFound = false
@@ -214,9 +249,18 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		"idempotency_key":          req.IdempotencyKey,
 		"subscription_reactivated": reactivated,
 	}
-	if orgCounterFound {
+	if orgCounterFound && !orgCounterMinted {
 		meta["tokens_used_before"] = counter.TokensUsed
 		meta["tokens_limit_before"] = counter.TokensLimit
+		meta["tokens_used_after"] = updated.TokensUsed
+		meta["tokens_limit_after"] = updated.TokensLimit
+	}
+	if orgCounterMinted {
+		// Bez "_before" — wiersza nie było. Ta flaga jest tym, czego
+		// zabrakło w audycie z 2026-07-05, żeby dało się odczytać, że
+		// licznik org-level POWSTAŁ w tym wywołaniu z wartością podaną
+		// przez operatora.
+		meta["org_counter_minted"] = true
 		meta["tokens_used_after"] = updated.TokensUsed
 		meta["tokens_limit_after"] = updated.TokensLimit
 	}

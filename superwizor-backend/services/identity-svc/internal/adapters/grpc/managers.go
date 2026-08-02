@@ -169,8 +169,20 @@ func (s *Server) InviteMyOrgManager(ctx context.Context, req *identityv1.InviteM
 
 // SetMyOrgManagerStatus deactivates/reactivates ANOTHER manager
 // (role=ORG_ADMIN) in the caller's org. Rejects self so a manager can't
-// lock themselves out. Managers hold no seats, so there's no seat math —
-// just the is_active flip.
+// lock themselves out.
+//
+// Założenie "managers hold no seats" przestało być prawdziwe wraz z
+// SetManagerTherapistSeat: menedżer może sam przyjmować pacjentów i wtedy
+// zajmuje miejsce w planie. Dezaktywacja MUSI je zwolnić — inaczej konto
+// bez dostępu blokowałoby miejsce w nieskończoność, a organizacja
+// dostawałaby SEATS_EXHAUSTED przy zapraszaniu kogokolwiek.
+//
+// Reaktywacja świadomie NIE przywraca miejsca automatycznie. Dostęp do
+// panelu i prowadzenie terapii to dwie różne decyzje; przywracanie
+// miejsca po cichu mogłoby zająć ostatnie wolne miejsce bez wiedzy
+// menedżera, a przy pełnym planie musiałoby wywalić się błędem na
+// operacji, która dotąd nie mogła zawieść. Praktykę nadaje się z
+// powrotem jawnie, przez SetManagerTherapistSeat.
 func (s *Server) SetMyOrgManagerStatus(ctx context.Context, req *identityv1.SetMyOrgManagerStatusRequest) (*identityv1.User, error) {
 	caller, err := s.requireOrgAdmin(ctx)
 	if err != nil {
@@ -201,12 +213,32 @@ func (s *Server) SetMyOrgManagerStatus(ctx context.Context, req *identityv1.SetM
 		return toProtoUser(target), nil // idempotent no-op
 	}
 
-	updated, err := s.queries.SetUserActiveStatus(ctx, db.SetUserActiveStatusParams{
+	// Zwolnienie miejsca i zmiana flagi muszą pójść razem — inaczej awaria
+	// między nimi zostawia albo zajęte miejsce dla wyłączonego konta, albo
+	// czynne konto bez miejsca.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+
+	if !req.IsActive {
+		// Idempotentne: menedżer bez miejsca to zwykły no-op.
+		if err := qtx.CloseActiveSeatAssignmentForUser(ctx, userID); err != nil {
+			return nil, status.Errorf(codes.Internal, "close seat assignment: %v", err)
+		}
+	}
+
+	updated, err := qtx.SetUserActiveStatus(ctx, db.SetUserActiveStatusParams{
 		ID:       userID,
 		IsActive: req.IsActive,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "set active status: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
 	return toProtoUser(updated), nil
 }

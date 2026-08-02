@@ -164,6 +164,17 @@ message IncrementUsageRequest {
 
 message GetSubscriptionRequest {
   string organization_id = 1;
+
+  // Whose quota to report. Optional and additive: omit it (every
+  // existing server-to-server caller does) and the response carries the
+  // organization-wide numbers exactly as before.
+  //
+  // Set by clinical-svc on GetMyBillingState. Under the docs/38 seat
+  // model a therapist in an org spends against a PER-THERAPIST counter,
+  // but the app was reading the org-level one — so the phone showed the
+  // org's limit (40/0) while the org panel showed the therapist's real
+  // seat (30/1). Same period, two different counter rows.
+  string therapist_id = 2;
 }
 
 message Subscription {

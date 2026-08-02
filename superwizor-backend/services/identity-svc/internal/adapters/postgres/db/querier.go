@@ -32,6 +32,16 @@ type Querier interface {
 	CheckPhoneNumberExists(ctx context.Context, phoneNumber *string) (bool, error)
 	// Deactivation frees the seat. Idempotent — no open row is a no-op.
 	CloseActiveSeatAssignmentForUser(ctx context.Context, userID uuid.UUID) error
+	// Closes any still-open invitation for this email in this org when the
+	// account joins by a route other than the invitation link (today:
+	// AdminAssignTherapistToOrg). Without this the row lingers as "pending"
+	// and keeps reserving its seat allocation via
+	// CountPendingInvitationsForAllocation — the person occupies a seat
+	// twice, once as a member and once as a ghost invite.
+	//
+	// accepted_user_id records who actually landed, so the audit trail
+	// still answers "which account consumed this invitation".
+	ConsumePendingInvitationsForEmail(ctx context.Context, arg ConsumePendingInvitationsForEmailParams) (int64, error)
 	// The occupied half of the occupancy formula. FOR the seat-limit
 	// check callers should run this inside a tx AFTER
 	// pg_advisory_xact_lock on the allocation id to avoid double-booking
@@ -116,9 +126,43 @@ type Querier interface {
 	// Cursor pagination keyed on (created_at, id). Pass an empty cursor for the
 	// first page; for subsequent pages pass the last row's (created_at, id).
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
+	// "Pending" means the person is NOT in the org yet. accepted_at alone
+	// doesn't establish that: a therapist can join through a path that
+	// never touches their invitation row — AdminAssignTherapistToOrg links
+	// the account directly — leaving accepted_at NULL forever. The org
+	// panel then rendered the same person twice, once as AKTYWNY and once
+	// as ZAPROSZENIE WYSŁANE (2026-08-01: piotrak@yahoo.com in Fenix 666).
+	//
+	// ConsumePendingInvitationsForEmail closes that hole going forward; this
+	// predicate is the read-side guard that also covers rows already stale
+	// in the database and any future path we forget to wire up. Membership
+	// is the source of truth for "already in" — the invitation row is not.
 	ListPendingInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
 	// docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
 	ListPendingManagerInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
+	// Panel SUPERWIZOR_ADMIN (AdminGetOrganization) — konta o roli THERAPIST.
+	//
+	// Celowo BEZ menedżerów z miejscem, w odróżnieniu od
+	// ListTherapistsByOrganization. Panel admina zarządza CZŁONKOSTWEM
+	// w organizacji (przypisz / odłącz), a nie praktyką: obok tej listy
+	// renderuje osobną listę menedżerów, więc praktykujący ORG_ADMIN
+	// pojawiłby się w obu naraz, a przycisk "Odłącz" i tak odbiłby się od
+	// USER_NOT_THERAPIST w AdminUnassignTherapistFromOrg.
+	//
+	// Rozluźnienie tamtej bramki byłoby gorsze niż podwójny wiersz:
+	// dla ORG_ADMINa wyczyściłaby organization_id, czyli po cichu odebrała
+	// uprawnienia menedżerskie przez dialog opisany jako "odłącz terapeutę".
+	ListTherapistAccountsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
+	// Zakładka ZESPÓŁ w panelu organizacji.
+	//
+	// Rola nie jest tu jedynym kryterium, bo menedżer może sam przyjmować
+	// pacjentów (SetManagerTherapistSeat). Takiemu ORG_ADMINowi nie zmieniamy
+	// roli — prawem do praktykowania jest MIEJSCE w planie — więc gdyby lista
+	// filtrowała wyłącznie po roli, osoba zajmowałaby miejsce i zużywała
+	// limit, będąc niewidoczna w zespole i nie do odebrania z panelu.
+	//
+	// ORG_ADMIN BEZ miejsca zostaje poza listą: to czysty menedżer i jego
+	// miejsce jest w sekcji Menedżerowie, nie wśród praktykujących.
 	ListTherapistsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	// Returns both active (deleted_at IS NULL) THERAPISTs in the org AND
 	// pending invites. The handler joins/merges them into a single

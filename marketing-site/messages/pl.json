@@ -1689,7 +1689,18 @@
       "mTotals": "Razem",
       "analyticsEmpty": "Brak danych w wybranym okresie.",
       "analyticsPrivacyNote": "Wyłącznie agregaty metadanych — bez treści sesji, raportów i tożsamości pacjentów.",
-      "resendCta": "Wyślij ponownie"
+      "resendCta": "Wyślij ponownie",
+      "managerSeatCta": "Menedżer przyjmuje pacjentów",
+      "managerSeatTitle": "Menedżer jako terapeuta",
+      "managerSeatHint": "Przydziel menedżerowi miejsce w planie, aby mógł prowadzić własne sesje. Zachowuje uprawnienia menedżerskie — zmienia się tylko to, że dostaje własny limit sesji.",
+      "managerSeatPickPerson": "— wybierz menedżera —",
+      "managerSeatConfirm": "Przydziel miejsce",
+      "managerSeatSaving": "Zapisywanie…",
+      "managerSeatGranted": "Menedżer może prowadzić sesje. Miejsce w planie zostało zajęte.",
+      "managerSeatReleased": "Miejsce zwolnione. Menedżer nie prowadzi już sesji, konto i dostęp do panelu zostają.",
+      "managerSeatReleaseCta": "Odbierz miejsce",
+      "managerSeatNoPlans": "Organizacja nie ma wykupionych miejsc. Skontaktuj się z Superwizor AI.",
+      "managerBadge": "Menedżer"
     },
     "analytics": {
       "loading": "Ładowanie analityki…",

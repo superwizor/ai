@@ -36,8 +36,18 @@ LEFT JOIN sessions s
       AND s.deleted_at IS NULL
       AND s.created_at >= $2
 WHERE u.organization_id = $1
-  AND u.role = 'THERAPIST'
   AND u.deleted_at IS NULL
+  -- Menedżer, który sam przyjmuje pacjentów (SetManagerTherapistSeat),
+  -- prowadzi sesje jak każdy inny praktyk — jego prawem do praktykowania
+  -- jest MIEJSCE w planie, nie rola. Filtr wyłącznie po roli ukrywałby
+  -- jego sesje w statystykach organizacji, mimo że liczą się do limitu.
+  -- ORG_ADMIN bez miejsca zostaje poza zestawieniem: nie praktykuje.
+  AND (
+        u.role = 'THERAPIST'
+     OR (u.role = 'ORG_ADMIN' AND EXISTS (
+            SELECT 1 FROM seat_assignments sa
+            WHERE sa.user_id = u.id AND sa.unassigned_at IS NULL))
+  )
 GROUP BY u.id, u.first_name, u.last_name, u.is_active
 ORDER BY u.last_name, u.first_name;
 -- name: OrgAnalyticsKPIs :one

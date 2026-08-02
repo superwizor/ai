@@ -61,6 +61,10 @@ service IdentityService {
   rpc ListMyOrgManagers(google.protobuf.Empty) returns (ListManagersResponse);
   rpc InviteMyOrgManager(InviteMyOrgManagerRequest) returns (Invitation);
   rpc SetMyOrgManagerStatus(SetMyOrgManagerStatusRequest) returns (User);
+  // Menedżer, który sam przyjmuje pacjentów. Nadaje ORG_ADMINowi
+  // miejsce w planie (albo je odbiera) — bez zmiany roli, patrz
+  // SetManagerTherapistSeatRequest.
+  rpc SetManagerTherapistSeat(SetManagerTherapistSeatRequest) returns (User);
   rpc RevokeMyOrgManagerInvite(RevokeMyOrgManagerInviteRequest) returns (google.protobuf.Empty);
 
   // ─── Client (patient) panel — docs/39 ──────────────────────
@@ -514,6 +518,23 @@ message ClientInviteStatus {
   string status = 1;
   string email = 2;                          // masked not needed — therapist already knows it
   google.protobuf.Timestamp expires_at = 3;  // PENDING only
+}
+
+// Menedżer organizacji, który sam prowadzi terapię.
+//
+// Rola NIE ulega zmianie — konto zostaje ORG_ADMIN i zachowuje wszystkie
+// uprawnienia menedżerskie. Prawem do praktykowania jest MIEJSCE w planie:
+// to na jego podstawie powstaje licznik zużycia (GetSeatPlanForTherapist
+// w billing-svc nie patrzy na rolę), a aplikacja i tak kieruje na
+// powierzchnię terapeuty każdego, kto nie jest pacjentem.
+//
+// Dostępu do danych to nie poszerza: ORG_ADMIN ma już wgląd w kartoteki
+// swojej organizacji w ramach nadzoru klinicznego (docs/38).
+message SetManagerTherapistSeatRequest {
+  string user_id = 1;        // musi być ORG_ADMIN w organizacji wywołującego
+  bool practicing = 2;       // true = nadaj miejsce, false = zwolnij je
+  string allocation_id = 3;  // wymagane przy practicing = true
+  string reason = 4;         // opcjonalny; tylko do audytu
 }
 
 message SetTherapistStatusRequest {
