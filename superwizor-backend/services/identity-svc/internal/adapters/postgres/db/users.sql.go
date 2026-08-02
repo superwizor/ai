@@ -459,13 +459,28 @@ func (q *Queries) ListManagersByOrganization(ctx context.Context, organizationID
 }
 
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
-WHERE organization_id = $1
-  AND role = 'THERAPIST'
-  AND deleted_at IS NULL
-ORDER BY last_name, first_name
+SELECT u.id, u.role, u.organization_id, u.default_modality_id, u.billing_address_id, u.firebase_uid, u.email, u.phone_number, u.is_email_verified, u.first_name, u.last_name, u.professional_title, u.credentials_number, u.biography, u.avatar_url, u.ui_language, u.timezone, u.has_accepted_tos, u.has_marketing_consent, u.created_at, u.deleted_at, u.report_preferences, u.is_active, u.deactivated_at, u.first_app_login_at FROM users u
+WHERE u.organization_id = $1
+  AND u.deleted_at IS NULL
+  AND (
+        u.role = 'THERAPIST'
+     OR (u.role = 'ORG_ADMIN' AND EXISTS (
+            SELECT 1 FROM seat_assignments sa
+            WHERE sa.user_id = u.id AND sa.unassigned_at IS NULL))
+  )
+ORDER BY u.last_name, u.first_name
 `
 
+// Zakładka ZESPÓŁ w panelu organizacji.
+//
+// Rola nie jest tu jedynym kryterium, bo menedżer może sam przyjmować
+// pacjentów (SetManagerTherapistSeat). Takiemu ORG_ADMINowi nie zmieniamy
+// roli — prawem do praktykowania jest MIEJSCE w planie — więc gdyby lista
+// filtrowała wyłącznie po roli, osoba zajmowałaby miejsce i zużywała
+// limit, będąc niewidoczna w zespole i nie do odebrania z panelu.
+//
+// ORG_ADMIN BEZ miejsca zostaje poza listą: to czysty menedżer i jego
+// miejsce jest w sekcji Menedżerowie, nie wśród praktykujących.
 func (q *Queries) ListTherapistsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error) {
 	rows, err := q.db.Query(ctx, listTherapistsByOrganization, organizationID)
 	if err != nil {

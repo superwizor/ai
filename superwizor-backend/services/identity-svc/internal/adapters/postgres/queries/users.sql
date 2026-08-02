@@ -94,11 +94,26 @@ ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg(page_size);
 
 -- name: ListTherapistsByOrganization :many
-SELECT * FROM users
-WHERE organization_id = $1
-  AND role = 'THERAPIST'
-  AND deleted_at IS NULL
-ORDER BY last_name, first_name;
+-- Zakładka ZESPÓŁ w panelu organizacji.
+--
+-- Rola nie jest tu jedynym kryterium, bo menedżer może sam przyjmować
+-- pacjentów (SetManagerTherapistSeat). Takiemu ORG_ADMINowi nie zmieniamy
+-- roli — prawem do praktykowania jest MIEJSCE w planie — więc gdyby lista
+-- filtrowała wyłącznie po roli, osoba zajmowałaby miejsce i zużywała
+-- limit, będąc niewidoczna w zespole i nie do odebrania z panelu.
+--
+-- ORG_ADMIN BEZ miejsca zostaje poza listą: to czysty menedżer i jego
+-- miejsce jest w sekcji Menedżerowie, nie wśród praktykujących.
+SELECT u.* FROM users u
+WHERE u.organization_id = $1
+  AND u.deleted_at IS NULL
+  AND (
+        u.role = 'THERAPIST'
+     OR (u.role = 'ORG_ADMIN' AND EXISTS (
+            SELECT 1 FROM seat_assignments sa
+            WHERE sa.user_id = u.id AND sa.unassigned_at IS NULL))
+  )
+ORDER BY u.last_name, u.first_name;
 
 -- name: GetReportPreferences :one
 -- Returns the raw JSONB. Empty object {} when the user has never

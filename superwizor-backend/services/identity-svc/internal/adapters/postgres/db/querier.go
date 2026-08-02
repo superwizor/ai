@@ -140,6 +140,16 @@ type Querier interface {
 	ListPendingInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
 	// docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
 	ListPendingManagerInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
+	// Zakładka ZESPÓŁ w panelu organizacji.
+	//
+	// Rola nie jest tu jedynym kryterium, bo menedżer może sam przyjmować
+	// pacjentów (SetManagerTherapistSeat). Takiemu ORG_ADMINowi nie zmieniamy
+	// roli — prawem do praktykowania jest MIEJSCE w planie — więc gdyby lista
+	// filtrowała wyłącznie po roli, osoba zajmowałaby miejsce i zużywała
+	// limit, będąc niewidoczna w zespole i nie do odebrania z panelu.
+	//
+	// ORG_ADMIN BEZ miejsca zostaje poza listą: to czysty menedżer i jego
+	// miejsce jest w sekcji Menedżerowie, nie wśród praktykujących.
 	ListTherapistsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	// Returns both active (deleted_at IS NULL) THERAPISTs in the org AND
 	// pending invites. The handler joins/merges them into a single

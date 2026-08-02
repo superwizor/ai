@@ -1689,7 +1689,18 @@
       "mTotals": "Total",
       "analyticsEmpty": "No data in the selected period.",
       "analyticsPrivacyNote": "Metadata aggregates only — no session content, reports, or patient identity.",
-      "resendCta": "Resend"
+      "resendCta": "Resend",
+      "managerSeatCta": "Manager sees patients",
+      "managerSeatTitle": "Manager as therapist",
+      "managerSeatHint": "Give a manager a seat in a plan so they can run their own sessions. They keep their manager permissions — the only change is that they get their own session limit.",
+      "managerSeatPickPerson": "— pick a manager —",
+      "managerSeatConfirm": "Assign seat",
+      "managerSeatSaving": "Saving…",
+      "managerSeatGranted": "The manager can now run sessions. A seat in the plan is taken.",
+      "managerSeatReleased": "Seat released. The manager no longer runs sessions; the account and panel access stay.",
+      "managerSeatReleaseCta": "Release seat",
+      "managerSeatNoPlans": "This organization has no purchased seats. Contact Superwizor AI.",
+      "managerBadge": "Manager"
     },
     "analytics": {
       "loading": "Loading analytics…",
