@@ -140,6 +140,19 @@ type Querier interface {
 	ListPendingInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
 	// docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
 	ListPendingManagerInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
+	// Panel SUPERWIZOR_ADMIN (AdminGetOrganization) — konta o roli THERAPIST.
+	//
+	// Celowo BEZ menedżerów z miejscem, w odróżnieniu od
+	// ListTherapistsByOrganization. Panel admina zarządza CZŁONKOSTWEM
+	// w organizacji (przypisz / odłącz), a nie praktyką: obok tej listy
+	// renderuje osobną listę menedżerów, więc praktykujący ORG_ADMIN
+	// pojawiłby się w obu naraz, a przycisk "Odłącz" i tak odbiłby się od
+	// USER_NOT_THERAPIST w AdminUnassignTherapistFromOrg.
+	//
+	// Rozluźnienie tamtej bramki byłoby gorsze niż podwójny wiersz:
+	// dla ORG_ADMINa wyczyściłaby organization_id, czyli po cichu odebrała
+	// uprawnienia menedżerskie przez dialog opisany jako "odłącz terapeutę".
+	ListTherapistAccountsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	// Zakładka ZESPÓŁ w panelu organizacji.
 	//
 	// Rola nie jest tu jedynym kryterium, bo menedżer może sam przyjmować

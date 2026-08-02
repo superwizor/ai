@@ -93,6 +93,25 @@ WHERE deleted_at IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg(page_size);
 
+-- name: ListTherapistAccountsByOrganization :many
+-- Panel SUPERWIZOR_ADMIN (AdminGetOrganization) — konta o roli THERAPIST.
+--
+-- Celowo BEZ menedżerów z miejscem, w odróżnieniu od
+-- ListTherapistsByOrganization. Panel admina zarządza CZŁONKOSTWEM
+-- w organizacji (przypisz / odłącz), a nie praktyką: obok tej listy
+-- renderuje osobną listę menedżerów, więc praktykujący ORG_ADMIN
+-- pojawiłby się w obu naraz, a przycisk "Odłącz" i tak odbiłby się od
+-- USER_NOT_THERAPIST w AdminUnassignTherapistFromOrg.
+--
+-- Rozluźnienie tamtej bramki byłoby gorsze niż podwójny wiersz:
+-- dla ORG_ADMINa wyczyściłaby organization_id, czyli po cichu odebrała
+-- uprawnienia menedżerskie przez dialog opisany jako "odłącz terapeutę".
+SELECT * FROM users
+WHERE organization_id = $1
+  AND role = 'THERAPIST'
+  AND deleted_at IS NULL
+ORDER BY last_name, first_name;
+
 -- name: ListTherapistsByOrganization :many
 -- Zakładka ZESPÓŁ w panelu organizacji.
 --

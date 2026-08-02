@@ -196,8 +196,11 @@ export function OrgPanel() {
       ),
     [entries],
   );
+  // Wyłączone konto nie może zająć miejsca — backend odbija to jako
+  // MANAGER_INACTIVE. Nie pokazujemy go na liście, zamiast pozwalać
+  // wybrać i dopiero potem odmówić.
   const activatableManagers = useMemo(
-    () => managers.filter((m) => m.user && !practicingIds.has(m.user.id)),
+    () => managers.filter((m) => m.user?.isActive && !practicingIds.has(m.user.id)),
     [managers, practicingIds],
   );
 

@@ -458,6 +458,72 @@ func (q *Queries) ListManagersByOrganization(ctx context.Context, organizationID
 	return items, nil
 }
 
+const listTherapistAccountsByOrganization = `-- name: ListTherapistAccountsByOrganization :many
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at FROM users
+WHERE organization_id = $1
+  AND role = 'THERAPIST'
+  AND deleted_at IS NULL
+ORDER BY last_name, first_name
+`
+
+// Panel SUPERWIZOR_ADMIN (AdminGetOrganization) — konta o roli THERAPIST.
+//
+// Celowo BEZ menedżerów z miejscem, w odróżnieniu od
+// ListTherapistsByOrganization. Panel admina zarządza CZŁONKOSTWEM
+// w organizacji (przypisz / odłącz), a nie praktyką: obok tej listy
+// renderuje osobną listę menedżerów, więc praktykujący ORG_ADMIN
+// pojawiłby się w obu naraz, a przycisk "Odłącz" i tak odbiłby się od
+// USER_NOT_THERAPIST w AdminUnassignTherapistFromOrg.
+//
+// Rozluźnienie tamtej bramki byłoby gorsze niż podwójny wiersz:
+// dla ORG_ADMINa wyczyściłaby organization_id, czyli po cichu odebrała
+// uprawnienia menedżerskie przez dialog opisany jako "odłącz terapeutę".
+func (q *Queries) ListTherapistAccountsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error) {
+	rows, err := q.db.Query(ctx, listTherapistAccountsByOrganization, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Role,
+			&i.OrganizationID,
+			&i.DefaultModalityID,
+			&i.BillingAddressID,
+			&i.FirebaseUid,
+			&i.Email,
+			&i.PhoneNumber,
+			&i.IsEmailVerified,
+			&i.FirstName,
+			&i.LastName,
+			&i.ProfessionalTitle,
+			&i.CredentialsNumber,
+			&i.Biography,
+			&i.AvatarUrl,
+			&i.UiLanguage,
+			&i.Timezone,
+			&i.HasAcceptedTos,
+			&i.HasMarketingConsent,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.ReportPreferences,
+			&i.IsActive,
+			&i.DeactivatedAt,
+			&i.FirstAppLoginAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
 SELECT u.id, u.role, u.organization_id, u.default_modality_id, u.billing_address_id, u.firebase_uid, u.email, u.phone_number, u.is_email_verified, u.first_name, u.last_name, u.professional_title, u.credentials_number, u.biography, u.avatar_url, u.ui_language, u.timezone, u.has_accepted_tos, u.has_marketing_consent, u.created_at, u.deleted_at, u.report_preferences, u.is_active, u.deactivated_at, u.first_app_login_at FROM users u
 WHERE u.organization_id = $1

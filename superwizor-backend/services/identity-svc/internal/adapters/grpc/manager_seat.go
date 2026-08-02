@@ -86,6 +86,15 @@ func (s *Server) SetManagerTherapistSeat(
 	if target.DeletedAt.Valid {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
+	// Miejsce dla wyłączonego konta to ten sam wyciek, przed którym broni
+	// SetMyOrgManagerStatus (zwalnia miejsce przy dezaktywacji), tylko
+	// wejściem od drugiej strony: opłacone miejsce zajęte przez konto,
+	// które przy najbliższej weryfikacji tokenu dostanie
+	// ACCOUNT_DEACTIVATED. Zwolnienie miejsca zostaje dozwolone —
+	// porządkowanie po dezaktywacji musi być zawsze możliwe.
+	if req.Practicing && !target.IsActive {
+		return nil, status.Error(codes.FailedPrecondition, "MANAGER_INACTIVE")
+	}
 
 	// Wejście walidujemy PRZED otwarciem transakcji — nie ma powodu
 	// trzymać połączenia na źle sformułowane żądanie.
