@@ -17,6 +17,7 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
+import 'client_display_name.dart';
 import 'client_session_screen.dart';
 import 'client_theme.dart';
 
@@ -110,9 +111,14 @@ class _ClientHomeBody extends ConsumerWidget {
     final home = ref.watch(clientHomeProvider);
     final filter = ref.watch(clientFiltersProvider);
     final user = ref.watch(currentUserProvider).value;
-    // docs/43 §4: client accounts no longer carry names (the backend
-    // returns them empty) — the account e-mail is the identifier.
-    final displayName = user?.email ?? '';
+    // Nagłówek pokazuje PSEUDONIM konta (users.first_name), a nie adres
+    // e-mail — wcześniej stał tu wyłącznie e-mail, więc klient widział
+    // swój adres wyeksponowany na wierzchu ekranu. Reguła pierwszeństwa
+    // siedzi w clientDisplayName i ma testy.
+    final displayName = clientDisplayName(
+      firstName: user?.firstName ?? '',
+      email: user?.email ?? '',
+    );
 
     return Scaffold(
       backgroundColor: p.bg,
