@@ -160,6 +160,35 @@ func (q *Queries) AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounter
 	return i, err
 }
 
+const closeActiveCountersForSubscription = `-- name: CloseActiveCountersForSubscription :execrows
+UPDATE usage_counters
+SET period_end = now(),
+    updated_at = now()
+WHERE subscription_id = $1
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+// Domyka bieżący okres na WSZYSTKICH aktywnych licznikach subskrypcji —
+// org-level i per-terapeutowych — ustawiając period_end na teraz.
+//
+// Potrzebne przy restarcie okresu (AdminChangePlan dla subskrypcji
+// MANUAL). Bez tego stary licznik dalej spełnia predykat aktywności
+// (period_start <= now() < period_end) razem z nowo utworzonym, a
+// GetActiveCounter jest zapytaniem :one — przy dwóch pasujących
+// wierszach wybór staje się losowy i limit potrafiłby "migotać"
+// między starym a nowym.
+//
+// tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
+// zużycie jako zapis historyczny rozliczenia.
+func (q *Queries) CloseActiveCountersForSubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, closeActiveCountersForSubscription, subscriptionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createBillingAuditEvent = `-- name: CreateBillingAuditEvent :one
 INSERT INTO audit_events (
     actor_user_id, organization_id, action,

@@ -42,6 +42,8 @@ type fakeQuerier struct {
 	createAuditFn        func(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error)
 	createCounterFn      func(ctx context.Context, arg db.CreateUsageCounterParams) (db.UsageCounter, error)
 	resetTherapistFn     func(ctx context.Context, arg db.AdminResetTherapistCountersParams) (int64, error)
+	shiftPeriodFn        func(ctx context.Context, arg db.ShiftSubscriptionPeriodParams) error
+	closeCountersFn      func(ctx context.Context, subID uuid.UUID) (int64, error)
 
 	// Call recorders
 	createTherapistCounterCalls []db.CreateTherapistUsageCounterParams
@@ -53,6 +55,8 @@ type fakeQuerier struct {
 	advisoryLockCalls           []string
 	createCounterCalls          []db.CreateUsageCounterParams
 	auditCalls                  []map[string]any
+	shiftPeriodCalls            []db.ShiftSubscriptionPeriodParams
+	closeCountersCalls          []uuid.UUID
 	adminChangePlanCalls        []db.AdminChangeSubscriptionPlanParams
 }
 
@@ -250,4 +254,20 @@ func (t *fakeTx) Commit(ctx context.Context) error {
 func (t *fakeTx) Rollback(ctx context.Context) error {
 	t.parent.rollbackCalls++
 	return nil
+}
+
+func (f *fakeQuerier) ShiftSubscriptionPeriod(ctx context.Context, arg db.ShiftSubscriptionPeriodParams) error {
+	f.shiftPeriodCalls = append(f.shiftPeriodCalls, arg)
+	if f.shiftPeriodFn != nil {
+		return f.shiftPeriodFn(ctx, arg)
+	}
+	return nil
+}
+
+func (f *fakeQuerier) CloseActiveCountersForSubscription(ctx context.Context, subID uuid.UUID) (int64, error) {
+	f.closeCountersCalls = append(f.closeCountersCalls, subID)
+	if f.closeCountersFn != nil {
+		return f.closeCountersFn(ctx, subID)
+	}
+	return 0, nil
 }

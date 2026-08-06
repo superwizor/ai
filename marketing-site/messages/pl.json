@@ -336,7 +336,7 @@
       "tokensUsedLabel": "Nowa wartość tokens_used",
       "tokensLimitLabel": "Nowa wartość tokens_limit (opcjonalnie, puste = bez zmian)",
       "changePlanTitle": "Zmień plan",
-      "changePlanBody": "Zmiana wchodzi w życie natychmiast. Nowy okres rozliczeniowy startuje teraz.",
+      "changePlanBody": "Zmiana planu wchodzi w życie natychmiast — nowy limit sesji obowiązuje od razu. Subskrypcje rozliczane przez Stripe zachowują bieżący okres rozliczeniowy i dotychczasowe zużycie; datę odnowienia wyznacza Stripe. Subskrypcje obsługiwane ręcznie (B2B) rozpoczynają nowy okres od teraz, a licznik wykorzystanych sesji startuje od zera.",
       "tierLabel": "Tier",
       "cycleLabel": "Okres rozliczeniowy",
       "cycleMonthly": "Miesięcznie",

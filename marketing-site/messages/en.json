@@ -336,7 +336,7 @@
       "tokensUsedLabel": "New tokens_used value",
       "tokensLimitLabel": "New tokens_limit (optional, blank = unchanged)",
       "changePlanTitle": "Change plan",
-      "changePlanBody": "Takes effect immediately. A new billing period starts now.",
+      "changePlanBody": "The plan change takes effect immediately — the new session limit applies at once. Stripe-billed subscriptions keep their current billing period and accrued usage; the renewal date is set by Stripe. Manually managed (B2B) subscriptions start a new period now, and the used-sessions counter resets to zero.",
       "tierLabel": "Tier",
       "cycleLabel": "Billing cycle",
       "cycleMonthly": "Monthly",

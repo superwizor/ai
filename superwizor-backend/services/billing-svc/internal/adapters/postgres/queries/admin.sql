@@ -22,6 +22,26 @@ SET current_period_start = $2,
     updated_at = now()
 WHERE id = $1;
 
+-- name: CloseActiveCountersForSubscription :execrows
+-- Domyka bieżący okres na WSZYSTKICH aktywnych licznikach subskrypcji —
+-- org-level i per-terapeutowych — ustawiając period_end na teraz.
+--
+-- Potrzebne przy restarcie okresu (AdminChangePlan dla subskrypcji
+-- MANUAL). Bez tego stary licznik dalej spełnia predykat aktywności
+-- (period_start <= now() < period_end) razem z nowo utworzonym, a
+-- GetActiveCounter jest zapytaniem :one — przy dwóch pasujących
+-- wierszach wybór staje się losowy i limit potrafiłby "migotać"
+-- między starym a nowym.
+--
+-- tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
+-- zużycie jako zapis historyczny rozliczenia.
+UPDATE usage_counters
+SET period_end = now(),
+    updated_at = now()
+WHERE subscription_id = $1
+  AND period_start <= now()
+  AND period_end > now();
+
 -- name: CreateUsageCounter :one
 -- Tworzy nowy bucket licznika dla rozpoczętego okresu. UNIQUE (subscription_id,
 -- period_start) chroni przed double-create przy concurrent renewal.

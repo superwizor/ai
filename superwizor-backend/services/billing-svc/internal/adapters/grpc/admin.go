@@ -363,8 +363,6 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 		return nil, status.Errorf(codes.Internal, "change plan: %v", err)
 	}
 
-	// Update the active counter's tokens_limit to the new tier — leaves
-	// tokens_used + tokens_reserved alone.
 	counter, err := q.LockActiveCounter(ctx, sub.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -373,12 +371,66 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 		return nil, status.Errorf(codes.Internal, "counter lock: %v", err)
 	}
 	newLimit := plan.TokensPerPeriod
-	counterAfter, err := q.AdminUpdateCounter(ctx, db.AdminUpdateCounterParams{
-		ID:          counter.ID,
-		TokensLimit: &newLimit,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "update counter limit: %v", err)
+
+	// Okres rozliczeniowy restartujemy WYŁĄCZNIE dla subskrypcji MANUAL.
+	//
+	// Dla Stripe'a okres jest własnością Stripe'a: ustawia go webhook z
+	// wartości przysłanych przez dostawcę (UpsertStripeSubscription), a
+	// przesunięcie go tutaj rozjechałoby datę odnowienia z faktycznym
+	// obciążeniem karty — i tak zostałoby nadpisane przy najbliższym
+	// customer.subscription.updated. Dla MANUAL nie ma zewnętrznego
+	// źródła prawdy: okres rusza tylko cron odnowienia, więc bez tego
+	// organizacja zostawała na starej dacie końca z nowym planem, mimo
+	// że modal obiecywał start nowego okresu (zgłoszone 2026-08-03).
+	periodRestarted := false
+	var counterAfter db.UsageCounter
+	if sub.Provider == "MANUAL" {
+		now := time.Now()
+		newEnd := now.AddDate(0, 1, 0)
+		if plan.Cycle == db.BillingCycleANNUAL {
+			newEnd = now.AddDate(1, 0, 0)
+		}
+
+		// Domknięcie starych liczników MUSI iść przed utworzeniem nowego:
+		// inaczej przez resztę starego okresu dwa wiersze naraz spełniają
+		// predykat aktywności, a GetActiveCounter (:one) wybiera z nich
+		// niedeterministycznie.
+		if _, err := q.CloseActiveCountersForSubscription(ctx, sub.ID); err != nil {
+			return nil, status.Errorf(codes.Internal, "close counters: %v", err)
+		}
+		if err := q.ShiftSubscriptionPeriod(ctx, db.ShiftSubscriptionPeriodParams{
+			ID:                 sub.ID,
+			CurrentPeriodStart: now,
+			CurrentPeriodEnd:   newEnd,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "shift period: %v", err)
+		}
+		// Liczniki per-terapeutowe odtworzy leniwie lockDebitCounter przy
+		// pierwszym obciążeniu w nowym okresie — tu zakładamy tylko
+		// org-level, dokładnie jak renewOneSubscription.
+		minted, merr := q.CreateUsageCounter(ctx, db.CreateUsageCounterParams{
+			SubscriptionID: sub.ID,
+			PeriodStart:    now,
+			PeriodEnd:      newEnd,
+			TokensLimit:    newLimit,
+		})
+		if merr != nil {
+			return nil, status.Errorf(codes.Internal, "create counter: %v", merr)
+		}
+		counterAfter = minted
+		periodRestarted = true
+	} else {
+		// Stripe: sam limit na istniejącym liczniku, bez ruszania okresu.
+		// tokens_used + tokens_reserved zostają — czyszczy je osobno
+		// AdminResetTokens.
+		updated, uerr := q.AdminUpdateCounter(ctx, db.AdminUpdateCounterParams{
+			ID:          counter.ID,
+			TokensLimit: &newLimit,
+		})
+		if uerr != nil {
+			return nil, status.Errorf(codes.Internal, "update counter limit: %v", uerr)
+		}
+		counterAfter = updated
 	}
 
 	if _, err := writeBillingAudit(ctx, q, caller, orgID, sub.ID,
@@ -390,6 +442,10 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 			"tokens_limit_before": counter.TokensLimit,
 			"tokens_limit_after":  counterAfter.TokensLimit,
 			"idempotency_key":     req.IdempotencyKey,
+			// Bez tego z audytu nie da się odczytać, czy dana zmiana
+			// planu wyzerowała zużycie, czy je zachowała.
+			"provider":         string(sub.Provider),
+			"period_restarted": periodRestarted,
 		}); err != nil {
 		return nil, status.Errorf(codes.Internal, "audit: %v", err)
 	}

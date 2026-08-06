@@ -49,6 +49,19 @@ type Querier interface {
 	// Używane w upsertSubscriptionFromStripe żeby uniknąć UNIQUE violation
 	// w transakcji (które by ją unieważniły w Postgresie).
 	CheckUsageCounterExists(ctx context.Context, arg CheckUsageCounterExistsParams) (bool, error)
+	// Domyka bieżący okres na WSZYSTKICH aktywnych licznikach subskrypcji —
+	// org-level i per-terapeutowych — ustawiając period_end na teraz.
+	//
+	// Potrzebne przy restarcie okresu (AdminChangePlan dla subskrypcji
+	// MANUAL). Bez tego stary licznik dalej spełnia predykat aktywności
+	// (period_start <= now() < period_end) razem z nowo utworzonym, a
+	// GetActiveCounter jest zapytaniem :one — przy dwóch pasujących
+	// wierszach wybór staje się losowy i limit potrafiłby "migotać"
+	// między starym a nowym.
+	//
+	// tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
+	// zużycie jako zapis historyczny rozliczenia.
+	CloseActiveCountersForSubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
