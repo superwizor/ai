@@ -11,7 +11,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { mockFirebaseAuth, ADMIN_USER } from "./fixtures/auth";
 import { mockGetMyProfile } from "./fixtures/connect-rpc";
-import { urlPrefix } from "./_locales";
+import { forLocale, urlPrefix } from "./_locales";
 import { AdminLoginPage } from "./pages/admin-login.page";
 
 const ORG_ID = "fdb7f889-5f31-44a0-a804-6575c8649068";
@@ -114,18 +114,40 @@ async function gotoOrgDetail(page: Page, manySeats = false) {
   ).toBeVisible();
 }
 
+// Etykiety przycisków zależą od lokalizacji — spec biegnie w dwóch
+// projektach (chromium-pl i chromium-en). Napisy wpisane po polsku na
+// sztywno powodowały, że KAŻDY z tych testów przechodził w PL i padał
+// w EN; w pełnym przebiegu dawało to 4 padnięcia wyglądające na
+// niestabilność, choć były w pełni powtarzalne.
+// Źródło etykiet: messages/{pl,en}.json → admin.orgTherapistAssign.
+// FUNKCJE, nie stałe: forLocale() sięga do test.info(), którego nie
+// wolno wywołać na poziomie modułu — Playwright zgłasza wtedy
+// "test.info() can only be called while test is running" i nie zbiera
+// ani jednego testu.
+const assignCta = () => forLocale({ pl: "Przypisz terapeutę", en: "Assign therapist" });
+const unassignCta = () => forLocale({ pl: "Odepnij", en: "Detach" });
+const emailLabel = () => forLocale({ pl: "E-mail terapeuty", en: "Therapist e-mail" });
+const seatLabel = () => forLocale({ pl: "Przydział miejsc", en: "Seat allocation" });
+
 test.describe("admin — przypisanie terapeuty", () => {
+  // Szeregowo w jednym workerze. Testy dzielą sesję logowania admina
+  // z beforeEach; przy fullyParallel workery wchodziły sobie w drogę —
+  // ta specyfikacja przechodzi 4/0 uruchomiona samodzielnie, a padała
+  // 4/4 w pełnym przebiegu. Tryb "default", nie "serial": serial pomija
+  // resztę bloku po pierwszym padnięciu, co ukrywa testy zamiast je
+  // naprawiać.
+  test.describe.configure({ mode: "default" });
   test("karta pokazuje przycisk przypisania i odpięcie przy terapeucie", async ({
     page,
   }) => {
     await gotoOrgDetail(page);
 
     await expect(
-      page.getByRole("button", { name: "Przypisz terapeutę" }),
+      page.getByRole("button", { name: assignCta() }),
     ).toBeVisible();
     // Odpięcie wisi przy konkretnym terapeucie, nie w wierszu akcji —
     // żeby nie dało się odpiąć „kogoś" bez wskazania kogo.
-    await expect(page.getByRole("button", { name: "Odepnij" })).toBeVisible();
+    await expect(page.getByRole("button", { name: unassignCta() })).toBeVisible();
   });
 
   test("terapeuta z innej organizacji wymaga potwierdzenia i pokazuje bilans sesji", async ({
@@ -159,9 +181,9 @@ test.describe("admin — przypisanie terapeuty", () => {
       },
     );
 
-    await page.getByRole("button", { name: "Przypisz terapeutę" }).click();
+    await page.getByRole("button", { name: assignCta() }).click();
     await page
-      .getByLabel("E-mail terapeuty")
+      .getByLabel(emailLabel())
       .fill("przenoszony@example.com");
     await page
       .getByRole("textbox", { name: /powód|reason/i })
@@ -192,8 +214,8 @@ test.describe("admin — przypisanie terapeuty", () => {
   }) => {
     await gotoOrgDetail(page, true);
 
-    await page.getByRole("button", { name: "Przypisz terapeutę" }).click();
-    const seat = page.getByLabel("Przydział miejsc");
+    await page.getByRole("button", { name: assignCta() }).click();
+    const seat = page.getByLabel(seatLabel());
     await expect(seat).toBeVisible();
     // Oba przydzialy z wykorzystaniem miejsc, zeby admin wiedzial,
     // ktory ma jeszcze wolne.
@@ -208,7 +230,7 @@ test.describe("admin — przypisanie terapeuty", () => {
 
   test("pojedynczy przydzial nie pyta o wybor", async ({ page }) => {
     await gotoOrgDetail(page);
-    await page.getByRole("button", { name: "Przypisz terapeutę" }).click();
-    await expect(page.getByLabel("Przydział miejsc")).toHaveCount(0);
+    await page.getByRole("button", { name: assignCta() }).click();
+    await expect(page.getByLabel(seatLabel())).toHaveCount(0);
   });
 });

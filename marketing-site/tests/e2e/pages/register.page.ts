@@ -103,10 +103,13 @@ export class RegisterTherapistPage {
     await this.phoneNumberInput.fill(data.phoneNumber);
     await this.nextStepButton.click();
 
-    // Krok 5 (język interfejsu). RadioGroup, nie pole tekstowe —
-    // domyślnie zaznaczony jest język strony, więc formularz da się
-    // wysłać bez dodatkowej interakcji.
-    await this.uiLanguageField.waitFor({ state: "visible" });
+    // Krok 5 (język interfejsu) to RadioGroup z domyślnie zaznaczonym
+    // językiem strony — nie wymaga interakcji. Czekamy na PRZYCISK
+    // WYSYŁKI, bo to jest właściwy kontrakt tej metody: zostawić
+    // formularz gotowy do submit(). Wcześniejsza wersja czekała na samo
+    // pole języka i wywracała test "identity-svc unreachable", który
+    // przez ten krok nie przechodzi.
+    await this.submitButton.waitFor({ state: "visible" });
   }
 
   /** Submit the form. */

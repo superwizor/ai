@@ -154,7 +154,11 @@ test.describe("Therapist Registration", () => {
     // czego tu oczekiwać.
     const updated = updateProfile.getCaptured();
     expect(updated).not.toBeNull();
-    expect(updated!.phoneNumber).toBe("+48 500100200");
+    // Formularz formatuje numer przy wpisywaniu (grupy po trzy cyfry
+    // rozdzielone myślnikiem), więc do backendu leci postać
+    // sformatowana. Asercja na surowy ciąg opisywała stan sprzed
+    // wprowadzenia formatowania.
+    expect(updated!.phoneNumber).toBe("+48 500-100-200");
   });
 
   test("shows server error when Firebase rejects email-already-in-use", async ({
