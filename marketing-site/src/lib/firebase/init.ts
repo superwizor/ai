@@ -33,6 +33,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   connectAuthEmulator,
+  onAuthStateChanged,
   type Auth,
 } from "firebase/auth";
 import {
@@ -51,6 +52,57 @@ let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _emulatorConnected = false;
 let _tokenProviderWired = false;
+
+// Rozstrzyga się przy PIERWSZYM zdarzeniu onAuthStateChanged, czyli w
+// chwili, gdy Firebase skończył odtwarzać sesję z pamięci trwałej.
+//
+// Bez tego oczekiwania dostawca tokenu czytał auth.currentUser, które
+// jest synchronicznie null aż do końca odtwarzania — a interceptor przy
+// null NIE zgłasza błędu, tylko pomija nagłówek Authorization i wysyła
+// żądanie anonimowo. Efektem jest 401 wyglądający jak awaria serwera.
+//
+// Tak wyglądał incydent z 2026-08-05: rejestracja przeszła (CreateUser i
+// UpdateProfile po 200), po czym twarda nawigacja przeładowała aplikację
+// i każde kolejne uwierzytelnione wywołanie dostawało 401 — trzynaście
+// prób UpdateProfile pod rząd, bo użytkownik klikał "Dalej" w kółko.
+let _authReady: Promise<void> | null = null;
+
+const AUTH_READY_TIMEOUT_MS = 5000;
+
+function authRestored(auth: Auth): Promise<void> {
+  if (!_authReady) {
+    _authReady = new Promise<void>((resolve) => {
+      let done = false;
+      // stop i timer są deklarowane PRZED finish i przypisywane później,
+      // bo onAuthStateChanged wolno wywołać obserwatora synchronicznie.
+      // Przy odwołaniu do `const` zadeklarowanego niżej byłby wtedy
+      // ReferenceError (temporal dead zone), który wywróciłby całe
+      // uwierzytelnianie — a TypeScript tego nie zgłasza.
+      let stop: (() => void) | null = null;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (timer !== null) clearTimeout(timer);
+        if (stop !== null) stop();
+        resolve();
+      };
+
+      // Bezpiecznik. onAuthStateChanged powinien zgłosić się raz na
+      // starcie (z użytkownikiem albo z null), ale gdyby tego nie
+      // zrobił, każde RPC w aplikacji wisiałoby w nieskończoność — to
+      // gorsze niż 401, bo użytkownik widzi samą zawieszoną kręciołkę.
+      // Po upływie limitu wracamy do zachowania sprzed zmiany.
+      timer = setTimeout(finish, AUTH_READY_TIMEOUT_MS);
+      stop = onAuthStateChanged(auth, finish, finish);
+      // Gdyby obserwator wystrzelił synchronicznie, finish już przebiegł
+      // i nasłuch trzeba wyrejestrować tutaj.
+      if (done) stop();
+    });
+  }
+  return _authReady;
+}
 let _appCheckInitialized = false;
 
 function ensureApp(): FirebaseApp {
@@ -107,6 +159,11 @@ export function getFirebaseAuth(): Auth {
 
   if (!_tokenProviderWired) {
     setTokenProvider(async () => {
+      // Czekamy na odtworzenie sesji ZANIM sięgniemy po currentUser.
+      // Zwrócenie null przed tym momentem jest nieodróżnialne od
+      // "użytkownik naprawdę niezalogowany", a jedno i drugie kończy
+      // się cichym wysłaniem żądania bez tokenu.
+      await authRestored(auth);
       const u = auth.currentUser;
       return u ? await u.getIdToken() : null;
     });
