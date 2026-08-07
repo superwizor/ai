@@ -78,16 +78,40 @@ pnpm test:e2e -g "happy path"
 
 Pełny przebieg: **256 przypadków, 219 przechodzi, 37 pada.**
 
-Padnięcia są **środowiskowe, nie kodowe**. Dominująca przyczyna to
-`ECONNREFUSED 127.0.0.1:8081` — część testów przechodzi przez proxy
-`/api/checkout` i `/api/billing-portal`, które `next.config.ts` kieruje
-na lokalne **billing-svc** (`NEXT_PUBLIC_BILLING_URL=http://localhost:8081`).
-Bez uruchomionego billing-svc te przypadki padają niezależnie od zmian
-w kodzie.
+Padnięcia to **dług testowy: specyfikacje opisują interfejs sprzed
+przebudowy**, nie awaria środowiska.
 
-Sprawdzone: te same 37 padnięć występują na `main` i na gałęzi ze
+> **SPROSTOWANIE.** Pierwsza wersja tego akapitu przypisywała padnięcia
+> brakowi lokalnego billing-svc (`ECONNREFUSED 127.0.0.1:8081`). To była
+> pomyłka — komunikat faktycznie sypał się w logu serwera, ale nie on
+> wywracał testy. Sprawdzone eksperymentem:
+>
+> | uruchomione usługi | przechodzi / pada |
+> |---|---|
+> | żadne | 222 / 35 |
+> | billing-svc (8081) | 223 / 34 |
+> | billing-svc + identity-svc (8080) | 222 / 34 |
+>
+> `ECONNREFUSED` zniknął całkowicie, a padnięć ubyło jedno. Korelacja
+> nie była przyczyną.
+
+Prawdziwa przyczyna, ustalona po wyizolowaniu pojedynczego przypadku:
+
+```
+expect(locator).toBeVisible() failed
+Locator: locator('#professionalTitle')
+Error: element(s) not found
+```
+
+Pole `professionalTitle` **zostało usunięte z formularza rejestracji**
+(występuje już tylko w panelu admina), a test wciąż szuka go na kroku 5.
+`git log -S professionalTitle -- src/` pokazuje trzy commity
+przebudowujące ten formularz; specyfikacji za nimi nie zaktualizowano.
+
+Sprawdzone także: te same padnięcia występują na `main` i na gałęzi ze
 zmianami — porównałem `register-therapist.spec.ts` w obu wersjach,
-wynik identyczny (12 przechodzi / 8 pada).
+wynik identyczny (12 przechodzi / 8 pada). To nie jest niczyja regresja,
+tylko zaległość.
 
 **Wniosek praktyczny.** Dopóki te 37 nie zostanie oczyszczone,
 „E2E przechodzą" nie jest sensownym kryterium. Traktuj zestaw

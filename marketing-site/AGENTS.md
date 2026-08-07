@@ -27,11 +27,14 @@ pnpm test:e2e:ui               # E2E interaktywnie (debugowanie)
 pnpm test:e2e:install          # jednorazowo: pobranie Chromium
 ```
 
-**Uwaga o stanie zestawu E2E (2026-08-07):** z ~256 przypadków ~35 pada
-z przyczyn środowiskowych — `ECONNREFUSED 127.0.0.1:8081`, bo część
-testów idzie przez proxy na lokalne billing-svc. Te same padnięcia są na
-`main`. Dopóki nie zostaną oczyszczone, porównuj **liczbę** padnięć przed
-i po zmianie, zamiast oczekiwać zieleni:
+**Uwaga o stanie zestawu E2E (2026-08-07):** z ~256 przypadków ~34 pada,
+bo **specyfikacje opisują interfejs sprzed przebudowy** (np. szukają
+usuniętego pola `#professionalTitle`). To NIE jest brak lokalnych usług —
+sprawdzone: uruchomienie billing-svc i identity-svc zmieniło wynik z 35 na
+34 padnięcia. Te same padnięcia są na `main`.
+
+Dopóki nie zostaną uzgodnione z UI, porównuj **liczbę** padnięć przed i po
+zmianie, zamiast oczekiwać zieleni:
 
 ```bash
 rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"

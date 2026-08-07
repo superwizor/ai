@@ -21,8 +21,10 @@ test.describe("Upgrade Page", () => {
     await page.goto(`${prefix}/upgrade`);
 
     const heading = forLocale({
-      pl: /Twój okres próbny/i,
-      en: /Your trial has ended/i,
+      // Treść nagłówka przepisano — strona nie mówi już o zakończonym
+      // okresie próbnym, tylko o wyborze planu (UpgradeSection.tsx:77).
+      pl: /Wybierz plan dopasowany/i,
+      en: /Choose the plan/i,
     });
     await expect(page.locator("h1")).toContainText(heading);
   });
