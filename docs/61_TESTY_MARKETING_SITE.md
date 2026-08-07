@@ -95,8 +95,17 @@ porównawczo: uruchom przed zmianą i po zmianie, i sprawdź, czy liczba
 padnięć **nie wzrosła**. Do tego służy:
 
 ```bash
-pnpm test:e2e 2>&1 | grep -c "✘"     # przed zmianą i po zmianie
+rm -rf .next                          # ZAWSZE przed porównawczym przebiegiem
+pnpm test:e2e 2>&1 | grep -c "✘"      # przed zmianą i po zmianie
 ```
+
+**`rm -rf .next` nie jest przesadną ostrożnością.** Przełączanie gałęzi
+albo podmiana plików przy działającym serwerze dev rozjeżdża cache
+Next.js, a objawia się to lawiną `SyntaxError: Unexpected non-whitespace
+character after JSON` z serwera i setkami padnięć bez związku ze zmianą.
+Realny przypadek z 2026-08-07: ten sam commit dawał **176 padnięć** na
+brudnym cache i **35** po jego usunięciu. Bez tej wiedzy odrzuca się
+poprawną zmianę jako regresję.
 
 Uruchomienie billing-svc lokalnie usuwa większość padnięć — wtedy
 kryterium „wszystko zielone" wraca do gry.

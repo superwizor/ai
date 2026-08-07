@@ -27,12 +27,21 @@ pnpm test:e2e:ui               # E2E interaktywnie (debugowanie)
 pnpm test:e2e:install          # jednorazowo: pobranie Chromium
 ```
 
-**Uwaga o stanie zestawu E2E (2026-08-07):** z 256 przypadków 37 pada
+**Uwaga o stanie zestawu E2E (2026-08-07):** z ~256 przypadków ~35 pada
 z przyczyn środowiskowych — `ECONNREFUSED 127.0.0.1:8081`, bo część
 testów idzie przez proxy na lokalne billing-svc. Te same padnięcia są na
 `main`. Dopóki nie zostaną oczyszczone, porównuj **liczbę** padnięć przed
-i po zmianie (`pnpm test:e2e 2>&1 | grep -c "✘"`), zamiast oczekiwać
-zieleni. Szczegóły w `../docs/61_TESTY_MARKETING_SITE.md` §3a.
+i po zmianie, zamiast oczekiwać zieleni:
+
+```bash
+rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"
+```
+
+**`rm -rf .next` jest obowiązkowe** przy takim porównaniu. Przełączanie
+gałęzi przy działającym serwerze dev rozjeżdża cache i daje lawinę
+`SyntaxError ... after JSON` — ten sam commit dawał 176 padnięć na
+brudnym cache i 35 po jego usunięciu. Szczegóły:
+`../docs/61_TESTY_MARKETING_SITE.md` §3a.
 
 Dwie pułapki, które już nas kosztowały czas:
 
