@@ -40,24 +40,25 @@ describe("resolveStripePriceId", () => {
     expect(resolveStripePriceId("pro_quarterly")).toBeNull();
   });
 
-  it("plany miesięczny i roczny tego samego poziomu to różne ceny", () => {
-    const m = resolveStripePriceId("solo_monthly");
-    const a = resolveStripePriceId("solo_annual");
-    if (m !== null && a !== null) {
-      expect(m).not.toBe(a);
-    }
-    const pm = resolveStripePriceId("pro_monthly");
-    const pa = resolveStripePriceId("pro_annual");
-    if (pm !== null && pa !== null) {
-      expect(pm).not.toBe(pa);
+  // Asercje BEZWARUNKOWE i to jest tu cała rzecz. Pierwsza wersja tego
+  // pliku miała je opakowane w `if (x !== null && y !== null)`, przez co
+  // przechodziły trywialnie, gdyby wszystkie ceny były null — czyli
+  // dokładnie w awarii, przed którą mają bronić. Strażnik zamieniał test
+  // w atrapę.
+  const PLATNE = ["solo_monthly", "solo_annual", "pro_monthly", "pro_annual"];
+
+  it("każdy płatny plan MA identyfikator ceny Stripe", () => {
+    for (const slug of PLATNE) {
+      const id = resolveStripePriceId(slug);
+      expect(id, `brak ceny dla ${slug} — płacący trafi na weryfikację e-maila zamiast do kasy`)
+        .toMatch(/^price_/);
     }
   });
 
-  it("poziomy SOLO i PRO nie dzielą tej samej ceny", () => {
-    const solo = resolveStripePriceId("solo_monthly");
-    const pro = resolveStripePriceId("pro_monthly");
-    if (solo !== null && pro !== null) {
-      expect(solo).not.toBe(pro);
-    }
+  it("cztery płatne plany mają cztery RÓŻNE ceny", () => {
+    // Wspólny identyfikator znaczy, że ktoś zapłaci za inny plan, niż
+    // wybrał — a nic w interfejsie tego nie pokaże.
+    const ids = PLATNE.map((s) => resolveStripePriceId(s));
+    expect(new Set(ids).size).toBe(PLATNE.length);
   });
 });

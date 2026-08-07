@@ -11,6 +11,7 @@
 //      podpowiedzi po prostu spada i nikt tego nie zauważa.
 
 import { describe, expect, it } from "vitest";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { translateError } from "./translate";
 
 /** Zwraca sam KLUCZ tłumaczenia — sprawdzamy dopasowanie, nie treść. */
@@ -64,6 +65,27 @@ describe("translateError", () => {
     );
     expect(out).not.toContain("usage_counters");
     expect(out).not.toContain("pq:");
+  });
+
+  // Gałąź ConnectError była dotąd niepokryta w całości. ConnectError
+  // dziedziczy po Error, więc odwrócenie kolejności sprawdzeń
+  // `instanceof` wycięłoby całe mapowanie kodów — wszystko spadłoby na
+  // komunikat zapasowy, a kod dalej by się kompilował.
+  it("mapuje kod ConnectError, gdy treść nie pasuje do żadnego wzorca", () => {
+    expect(translateError(new ConnectError("boom", Code.PermissionDenied), t)).toBe(
+      "code.permissionDenied",
+    );
+    expect(translateError(new ConnectError("boom", Code.Unauthenticated), t)).toBe(
+      "code.unauthenticated",
+    );
+  });
+
+  it("treść pasująca do wzorca wygrywa z ogólnym kodem", () => {
+    // Konkretna podpowiedź jest dla użytkownika użyteczniejsza niż
+    // "przekroczono zasób".
+    expect(
+      translateError(new ConnectError("quota exceeded", Code.ResourceExhausted), t),
+    ).toBe("backend.quotaExceeded");
   });
 
   it("nie wywraca się na wartościach, które nie są instancją Error", () => {
