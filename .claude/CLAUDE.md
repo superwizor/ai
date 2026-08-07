@@ -88,21 +88,18 @@ suite.** `marketing-site.yml` runs typecheck, l10n parity, unit tests and the
 build — E2E needs a browser and a live dev server, so it stays with whoever
 made the change. If you don't run it, nobody does.
 
-**State of the E2E suite (2026-08-07):** ~34 of 256 cases fail because the
-specs describe a UI that has since been rebuilt (they look for a
-`#professionalTitle` field that no longer exists in the registration form).
-This is **test debt, not a broken environment** — verified: starting
-billing-svc and identity-svc locally moved the count from 35 to 34. The same
-failures reproduce on `main`.
-
-Until the specs are reconciled with the UI, compare the failure COUNT before
-and after your change rather than expecting all-green — and always from a
-clean cache, because a stale `.next` fabricates hundreds of unrelated
-failures:
+**State of the E2E suite (2026-08-07):** 256 cases, 0–3 fail depending on the
+run (was 34). What's left is flakiness in `account-settings` and
+`dashboard-handheld` — they share one login session from `beforeEach`.
+Compare the failure COUNT before and after your change, always from a clean
+cache, because a stale `.next` fabricates hundreds of unrelated failures:
 
 ```bash
 cd marketing-site && rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"
 ```
+
+`--workers=2` is baked into the `test:e2e` script and must stay: at default
+parallelism the dev server produces 164 phantom failures.
 
 Two traps worth remembering:
 

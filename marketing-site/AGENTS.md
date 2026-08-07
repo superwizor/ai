@@ -27,24 +27,23 @@ pnpm test:e2e:ui               # E2E interaktywnie (debugowanie)
 pnpm test:e2e:install          # jednorazowo: pobranie Chromium
 ```
 
-**Uwaga o stanie zestawu E2E (2026-08-07):** z ~256 przypadków ~34 pada,
-bo **specyfikacje opisują interfejs sprzed przebudowy** (np. szukają
-usuniętego pola `#professionalTitle`). To NIE jest brak lokalnych usług —
-sprawdzone: uruchomienie billing-svc i identity-svc zmieniło wynik z 35 na
-34 padnięcia. Te same padnięcia są na `main`.
-
-Dopóki nie zostaną uzgodnione z UI, porównuj **liczbę** padnięć przed i po
-zmianie, zamiast oczekiwać zieleni:
+**Stan zestawu E2E (2026-08-07):** 256 przypadków, 0–3 pada zależnie od
+przebiegu (było 34). Reszta padnięć to niestabilność w `account-settings`
+i `dashboard-handheld` — dzielą jedną sesję logowania z `beforeEach`.
+Porównuj **liczbę** padnięć przed i po zmianie:
 
 ```bash
 rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"
 ```
 
-**`rm -rf .next` jest obowiązkowe** przy takim porównaniu. Przełączanie
-gałęzi przy działającym serwerze dev rozjeżdża cache i daje lawinę
-`SyntaxError ... after JSON` — ten sam commit dawał 176 padnięć na
-brudnym cache i 35 po jego usunięciu. Szczegóły:
-`../docs/61_TESTY_MARKETING_SITE.md` §3a.
+**`rm -rf .next` jest obowiązkowe.** Przełączanie gałęzi przy działającym
+serwerze dev rozjeżdża cache i daje lawinę `SyntaxError ... after JSON` —
+ten sam commit dawał 176 padnięć na brudnym cache i 35 po jego usunięciu.
+
+**`--workers=2` jest wbudowane w skrypt `test:e2e`** i ma tam zostać.
+Przy domyślnej równoległości serwer dev produkuje 164 fałszywe padnięcia.
+
+Szczegóły: `../docs/61_TESTY_MARKETING_SITE.md` §3a.
 
 Dwie pułapki, które już nas kosztowały czas:
 

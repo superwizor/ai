@@ -74,65 +74,49 @@ pnpm test:e2e -g "happy path"
 
 ---
 
-## 3a. Stan zestawu E2E na 2026-08-07 — CZYTAJ PRZED URUCHOMIENIEM
+## 3a. Stan zestawu E2E na 2026-08-07
 
-Pełny przebieg: **256 przypadków, 219 przechodzi, 37 pada.**
+Po uzgodnieniu specyfikacji z interfejsem: **256 przypadków, 0–3 pada**
+zależnie od przebiegu. Trzy kolejne pomiary: 256/0, 256/0, 253/3.
 
-Padnięcia to **dług testowy: specyfikacje opisują interfejs sprzed
-przebudowy**, nie awaria środowiska.
+Punkt wyjścia był inny — 34 padnięcia. Przyczyny, w kolejności wielkości:
 
-> **SPROSTOWANIE.** Pierwsza wersja tego akapitu przypisywała padnięcia
-> brakowi lokalnego billing-svc (`ECONNREFUSED 127.0.0.1:8081`). To była
-> pomyłka — komunikat faktycznie sypał się w logu serwera, ale nie on
-> wywracał testy. Sprawdzone eksperymentem:
->
-> | uruchomione usługi | przechodzi / pada |
-> |---|---|
-> | żadne | 222 / 35 |
-> | billing-svc (8081) | 223 / 34 |
-> | billing-svc + identity-svc (8080) | 222 / 34 |
->
-> `ECONNREFUSED` zniknął całkowicie, a padnięć ubyło jedno. Korelacja
-> nie była przyczyną.
+| Przyczyna | Ile |
+|---|---|
+| Polskie napisy na sztywno w spec-u admina (padało tylko w `chromium-en`) | 8 |
+| `/api/checkout` zwracał 503 zamiast 400 — konfiguracja Stripe sprawdzana przed walidacją | 12 |
+| Atrapa `GetSubscription` z `Timestamp` jako obiektem zamiast łańcucha RFC3339 | 8 |
+| Wyścig nawigacji `/dashboard` → `/account` (`net::ERR_ABORTED`) | 4 |
+| Formatowanie numeru telefonu, usunięte pole `#professionalTitle`, nagłówki | reszta |
 
-Prawdziwa przyczyna, ustalona po wyizolowaniu pojedynczego przypadku:
+### Co zostaje
 
-```
-expect(locator).toBeVisible() failed
-Locator: locator('#professionalTitle')
-Error: element(s) not found
-```
+**Niestabilność 0–3 przypadków na przebieg**, głównie `account-settings`
+i `dashboard-handheld`, za każdym razem inne. Źródło: te specyfikacje
+dzielą jedną sesję logowania zakładaną w `beforeEach`. Trwałe
+rozwiązanie to osobne konto na plik; nie zostało zrobione.
 
-Pole `professionalTitle` **zostało usunięte z formularza rejestracji**
-(występuje już tylko w panelu admina), a test wciąż szuka go na kroku 5.
-`git log -S professionalTitle -- src/` pokazuje trzy commity
-przebudowujące ten formularz; specyfikacji za nimi nie zaktualizowano.
+**Test „can update profile and organization successfully" bywa oporny
+w `chromium-en`** — przy teście jest komentarz z tym, co już ustalono.
 
-Sprawdzone także: te same padnięcia występują na `main` i na gałęzi ze
-zmianami — porównałem `register-therapist.spec.ts` w obu wersjach,
-wynik identyczny (12 przechodzi / 8 pada). To nie jest niczyja regresja,
-tylko zaległość.
+### Dwie pułapki wbudowane w narzędzia
 
-**Wniosek praktyczny.** Dopóki te 37 nie zostanie oczyszczone,
-„E2E przechodzą" nie jest sensownym kryterium. Traktuj zestaw
-porównawczo: uruchom przed zmianą i po zmianie, i sprawdź, czy liczba
-padnięć **nie wzrosła**. Do tego służy:
+**`--workers=2` jest w skrypcie `test:e2e`** i ma tam zostać. Przy
+domyślnej równoległości serwer dev sypie lawiną `SyntaxError:
+Unexpected non-whitespace character after JSON` i produkuje **164
+fałszywe padnięcia**. Objaw trzykrotnie doprowadził do błędnego wniosku
+o regresji.
 
-```bash
-rm -rf .next                          # ZAWSZE przed porównawczym przebiegiem
-pnpm test:e2e 2>&1 | grep -c "✘"      # przed zmianą i po zmianie
-```
+**Tryb `serial` w `test.describe.configure` to ZŁE narzędzie na
+niestabilność.** Po pierwszym padnięciu Playwright pomija resztę bloku,
+więc licznik padnięć spada, choć testy przestają się wykonywać
+(„N did not run"). To ukrywanie, nie naprawa. Właściwy jest `default` —
+szereguje w jednym workerze i wykonuje wszystko.
 
-**`rm -rf .next` nie jest przesadną ostrożnością.** Przełączanie gałęzi
-albo podmiana plików przy działającym serwerze dev rozjeżdża cache
-Next.js, a objawia się to lawiną `SyntaxError: Unexpected non-whitespace
-character after JSON` z serwera i setkami padnięć bez związku ze zmianą.
-Realny przypadek z 2026-08-07: ten sam commit dawał **176 padnięć** na
-brudnym cache i **35** po jego usunięciu. Bez tej wiedzy odrzuca się
-poprawną zmianę jako regresję.
-
-Uruchomienie billing-svc lokalnie usuwa większość padnięć — wtedy
-kryterium „wszystko zielone" wraca do gry.
+**`forLocale()` sięga do `test.info()`**, więc nie wolno go wywołać na
+poziomie modułu. Playwright zgłasza wtedy „test.info() can only be
+called while test is running" i nie zbiera ani jednego testu. Etykiety
+zależne od lokalizacji definiuj jako funkcje, nie stałe.
 
 ---
 
