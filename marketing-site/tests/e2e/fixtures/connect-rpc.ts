@@ -200,7 +200,13 @@ export async function mockGetSubscription(
           tokensPerPeriod: 30,
           tokensUsedThisPeriod: 5,
           tokensReservedThisPeriod: 0,
-          currentPeriodEnd: { seconds: "1781526809" },
+          // google.protobuf.Timestamp w kodowaniu JSON Connecta to
+          // ŁAŃCUCH RFC3339, nie obiekt {seconds}. Kształt obiektowy
+          // należy do kodowania binarnego proto i klient odrzuca go
+          // komunikatem "cannot decode message google.protobuf.Timestamp
+          // from JSON: object" — co wywracało cały ekran /account i
+          // /dashboard, a wyglądało na błąd nawigacji (net::ERR_ABORTED).
+          currentPeriodEnd: "2026-06-11T12:33:29Z",
           ...overrides,
         }),
       });

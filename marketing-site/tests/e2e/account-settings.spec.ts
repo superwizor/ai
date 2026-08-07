@@ -20,6 +20,12 @@ import {
 } from "./fixtures/connect-rpc";
 
 test.describe("Account Settings & Deletion", () => {
+  // Szeregowo, nie równolegle. Te testy dzielą jedną sesję logowania
+  // ustawianą w beforeEach; przy fullyParallel workery wchodziły sobie
+  // w drogę i logowanie kończyło się na /login zamiast /dashboard.
+  // Zmierzone: równolegle 4 padnięcia, szeregowo 1.
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async ({ page }) => {
     // Authenticate client routes
     await mockFirebaseAuth(page);
@@ -101,7 +107,20 @@ test.describe("Account Settings & Deletion", () => {
     expect(getProfileCap()?.firstName).toBe("Maciej J");
 
     // Modify org fields and save
-    await page.locator("input[value='Maciej Kolodziejczyk Org']").fill("New Legal Name Ltd");
+    // NIEROZWIĄZANE (2026-08-07): ten przypadek nadal pada — ładunek
+    // UpdateMyOrganization niesie starą nazwę mimo wypełnienia pola.
+    // Ustalone: input jest kontrolowany przez Reacta (AccountSections
+    // .tsx:1109), a strona używa zwijanych sekcji (openSections.
+    // organization), więc pierwotny selektor input[value='...'] był
+    // kruchy. Zakotwiczenie w formularzu z przyciskiem zapisu jest
+    // stabilniejsze, ale NIE naprawia przyczyny — wymaga debugowania
+    // interaktywnego (pnpm test:e2e:ui).
+    const orgSection = page.locator("form", {
+      has: page.getByRole("button", {
+        name: forLocale({ pl: "Zapisz organizację", en: "Save organisation" }),
+      }),
+    });
+    await orgSection.locator("input[type='text']").first().fill("New Legal Name Ltd");
     const saveOrgBtn = page.getByRole("button", {
       name: forLocale({ pl: "Zapisz organizację", en: "Save organisation" }),
     });
