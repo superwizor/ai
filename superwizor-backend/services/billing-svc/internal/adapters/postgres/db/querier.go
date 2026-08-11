@@ -35,6 +35,19 @@ type Querier interface {
 	// Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
 	// row — used by AdminChangePlan to look up the new tier's tokens_per_period.
 	AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanByTierCycleParams) (SubscriptionPlan, error)
+	// AdminResetTokens zawężony do JEDNEGO terapeuty (pole therapist_id w
+	// żądaniu). Panel wysyła to z karty użytkownika — wcześniej karta
+	// wołała wariant obejmujący całą organizację, więc reset "dla tej
+	// osoby" zerował licznik każdemu terapeucie w firmie, a powód w audycie
+	// wymieniał jedną osobę. Ślad twierdził mniej, niż operacja robiła.
+	//
+	// tokens_limit celowo nieobsługiwany, tak samo jak w wariancie zbiorczym:
+	// limit miejsca pochodzi z planu przypisanego do przydziału miejsc.
+	//
+	// Zwraca 0 wierszy, gdy terapeuta nie ma licznika w bieżącym okresie
+	// (nic jeszcze nie zużył) albo należy do innej subskrypcji — handler
+	// rozróżnia te przypadki i nie udaje sukcesu.
+	AdminResetSingleTherapistCounter(ctx context.Context, arg AdminResetSingleTherapistCounterParams) (int64, error)
 	// AdminResetTokens, per-therapist half (docs/38): applies the
 	// tokens_used override to EVERY active per-seat counter of the
 	// subscription. tokens_limit is intentionally NOT applied here — per

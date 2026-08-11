@@ -183,3 +183,24 @@ WHERE subscription_id = sqlc.arg(subscription_id)
   AND therapist_id IS NOT NULL
   AND period_start <= now()
   AND period_end > now();
+
+-- name: AdminResetSingleTherapistCounter :execrows
+-- AdminResetTokens zawężony do JEDNEGO terapeuty (pole therapist_id w
+-- żądaniu). Panel wysyła to z karty użytkownika — wcześniej karta
+-- wołała wariant obejmujący całą organizację, więc reset "dla tej
+-- osoby" zerował licznik każdemu terapeucie w firmie, a powód w audycie
+-- wymieniał jedną osobę. Ślad twierdził mniej, niż operacja robiła.
+--
+-- tokens_limit celowo nieobsługiwany, tak samo jak w wariancie zbiorczym:
+-- limit miejsca pochodzi z planu przypisanego do przydziału miejsc.
+--
+-- Zwraca 0 wierszy, gdy terapeuta nie ma licznika w bieżącym okresie
+-- (nic jeszcze nie zużył) albo należy do innej subskrypcji — handler
+-- rozróżnia te przypadki i nie udaje sukcesu.
+UPDATE usage_counters
+SET tokens_used = COALESCE(sqlc.narg(tokens_used)::int, tokens_used),
+    updated_at  = now()
+WHERE subscription_id = sqlc.arg(subscription_id)
+  AND therapist_id = sqlc.arg(therapist_id)
+  AND period_start <= now()
+  AND period_end > now();

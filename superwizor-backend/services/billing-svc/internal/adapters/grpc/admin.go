@@ -92,6 +92,35 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		return nil, status.Error(codes.InvalidArgument, "tokens_limit must be -1 (skip) or > 0")
 	}
 
+	// Zakres: cała organizacja (domyślnie) albo jeden terapeuta.
+	//
+	// Karta użytkownika w panelu wysyłała dotąd wariant organizacyjny z
+	// powodem wymieniającym jedną osobę — reset "dla tej osoby" zerował
+	// licznik wszystkim terapeutom w firmie, a ślad audytu tego nie
+	// ujawniał. Teraz karta podaje therapist_id i dotyka tylko jego.
+	var scopedTherapist pgtype.UUID
+	if req.GetTherapistId() != "" {
+		tid, terr := uuid.Parse(req.GetTherapistId())
+		if terr != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid therapist_id")
+		}
+		scopedTherapist = pgtype.UUID{Bytes: tid, Valid: true}
+
+		// Limit miejsca pochodzi z planu przypisanego do przydziału
+		// (org_seat_allocations), nie z ręcznego nadpisania. Dopuszczenie
+		// go tutaj odtworzyłoby incydent "40 na planie 90" na poziomie
+		// pojedynczego miejsca.
+		if req.TokensLimit != -1 {
+			return nil, status.Error(codes.InvalidArgument,
+				"TOKENS_LIMIT_PER_SEAT: limit terapeuty wynika z planu jego miejsca — "+
+					"zmień przydział miejsc zamiast nadpisywać licznik")
+		}
+		if req.TokensUsed == -1 {
+			return nil, status.Error(codes.InvalidArgument,
+				"tokens_used is required when therapist_id is set")
+		}
+	}
+
 	// Single tx: advisory lock → load active counter → AdminUpdateCounter
 	// → write audit → commit. The advisory lock prevents a concurrent
 	// ReserveCredit from racing with the reset.
@@ -165,6 +194,76 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 	if err := q.AcquireSubscriptionLock(ctx, sub.ID.String()); err != nil {
 		return nil, status.Errorf(codes.Internal, "advisory lock: %v", err)
 	}
+
+	// Wariant zawężony kończy się tutaj: licznika organizacyjnego nie
+	// ruszamy, mintu nie robimy, limitu nie ma (odrzucony przy wejściu).
+	scopeFellBackToOrg := false
+	if scopedTherapist.Valid {
+		used := req.TokensUsed
+		rows, rerr := q.AdminResetSingleTherapistCounter(ctx, db.AdminResetSingleTherapistCounterParams{
+			SubscriptionID: sub.ID,
+			TherapistID:    scopedTherapist,
+			TokensUsed:     &used,
+		})
+		if rerr != nil {
+			return nil, status.Errorf(codes.Internal, "reset therapist counter: %v", rerr)
+		}
+		if rows == 0 {
+			// Brak licznika per-terapeuta ma dwa różne znaczenia i nie
+			// wolno ich mylić.
+			//
+			// Organizacja jednoosobowa (solo/legacy) w ogóle ich nie ma —
+			// jej licznik ORGANIZACYJNY jest licznikiem tego terapeuty.
+			// Zawężenie nie ma tam czego znaleźć, więc schodzimy na zakres
+			// organizacji; audyt odnotuje, że tak się stało, żeby ślad nie
+			// twierdził niczego innego, niż zaszło.
+			//
+			// Organizacja na miejscach to inna historia: skoro terapeuta
+			// licznika nie ma, nic jeszcze nie zużył albo nie należy do tej
+			// subskrypcji. Zejście na całą organizację wyzerowałoby wtedy
+			// wszystkich — dokładnie ta wada, którą tu naprawiamy.
+			hasSeats, serr := q.OrgHasSeatAllocations(ctx, orgID)
+			if serr != nil {
+				return nil, status.Errorf(codes.Internal, "check seat allocations: %v", serr)
+			}
+			if hasSeats {
+				return nil, status.Error(codes.FailedPrecondition, "THERAPIST_COUNTER_MISSING")
+			}
+			scopeFellBackToOrg = true
+		} else {
+			if _, aerr := writeBillingAudit(ctx, q, caller, orgID, sub.ID,
+				"billing.reset_tokens", req.Reason, map[string]any{
+					"scope":                    "therapist",
+					"therapist_id":             req.GetTherapistId(),
+					"therapist_counters_reset": rows,
+					"tokens_used_after":        req.TokensUsed,
+					"idempotency_key":          req.IdempotencyKey,
+					"subscription_reactivated": reactivated,
+				}); aerr != nil {
+				return nil, status.Errorf(codes.Internal, "audit: %v", aerr)
+			}
+			if cerr := tx.Commit(ctx); cerr != nil {
+				return nil, status.Errorf(codes.Internal, "commit: %v", cerr)
+			}
+
+			var canceledAtScoped *time.Time
+			if sub.CanceledAt.Valid {
+				canceledAtScoped = &sub.CanceledAt.Time
+			}
+			u, r, l, _ := s.orgCounterOrAggregate(ctx, sub.ID)
+			return buildSubscriptionProto(subFields{
+				ID:                 sub.ID,
+				PlanTier:           string(sub.PlanTier),
+				PlanCycle:          string(sub.PlanCycle),
+				Status:             string(sub.Status),
+				CurrentPeriodStart: sub.CurrentPeriodStart,
+				CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+				CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+				CanceledAt:         canceledAtScoped,
+			}, u, r, l), nil
+		}
+	}
+
 	// docs/38: the reset covers BOTH counter scopes. The org-level
 	// counter (solo/legacy) takes tokens_used and tokens_limit; every
 	// active per-therapist counter takes tokens_used only (their limits
@@ -206,6 +305,35 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 			return nil, status.Errorf(codes.Internal, "update counter: %v", err)
 		}
 	case errors.Is(err, pgx.ErrNoRows):
+		// Nie ma licznika organizacyjnego — a tylko on przyjmuje
+		// tokens_limit. Zanim cokolwiek zrobimy, rozstrzygnijmy, czy
+		// podany limit ma gdzie wylądować.
+		//
+		// Organizacja na miejscach limitów organizacyjnych NIE używa:
+		// każdy terapeuta ma własny, z planu swojego przydziału. Dotąd
+		// kończyło się to na dwa złe sposoby. Przy MANUAL gałąź poniżej
+		// ZAKŁADAŁA wiersz organizacyjny z wartością operatora — tak
+		// powstało 40 w organizacji na planie 90 (dochodzenie
+		// 2026-08-01). Przy pozostałych dostawcach limit znikał bez
+		// śladu: operacja kończyła się sukcesem, a limit nie trafiał
+		// nigdzie. Obie ścieżki mówiły operatorowi nieprawdę.
+		if req.TokensLimit != -1 {
+			hasSeats, serr := q.OrgHasSeatAllocations(ctx, orgID)
+			if serr != nil {
+				return nil, status.Errorf(codes.Internal, "check seat allocations: %v", serr)
+			}
+			if hasSeats {
+				return nil, status.Error(codes.InvalidArgument,
+					"TOKENS_LIMIT_NOT_APPLICABLE: organizacja rozlicza się przez miejsca — "+
+						"limit terapeuty wynika z planu jego przydziału, nie z licznika organizacji")
+			}
+			if sub.Provider != "MANUAL" {
+				// Bez miejsc i bez mintu limit też nie ma czego opisać.
+				return nil, status.Error(codes.InvalidArgument,
+					"TOKENS_LIMIT_NOT_APPLICABLE: ta subskrypcja nie ma licznika organizacyjnego, "+
+						"więc limit nie zostałby nigdzie zapisany")
+			}
+		}
 		// MANUAL subs (incl. the just-reactivated one) get a fresh
 		// org-level counter minted right here: limit from the plan
 		// unless the request overrides it, usage from the request.
@@ -257,6 +385,15 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		"therapist_counters_reset": therapistRows,
 		"idempotency_key":          req.IdempotencyKey,
 		"subscription_reactivated": reactivated,
+	}
+	if scopeFellBackToOrg {
+		// Żądanie wskazywało terapeutę, ale organizacja nie prowadzi
+		// liczników per-osoba (solo/legacy) — jej licznik organizacyjny
+		// JEST licznikiem tego terapeuty. Ślad musi to powiedzieć wprost,
+		// bo inaczej powtórzylibyśmy grzech, który tu naprawiamy: audyt
+		// opisujący węższy zakres, niż objęła operacja.
+		meta["scope"] = "organization_fallback"
+		meta["therapist_id"] = req.GetTherapistId()
 	}
 	if orgCounterFound && !orgCounterMinted {
 		meta["tokens_used_before"] = counter.TokensUsed

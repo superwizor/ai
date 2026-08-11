@@ -97,6 +97,42 @@ func (q *Queries) AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanB
 	return i, err
 }
 
+const adminResetSingleTherapistCounter = `-- name: AdminResetSingleTherapistCounter :execrows
+UPDATE usage_counters
+SET tokens_used = COALESCE($1::int, tokens_used),
+    updated_at  = now()
+WHERE subscription_id = $2
+  AND therapist_id = $3
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+type AdminResetSingleTherapistCounterParams struct {
+	TokensUsed     *int32      `json:"tokens_used"`
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+}
+
+// AdminResetTokens zawężony do JEDNEGO terapeuty (pole therapist_id w
+// żądaniu). Panel wysyła to z karty użytkownika — wcześniej karta
+// wołała wariant obejmujący całą organizację, więc reset "dla tej
+// osoby" zerował licznik każdemu terapeucie w firmie, a powód w audycie
+// wymieniał jedną osobę. Ślad twierdził mniej, niż operacja robiła.
+//
+// tokens_limit celowo nieobsługiwany, tak samo jak w wariancie zbiorczym:
+// limit miejsca pochodzi z planu przypisanego do przydziału miejsc.
+//
+// Zwraca 0 wierszy, gdy terapeuta nie ma licznika w bieżącym okresie
+// (nic jeszcze nie zużył) albo należy do innej subskrypcji — handler
+// rozróżnia te przypadki i nie udaje sukcesu.
+func (q *Queries) AdminResetSingleTherapistCounter(ctx context.Context, arg AdminResetSingleTherapistCounterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, adminResetSingleTherapistCounter, arg.TokensUsed, arg.SubscriptionID, arg.TherapistID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const adminResetTherapistCounters = `-- name: AdminResetTherapistCounters :execrows
 UPDATE usage_counters
 SET tokens_used = COALESCE($1::int, tokens_used),

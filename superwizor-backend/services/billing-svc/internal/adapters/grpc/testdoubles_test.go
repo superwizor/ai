@@ -42,11 +42,14 @@ type fakeQuerier struct {
 	createAuditFn        func(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error)
 	createCounterFn      func(ctx context.Context, arg db.CreateUsageCounterParams) (db.UsageCounter, error)
 	resetTherapistFn     func(ctx context.Context, arg db.AdminResetTherapistCountersParams) (int64, error)
+	resetOneTherapistFn  func(ctx context.Context, arg db.AdminResetSingleTherapistCounterParams) (int64, error)
+	hasSeatAllocFn       func(ctx context.Context, orgID uuid.UUID) (bool, error)
 	shiftPeriodFn        func(ctx context.Context, arg db.ShiftSubscriptionPeriodParams) error
 	closeCountersFn      func(ctx context.Context, subID uuid.UUID) (int64, error)
 
 	// Call recorders
 	createTherapistCounterCalls []db.CreateTherapistUsageCounterParams
+	resetOneCalls               []db.AdminResetSingleTherapistCounterParams
 	createReservationCalls      []db.CreateReservationParams
 	createUsageEventCalls       []db.CreateUsageEventParams
 	addReservedCalls            []db.AddReservedTokensParams
@@ -219,6 +222,21 @@ func (f *fakeQuerier) AdminResetTherapistCounters(ctx context.Context, arg db.Ad
 		return f.resetTherapistFn(ctx, arg)
 	}
 	return 0, nil
+}
+
+func (f *fakeQuerier) AdminResetSingleTherapistCounter(ctx context.Context, arg db.AdminResetSingleTherapistCounterParams) (int64, error) {
+	f.resetOneCalls = append(f.resetOneCalls, arg)
+	if f.resetOneTherapistFn != nil {
+		return f.resetOneTherapistFn(ctx, arg)
+	}
+	return 0, nil
+}
+
+func (f *fakeQuerier) OrgHasSeatAllocations(ctx context.Context, orgID uuid.UUID) (bool, error) {
+	if f.hasSeatAllocFn != nil {
+		return f.hasSeatAllocFn(ctx, orgID)
+	}
+	return false, nil
 }
 
 // ---------- fakeTxOpener ----------

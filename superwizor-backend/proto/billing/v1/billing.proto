@@ -218,6 +218,20 @@ message AdminResetTokensRequest {
   // Required, >= 10 chars. Stored on audit_events.reason.
   string reason = 4;
   string idempotency_key = 5;
+  // Optional scope narrowing. Empty (default) keeps the historical
+  // behaviour: tokens_used lands on EVERY active per-therapist counter
+  // of the organization plus the org-level one.
+  //
+  // When set, the reset touches ONLY that therapist's counter. The
+  // admin panel's user card sends it — without this field the card
+  // reset the whole organization while its audit reason named a single
+  // person, so the trail claimed less than the operation did.
+  //
+  // tokens_limit is rejected in this mode: per-seat limits come from
+  // the seat's plan (org_seat_allocations), not from an operator
+  // override. Allowing one here would recreate the 2026-08-01 "40 on a
+  // 90 plan" incident at seat level.
+  string therapist_id = 6;
 }
 
 // ─── Org management messages (docs/38) ────────────────────────────
