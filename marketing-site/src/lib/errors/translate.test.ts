@@ -88,6 +88,35 @@ describe("translateError", () => {
     ).toBe("backend.quotaExceeded");
   });
 
+  // Regresja 2026-08-07: reset tokenów w panelu admina odrzucony przez
+  // regułę planu pokazywał "Nieprawidłowe dane formularza. Sprawdź
+  // wprowadzone wartości." Dane BYŁY poprawne (0 / 30 / powód 14
+  // znaków) — blokował limit planu. Admin próbował cztery razy.
+  //
+  // Kod TOKENS_LIMIT_BELOW_PLAN pochodzi z billing-svc admin.go i jest
+  // częścią kontraktu; po stronie Go pilnuje go
+  // TestAdminResetTokens_RejectsLimitBelowPlan.
+  it("rozpoznaje odrzucenie limitu poniżej planu zamiast ogólnego kodu", () => {
+    const blad = new ConnectError(
+      "TOKENS_LIMIT_BELOW_PLAN: tokens_limit 30 jest poniżej limitu planu PRO (1080) — " +
+        "zmień plan albo alokację miejsc zamiast zaniżać licznik",
+      Code.InvalidArgument,
+    );
+
+    expect(translateError(blad, t)).toBe("backend.tokensLimitBelowPlan");
+    // Sedno: NIE ogólny komunikat o błędnym formularzu.
+    expect(translateError(blad, t)).not.toBe("code.invalidArgument");
+  });
+
+  it("dopasowanie kodu planu nie zależy od wielkości liter", () => {
+    expect(
+      translateError(
+        new ConnectError("tokens_limit_below_plan: cokolwiek", Code.InvalidArgument),
+        t,
+      ),
+    ).toBe("backend.tokensLimitBelowPlan");
+  });
+
   it("nie wywraca się na wartościach, które nie są instancją Error", () => {
     expect(() => translateError("zwykły łańcuch", t)).not.toThrow();
     expect(() => translateError(null, t)).not.toThrow();

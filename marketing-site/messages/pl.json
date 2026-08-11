@@ -687,7 +687,8 @@
       "taxIdConflict": "Ten NIP jest już przypisany do innej organizacji. Użyj innego NIP lub otwórz istniejącą organizację na liście „Organizacje”.",
       "userHasSessions": "Nie można usunąć: ten użytkownik ma nagrane sesje. Zamiast tego dezaktywuj konto.",
       "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto.",
-      "seatAllocationRequired": "Organizacja ma kilka przydziałów miejsc — wskaż, który plan ma obciążyć terapeuta."
+      "seatAllocationRequired": "Organizacja ma kilka przydziałów miejsc — wskaż, który plan ma obciążyć terapeuta.",
+      "tokensLimitBelowPlan": "Nowy limit jest niższy niż limit wynikający z planu tej organizacji. Wpisane wartości są poprawne — blokuje to reguła planu. Zmień plan albo przydział miejsc zamiast zaniżać licznik."
     }
   },
   "nav": {

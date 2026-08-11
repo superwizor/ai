@@ -687,7 +687,8 @@
       "taxIdConflict": "This tax ID (NIP) already belongs to another organization. Use a different NIP or open the existing one from the \"Organizations\" list.",
       "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
       "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead.",
-      "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes."
+      "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes.",
+      "tokensLimitBelowPlan": "The new limit is below this organization's plan limit. The values you entered are valid — the plan rule blocks this. Change the plan or the seat allocation instead of lowering the counter."
     }
   },
   "nav": {

@@ -145,10 +145,19 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 	// TRIAL wyłączony: liczniki próbne chodzą z realnym progiem (3-5),
 	// podczas gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny
 	// jest katalog, więc ta reguła blokowałaby poprawne resety triali.
+	//
+	// Komunikat zaczyna się od stabilnego kodu TOKENS_LIMIT_BELOW_PLAN.
+	// Panel dopasowuje błędy backendu po fragmencie treści (patrz
+	// marketing-site/src/lib/errors/translate.ts, BACKEND_PATTERNS) i bez
+	// takiego kodu spadał na generyczne "Nieprawidłowe dane formularza.
+	// Sprawdź wprowadzone wartości." — mylące, bo dane formularza były
+	// poprawne, a odrzuciła je reguła biznesowa. Kod jest częścią
+	// kontraktu z interfejsem: nie zmieniaj go bez zmiany wzorca tam.
+	// Pilnuje tego TestAdminResetTokens_RejectsLimitBelowPlan.
 	if req.TokensLimit != -1 && sub.PlanTier != db.PlanTierTRIAL &&
 		req.TokensLimit < sub.PlanTokensPerPeriod {
 		return nil, status.Errorf(codes.InvalidArgument,
-			"tokens_limit %d jest poniżej limitu planu %s (%d) — "+
+			"TOKENS_LIMIT_BELOW_PLAN: tokens_limit %d jest poniżej limitu planu %s (%d) — "+
 				"zmień plan albo alokację miejsc zamiast zaniżać licznik",
 			req.TokensLimit, sub.PlanTier, sub.PlanTokensPerPeriod)
 	}

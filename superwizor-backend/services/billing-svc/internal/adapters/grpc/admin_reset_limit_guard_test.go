@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,6 +64,22 @@ func TestAdminResetTokens_RejectsLimitBelowPlan(t *testing.T) {
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("kod = %v, oczekiwano InvalidArgument (40 < plan 90)", status.Code(err))
+	}
+
+	// Kontrakt z panelem administracyjnym. Interfejs rozpoznaje ten błąd
+	// po fragmencie treści (BACKEND_PATTERNS w translate.ts); bez tego
+	// kodu admin zobaczy generyczne "Nieprawidłowe dane formularza" i nie
+	// dowie się, że zawiniła reguła planu, a nie wpisane wartości.
+	// Zmiana tego łańcucha wymaga zmiany wzorca po stronie panelu.
+	if !strings.Contains(err.Error(), "TOKENS_LIMIT_BELOW_PLAN") {
+		t.Fatalf("komunikat bez stabilnego kodu TOKENS_LIMIT_BELOW_PLAN: %q", err.Error())
+	}
+
+	// Wartości też mają zostać — trafiają do logów i audytu.
+	for _, oczekiwane := range []string{"40", "90", "PRO"} {
+		if !strings.Contains(err.Error(), oczekiwane) {
+			t.Errorf("komunikat nie zawiera %q: %q", oczekiwane, err.Error())
+		}
 	}
 }
 
