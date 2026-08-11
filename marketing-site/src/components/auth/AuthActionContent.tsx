@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -83,7 +83,6 @@ const consumedCodes = new Set<string>();
 function InnerContent() {
   const t = useTranslations("authAction");
   const locale = useLocale();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<Status>("initializing");
@@ -152,15 +151,12 @@ function InnerContent() {
 
     if (mode === "verifyEmail") {
       if (consumedCodes.has(oobCode)) {
+        // Ten sam ekran co przy świeżym potwierdzeniu i tak samo bez
+        // przenoszenia dalej. Wcześniej ta gałąź po 1,5 s przerzucała na
+        // /onboarding/, co przeczyło treści komunikatu ("możesz zamknąć
+        // tę kartę") i w oknie bez sesji kończyło się odesłaniem na
+        // logowanie.
         setStatus("success");
-        setTimeout(() => {
-          const continueUrl = searchParams?.get("continueUrl");
-          if (continueUrl) {
-            window.location.replace(continueUrl);
-          } else {
-            router.replace(`/${locale}/onboarding/`);
-          }
-        }, 1500);
         return;
       }
       setStatus("verifying");
@@ -209,7 +205,7 @@ function InnerContent() {
     } else {
       setStatus("unsupported");
     }
-  }, [mode, oobCode, locale, router, t, triggerConfetti, searchParams]);
+  }, [mode, oobCode, locale, t, triggerConfetti, searchParams]);
 
   // Handle password reset submission
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -333,15 +329,15 @@ function InnerContent() {
               <h2 className="font-display text-frost text-2xl font-bold mb-3">
                 {t("successTitle")}
               </h2>
-              <p className="font-sans text-mist/85 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
+              {/* Bez przycisku prowadzącego dalej. Ta karta bywa otwarta
+                  w innym oknie niż to, w którym trwa rejestracja — i wtedy
+                  nie ma w niej sesji, więc kreator i tak odesłałby na
+                  logowanie. Właściwe miejsce to karta pierwotna, która
+                  sama wykrywa potwierdzenie (EmailVerificationManager
+                  odpytuje user.reload() i przesuwa krok). */}
+              <p className="font-sans text-mist/85 text-sm leading-relaxed max-w-sm mx-auto">
                 {t("successBody")}
               </p>
-              <a
-                href={`${cleanPrefix}/onboarding/`}
-                className="relative inline-flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-xs uppercase tracking-wider px-6 py-4 shadow-lg shadow-black/25 hover:shadow-[0_8px_25px_rgba(245,166,35,0.3)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-300"
-              >
-                {t("successCta")}
-              </a>
             </motion.div>
           )}
 
