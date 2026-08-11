@@ -77,6 +77,12 @@ export function LoginForm() {
     if (errParam === "reauth") {
       setError(t("errorReauth"));
     }
+    // Wysyła tu strażnik /onboarding, gdy w TYM oknie nie ma sesji.
+    // Po zalogowaniu wracamy do kreatora automatycznie — niżej w tym
+    // pliku niedokończony profil kieruje na /onboarding/.
+    if (errParam === "session") {
+      setError(t("errorSessionRequired"));
+    }
   }, [errParam, t]);
 
   // After any sign-in (email or social) we resolve the user's role and

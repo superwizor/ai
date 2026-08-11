@@ -32,7 +32,7 @@ async function signInToDashboard(page: Page) {
     firstName: "Dariusz",
     lastName: "Testowy",
     // Non-empty so the onboarding guard doesn't redirect us away.
-    defaultModalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+    defaultModalityId: "dd8d84ff-16a5-470a-95cc-4b5a99e61f6b",
     organizationId: "org-uuid-1",
     role: "USER_ROLE_THERAPIST",
   });

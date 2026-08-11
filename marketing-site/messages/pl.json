@@ -1236,6 +1236,7 @@
     "errorNoProfile": "Twoje konto Firebase istnieje, ale nie znaleziono profilu w Superwizor. Skontaktuj się z zespołem.",
     "errorPendingDeletion": "Konto jest w trakcie usuwania. Dane zostaną bezpowrotnie skasowane po upływie 30 dni od zgłoszenia.",
     "errorReauth": "Zaloguj się ponownie przed usunięciem konta ze względów bezpieczeństwa.",
+    "errorSessionRequired": "Aby dokończyć konfigurację konta, zaloguj się w tym oknie przeglądarki.",
     "redirectingApp": "Przekierowuję na panel konta…",
     "redirectingAdmin": "Przekierowuję do panelu administracyjnego…",
     "noAccount": "Nie masz konta?",

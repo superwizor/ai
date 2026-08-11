@@ -91,7 +91,7 @@ export async function mockUpdateProfile(
           phoneNumber: captured?.phoneNumber || "+48 510417781",
           professionalTitle: captured?.professionalTitle || "Psycholog",
           credentialsNumber: captured?.credentialsNumber || "LIC-1234",
-          defaultModalityId: captured?.defaultModalityId || "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+          defaultModalityId: captured?.defaultModalityId || "dd8d84ff-16a5-470a-95cc-4b5a99e61f6b",
           organizationId: "org-uuid-1",
           role: "USER_ROLE_THERAPIST",
         }),
@@ -310,16 +310,24 @@ export async function mockGetAdminAnalyticsError(
   );
 }
 
-/** Standard modality catalog for registration form tests. */
+/**
+ * Standard modality catalog for registration form tests.
+ *
+ * UUID-y sa PRAWDZIWE — skopiowane z tabeli `modalities`. Wczesniej byly
+ * tu wartosci zmyslone, identyczne z zaszytym "katalogiem zapasowym"
+ * w kodzie produkcyjnym, wiec atrapa potwierdzala sama siebie i nie mogla
+ * wykryc, ze te id nie istnieja w bazie (wiez fk_users_default_modality,
+ * SQLSTATE 23503 → UpdateProfile 500 → "Pomin" w onboardingu nie dzialalo).
+ */
 const MODALITY_CATALOG = [
   {
-    id: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+    id: "dd8d84ff-16a5-470a-95cc-4b5a99e61f6b",
     systemCode: "CBT",
     displayName: "Poznawczo-behawioralna (CBT)",
     isSupported: true,
   },
   {
-    id: "33e66b8d-8a71-4770-96f3-42e13297a7e7",
+    id: "081ce34d-43d2-4215-b7f9-8120ac2e430c",
     systemCode: "UNIV",
     displayName: "Uniwersalny / Integracyjny",
     isSupported: true,

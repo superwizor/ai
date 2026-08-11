@@ -40,6 +40,17 @@ rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"
 serwerze dev rozjeżdża cache i daje lawinę `SyntaxError ... after JSON` —
 ten sam commit dawał 176 padnięć na brudnym cache i 35 po jego usunięciu.
 
+**Część testów wymaga lokalnego `billing-svc` na porcie 8081.**
+`next.config.ts:43` przepisuje tam `/api/checkout`. Bez tej usługi pada
+14 przypadków w `register-flow` i `crm-onboarding-stripe` — wygląda to
+na regresję, a jest brakiem usługi. Sprawdź port, zanim zaczniesz szukać
+winy w swojej zmianie.
+
+**Stan zastany (2026-08-11):** 8 padnięć w `register-therapist`
+(`label[for="uiLanguage"]`) istnieje niezależnie od bieżących zmian —
+spec rozjechał się z interfejsem. Potwierdzone przez `git stash` samych
+plików źródłowych i ponowny przebieg.
+
 **`--workers=2` jest wbudowane w skrypt `test:e2e`** i ma tam zostać.
 Przy domyślnej równoległości serwer dev produkuje 164 fałszywe padnięcia.
 

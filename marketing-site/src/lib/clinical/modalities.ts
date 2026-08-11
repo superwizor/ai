@@ -85,50 +85,36 @@ export async function getModalityCatalog(): Promise<ReadonlyArray<ModalityRow>> 
       isSupported: m.isSupported,
     }));
   } catch (err) {
-    console.error("[register/therapist] modality fetch failed, using fallback catalog", err);
-    return [
-      {
-        id: "33e66b8d-8a71-4770-96f3-42e13297a7e7",
-        systemCode: "UNIV",
-        displayName: "Uniwersalny / Integracyjny",
-        labels: LABELS.UNIV,
-        isSupported: true,
-      },
-      {
-        id: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
-        systemCode: "CBT",
-        displayName: "Poznawczo-behawioralna (CBT)",
-        labels: LABELS.CBT,
-        isSupported: true,
-      },
-      {
-        id: "55a88c9f-8a71-4770-96f3-42e13297a7e9",
-        systemCode: "PSYCHO",
-        displayName: "Psychodynamiczna",
-        labels: LABELS.PSYCHO,
-        isSupported: true,
-      },
-      {
-        id: "66b99ca0-8a71-4770-96f3-42e13297a7ea",
-        systemCode: "GESTALT",
-        displayName: "Gestalt",
-        labels: LABELS.GESTALT,
-        isSupported: true,
-      },
-      {
-        id: "77caaab1-8a71-4770-96f3-42e13297a7eb",
-        systemCode: "SYS",
-        displayName: "Systemowa (pary i rodziny)",
-        labels: LABELS.SYS,
-        isSupported: true,
-      },
-      {
-        id: "88dbbbc2-8a71-4770-96f3-42e13297a7ec",
-        systemCode: "ST",
-        displayName: "Terapia schematów (ST)",
-        labels: LABELS.ST,
-        isSupported: true,
-      },
-    ];
+    // NIE fabrykujemy tu identyfikatorow. Wczesniej ta galaz zwracala
+    // katalog z wymyslonymi UUID-ami (33e66b8d-..., 44f77c8e-... itd.),
+    // ktore nie istnieja w tabeli `modalities`. Zapis takiego id do
+    // users.default_modality_id lamie wiez `fk_users_default_modality`
+    // (SQLSTATE 23503), wiec UpdateProfile zwracal 500, a uzytkownik
+    // widzial "Nie udalo sie zapisac preferencji" bez szansy na
+    // przejscie dalej. To ten sam rodzaj bledu, co incydent opisany w
+    // naglowku pliku (2026-05-28, wysylanie "CBT" zamiast UUID).
+    //
+    // Pusta lista jest uczciwa: wywolujacy widzi, ze katalogu nie ma, i
+    // moze pokazac blad zamiast zapisywac dane, ktore baza odrzuci.
+    // Zwracamy [] zamiast rzucac, bo AccountSections nie ma .catch().
+    console.error("[modalities] pobranie katalogu nie powiodlo sie", err);
+    return [];
   }
+}
+
+/**
+ * Wybiera wiersz katalogu, ktory ma trafic do users.default_modality_id.
+ *
+ * `wanted` to system_code wybrany przez uzytkownika albo "UNIV", gdy krok
+ * zostal pominiety. Zwraca `undefined`, gdy katalogu nie ma — i to jest
+ * poprawny wynik: wywolujacy ma wtedy pokazac blad, a NIE podstawic
+ * wymyslonego UUID-a. Zapis id spoza tabeli `modalities` lamie wiez
+ * `fk_users_default_modality` (SQLSTATE 23503) i konczy sie 500.
+ */
+export function pickModality(
+  rows: ReadonlyArray<ModalityRow>,
+  wanted: string,
+): ModalityRow | undefined {
+  return rows.find((m) => m.systemCode === wanted)
+    ?? rows.find((m) => m.systemCode === "UNIV");
 }

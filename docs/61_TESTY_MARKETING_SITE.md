@@ -99,6 +99,35 @@ rozwiązanie to osobne konto na plik; nie zostało zrobione.
 **Test „can update profile and organization successfully" bywa oporny
 w `chromium-en`** — przy teście jest komentarz z tym, co już ustalono.
 
+### Część testów wymaga lokalnego `billing-svc`
+
+`next.config.ts:43` przepisuje `/api/checkout` i `/api/billing-portal`
+na **`http://127.0.0.1:8081`**. Bez działającego `billing-svc` pada
+**14 przypadków** w `register-flow` i `crm-onboarding-stripe` — i
+wygląda to na regresję, choć jest to wyłącznie brak usługi.
+
+```bash
+# w superwizor-backend/services/billing-svc, z proxy do bazy
+DATABASE_URL=... IDENTITY_SVC_URL=http://127.0.0.1:8080 \
+BILLING_ALLOW_INSECURE=1 PORT=8081 go run ./cmd/server
+```
+
+Zanim uznasz padnięcie za swoje, sprawdź, czy port 8081 nasłuchuje.
+Prawdziwego klucza Stripe nie trzeba — walidacja wejścia dzieje się
+przed sprawdzeniem konfiguracji płatności (patrz `checkout_handler.go`).
+
+### Jak odróżnić własną regresję od zastanej
+
+Odłóż same pliki źródłowe i uruchom podejrzany spec ponownie:
+
+```bash
+git stash push <zmienione pliki src/> && pnpm test:e2e <spec> ; git stash pop
+```
+
+Tak właśnie 2026-08-11 ustalono, że 8 padnięć w `register-therapist`
+(brak `label[for="uiLanguage"]`) istnieje niezależnie od bieżącej
+zmiany — spec rozjechał się z interfejsem i czeka na naprawę.
+
 ### Dwie pułapki wbudowane w narzędzia
 
 **`--workers=2` jest w skrypcie `test:e2e`** i ma tam zostać. Przy

@@ -1236,6 +1236,7 @@
     "errorNoProfile": "Your Firebase account exists, but no Superwizor profile was found. Please contact support.",
     "errorPendingDeletion": "This account is in the process of deletion. All data will be permanently erased 30 days after the request.",
     "errorReauth": "Please log in again before deleting your account for security reasons.",
+    "errorSessionRequired": "To finish setting up your account, sign in from this browser window.",
     "redirectingApp": "Redirecting to your account…",
     "redirectingAdmin": "Redirecting to the admin panel…",
     "noAccount": "Don't have an account?",

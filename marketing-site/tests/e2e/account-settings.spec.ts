@@ -45,7 +45,7 @@ test.describe("Account Settings & Deletion", () => {
       phoneNumber: "+48 510417781",
       professionalTitle: "Psycholog",
       credentialsNumber: "LIC-1234",
-      defaultModalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+      defaultModalityId: "dd8d84ff-16a5-470a-95cc-4b5a99e61f6b",
       organizationId: "org-uuid-1",
       role: "USER_ROLE_THERAPIST",
     });
