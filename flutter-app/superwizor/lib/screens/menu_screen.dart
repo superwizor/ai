@@ -148,6 +148,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         : 'assets/legal/$baseName.md';
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'LegalMarkdownScreen'),
         builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
       ),
     );
@@ -474,6 +475,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(name: 'SubscriptionPlanScreen'),
                                   builder: (_) =>
                                       const SubscriptionPlanScreen(),
                                 ),
@@ -792,6 +794,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(name: 'DeleteAccountScreen'),
                                   builder: (_) => const DeleteAccountScreen(),
                                 ),
                               ),
@@ -1680,7 +1683,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
       // Otwórz ekran usuwania z prawej strony
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const DeleteAccountScreen()));
+      ).push(MaterialPageRoute(settings: const RouteSettings(name: 'DeleteAccountScreen'), builder: (_) => const DeleteAccountScreen()));
     } else {
       if (mounted) setState(() => _deleteToggle = false);
     }

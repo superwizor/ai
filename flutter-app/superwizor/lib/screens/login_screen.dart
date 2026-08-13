@@ -196,6 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _openForgotPassword() {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'ForgotPasswordScreen'),
         builder: (_) => ForgotPasswordScreen(
           initialEmail: _emailCtrl.text.trim(),
         ),

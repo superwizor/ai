@@ -502,6 +502,7 @@ class _SessionCard extends ConsumerWidget {
     return _CardShell(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
+          settings: const RouteSettings(name: 'ClientSessionScreen'),
           builder: (_) => ClientSessionScreen(
             session: s,
             patientFileId: item.kartoteka.patientFileId,

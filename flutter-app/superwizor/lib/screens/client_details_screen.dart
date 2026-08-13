@@ -258,6 +258,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'RecordingScreen'),
         builder: (_) => RecordingScreen(
           patientFileId: widget.patientId,
           therapistId: ctx.therapistId,
@@ -277,6 +278,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'NewSessionScreen'),
         builder: (_) => NewSessionScreen(
           patientFileId: widget.patientId,
           therapistId: ctx.therapistId,
@@ -298,6 +300,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'NoteEditorScreen'),
         builder: (_) => NoteEditorScreen(patientId: widget.patientId),
       ),
     );
@@ -721,6 +724,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
+                                            settings: const RouteSettings(name: 'RecordingScreen'),
                                             builder: (_) => RecordingScreen(
                                               patientFileId:
                                                   svc.patientFileId ?? '',
@@ -1482,6 +1486,7 @@ class _PendingUploadCard extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
+            settings: const RouteSettings(name: 'SessionStatusScreen'),
             builder: (_) => SessionStatusScreen(
               sessionId: hasSessionId ? sessionId : null,
               localId: hasSessionId ? null : upload.localId,
@@ -1576,6 +1581,7 @@ class _PendingUploadServerCard extends ConsumerWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
+            settings: const RouteSettings(name: 'SessionStatusScreen'),
             builder: (_) => SessionStatusScreen(sessionId: session.id),
           ),
         );
@@ -1742,9 +1748,11 @@ class _SessionCard extends ConsumerWidget {
         // 2026-07-20) — the transcript stays one toggle away.
         final destination = isCompleted
             ? MaterialPageRoute(
+                settings: const RouteSettings(name: 'ReportScreen'),
                 builder: (_) => ReportScreen(sessionId: session.id),
               )
             : MaterialPageRoute(
+                settings: const RouteSettings(name: 'SessionStatusScreen'),
                 builder: (_) => SessionStatusScreen(sessionId: session.id),
               );
         Navigator.push(context, destination);
@@ -2842,6 +2850,7 @@ class _NoteCard extends ConsumerWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
+                          settings: const RouteSettings(name: 'NoteEditorScreen'),
                           builder: (_) => NoteEditorScreen(
                             patientId: patientId,
                             existingNote: note,
@@ -3783,6 +3792,7 @@ class _NoteViewScreen extends ConsumerWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
+                    settings: const RouteSettings(name: 'NoteEditorScreen'),
                     builder: (_) => NoteEditorScreen(
                       patientId: patientId,
                       existingNote: note,

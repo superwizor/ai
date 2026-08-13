@@ -470,6 +470,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       return;
     }
     Navigator.of(context).pushReplacement(MaterialPageRoute(
+      settings: const RouteSettings(name: 'RecordingScreen'),
       builder: (_) => RecordingScreen(
         patientFileId: widget.patientFileId,
         therapistId: widget.therapistId,
@@ -578,6 +579,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         return;
       }
       await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        settings: const RouteSettings(name: 'SessionStatusScreen'),
         builder: (_) => SessionStatusScreen(sessionId: created.sessionId),
       ));
     } catch (e) {
@@ -806,6 +808,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     // done stepper; once a server-side sessionId materialises it hands
     // off to the Firestore / clinical-svc listeners.
     await Navigator.of(context).pushReplacement(MaterialPageRoute(
+      settings: const RouteSettings(name: 'SessionStatusScreen'),
       builder: (_) => SessionStatusScreen(localId: localId),
     ));
   }

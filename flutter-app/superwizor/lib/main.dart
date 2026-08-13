@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'analytics/analytics_collector.dart';
+import 'analytics/screen_view_observer.dart';
 import 'providers/current_user_provider.dart';
 import 'providers/patient_notes_provider.dart';
 import 'providers/locale_provider.dart';
@@ -19,6 +20,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'auth/app_lock_controller.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+
 import 'client/app_version.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
@@ -65,6 +68,43 @@ void main() async {
   // Wersja aplikacji rozstrzygana raz, przed runApp — kolejka wgrywania
   // czyta ją synchronicznie, także w oknie wykonania w tle.
   await initAppVersion();
+
+  // Raportowanie awarii. Do 13.08.2026 aplikacja nie miała ŻADNEGO: ani
+  // FlutterError.onError, ani runZonedGuarded, ani obsługi
+  // PlatformDispatcher. Awaria u terapeutki w trakcie sesji była dla nas
+  // całkowicie niewidoczna.
+  //
+  // ŚWIADOMIE NIE ustawiamy setUserIdentifier. To aplikacja z danymi o
+  // zdrowiu; identyfikator użytkownika po stronie Google to osobna
+  // decyzja o przetwarzaniu, nie domyślny wybór biblioteki. Klucze niżej
+  // są nieosobowe. Uwaga przy dopisywaniu kolejnych: treść komunikatów
+  // błędów trafia do Crashlytics w całości, więc nie wolno wkładać w nie
+  // danych pacjenta.
+  if (!kIsWeb) {
+    // Crashlytics nie wspiera weba — wywołanie tam by rzuciło.
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+      !kDebugMode,
+    );
+    await FirebaseCrashlytics.instance.setCustomKey('app_version', appVersion);
+    await FirebaseCrashlytics.instance.setCustomKey(
+      'platform',
+      defaultTargetPlatform.name,
+    );
+
+    final poprzedniaObsluga = FlutterError.onError;
+    FlutterError.onError = (details) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      // Nie zjadamy istniejącej obsługi — bez tego konsola w trybie
+      // debug przestałaby pokazywać błędy układu.
+      poprzedniaObsluga?.call(details);
+    };
+
+    // Błędy spoza drzewa widgetów (asynchroniczne, z isolate'ów).
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   // Cross-origin SSO bridge: if the user arrived from
   // superwizor.web.app via the Otworz kartoteki CTA, the URL
@@ -202,6 +242,16 @@ class SuperWizorApp extends ConsumerWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
+      // Pełne pokrycie ekranów zamiast trzech ręcznych wywołań.
+      // Zdarzenia idą do NASZEGO kolektora — uzasadnienie w
+      // analytics/screen_view_observer.dart.
+      navigatorObservers: [
+        ScreenViewObserver((nazwa) {
+          ref
+              .read(analyticsCollectorProvider)
+              .track('screen.viewed', properties: {'screen_name': nazwa});
+        }),
+      ],
       // ignore: avoid_hardcoded_strings_in_widgets
       title: 'Superwizor AI',
       theme: EuphireTheme.themeData,
@@ -219,7 +269,12 @@ class SuperWizorApp extends ConsumerWidget {
           if (sessionId != null) {
             return MaterialPageRoute(
               builder: (_) => SessionStatusScreen(sessionId: sessionId),
-              settings: settings,
+              // Nazwa spójna z resztą (obserwator raportuje po nazwie),
+              // z zachowaniem `arguments` z głębokiego linku.
+              settings: RouteSettings(
+                name: 'SessionStatusScreen',
+                arguments: settings.arguments,
+              ),
             );
           }
         }
@@ -230,7 +285,12 @@ class SuperWizorApp extends ConsumerWidget {
           if (sessionId != null && sessionId.isNotEmpty) {
             return MaterialPageRoute(
               builder: (_) => SessionStatusScreen(sessionId: sessionId),
-              settings: settings,
+              // Nazwa spójna z resztą (obserwator raportuje po nazwie),
+              // z zachowaniem `arguments` z głębokiego linku.
+              settings: RouteSettings(
+                name: 'SessionStatusScreen',
+                arguments: settings.arguments,
+              ),
             );
           }
         }

@@ -1318,6 +1318,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
             Navigator.push(
               context,
               MaterialPageRoute(
+                settings: const RouteSettings(name: 'ClientDetailsScreen'),
                 builder: (_) => ClientDetailsScreen(
                   patientId: widget.patient.id,
                   clientName: _name,

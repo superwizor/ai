@@ -608,6 +608,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
             : canTap
                 ? () {
                     Navigator.of(context).push(MaterialPageRoute(
+                      settings: const RouteSettings(name: 'SessionStatusScreen'),
                       builder: (_) => SessionStatusScreen(
                         sessionId: hasSessionId ? upload.sessionId : null,
                         localId: hasSessionId ? null : upload.localId,

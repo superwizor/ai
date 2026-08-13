@@ -154,7 +154,7 @@ class _TherapistSetupScreenState extends ConsumerState<TherapistSetupScreen> {
       } catch (_) {}
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(settings: const RouteSettings(name: 'HomeScreen'), builder: (_) => const HomeScreen()),
         (_) => false,
       );
     } catch (e) {

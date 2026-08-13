@@ -1111,6 +1111,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // listeners.
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
+          settings: const RouteSettings(name: 'SessionStatusScreen'),
           builder: (_) => SessionStatusScreen(localId: sessionId),
         ),
       );
