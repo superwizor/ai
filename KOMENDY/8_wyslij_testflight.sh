@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 # 8_wyslij_testflight.sh
 set -e
+
+# Ścieżki rozstrzygane PRZED cd i jako bezwzględne.
+#
+# Wcześniej ENV_FILE liczono przez `dirname "$0"` DOPIERO PO zmianie
+# katalogu, więc przy wywołaniu ścieżką względną (./KOMENDY/8_...)
+# skrypt szukał credentials.env w flutter-app/superwizor/KOMENDY/../ —
+# tam, gdzie go nie ma. Efekt: cicho wchodził w gałąź "brak klucza API",
+# budował IPA i otwierał Xcode Organizer zamiast wysłać paczkę.
+# Wyglądało to na sukces (kod wyjścia 0), a wysyłka się nie odbywała.
+# Zdarzyło się 13.08.2026.
+KATALOG_SKRYPTU="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$KATALOG_SKRYPTU/../credentials.env"
+
 echo "🚀 Przygotowanie wersji do TestFlight..."
-cd "$(dirname "$0")/../flutter-app/superwizor"
+cd "$KATALOG_SKRYPTU/../flutter-app/superwizor"
 
 echo "🧹 1. Czyszczenie starych buildów..."
 flutter clean
@@ -12,7 +25,6 @@ echo "📦 2. Budowanie paczki IPA dla iOS..."
 flutter build ipa
 
 # Wczytanie konfiguracji z credentials.env jeśli istnieje
-ENV_FILE="$(dirname "$0")/../credentials.env"
 if [ -f "$ENV_FILE" ]; then
     APP_STORE_ISSUER_ID=$(grep APP_STORE_ISSUER_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
     APP_STORE_KEY_ID=$(grep APP_STORE_KEY_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
@@ -28,7 +40,9 @@ if [ -n "$APP_STORE_ISSUER_ID" ] && [ -n "$APP_STORE_KEY_ID" ]; then
     echo "👉 Wejdź za ok. 10-15 minut do App Store Connect, aby sprawdzić przetwarzanie paczki."
     echo "============================================================"
 else
-    echo "🖥️ 3. Otwieranie Archiwum w Xcode Organizer (brak klucza API do autouploadu)..."
+    echo "🖥️ 3. Otwieranie Archiwum w Xcode Organizer."
+    echo "   Powód: nie znaleziono kompletu APP_STORE_ISSUER_ID/APP_STORE_KEY_ID"
+    echo "   w pliku: $ENV_FILE"
     open build/ios/archive/Runner.xcarchive
     
     echo "============================================================"
