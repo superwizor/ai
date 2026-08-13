@@ -19,6 +19,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'auth/app_lock_controller.dart';
+import 'client/app_version.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'client/client_home_screen.dart';
@@ -60,6 +61,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Wersja aplikacji rozstrzygana raz, przed runApp — kolejka wgrywania
+  // czyta ją synchronicznie, także w oknie wykonania w tle.
+  await initAppVersion();
 
   // Cross-origin SSO bridge: if the user arrived from
   // superwizor.web.app via the Otworz kartoteki CTA, the URL

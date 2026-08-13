@@ -17,7 +17,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/services.dart';
+
+import '../client/app_version.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/current_user_provider.dart';
@@ -52,8 +54,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _appVersion = info.version);
+    // Wspólne źródło (client/app_version.dart) — dokładnie ta sama
+    // wartość ląduje w audio_uploads.client_app_version i w logach
+    // serwera, więc numer odczytany z ekranu przez terapeutkę da się
+    // wprost wyszukać przy diagnozie.
+    initAppVersion().then((_) {
+      if (mounted) setState(() => _appVersion = appVersion);
     });
   }
 
@@ -797,15 +803,40 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 32, bottom: 8),
                           child: Center(
-                            child: Text(
-                              _appVersion != null
-                                  ? 'Superwizor AI v$_appVersion'
-                                  : 'Superwizor AI',
-                              style: TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 11,
-                                color: EuphireColors.mist.withValues(
-                                  alpha: 0.35,
+                            child: GestureDetector(
+                              // Dotknięcie kopiuje wersję do schowka —
+                              // przy zgłoszeniu wsparcia numer builda
+                              // jest pierwszą rzeczą, o którą pytamy, a
+                              // przepisywanie "1.0.6+39" z ekranu jest
+                              // zawodne.
+                              onTap: _appVersion == null
+                                  ? null
+                                  : () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: _appVersion!),
+                                      );
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Skopiowano wersję $_appVersion',
+                                          ),
+                                          duration:
+                                              const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                              behavior: HitTestBehavior.opaque,
+                              child: Text(
+                                _appVersion != null
+                                    ? 'Superwizor AI v$_appVersion'
+                                    : 'Superwizor AI',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 11,
+                                  color: EuphireColors.mist.withValues(
+                                    alpha: 0.35,
+                                  ),
                                 ),
                               ),
                             ),

@@ -48,6 +48,7 @@ import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
+import '../client/app_version.dart';
 
 /// Supported audio extensions for file upload.
 /// All are converted client-side to FLAC before upload.
@@ -547,6 +548,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           estimatedSizeBytes: Int64(bytes.length),
           contentType: contentType,
           clientPlatform: 'web',
+          clientAppVersion: appVersion,
           idempotencyKey: const Uuid().v4(),
           reportLanguage: widget.patientLanguageCode,
         ),

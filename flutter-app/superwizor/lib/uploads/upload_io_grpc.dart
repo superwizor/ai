@@ -45,6 +45,7 @@ import '../services/secure_audio_storage_service.dart';
 import 'pending_upload.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
+import '../client/app_version.dart';
 
 /// Content types Chirp 3 europe-central2 accepts directly. Anything
 /// outside this set must be transcoded — on-device when we can, else
@@ -291,6 +292,10 @@ class GrpcUploadIo implements UploadIo {
         estimatedDurationSeconds: u.actualDurationSeconds,
         contentType: u.contentType,
         clientPlatform: _platform(),
+        // Bez tego kolumna client_app_version zostawała pusta i przy
+        // zwisach uploadu nie dało się orzec, czy build ma poprawkę
+        // wgrywania w tle. Patrz client/app_version.dart.
+        clientAppVersion: appVersion,
         // Same idempotencyKey across retries — server returns the
         // original audio_uploads row + a fresh signedUrl.
         idempotencyKey: u.idempotencyKey,
