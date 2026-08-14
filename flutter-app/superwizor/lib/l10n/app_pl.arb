@@ -1210,8 +1210,6 @@
   "settings_haptics_on": "Wibracje włączone",
   "settings_language": "Język aplikacji",
   "settings_language_app": "Język aplikacji",
-  "settings_licenses": "Licencje oprogramowania",
-  "settings_licenses_desc": "Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.",
   "settings_live_activities": "Aktywność na ekranie blokady",
   "settings_live_activities_off": "Status sesji widoczny tylko w aplikacji.",
   "settings_live_activities_on": "Czas i status sesji widoczne bez odblokowywania telefonu.",

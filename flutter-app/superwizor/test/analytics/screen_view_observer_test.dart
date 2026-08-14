@@ -9,7 +9,7 @@ import 'package:superwizor/analytics/screen_view_observer.dart';
 
 Route<dynamic> _trasa(String? nazwa) => PageRouteBuilder<dynamic>(
       settings: RouteSettings(name: nazwa),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
     );
 
 void main() {
