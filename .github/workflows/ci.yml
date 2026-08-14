@@ -114,6 +114,12 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/migrator/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push Purger image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-purger"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/clinical-svc/Dockerfile.purger .
+          docker push -a $IMAGE_PATH
+
       - name: Build and Push API image
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}"
@@ -168,6 +174,18 @@ jobs:
             --set-secrets="DATABASE_URL=postgres-database-url:latest"
 
           gcloud run jobs execute db-migrator --region ${{ env.REGION }} --wait
+
+      - name: Deploy GDPR Purger job
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-purger:${{ github.sha }}"
+          gcloud run jobs deploy gdpr-purger \
+            --image $IMAGE_PATH \
+            --region ${{ env.REGION }} \
+            --vpc-connector swvpc-connector \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest"
+          # Celowo BEZ `jobs execute`: purger kasuje dane nieodwracalnie,
+          # więc nie ma się uruchamiać przy każdym wdrożeniu. Odpala go
+          # harmonogram (Cloud Scheduler, codziennie).
 
       # ────────────────────────────────────────────────────────────────────
       # Cloud Run deploys.

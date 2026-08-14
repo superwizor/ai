@@ -472,6 +472,74 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		ratingsKPIs = db.GetRatingsKPIsRow{}
 	}
 
+	// ── Użycie i pętla z klientem (14.08.2026) ──────────────────────
+	//
+	// Wszystkie pięć zapytań jest fail-soft: pojedyncza awaria nie może
+	// wywrócić całego pulpitu, bo reszta metryk jest niezależna. Panel
+	// pokaże wtedy zera w tej sekcji, a nie błąd na całej stronie.
+	var sharingTrend []*clinicalv1.ClientSharingPoint
+	if rows, err := s.queries.GetClientSharingTrend(ctx); err == nil {
+		for _, r := range rows {
+			sharingTrend = append(sharingTrend, &clinicalv1.ClientSharingPoint{
+				Label:         r.Label,
+				SessionsTotal: int64(r.SessionsTotal),
+				Shared:        int64(r.Shared),
+				Hidden:        int64(r.Hidden),
+			})
+		}
+	} else {
+		slog.WarnContext(ctx, "analytics: client sharing trend failed (fail-soft)", "error", err)
+	}
+
+	inviteFunnel := &clinicalv1.ClientInvitationFunnel{}
+	if f, err := s.queries.GetClientInvitationFunnel(ctx); err == nil {
+		inviteFunnel = &clinicalv1.ClientInvitationFunnel{
+			Sent:                int64(f.Sent),
+			Accepted:            int64(f.Accepted),
+			Revoked:             int64(f.Revoked),
+			Expired:             int64(f.Expired),
+			MedianHoursToAccept: f.MedianHoursToAccept,
+		}
+	} else {
+		slog.WarnContext(ctx, "analytics: invitation funnel failed (fail-soft)", "error", err)
+	}
+
+	var pairing []*clinicalv1.PairingAttemptBucket
+	if rows, err := s.queries.GetPairingCodeFriction(ctx); err == nil {
+		for _, r := range rows {
+			pairing = append(pairing, &clinicalv1.PairingAttemptBucket{
+				Attempts:    r.Attempts,
+				Invitations: int64(r.Invitations),
+			})
+		}
+	} else {
+		slog.WarnContext(ctx, "analytics: pairing friction failed (fail-soft)", "error", err)
+	}
+
+	reading := &clinicalv1.ReportReadingStats{}
+	if r, err := s.queries.GetReportReadingStats(ctx); err == nil {
+		reading = &clinicalv1.ReportReadingStats{
+			Started:       int64(r.Started),
+			Finished:      int64(r.Finished),
+			MedianSeconds: r.MedianSeconds,
+			P90Seconds:    r.P90Seconds,
+		}
+	} else {
+		slog.WarnContext(ctx, "analytics: reading stats failed (fail-soft)", "error", err)
+	}
+
+	var platforms []*clinicalv1.PlatformReads
+	if rows, err := s.queries.GetReadingPlatformSplit(ctx); err == nil {
+		for _, r := range rows {
+			platforms = append(platforms, &clinicalv1.PlatformReads{
+				Platform: r.Platform,
+				Reads:    int64(r.Reads),
+			})
+		}
+	} else {
+		slog.WarnContext(ctx, "analytics: platform split failed (fail-soft)", "error", err)
+	}
+
 	return &clinicalv1.GetAdminAnalyticsResponse{
 		KpiWau:                  wau,
 		KpiSessionsThisWeek:     sessionsThisWeek,
@@ -511,6 +579,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		KpiRatingsNegative:      ratingsKPIs.Negative,
 		KpiRatingsWithNotes:     ratingsKPIs.WithNotes,
 		RegistrationsDetail:     registrationsDetail,
+
+		ClientSharingTrend:     sharingTrend,
+		ClientInvitationFunnel: inviteFunnel,
+		PairingAttempts:        pairing,
+		ReportReading:          reading,
+		ReadingPlatforms:       platforms,
 	}, nil
 }
 

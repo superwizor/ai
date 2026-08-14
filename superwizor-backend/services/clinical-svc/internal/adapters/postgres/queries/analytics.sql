@@ -425,3 +425,84 @@ JOIN users u ON u.id = rr.therapist_id
 WHERE u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test';
+
+-- ─────────────────────────────────────────────────────────────────
+-- Użycie i pętla z klientem (14.08.2026).
+--
+-- Panel odpowiadał dotąd na pytanie "jak działa system" — koszty,
+-- jakość modeli, awarie. Nie odpowiadał na "jak ludzie z niego
+-- korzystają". Poniższe zapytania nie wymagają ANI JEDNEGO nowego
+-- zdarzenia: wszystko leży już w sessions, invitations i w parach
+-- report.read_started / report.read_finished.
+-- ─────────────────────────────────────────────────────────────────
+
+-- name: GetClientSharingTrend :many
+-- Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
+-- client_hidden_at to sygnał odrzucenia — raport dotarł, ale klient go
+-- schował; bez tego widzielibyśmy tylko wysyłkę, nie odbiór.
+SELECT to_char(date_trunc('week', s.created_at), 'MM-DD')::text AS label,
+       count(*)::int AS sessions_total,
+       count(*) FILTER (WHERE s.shared_with_client_at IS NOT NULL)::int AS shared,
+       count(*) FILTER (WHERE s.client_hidden_at IS NOT NULL)::int AS hidden
+FROM sessions s
+WHERE s.deleted_at IS NULL
+  AND s.status = 'COMPLETED'
+  AND s.created_at > now() - interval '12 weeks'
+GROUP BY 1
+ORDER BY 1;
+
+-- name: GetClientInvitationFunnel :one
+-- Lejek zaproszeń do aplikacji klienta. patient_file_id odróżnia
+-- zaproszenie klienta od zaproszenia terapeuty do organizacji.
+SELECT count(*)::int AS sent,
+       count(*) FILTER (WHERE accepted_at IS NOT NULL)::int AS accepted,
+       count(*) FILTER (WHERE revoked_at IS NOT NULL)::int AS revoked,
+       count(*) FILTER (WHERE accepted_at IS NULL
+                          AND revoked_at IS NULL
+                          AND expires_at < now())::int AS expired,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (accepted_at - created_at)) / 3600.0
+         ) FILTER (WHERE accepted_at IS NOT NULL), 0)::float AS median_hours_to_accept
+FROM invitations
+WHERE patient_file_id IS NOT NULL;
+
+-- name: GetPairingCodeFriction :many
+-- Ile prób kodu parowania potrzebuje klient. Rozkład, nie średnia —
+-- interesuje nas ogon, czyli ci, którzy męczą się kilka razy.
+SELECT COALESCE(code_attempts, 0)::int AS attempts,
+       count(*)::int AS invitations
+FROM invitations
+WHERE patient_file_id IS NOT NULL
+  AND pairing_code_hash IS NOT NULL
+GROUP BY 1
+ORDER BY 1;
+
+-- name: GetReportReadingStats :one
+-- Czas czytania raportu. active_read_ms mierzy klient i zatrzymuje
+-- licznik przy zejściu aplikacji w tło, więc to czas AKTYWNY, a nie
+-- czas otwartego ekranu.
+--
+-- Różnica started-finished to czytania przerwane: użytkownik otworzył
+-- raport i wyszedł bez domknięcia sesji czytania.
+SELECT count(*) FILTER (WHERE event_name = 'report.read_started')::int AS started,
+       count(*) FILTER (WHERE event_name = 'report.read_finished')::int AS finished,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY (properties->>'active_read_ms')::numeric / 1000.0
+         ) FILTER (WHERE properties->>'active_read_ms' IS NOT NULL), 0)::float AS median_seconds,
+       COALESCE(percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY (properties->>'active_read_ms')::numeric / 1000.0
+         ) FILTER (WHERE properties->>'active_read_ms' IS NOT NULL), 0)::float AS p90_seconds
+FROM analytics_events
+WHERE event_name IN ('report.read_started', 'report.read_finished')
+  AND occurred_at > now() - interval '90 days';
+
+-- name: GetReadingPlatformSplit :many
+-- Gdzie czytane są raporty. client_platform jest wypełniany przy
+-- każdym zdarzeniu klienckim, więc to działa od pierwszego dnia.
+SELECT COALESCE(NULLIF(client_platform, ''), 'unknown')::text AS platform,
+       count(*)::int AS reads
+FROM analytics_events
+WHERE event_name = 'report.read_started'
+  AND occurred_at > now() - interval '90 days'
+GROUP BY 1
+ORDER BY 2 DESC;

@@ -135,6 +135,101 @@ func (q *Queries) GetAvgTokenUtilization(ctx context.Context) (float64, error) {
 	return avg_utilization, err
 }
 
+const getClientInvitationFunnel = `-- name: GetClientInvitationFunnel :one
+SELECT count(*)::int AS sent,
+       count(*) FILTER (WHERE accepted_at IS NOT NULL)::int AS accepted,
+       count(*) FILTER (WHERE revoked_at IS NOT NULL)::int AS revoked,
+       count(*) FILTER (WHERE accepted_at IS NULL
+                          AND revoked_at IS NULL
+                          AND expires_at < now())::int AS expired,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (accepted_at - created_at)) / 3600.0
+         ) FILTER (WHERE accepted_at IS NOT NULL), 0)::float AS median_hours_to_accept
+FROM invitations
+WHERE patient_file_id IS NOT NULL
+`
+
+type GetClientInvitationFunnelRow struct {
+	Sent                int32   `json:"sent"`
+	Accepted            int32   `json:"accepted"`
+	Revoked             int32   `json:"revoked"`
+	Expired             int32   `json:"expired"`
+	MedianHoursToAccept float64 `json:"median_hours_to_accept"`
+}
+
+// Lejek zaproszeń do aplikacji klienta. patient_file_id odróżnia
+// zaproszenie klienta od zaproszenia terapeuty do organizacji.
+func (q *Queries) GetClientInvitationFunnel(ctx context.Context) (GetClientInvitationFunnelRow, error) {
+	row := q.db.QueryRow(ctx, getClientInvitationFunnel)
+	var i GetClientInvitationFunnelRow
+	err := row.Scan(
+		&i.Sent,
+		&i.Accepted,
+		&i.Revoked,
+		&i.Expired,
+		&i.MedianHoursToAccept,
+	)
+	return i, err
+}
+
+const getClientSharingTrend = `-- name: GetClientSharingTrend :many
+
+SELECT to_char(date_trunc('week', s.created_at), 'MM-DD')::text AS label,
+       count(*)::int AS sessions_total,
+       count(*) FILTER (WHERE s.shared_with_client_at IS NOT NULL)::int AS shared,
+       count(*) FILTER (WHERE s.client_hidden_at IS NOT NULL)::int AS hidden
+FROM sessions s
+WHERE s.deleted_at IS NULL
+  AND s.status = 'COMPLETED'
+  AND s.created_at > now() - interval '12 weeks'
+GROUP BY 1
+ORDER BY 1
+`
+
+type GetClientSharingTrendRow struct {
+	Label         string `json:"label"`
+	SessionsTotal int32  `json:"sessions_total"`
+	Shared        int32  `json:"shared"`
+	Hidden        int32  `json:"hidden"`
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Użycie i pętla z klientem (14.08.2026).
+//
+// Panel odpowiadał dotąd na pytanie "jak działa system" — koszty,
+// jakość modeli, awarie. Nie odpowiadał na "jak ludzie z niego
+// korzystają". Poniższe zapytania nie wymagają ANI JEDNEGO nowego
+// zdarzenia: wszystko leży już w sessions, invitations i w parach
+// report.read_started / report.read_finished.
+// ─────────────────────────────────────────────────────────────────
+// Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
+// client_hidden_at to sygnał odrzucenia — raport dotarł, ale klient go
+// schował; bez tego widzielibyśmy tylko wysyłkę, nie odbiór.
+func (q *Queries) GetClientSharingTrend(ctx context.Context) ([]GetClientSharingTrendRow, error) {
+	rows, err := q.db.Query(ctx, getClientSharingTrend)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetClientSharingTrendRow
+	for rows.Next() {
+		var i GetClientSharingTrendRow
+		if err := rows.Scan(
+			&i.Label,
+			&i.SessionsTotal,
+			&i.Shared,
+			&i.Hidden,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCohortRetention = `-- name: GetCohortRetention :many
 WITH cohort_sizes AS (
   SELECT 
@@ -508,6 +603,43 @@ func (q *Queries) GetOverallSatisfactionRate(ctx context.Context) (float64, erro
 	return rate, err
 }
 
+const getPairingCodeFriction = `-- name: GetPairingCodeFriction :many
+SELECT COALESCE(code_attempts, 0)::int AS attempts,
+       count(*)::int AS invitations
+FROM invitations
+WHERE patient_file_id IS NOT NULL
+  AND pairing_code_hash IS NOT NULL
+GROUP BY 1
+ORDER BY 1
+`
+
+type GetPairingCodeFrictionRow struct {
+	Attempts    int32 `json:"attempts"`
+	Invitations int32 `json:"invitations"`
+}
+
+// Ile prób kodu parowania potrzebuje klient. Rozkład, nie średnia —
+// interesuje nas ogon, czyli ci, którzy męczą się kilka razy.
+func (q *Queries) GetPairingCodeFriction(ctx context.Context) ([]GetPairingCodeFrictionRow, error) {
+	rows, err := q.db.Query(ctx, getPairingCodeFriction)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPairingCodeFrictionRow
+	for rows.Next() {
+		var i GetPairingCodeFrictionRow
+		if err := rows.Scan(&i.Attempts, &i.Invitations); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlanDistribution = `-- name: GetPlanDistribution :many
 SELECT 
   sp.display_name AS plan_name,
@@ -590,6 +722,43 @@ func (q *Queries) GetReadReportCount(ctx context.Context) (int64, error) {
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const getReadingPlatformSplit = `-- name: GetReadingPlatformSplit :many
+SELECT COALESCE(NULLIF(client_platform, ''), 'unknown')::text AS platform,
+       count(*)::int AS reads
+FROM analytics_events
+WHERE event_name = 'report.read_started'
+  AND occurred_at > now() - interval '90 days'
+GROUP BY 1
+ORDER BY 2 DESC
+`
+
+type GetReadingPlatformSplitRow struct {
+	Platform string `json:"platform"`
+	Reads    int32  `json:"reads"`
+}
+
+// Gdzie czytane są raporty. client_platform jest wypełniany przy
+// każdym zdarzeniu klienckim, więc to działa od pierwszego dnia.
+func (q *Queries) GetReadingPlatformSplit(ctx context.Context) ([]GetReadingPlatformSplitRow, error) {
+	rows, err := q.db.Query(ctx, getReadingPlatformSplit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetReadingPlatformSplitRow
+	for rows.Next() {
+		var i GetReadingPlatformSplitRow
+		if err := rows.Scan(&i.Platform, &i.Reads); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getRegistrationsDetail = `-- name: GetRegistrationsDetail :many
@@ -729,6 +898,45 @@ func (q *Queries) GetRelabelRate(ctx context.Context) (float64, error) {
 	var relabel_rate float64
 	err := row.Scan(&relabel_rate)
 	return relabel_rate, err
+}
+
+const getReportReadingStats = `-- name: GetReportReadingStats :one
+SELECT count(*) FILTER (WHERE event_name = 'report.read_started')::int AS started,
+       count(*) FILTER (WHERE event_name = 'report.read_finished')::int AS finished,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY (properties->>'active_read_ms')::numeric / 1000.0
+         ) FILTER (WHERE properties->>'active_read_ms' IS NOT NULL), 0)::float AS median_seconds,
+       COALESCE(percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY (properties->>'active_read_ms')::numeric / 1000.0
+         ) FILTER (WHERE properties->>'active_read_ms' IS NOT NULL), 0)::float AS p90_seconds
+FROM analytics_events
+WHERE event_name IN ('report.read_started', 'report.read_finished')
+  AND occurred_at > now() - interval '90 days'
+`
+
+type GetReportReadingStatsRow struct {
+	Started       int32   `json:"started"`
+	Finished      int32   `json:"finished"`
+	MedianSeconds float64 `json:"median_seconds"`
+	P90Seconds    float64 `json:"p90_seconds"`
+}
+
+// Czas czytania raportu. active_read_ms mierzy klient i zatrzymuje
+// licznik przy zejściu aplikacji w tło, więc to czas AKTYWNY, a nie
+// czas otwartego ekranu.
+//
+// Różnica started-finished to czytania przerwane: użytkownik otworzył
+// raport i wyszedł bez domknięcia sesji czytania.
+func (q *Queries) GetReportReadingStats(ctx context.Context) (GetReportReadingStatsRow, error) {
+	row := q.db.QueryRow(ctx, getReportReadingStats)
+	var i GetReportReadingStatsRow
+	err := row.Scan(
+		&i.Started,
+		&i.Finished,
+		&i.MedianSeconds,
+		&i.P90Seconds,
+	)
+	return i, err
 }
 
 const getRevenueTrend = `-- name: GetRevenueTrend :many
