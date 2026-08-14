@@ -38,6 +38,18 @@ scratch/
 proxy.log
 
 # Secrets & credentials — NEVER commit (security #4/#18)
+# Klucze App Store Connect. Klucz z rola Admin przelezal w origin/main od
+# 2026-07-13 do 2026-08-14 (commit 25f61cea) — plik .p8 to klucz PRYWATNY,
+# jednorazowo pobierany z Apple i nie do odzyskania. Miejsce na niego to
+# ~/private_keys, nigdy repozytorium.
+*.p8
+**/*.p8
+AuthKey_*.p8
+# Poswiadczenia wysylki do sklepow. credentials.env trzyma dzis wylacznie
+# identyfikatory (Issuer ID, Key ID, sciezka), ale nazwa zapraszała, zeby
+# wlozyc tam kiedys sekret.
+credentials.env
+**/credentials.env
 sa-key.json
 **/sa-key.json
 *-sa-key.json
