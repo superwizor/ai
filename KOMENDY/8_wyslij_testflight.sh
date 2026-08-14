@@ -22,7 +22,15 @@ flutter clean
 flutter pub get
 
 echo "📦 2. Budowanie paczki IPA dla iOS..."
-flutter build ipa
+# --export-options-plist wskazuje NASZ plik zamiast generowanego przez
+# Fluttera. Jedyna różnica, która ma znaczenie:
+# manageAppVersionAndBuildNumber=false.
+#
+# Bez tego Xcode podbija numer builda przy eksporcie i paczka niesie inny
+# numer niż pubspec.yaml — tak 14.08.2026 do testerów pojechał build 41,
+# podczas gdy repozytorium twierdziło 40. Numer builda rozstrzyga, którą
+# wersję ma użytkownik, więc musi mieć jedno źródło prawdy.
+flutter build ipa --export-options-plist=ios/ExportOptions.plist
 
 # Wczytanie konfiguracji z credentials.env jeśli istnieje
 if [ -f "$ENV_FILE" ]; then
