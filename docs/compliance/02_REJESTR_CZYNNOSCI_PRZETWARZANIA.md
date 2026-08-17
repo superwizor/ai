@@ -125,11 +125,11 @@ Euphire sp. z o.o. jest Podmiotem Przetwarzającym dane osobowe Klientów (pacje
 | **Nazwa czynności** | Przesyłanie, przechowywanie (tymczasowe) i transkrypcja nagrań audio sesji terapeutycznych/coachingowych |
 | **Administrator** | Użytkownik Profesjonalny (terapeuta/coach) — każdy indywidualnie |
 | **Kategorie osób** | Klienci (pacjenci, osoby poddawane coachingowi) oraz inne osoby uczestniczące w sesjach (partner w terapii par, członkowie rodziny) |
-| **Kategorie danych** | **Dane szczególnych kategorii (art. 9 ust. 1 RODO):** nagrania audio sesji terapeutycznych zawierające dane dotyczące zdrowia fizycznego i psychicznego; dane identyfikacyjne pojawiające się w nagraniu (imiona, nazwiska, adresy — w zakresie wypowiadanym przez uczestników); automatyczna transkrypcja z etykietami mówców (neutralne: „Osoba 1", „Osoba 2" lub ról: „Terapeuta", „Pacjent") |
+| **Kategorie danych** | **Dane szczególnych kategorii (art. 9 ust. 1 RODO):** nagrania audio sesji terapeutycznych zawierające dane dotyczące zdrowia fizycznego i psychicznego; dane identyfikacyjne pojawiające się w nagraniu (imiona, nazwiska, adresy — w zakresie wypowiadanym przez uczestników); automatyczna transkrypcja z etykietami mówców (neutralne: „Osoba 1", „Osoba 2" lub ról: „Terapeuta", „Pacjent") oraz podlegająca 3-warstwowej pseudonimizacji i redakcji PII w locie |
 | **Cel przetwarzania** | Wykonanie usługi na polecenie Administratora: konwersja mowy na tekst w celu dalszej analizy AI |
-| **Sub-procesorzy** | Google Cloud Storage (tymczasowe przechowywanie audio — europe-central2), Google Cloud — Vertex AI Speech-to-Text Chirp 3 (transkrypcja — eu-speech.googleapis.com / europe-west4) |
-| **Transfer poza EOG** | **Brak** — przetwarzanie wyłącznie w EOG (europe-central2 + europe-west4) |
-| **Środki bezpieczeństwa** | Szyfrowanie CMEK (audio bucket), OLM 48h automatyczne usuwanie, TLS/SSL w tranzycie, dedykowane SA (stt-worker-sa) z minimalnymi uprawnieniami, idempotencja (status check `FOR UPDATE SKIP LOCKED`) |
+| **Sub-procesorzy** | ElevenLabs, Inc. (Scribe v2 — dedykowany endpoint rezydencji danych w UE `api.eu.residency.elevenlabs.io` — EOG, brak trwałego zapisu audio, zakaz treningu modeli), Google Cloud Storage (tymczasowe przechowywanie audio — europe-central2), Google Cloud — Vertex AI Speech-to-Text (fallback — eu-speech.googleapis.com / europe-west4) |
+| **Transfer poza EOG** | **Brak** — przetwarzanie wyłącznie w EOG (europe-central2 + europe-west4 + ElevenLabs EU residency) |
+| **Środki bezpieczeństwa** | Szyfrowanie CMEK (audio bucket), OLM 48h automatyczne usuwanie, TLS 1.3 w tranzycie, dedykowane SA (stt-worker-sa) z minimalnymi uprawnieniami, deterministyczna redakcja PII w locie, idempotencja (status check `FOR UPDATE SKIP LOCKED`) |
 
 ---
 
@@ -138,14 +138,14 @@ Euphire sp. z o.o. jest Podmiotem Przetwarzającym dane osobowe Klientów (pacje
 | Pole | Opis |
 |---|---|
 | **Nr czynności** | B-2 |
-| **Nazwa czynności** | Generowanie ustrukturyzowanego Raportu z Sesji i pomiarów HiTOP przez LLM (Gemini 2.5 Pro) |
+| **Nazwa czynności** | Generowanie ustrukturyzowanego Raportu z Sesji i pomiarów HiTOP przez certyfikowany model LLM na Vertex AI |
 | **Administrator** | Użytkownik Profesjonalny |
 | **Kategorie osób** | Klienci (pacjenci) |
-| **Kategorie danych** | **Dane szczególnych kategorii:** transkrypcja sesji (zaszyfrowana, odszyfrowana w runtime na potrzeby promptu), kontekst pamięci RAG (pseudonimizowany). Wyjście: raport sesji (zaszyfrowany), pomiary HiTOP (severity, confidence), metryki procesu |
+| **Kategorie danych** | **Dane szczególnych kategorii:** transkrypcja sesji po redakcji PII (zaszyfrowana, odszyfrowana w runtime na potrzeby promptu), kontekst pamięci RAG (pseudonimizowany). Wyjście: raport sesji (zaszyfrowany), pomiary HiTOP (severity, confidence), metryki procesu |
 | **Cel przetwarzania** | Generowanie raportu klinicznego i pomiarów wymiarowych HiTOP na polecenie Administratora |
-| **Sub-procesorzy** | Google Cloud — Vertex AI Gemini 2.5 Pro (europe-west4), Google Cloud — Text Embeddings (europe-west4) |
-| **Transfer poza EOG** | **Brak** — Vertex AI skonfigurowany na europe-west4 (Holandia, EOG) |
-| **Środki bezpieczeństwa** | Envelope encryption wyników (AEAD + Cloud KMS), dedykowane SA (llm-worker-sa), idempotencja pipeline, raporty dostępne w trybie read-only (P4), pseudonimizacja pamięci kontekstowej |
+| **Sub-procesorzy** | Google Cloud — Vertex AI (europe-west4), Google Cloud — Text Embeddings (europe-west4) |
+| **Transfer poza EOG** | **Brak** — Vertex AI skonfigurowany na europe-west4 (Holandia, EOG) z gwarancją Zero Data Retention i brakiem użycia danych do trenowania modeli bazowych |
+| **Środki bezpieczeństwa** | Envelope encryption wyników (AEAD + Cloud KMS), dedykowane SA (llm-worker-sa), idempotencja pipeline, raporty dostępne w trybie read-only (P4), 3-warstwowa pseudonimizacja pamięci kontekstowej |
 
 ---
 
@@ -157,11 +157,11 @@ Euphire sp. z o.o. jest Podmiotem Przetwarzającym dane osobowe Klientów (pacje
 | **Nazwa czynności** | Trwałe przechowywanie zaszyfrowanych transkrypcji, raportów, pomiarów HiTOP, pamięci kontekstowej RAG, kartotek pacjentów i notatek |
 | **Administrator** | Użytkownik Profesjonalny |
 | **Kategorie osób** | Klienci (pacjenci) |
-| **Kategorie danych** | **Dane szczególnych kategorii:** zaszyfrowane transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa (pseudonimizowana), notatki do pacjentów. Dane nieosobowe: working alias pacjenta, typ procesu (indywidualny/par/rodzinny), forma kontaktu, numer sesji |
+| **Kategorie danych** | **Dane szczególnych kategorii:** zaszyfrowane transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa (pseudonimizowana), notatki do pacjentów. Dane nieosobowe: working alias pacjenta (brak imion i nazwisk w kartotece), typ procesu (indywidualny/par/rodzinny), forma kontaktu, numer sesji |
 | **Cel przetwarzania** | Udostępnienie Administratorowi materiałów sesyjnych, zapewnienie ciągłości terapeutycznej, realizacja praw podmiotów danych (dostęp, eksport, usunięcie) |
 | **Sub-procesorzy** | Google Cloud SQL PostgreSQL (europe-central2), Google Cloud KMS (europe-central2) |
 | **Transfer poza EOG** | **Brak** |
-| **Środki bezpieczeństwa** | Envelope encryption (AEAD + KMS CMEK z rotacją co 90 dni), szyfrowanie Cloud SQL w spoczynku (CMEK), SSL_MODE=ENCRYPTED_ONLY, VPC Connector, soft delete + GDPR Purger (30 dni), audyt każdej operacji (`audit_events`), ON DELETE RESTRICT (ADR-DM-010) |
+| **Środki bezpieczeństwa** | Envelope encryption (AEAD + KMS CMEK z rotacją co 90 dni), szyfrowanie Cloud SQL w spoczynku (CMEK), SSL_MODE=ENCRYPTED_ONLY, VPC Connector, dwuskładnikowa aktywacja pacjenta (kod parowania hash), soft delete + GDPR Purger (30 dni), audyt każdej operacji (`audit_events`), ON DELETE RESTRICT (ADR-DM-010) |
 
 ---
 
@@ -204,7 +204,8 @@ Na dzień sporządzenia niniejszego Rejestru, Podmiot Przetwarzający korzysta z
 | Sub-procesor | Usługa | Lokalizacja | Umowa podpowierzenia | Certyfikaty |
 |---|---|---|---|---|
 | Google Cloud EMEA Ltd / Google LLC | Cloud Run, Cloud SQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | europe-central2 (Warszawa) | Google Cloud DPA | ISO 27001, 27017, 27018, SOC 1/2/3 |
-| Google Cloud — Vertex AI | Speech-to-Text (Chirp 3), Gemini 2.5 Pro, Text Embeddings | europe-west4 (Holandia) | j.w. | j.w. |
+| Google Cloud — Vertex AI | Raporty AI, Text Embeddings, Speech-to-Text (fallback) | europe-west4 (Holandia) | j.w. | j.w. |
+| ElevenLabs, Inc. | Speech-to-Text (Scribe v2) | api.eu.residency.elevenlabs.io (EOG) | ElevenLabs DPA (EU Residency) | SOC 2 Type II, ISO 27001 |
 | Google Firebase | Cloud Firestore, FCM | Firestore: europe-central2; FCM: globalnie | j.w. | j.w. |
 
 **Uwaga:** Stripe i Resend przetwarzają wyłącznie dane Użytkowników Profesjonalnych (nie Klientów) i nie są Sub-procesorami w rozumieniu DPA.
@@ -215,14 +216,15 @@ Na dzień sporządzenia niniejszego Rejestru, Podmiot Przetwarzający korzysta z
 
 | Kategoria | Środek |
 |---|---|
-| **Szyfrowanie w spoczynku** | CMEK (Cloud KMS) dla Cloud SQL, Cloud Storage, Secret Manager; Envelope Encryption (AEAD) dla wszystkich kolumn PHI z automatyczną rotacją KEK co 90 dni |
-| **Szyfrowanie w tranzycie** | TLS/SSL dla wszystkich połączeń; gRPC (HTTP/2) między mikroserwisami; Cloud SQL: `ssl_mode = ENCRYPTED_ONLY` |
+| **Szyfrowanie w spoczynku** | CMEK (Cloud KMS) dla Cloud SQL, Cloud Storage, Secret Manager; Envelope Encryption (AEAD AES-256-GCM) dla wszystkich kolumn PHI z automatyczną rotacją KEK co 90 dni |
+| **Szyfrowanie w tranzycie** | TLS/SSL (TLS 1.3) dla wszystkich połączeń; gRPC (HTTP/2) między mikroserwisami; Cloud SQL: `ssl_mode = ENCRYPTED_ONLY` |
 | **Kontrola dostępu** | Dedykowane Service Accounts z minimalnymi uprawnieniami dla każdego mikroserwisu (Zero Trust); Firebase Authentication; Workload Identity Federation (CI/CD bez kluczy) |
 | **Izolacja sieciowa** | VPC Connector dla Cloud SQL; prywatny adres IP; autoryzowane sieci ograniczone do listy administracyjnej |
-| **Pseudonimizacja** | Neutralne etykiety mówców (`pkg/i18n/speakerlabels`); pamięć RAG pseudonimizowana (bez imion, nazwisk, nazw miejsc); embedding chunks z zredagowanym tekstem |
+| **3-warstwowa pseudonimizacja** | Neutralne etykiety mówców (`pkg/i18n/speakerlabels`); minimalizacja u źródła (brak nazwisk w kartotekach, working alias); deterministyczna redakcja w locie PII (nazwiska, PESEL, telefony, adresy, placówki, miejscowości); pamięć RAG pseudonimizowana |
+| **Autoryzacja zaproszeń (2FA)** | 2-składnikowa aktywacja pacjenta: link e-mail + 6-cyfrowy kod parowania przekazywany osobiście; przechowywanie wyłącznie hasha; blokada po 5 próbach; TTL 72h |
 | **Minimalizacja danych** | Audio usuwane po transkrypcji (OLM 48h); surowe wyniki STT usuwane po 7 dniach; analityka po 90 dniach |
 | **Automatyczne usuwanie** | GDPR Purger (Cloud Run Job) — hard delete po 30 dniach soft delete; OLM lifecycle rules na GCS |
-| **Audyt i logowanie** | Tabela `audit_events` w każdym serwisie; Cloud Logging; ADMIN_READ audit config na wszystkich usługach GCP |
+| **Audyt i logowanie** | Tabela `audit_events` w każdym serwisie; Cloud Logging; ADMIN_READ audit config na wszystkich usługach GCP (z inwariantem braku PHI w logach) |
 | **Ciągłość działania** | Automated Cloud SQL backups (zaszyfrowane CMEK); Pub/Sub at-least-once delivery z DLQ; idempotencja pipeline |
 | **Rozliczalność** | Niniejszy Rejestr; DPA; Polityka Prywatności; Polityka Retencji; Infrastructure as Code (Terraform) z kontrolą wersji |
 

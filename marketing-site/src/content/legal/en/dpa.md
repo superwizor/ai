@@ -39,17 +39,18 @@ The Parties agree as follows:
 2.  **Subject of processing:** Performance of services provided by the Processor under the Main Agreement, consisting of processing audio recordings of therapy and coaching sessions, their transcription, analysis using artificial intelligence, and generation of session reports. 
 3.  **Nature and purpose of processing:** Performing operations on Personal Data necessary to provide the Application services to the Controller, in accordance with the functionalities described in § 4 of the Terms, in particular: 
     *   Temporary storage of audio recordings (the recording is deleted immediately after successful transcription, and at the latest by an automatic cleanup mechanism triggered 48 hours after upload).
-    *   Automatic transcription of audio recordings using Speech-to-Text technology (Chirp 3).
+    *   Automatic transcription of audio recordings using Speech-to-Text technology on dedicated EU-resident infrastructure (ElevenLabs on a dedicated EU residency endpoint with zero data retention and no model training; Google Speech-to-Text EU as fallback).
     *   Diarization (identification and differentiation of speakers) together with automatic assignment of labels describing the speaker's role in the conversation (e.g., "Therapist", "Patient", or in coaching sessions "Coach", "Client") or neutral labels (e.g., "Person 1") when the role cannot be determined; labels do not contain first or last names and may be corrected by the Controller.
-    *   Generation of structured session reports using artificial intelligence (Vertex AI / Gemini).
+    *   3-layer pseudonymization of session content (deterministic on-the-fly redaction of surnames, PESEL/national IDs, phone numbers, addresses, employers, schools, and localities) before persistent storage.
+    *   Generation of structured session reports using artificial intelligence in an enterprise-certified EEA environment (Vertex AI).
     *   Generation of HiTOP dimensional measurements.
-    *   Creation and storage of encrypted contextual memory (RAG) — pseudonymized (stripped of direct identifiers) session summaries and related thematic threads to ensure therapeutic continuity.
-    *   Generation of embeddings (vector representations) for contextual memory.
+    *   Creation and storage of encrypted contextual memory (RAG) — pseudonymized session summaries and related thematic threads to ensure therapeutic continuity.
+    *   Generation of embeddings (vector representations) for contextual memory on redacted text.
     *   Storage of encrypted transcriptions and reports as User Materials.
 4.  **Type of Personal Data:** Data specified in Part II of the Privacy Policy ("Information for Clients"), in particular: 
-    *   Identification and contact data, insofar as they appear in the recording or transcription. 
+    *   Identification and contact data, subject to the source minimalization invariant: the system does not collect Client first or last names in clinical files (the file operates on a working alias, and the only direct account identifier is the email address processed in the identity domain). 
     *   Special categories of Personal Data, i.e., data concerning the physical or mental health of Clients (Art. 9 sec. 1 of the GDPR). 
-    *   Any other Personal Data contained in audio recordings, their transcriptions, session reports, and contextual memory. 
+    *   Any other Personal Data contained in audio recordings, their transcriptions, session reports, and contextual memory (subject to automatic PII redaction). 
 5.  **Categories of data subjects:** Clients of the Controller, as defined in § 2 point 9 of the Terms, as well as other persons participating in recorded sessions (e.g., a partner in couples therapy, family members, guardians). 
 6.  **Duration of processing:** Personal Data will be processed for the duration of the Main Agreement, in accordance with § 13 of the Terms, subject to the following:
     *   Audio recordings are deleted immediately after successful transcription, and at the latest by the automatic cleanup mechanism triggered 48 hours after upload (regardless of the Agreement status).
@@ -66,6 +67,8 @@ The Processor undertakes to:
 3.  **Security of processing (Art. 32 GDPR):** Implement and apply appropriate technical and organizational measures to ensure a level of security appropriate to the risk, in particular as described in Part I, point 5 of the Privacy Policy, including:
     *   Envelope encryption of special categories of data at the application level and CMEK keys managed in Cloud KMS with automatic rotation every 90 days.
     *   Storage and processing of Personal Data exclusively within the EEA: the europe-central2 region (Warsaw) and — for AI services — europe-west4 (Netherlands); resource locations are defined in infrastructure-as-code configuration subject to version control.
+    *   3-layer pseudonymization and minimalization at source (no names in clinical records, working alias, on-the-fly PII redaction).
+    *   Two-factor Client account activation procedure (email link plus a 6-digit pairing code handed in person during session, with hashing and lock out after 5 invalid attempts).
     *   Database access over encrypted channels from a private VPC network, with direct access restricted to a controlled list of authorized administrative addresses.
     *   Dedicated Service Accounts with minimum permissions for each microservice.
     *   Deletion of audio recordings immediately after transcription, at the latest by the automatic mechanism (OLM) after 48 hours.
@@ -106,7 +109,8 @@ The Controller declares and warrants that:
 | Sub-processor | Service | Data Processed | Location |
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Backend processing and storage of Personal Data | europe-central2 (Warsaw, Poland) |
-| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (reports), Text Embeddings (RAG) | Transcription, report generation, embeddings | europe-west4 (Netherlands) — EEA |
+| **Google Cloud — Vertex AI** | AI report generation, Text Embeddings (RAG), Speech-to-Text (fallback) | Analytical report processing, embeddings | europe-west4 (Netherlands) — EEA |
+| **ElevenLabs, Inc.** | Speech-to-Text (Scribe v2) | Synchronous audio-to-text processing (zero audio retention, no model training) | Dedicated EU residency endpoint (api.eu.residency.elevenlabs.io) — EEA |
 | **Google Firebase** | Cloud Firestore (mirrored session processing statuses — no session content), FCM (push notifications — no session content) | Pseudonymous session identifiers and processing statuses | Firestore: europe-central2; FCM: a global Google service (notification content does not contain Clients' Personal Data) |
 
     Providers processing exclusively Professional Users' data (in particular Stripe — payment processing, and Resend — sending e-mails to the User) do not process Clients' Personal Data and are not Sub-processors within the meaning of this DPA; they are listed in the Privacy Policy as recipients of Professional Users' data.
