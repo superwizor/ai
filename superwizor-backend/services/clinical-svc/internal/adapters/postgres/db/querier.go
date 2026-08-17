@@ -142,9 +142,25 @@ type Querier interface {
 	GetAvgSessionDuration(ctx context.Context) (float64, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetAvgTokenUtilization(ctx context.Context) (float64, error)
+	// Lejek zaproszeń do aplikacji klienta. patient_file_id odróżnia
+	// zaproszenie klienta od zaproszenia terapeuty do organizacji.
+	GetClientInvitationFunnel(ctx context.Context) (GetClientInvitationFunnelRow, error)
 	// docs/39 PR13: fetch a note for the hard-delete authz check. Handler
 	// verifies patient_file_id belongs to the caller and kind = CLIENT_NOTE.
 	GetClientNoteForDelete(ctx context.Context, id uuid.UUID) (GetClientNoteForDeleteRow, error)
+	// ─────────────────────────────────────────────────────────────────
+	// Użycie i pętla z klientem (14.08.2026).
+	//
+	// Panel odpowiadał dotąd na pytanie "jak działa system" — koszty,
+	// jakość modeli, awarie. Nie odpowiadał na "jak ludzie z niego
+	// korzystają". Poniższe zapytania nie wymagają ANI JEDNEGO nowego
+	// zdarzenia: wszystko leży już w sessions, invitations i w parach
+	// report.read_started / report.read_finished.
+	// ─────────────────────────────────────────────────────────────────
+	// Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
+	// client_hidden_at to sygnał odrzucenia — raport dotarł, ale klient go
+	// schował; bez tego widzielibyśmy tylko wysyłkę, nie odbiór.
+	GetClientSharingTrend(ctx context.Context) ([]GetClientSharingTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetCohortRetention(ctx context.Context) ([]GetCohortRetentionRow, error)
 	// CROSS-SERVICE READ: analytics-only
@@ -190,6 +206,9 @@ type Querier interface {
 	GetOrgTherapistMetrics(ctx context.Context, arg GetOrgTherapistMetricsParams) ([]GetOrgTherapistMetricsRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetOverallSatisfactionRate(ctx context.Context) (float64, error)
+	// Ile prób kodu parowania potrzebuje klient. Rozkład, nie średnia —
+	// interesuje nas ogon, czyli ci, którzy męczą się kilka razy.
+	GetPairingCodeFriction(ctx context.Context) ([]GetPairingCodeFrictionRow, error)
 	// Kept for code paths that don't need user fields (e.g. internal
 	// authz/ownership checks). External callers use GetPatientFileWithUser.
 	GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error)
@@ -239,6 +258,9 @@ type Querier interface {
 	GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetReadReportCount(ctx context.Context) (int64, error)
+	// Gdzie czytane są raporty. client_platform jest wypełniany przy
+	// każdym zdarzeniu klienckim, więc to działa od pierwszego dnia.
+	GetReadingPlatformSplit(ctx context.Context) ([]GetReadingPlatformSplitRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetRegistrationsDetail(ctx context.Context, createdAt time.Time) ([]GetRegistrationsDetailRow, error)
 	// CROSS-SERVICE READ: analytics-only
@@ -250,6 +272,13 @@ type Querier interface {
 	// therapist owns the session that owns the report (auth happens at
 	// the handler boundary, not in SQL).
 	GetReportRating(ctx context.Context, arg GetReportRatingParams) (ReportRating, error)
+	// Czas czytania raportu. active_read_ms mierzy klient i zatrzymuje
+	// licznik przy zejściu aplikacji w tło, więc to czas AKTYWNY, a nie
+	// czas otwartego ekranu.
+	//
+	// Różnica started-finished to czytania przerwane: użytkownik otworzył
+	// raport i wyszedł bez domknięcia sesji czytania.
+	GetReportReadingStats(ctx context.Context) (GetReportReadingStatsRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	// MRR snapshot: counts active subscriptions per plan tier
 	GetRevenueTrend(ctx context.Context) ([]GetRevenueTrendRow, error)

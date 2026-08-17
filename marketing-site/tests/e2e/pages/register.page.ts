@@ -16,7 +16,14 @@ export class RegisterTherapistPage {
   readonly passwordInput: Locator;
   readonly firstNameInput: Locator;
   readonly lastNameInput: Locator;
-  readonly professionalTitleInput: Locator;
+  /** Krok 5 to dziś wybór języka interfejsu — pole `professionalTitle`
+   *  zostało usunięte z formularza rejestracji (żyje już tylko w panelu
+   *  admina).
+   *
+   *  Lokator celuje w ETYKIETĘ, nie w pole: FieldShell przekazuje `id`
+   *  wyłącznie do htmlFor na <label>, więc element o id="uiLanguage"
+   *  nie istnieje w DOM. */
+  readonly uiLanguageField: Locator;
   readonly tosCheckbox: Locator;
   readonly submitButton: Locator;
   readonly validationErrors: Locator;
@@ -36,7 +43,7 @@ export class RegisterTherapistPage {
     this.passwordInput = page.locator("#password");
     this.firstNameInput = page.locator("#firstName");
     this.lastNameInput = page.locator("#lastName");
-    this.professionalTitleInput = page.locator("#professionalTitle");
+    this.uiLanguageField = page.locator('label[for="uiLanguage"]');
     this.tosCheckbox = page.locator("#tos");
     this.nextStepButton = page.locator("#next-step-btn");
     this.phoneNumberInput = page.locator("#phoneNumber");
@@ -70,7 +77,6 @@ export class RegisterTherapistPage {
     firstName: string;
     lastName: string;
     phoneNumber: string;
-    professionalTitle: string;
   }> = {}) {
     const defaults = {
       email: "e2e@example.com",
@@ -78,7 +84,6 @@ export class RegisterTherapistPage {
       firstName: "Anna",
       lastName: "Kowalska",
       phoneNumber: "+48500100200",
-      professionalTitle: "Psychoterapeutka CBT",
     };
     const data = { ...defaults, ...overrides };
 
@@ -98,8 +103,13 @@ export class RegisterTherapistPage {
     await this.phoneNumberInput.fill(data.phoneNumber);
     await this.nextStepButton.click();
 
-    // Step 5 (Clinical Details / specialization & preferences)
-    await this.professionalTitleInput.fill(data.professionalTitle);
+    // Krok 5 (język interfejsu) to RadioGroup z domyślnie zaznaczonym
+    // językiem strony — nie wymaga interakcji. Czekamy na PRZYCISK
+    // WYSYŁKI, bo to jest właściwy kontrakt tej metody: zostawić
+    // formularz gotowy do submit(). Wcześniejsza wersja czekała na samo
+    // pole języka i wywracała test "identity-svc unreachable", który
+    // przez ten krok nie przechodzi.
+    await this.submitButton.waitFor({ state: "visible" });
   }
 
   /** Submit the form. */

@@ -95,6 +95,15 @@ jobs:
         working-directory: marketing-site
         run: pnpm run check:l10n
 
+      # Testy jednostkowe czystej logiki (vitest). BLOKUJĄCE i celowo
+      # przed buildem — trwają sekundy, więc niech wywalą się pierwsze.
+      # Pokrywają m.in. regresję z 2026-08-05: interceptor wysyłał
+      # żądania bez nagłówka Authorization, gdy sesja Firebase nie była
+      # jeszcze odtworzona, a 401 wyglądał jak awaria serwera.
+      - name: Unit tests
+        working-directory: marketing-site
+        run: pnpm test
+
       - name: Build
         working-directory: marketing-site
         run: pnpm build

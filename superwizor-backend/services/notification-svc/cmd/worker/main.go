@@ -42,6 +42,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
 	fswriter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/firestore"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
@@ -72,15 +73,17 @@ type SessionDeletedEvent struct {
 // Globals — populated by init() once per Cloud Function instance, reused
 // across invocations.
 var (
-	store      *pgstore.Store
-	fsWriter   *fswriter.Writer
-	fcmSender  *fcm.Sender
-	projectID  string
+	store     *pgstore.Store
+	fsWriter  *fswriter.Writer
+	fcmSender *fcm.Sender
+	projectID string
 )
 
 func init() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// pkg/logging: bez mapowania level→severity Cloud Logging widzi
+	// wszystko jako DEFAULT. Alerty w infra/modules/monitoring dopasowuja
+	// sie po jsonPayload.msg, ktore helper zachowuje.
+	logging.SetupDefault()
 
 	ctx := context.Background()
 	projectID = os.Getenv("GCP_PROJECT_ID")
@@ -491,11 +494,11 @@ var _ = (*fbmessaging.Client)(nil)
 // fan-out from DeletePatientFile (which can fire N events in succession).
 //
 // Two cleanup actions, both best-effort:
-//   1. Delete session_states/{sessionId} doc so the Flutter listener
-//      stops showing the stale stepper.
-//   2. Delete every user_notifications/{uid}/inbox/{notif} doc that
-//      references this session, so the inbox tray doesn't keep showing
-//      "Report ready" entries for a session that no longer exists.
+//  1. Delete session_states/{sessionId} doc so the Flutter listener
+//     stops showing the stale stepper.
+//  2. Delete every user_notifications/{uid}/inbox/{notif} doc that
+//     references this session, so the inbox tray doesn't keep showing
+//     "Report ready" entries for a session that no longer exists.
 //
 // Idempotent: deleting a missing doc is a no-op in Firestore, and the
 // inbox cleanup walks via CollectionGroup so re-running just finds zero
@@ -558,4 +561,3 @@ func ProcessSessionDeleted(ctx context.Context, e event.Event) error {
 	// 000012 when the PG cascade runs, so audit history survives).
 	return nil
 }
-

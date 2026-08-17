@@ -97,6 +97,42 @@ func (q *Queries) AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanB
 	return i, err
 }
 
+const adminResetSingleTherapistCounter = `-- name: AdminResetSingleTherapistCounter :execrows
+UPDATE usage_counters
+SET tokens_used = COALESCE($1::int, tokens_used),
+    updated_at  = now()
+WHERE subscription_id = $2
+  AND therapist_id = $3
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+type AdminResetSingleTherapistCounterParams struct {
+	TokensUsed     *int32      `json:"tokens_used"`
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+}
+
+// AdminResetTokens zawężony do JEDNEGO terapeuty (pole therapist_id w
+// żądaniu). Panel wysyła to z karty użytkownika — wcześniej karta
+// wołała wariant obejmujący całą organizację, więc reset "dla tej
+// osoby" zerował licznik każdemu terapeucie w firmie, a powód w audycie
+// wymieniał jedną osobę. Ślad twierdził mniej, niż operacja robiła.
+//
+// tokens_limit celowo nieobsługiwany, tak samo jak w wariancie zbiorczym:
+// limit miejsca pochodzi z planu przypisanego do przydziału miejsc.
+//
+// Zwraca 0 wierszy, gdy terapeuta nie ma licznika w bieżącym okresie
+// (nic jeszcze nie zużył) albo należy do innej subskrypcji — handler
+// rozróżnia te przypadki i nie udaje sukcesu.
+func (q *Queries) AdminResetSingleTherapistCounter(ctx context.Context, arg AdminResetSingleTherapistCounterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, adminResetSingleTherapistCounter, arg.TokensUsed, arg.SubscriptionID, arg.TherapistID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const adminResetTherapistCounters = `-- name: AdminResetTherapistCounters :execrows
 UPDATE usage_counters
 SET tokens_used = COALESCE($1::int, tokens_used),
@@ -158,6 +194,35 @@ func (q *Queries) AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounter
 		&i.TherapistID,
 	)
 	return i, err
+}
+
+const closeActiveCountersForSubscription = `-- name: CloseActiveCountersForSubscription :execrows
+UPDATE usage_counters
+SET period_end = now(),
+    updated_at = now()
+WHERE subscription_id = $1
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+// Domyka bieżący okres na WSZYSTKICH aktywnych licznikach subskrypcji —
+// org-level i per-terapeutowych — ustawiając period_end na teraz.
+//
+// Potrzebne przy restarcie okresu (AdminChangePlan dla subskrypcji
+// MANUAL). Bez tego stary licznik dalej spełnia predykat aktywności
+// (period_start <= now() < period_end) razem z nowo utworzonym, a
+// GetActiveCounter jest zapytaniem :one — przy dwóch pasujących
+// wierszach wybór staje się losowy i limit potrafiłby "migotać"
+// między starym a nowym.
+//
+// tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
+// zużycie jako zapis historyczny rozliczenia.
+func (q *Queries) CloseActiveCountersForSubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, closeActiveCountersForSubscription, subscriptionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const createBillingAuditEvent = `-- name: CreateBillingAuditEvent :one
@@ -257,6 +322,92 @@ func (q *Queries) CreateUsageCounter(ctx context.Context, arg CreateUsageCounter
 		&i.TherapistID,
 	)
 	return i, err
+}
+
+const listCountersBelowPlanLimit = `-- name: ListCountersBelowPlanLimit :many
+SELECT c.id AS counter_id,
+       s.id AS subscription_id,
+       s.organization_id,
+       c.therapist_id,
+       c.tokens_limit,
+       p.tokens_per_period AS plan_tokens_per_period,
+       p.tier,
+       p.cycle
+FROM usage_counters c
+JOIN subscriptions s ON s.id = c.subscription_id
+JOIN subscription_plans p ON p.id = s.plan_id
+WHERE s.status IN ('ACTIVE', 'TRIALING')
+  AND c.period_start <= now()
+  AND c.period_end > now()
+  AND c.therapist_id IS NULL
+  AND p.tier <> 'TRIAL'
+  AND c.tokens_limit < p.tokens_per_period
+`
+
+type ListCountersBelowPlanLimitRow struct {
+	CounterID           uuid.UUID    `json:"counter_id"`
+	SubscriptionID      uuid.UUID    `json:"subscription_id"`
+	OrganizationID      uuid.UUID    `json:"organization_id"`
+	TherapistID         pgtype.UUID  `json:"therapist_id"`
+	TokensLimit         int32        `json:"tokens_limit"`
+	PlanTokensPerPeriod int32        `json:"plan_tokens_per_period"`
+	Tier                PlanTier     `json:"tier"`
+	Cycle               BillingCycle `json:"cycle"`
+}
+
+// Weekly safety-check, drugi detektor: otwarte liczniki, które dają
+// MNIEJ sesji, niż obiecuje plan subskrypcji.
+//
+// tokens_limit jest migawką z chwili powstania licznika, nie odczytem
+// planu na żywo. Przecena katalogu (migracja 000070: PRO Monthly 40→90)
+// nie propaguje się do liczników otwartego okresu, więc klient przez
+// cały okres widzi stary, niższy limit. Tak właśnie wyszedł na jaw
+// rozjazd zgłoszony 2026-08-01 — i wyszedł od użytkownika, nie od nas.
+//
+// Celowo TYLKO kierunek "<". Nadania administracyjne zawsze podnoszą
+// limit ponad plan (limit 50 przy planie 30) i są zamierzone; alert na
+// nich zamieniłby ten detektor w szum, który wszyscy wyciszą.
+// Nic tu nie naprawiamy automatycznie: podniesienie limitu to decyzja
+// handlowa, a obniżenie może wyrzucić klienta ponad zużycie.
+//
+// Tylko wiersze org-level. Licznik per-terapeutowy bierze limit z planu
+// JEGO MIEJSCA (docs/38), a nie z planu subskrypcji — terapeuta na
+// miejscu SOLO (30) w organizacji na PRO (90) jest poprawny, więc
+// porównanie z planem subskrypcji dałoby tu fałszywy alarm.
+//
+// TRIAL jest wyłączony i to nie jest wygodne uproszczenie. Liczniki
+// trialowe są zakładane z realnym progiem próbnym (3 lub 5), podczas
+// gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny jest KATALOG,
+// nie licznik. Bez tego wyłączenia detektor zgłaszał ~190 organizacji
+// próbnych naraz (sprawdzone na stagingu 2026-08-01) i utonąłby
+// w szumie razem z dwoma prawdziwymi trafieniami.
+func (q *Queries) ListCountersBelowPlanLimit(ctx context.Context) ([]ListCountersBelowPlanLimitRow, error) {
+	rows, err := q.db.Query(ctx, listCountersBelowPlanLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCountersBelowPlanLimitRow
+	for rows.Next() {
+		var i ListCountersBelowPlanLimitRow
+		if err := rows.Scan(
+			&i.CounterID,
+			&i.SubscriptionID,
+			&i.OrganizationID,
+			&i.TherapistID,
+			&i.TokensLimit,
+			&i.PlanTokensPerPeriod,
+			&i.Tier,
+			&i.Cycle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listExpiredManualSubscriptions = `-- name: ListExpiredManualSubscriptions :many

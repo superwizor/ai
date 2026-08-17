@@ -471,15 +471,40 @@ export function TherapistEmailForm() {
         await identityClient.updateProfile(updateReq);
       }
 
-      // 4. Redirect based on plan selection
-      await handlePostRegistrationRedirect(
-        created.organizationId ?? "",
-        planSlug,
-        prefix,
-        data.email,
-        data.phoneNumber ?? undefined,
-        `${data.firstName || ""} ${data.lastName || ""}`.trim() || undefined,
-      );
+      // 4. Przekierowanie — CELOWO poza blokiem, który raportuje
+      //    "rejestracja się nie udała".
+      //
+      //    Konto jest w tym miejscu w pełni założone: Firebase, CreateUser
+      //    i UpdateProfile już przeszły. Wcześniej to wywołanie siedziało
+      //    w tym samym try, więc awaria przekierowania (np. tworzenie
+      //    sesji Stripe Checkout) wyświetlała "Coś poszło nie tak" i
+      //    użytkownik próbował rejestrować się ponownie — dostając
+      //    "ten e-mail jest już zajęty" na koncie, które przed chwilą
+      //    sam założył. Dokładnie tak wyglądało zgłoszenie z 2026-08-05,
+      //    gdzie logi pokazują CreateUser 200 i UpdateProfile 200 mimo
+      //    komunikatu o błędzie.
+      try {
+        await handlePostRegistrationRedirect(
+          created.organizationId ?? "",
+          planSlug,
+          prefix,
+          data.email,
+          data.phoneNumber ?? undefined,
+          `${data.firstName || ""} ${data.lastName || ""}`.trim() || undefined,
+        );
+      } catch (redirectErr) {
+        console.error(
+          "[register] konto założone, przekierowanie nie powiodło się",
+          redirectErr,
+        );
+        // Zapasowe przejście na ekran weryfikacji e-maila. Konto istnieje,
+        // więc jedyne, czego brakuje, to nawigacja — nie wolno tego
+        // przedstawić jako nieudanej rejestracji.
+        window.location.href =
+          `${prefix}/register/therapist/verify-email` +
+          `?email=${encodeURIComponent(data.email)}`;
+      }
+      return;
     } catch (e) {
       if (e instanceof FirebaseError) {
         if (e.code === "auth/email-already-in-use") {

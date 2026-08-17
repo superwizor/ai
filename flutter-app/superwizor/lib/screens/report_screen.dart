@@ -469,6 +469,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'NoteEditorScreen'),
         builder: (_) => NoteEditorScreen(
           patientId: patientFileId,
           actionPlanMode: true,

@@ -1153,6 +1153,16 @@
   "sessionDetails_transcript_soon": "Transkrypcja — wkrótce",
   "sessionDetails_transcript_soon_desc": "Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.",
   "sessionStatus_bg_processing_notice": "Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.",
+  "sessionStatus_keep_app_open": "Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer",
+  "sessionStatus_analysis_on_server": "Możesz zamknąć aplikację. Analiza trwa na naszych serwerach.",
+  "sessionStatus_stalled_hint": "Przesyłanie czeka już {minutes} min. Zostaw ten ekran otwarty, aby je dokończyć.",
+  "@sessionStatus_stalled_hint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "sessionStatus_btn_delete_session": "Usuń sesję",
   "sessionStatus_report_failed_contact": "Jeśli sytuacja się powtarza, daj nam znać.",
   "sessionStatus_report_failed_perm": "Nie udało się wygenerować raportu dla tej sesji.\n\n",
@@ -1201,8 +1211,6 @@
   "settings_haptics_on": "Wibracje włączone",
   "settings_language": "Język aplikacji",
   "settings_language_app": "Język aplikacji",
-  "settings_licenses": "Licencje oprogramowania",
-  "settings_licenses_desc": "Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.",
   "settings_live_activities": "Aktywność na ekranie blokady",
   "settings_live_activities_off": "Status sesji widoczny tylko w aplikacji.",
   "settings_live_activities_on": "Czas i status sesji widoczne bez odblokowywania telefonu.",

@@ -398,7 +398,7 @@ class _PreferenceSuggestionBannerState
       if (!mounted) return;
       setState(() => _hiddenLocally = true);
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const MenuScreen()),
+        MaterialPageRoute(settings: const RouteSettings(name: 'MenuScreen'), builder: (_) => const MenuScreen()),
       );
       return;
     }

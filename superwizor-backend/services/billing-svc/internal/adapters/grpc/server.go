@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -459,6 +460,38 @@ func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubsc
 // orgs), else the SUM over all per-therapist counters (docs/38
 // allocation-managed orgs, which may have no org-level row). ok=false
 // when no counter of any scope exists this period.
+// counterForCaller resolves WHOSE quota this response describes.
+//
+// Under the docs/38 seat model a therapist inside an organization draws
+// on a per-therapist usage_counters row; the org-level row (therapist_id
+// IS NULL) is a different budget that may exist alongside it for the very
+// same period. Reading the wrong one is not a rounding error — the app
+// showed 40 tokens / 0 used while the therapist's actual seat was 30 / 1.
+//
+// The per-therapist row wins when it exists. Everything else — no
+// therapist_id (server-to-server callers, the org panel), a malformed
+// id, or a therapist with no counter yet — falls through to the previous
+// org-level behaviour, so this stays additive.
+func (s *Server) counterForCaller(
+	ctx context.Context, subID uuid.UUID, therapistIDRaw string,
+) (used, reserved, limit int32, ok bool) {
+	if therapistIDRaw != "" {
+		therapistID, err := uuid.Parse(therapistIDRaw)
+		if err == nil {
+			counter, err := s.queries.GetActiveCounterForTherapist(ctx,
+				db.GetActiveCounterForTherapistParams{
+					SubscriptionID: subID,
+					TherapistID:    pgtype.UUID{Bytes: therapistID, Valid: true},
+				})
+			if err == nil {
+				return counter.TokensUsed, counter.TokensReserved,
+					counter.TokensLimit, true
+			}
+		}
+	}
+	return s.orgCounterOrAggregate(ctx, subID)
+}
+
 func (s *Server) orgCounterOrAggregate(ctx context.Context, subID uuid.UUID) (used, reserved, limit int32, ok bool) {
 	if counter, err := s.queries.GetActiveCounter(ctx, subID); err == nil {
 		return counter.TokensUsed, counter.TokensReserved, counter.TokensLimit, true
@@ -827,16 +860,30 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 	// path don't pass these headers, so the check is a no-op for them
 	// and the existing trusted-caller contract is preserved.
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		var callerRole, callerOrgID string
+		var callerRole, callerOrgID, callerUserID string
 		if v := md.Get("x-superwizor-role"); len(v) > 0 {
 			callerRole = v[0]
 		}
 		if v := md.Get("x-superwizor-organization-id"); len(v) > 0 {
 			callerOrgID = v[0]
 		}
+		if v := md.Get("x-superwizor-user-id"); len(v) > 0 {
+			callerUserID = v[0]
+		}
 		if callerOrgID != "" && callerOrgID != req.GetOrganizationId() && callerRole != "SUPERWIZOR_ADMIN" {
 			return nil, status.Errorf(codes.PermissionDenied,
 				"caller's organization does not match requested organization_id")
+		}
+		// therapist_id turns this RPC into a per-person usage read, so
+		// it needs its own scope check: without one, any therapist could
+		// pass a colleague's id and read their consumption. Admins keep
+		// the wider view (the org panel is built on it); server-to-server
+		// callers set no user-id header and are unaffected.
+		if callerUserID != "" && req.GetTherapistId() != "" &&
+			callerUserID != req.GetTherapistId() &&
+			callerRole != "ORG_ADMIN" && callerRole != "SUPERWIZOR_ADMIN" {
+			return nil, status.Errorf(codes.PermissionDenied,
+				"caller may only read their own therapist usage")
 		}
 	}
 
@@ -848,7 +895,8 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		return nil, status.Errorf(codes.Internal, "subscription lookup failed")
 	}
 
-	tokensUsed, tokensReserved, tokensLimit, ok := s.orgCounterOrAggregate(ctx, sub.ID)
+	tokensUsed, tokensReserved, tokensLimit, ok := s.counterForCaller(
+		ctx, sub.ID, req.GetTherapistId())
 	if !ok {
 		tokensLimit = sub.PlanTokensPerPeriod
 	}

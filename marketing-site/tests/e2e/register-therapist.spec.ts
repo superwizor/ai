@@ -66,7 +66,7 @@ test.describe("Therapist Registration", () => {
     await expect(reg.firstNameInput).toBeVisible();
     await expect(reg.lastNameInput).toBeVisible();
     await expect(reg.phoneNumberInput).toBeVisible();
-    await expect(reg.professionalTitleInput).not.toBeVisible();
+    await expect(reg.uiLanguageField).not.toBeVisible();
 
     // Fill Step 4 & Go to Step 5
     await reg.firstNameInput.fill("Anna");
@@ -75,7 +75,7 @@ test.describe("Therapist Registration", () => {
     await reg.nextStepButton.click();
 
     // Step 5
-    await expect(reg.professionalTitleInput).toBeVisible();
+    await expect(reg.uiLanguageField).toBeVisible();
   });
 
   test("shows validation errors on empty submit", async ({ page }) => {
@@ -119,8 +119,8 @@ test.describe("Therapist Registration", () => {
     // Leave phone number empty
     await reg.nextStepButton.click();
 
-    // Still on Step 4 (professionalTitleInput is not visible)
-    await expect(reg.professionalTitleInput).not.toBeVisible();
+    // Wciąż na kroku 4 (pole języka z kroku 5 jeszcze niewidoczne)
+    await expect(reg.uiLanguageField).not.toBeVisible();
     await expect(page.locator("p[role='alert']")).toBeVisible();
   });
 
@@ -148,11 +148,17 @@ test.describe("Therapist Registration", () => {
     expect(created!.firstName).toBe("Anna");
     expect(created!.lastName).toBe("Kowalska");
 
-    // Assert UpdateProfile was called with the professional details.
+    // UpdateProfile leci tylko wtedy, gdy formularz zebrał pola
+    // opcjonalne — dziś jest nim numer telefonu. professionalTitle
+    // usunięto z rejestracji (zostało w panelu admina), więc nie ma go
+    // czego tu oczekiwać.
     const updated = updateProfile.getCaptured();
     expect(updated).not.toBeNull();
-    expect(updated!.professionalTitle).toBe("Psychoterapeutka CBT");
-    expect(updated!.phoneNumber).toBe("+48 500100200");
+    // Formularz formatuje numer przy wpisywaniu (grupy po trzy cyfry
+    // rozdzielone myślnikiem), więc do backendu leci postać
+    // sformatowana. Asercja na surowy ciąg opisywała stan sprzed
+    // wprowadzenia formatowania.
+    expect(updated!.phoneNumber).toBe("+48 500-100-200");
   });
 
   test("shows server error when Firebase rejects email-already-in-use", async ({

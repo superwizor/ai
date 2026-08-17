@@ -39,6 +39,19 @@ const BACKEND_PATTERNS: Array<{ contains: string; key: string }> = [
   // identity-svc handler — every SUPERWIZOR_ADMIN mutation gates on
   // reason length. The user can fix this by typing more.
   { contains: "reason must be >=", key: "backend.reasonTooShort" },
+  // identity-svc AdminAssignTherapistToOrg — organizacja ma WIĘCEJ NIŻ
+  // JEDEN przydział miejsc, więc backend nie zgadnie, do którego planu
+  // wpiąć terapeutę, i żąda jawnego seat_allocation_id. Bez tej reguły
+  // admin dostaje generyczne „sprawdź wprowadzone wartości" i nie ma
+  // czego sprawdzić — pola do poprawienia nie widać w formularzu.
+  { contains: "seat_allocation_required", key: "backend.seatAllocationRequired" },
+  // billing-svc AdminResetTokens — nowy tokens_limit poniżej limitu z
+  // planu. Ten sam kłopot co wyżej: dane formularza SĄ poprawne, więc
+  // "sprawdź wprowadzone wartości" wysyłało admina szukać błędu tam,
+  // gdzie go nie ma. 2026-08-07 skończyło się to czterema próbami pod
+  // rząd i zgłoszeniem. Kod pochodzi z admin.go — zmiana po jednej
+  // stronie wymaga zmiany po drugiej (pilnuje tego test w Go).
+  { contains: "tokens_limit_below_plan", key: "backend.tokensLimitBelowPlan" },
   // identity-svc AcceptInvitation.
   { contains: "invitation expired", key: "backend.invitationExpired" },
   { contains: "invitation already accepted", key: "backend.invitationAccepted" },

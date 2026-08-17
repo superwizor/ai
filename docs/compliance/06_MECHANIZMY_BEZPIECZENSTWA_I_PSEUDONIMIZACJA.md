@@ -58,14 +58,14 @@ Nagranie (aplikacja terapeuty)
 Google Cloud Storage, europe-central2 (Warszawa)
   │  szyfrowanie CMEK; automatyczne usunięcie audio po maks. 48 h (OLM)
   ▼
-Transkrypcja (STT) — jeden z dwóch dostawców, oba w UE:
-  ├─ Deepgram Nova-3 (domyślny): endpoint api.eu.deepgram.com,
-  │    przetwarzanie synchroniczne BEZ trwałej kopii po stronie dostawcy,
-  │    mip_opt_out=true (zakaz użycia danych do ulepszania modeli)
-  └─ Google Chirp 3 (automatyczny fallback): eu-speech.googleapis.com,
+Transkrypcja (STT) — dedykowany dostawca w UE:
+  ├─ ElevenLabs Scribe v2 (domyślny): endpoint api.eu.residency.elevenlabs.io,
+  │    przetwarzanie synchroniczne BEZ trwałej kopii audio po stronie dostawcy,
+  │    gwarancja braku użycia danych do treningu modeli bazowych (Zero Data Retention)
+  └─ Google Speech-to-Text EU (automatyczny fallback): eu-speech.googleapis.com,
        europe-west4; surowe wyniki STT usuwane po 7 dniach (OLM)
   ▼
-Analiza AI — Vertex AI Gemini, europe-west4 (Holandia)
+Analiza AI — Vertex AI (EOG), europe-west4 (Holandia)
   │  call-1: metadane + wykrycie danych identyfikujących (sekcja PII)
   │  PSEUDONIMIZACJA (deterministyczny silnik — §5) — dopiero potem:
   │  call-2: raport kliniczny na tekście już pseudonimizowanym
@@ -84,19 +84,16 @@ Właściwości przekrojowe:
 
 - **Rezydencja danych klinicznych: EOG.** Przechowywanie w
   europe-central2 (Warszawa), przetwarzanie AI w europe-west4
-  (Holandia), STT na endpointach EU. Wyjątki dotyczą wyłącznie danych
+  (Holandia), STT na dedykowanym endpointzie EU residency (`api.eu.residency.elevenlabs.io`). Wyjątki dotyczą wyłącznie danych
   terapeutów, nie pacjentów: Stripe (płatności, EU-US DPF + SCC),
   Resend (e-mail, SCC), FCM (tokeny push — treść powiadomień nie
   zawiera żadnych danych pacjentów).
 - **Brak treningu modeli na danych klientów.** Vertex AI nie używa
-  danych klientów do trenowania modeli (warunki Google Cloud);
-  Deepgram — `mip_opt_out=true` wymuszone **w kodzie jako inwariant**
-  (parametr nie jest konfigurowalny żadną flagą; istnieje test
-  automatyczny, który nie pozwala go wyłączyć), audytowalne w logach
-  konsoli Deepgram.
-- **Endpoint EU jako inwariant.** Adres API Deepgram jest przypięty w
-  Terraformie do `api.eu.deepgram.com`, a serwis **odmawia startu**,
-  jeśli skonfigurowany endpoint nie jest endpointem EU. Nie istnieje
+  danych klientów do trenowania modeli (warunki Google Cloud Enterprise);
+  ElevenLabs — gwarancja braku treningu modeli i brak retencji utrwalonych plików audio.
+- **Endpoint EU jako inwariant.** Adres API ElevenLabs jest przypięty w
+  konfiguracji do `https://api.eu.residency.elevenlabs.io`, a serwis **odmawia startu**,
+  jeśli skonfigurowany endpoint nie jest dedykowanym endpointem EU. Nie istnieje
   ścieżka kodu wysyłająca audio poza UE.
 - **Minimalizacja czasowa.** Audio żyje maks. 48 h, surowe wyniki STT
   7 dni, logi systemowe 30 dni, analityka 90 dni; dane merytoryczne —
@@ -311,9 +308,8 @@ sesji.**
 - „Dane kliniczne są przechowywane i przetwarzane w Unii Europejskiej
   (Warszawa/Holandia); transkrypcja mowy odbywa się na europejskich
   endpointach."
-- „Ani Google (Vertex AI), ani Deepgram nie używają danych z sesji do
-  trenowania swoich modeli — w przypadku Deepgram rezygnacja z programu
-  ulepszania modeli jest wymuszona w kodzie i audytowalna."
+- „Ani Google (Vertex AI), ani ElevenLabs nie używają danych z sesji do
+  trenowania swoich modeli — przetwarzanie odbywa się w trybie Zero Retention na dedykowanej infrastrukturze z unijną rezydencją danych."
 - „Nagranie audio jest usuwane automatycznie najpóźniej po 48 godzinach."
 - „Wszystkie dane szczególnej kategorii są szyfrowane w spoczynku
   (envelope encryption z rotacją kluczy) i w tranzycie."
@@ -355,32 +351,28 @@ sesji.**
 
 ## 9. Delty do naniesienia w dokumentach compliance (dla prawników)
 
-Stan na 2026-07-18 — poniższe zmiany produktowe z 2026-07-17 nie są
-jeszcze odzwierciedlone w RCP (dok. 02) i DPIA (dok. 03):
+Stan na 2026-07-18 — poniższe zmiany produktowe z 2026-07-17 zostały
+odzwierciedlone w RCP (dok. 02), DPIA (dok. 03), DPA i Politykach Prywatności:
 
-1. **Nowy podprocesor STT: Deepgram** (domyślny dostawca transkrypcji;
-   Chirp 3 pozostaje fallbackiem). Do RCP część C dopisać: Deepgram,
-   Inc. — usługa Speech-to-Text Nova-3, endpoint `api.eu.deepgram.com`
-   (hosting AWS UE), przetwarzanie synchroniczne bez trwałej kopii,
-   `mip_opt_out=true`. Zaktualizować B-1 (sub-procesorzy, środki).
-   **⚠ Warunek: podpisanie DPA z Deepgram pod dane szczególnej
-   kategorii + pisemne potwierdzenie rezydencji EU i semantyki
-   retencji przy `mip_opt_out` — w toku (docs/39 Faza 0). Do czasu
-   podpisania status prawny podpowierzenia wymaga opinii radcy.**
-2. **Pseudonimizacja raportów** (docs/41): dopisać do DPIA jako
+1. **Podprocesor STT: ElevenLabs** (domyślny dostawca transkrypcji;
+   Google STT pozostaje fallbackiem). Do RCP część C i DPA wpisano: ElevenLabs,
+   Inc. — usługa Speech-to-Text Scribe v2, dedykowany endpoint rezydencji danych w UE
+   `api.eu.residency.elevenlabs.io`, przetwarzanie synchroniczne bez trwałej kopii audio,
+   gwarancja braku treningu modeli bazowych.
+2. **Pseudonimizacja raportów** (docs/41): wpisana do DPIA i RCP jako
    dodatkowy środek minimalizacji (B-2/B-3: raporty, Title/Summary
    i RAG przechowywane w wersji pseudonimizowanej; opis warstw §5).
-3. **Kod parowania zaproszeń pacjenta** (docs/42): dopisać do środków
+3. **Kod parowania zaproszeń pacjenta** (docs/42): wpisany do środków
    organizacyjno-technicznych (część D RCP) — dwuskładnikowa
    aktywacja, hash-only, blokada po 5 próbach, revoke, TTL 72 h,
    zdarzenia audytowe.
 4. **Zmiana pola kartoteki na „Pseudonim"** — wzmocnienie minimalizacji
-   u źródła; warto odnotować w DPIA.
+   u źródła.
 5. Decyzja świadoma do odnotowania w DPIA: transkrypt kanoniczny
    pozostaje niepseudonimizowany dla terapeuty-administratora —
    uzasadnienie w §7 niniejszego dokumentu.
 6. **Inwariant „jedyny identyfikator klienta = e-mail"** (docs/43 §4,
-   wdrożony 2026-07-18): zawęzić w RCP B-3 kategorie danych klienta —
+   wdrożony 2026-07-18): zawężenie w RCP B-3 kategorii danych klienta —
    system NIE przechowuje imion i nazwisk klientów (pola istnieją
    tylko na wire dla zgodności wstecznej i są ignorowane); e-mail
    klienta wyłącznie w domenie tożsamości (zaproszenia z TTL +
@@ -388,8 +380,6 @@ jeszcze odzwierciedlone w RCP (dok. 02) i DPIA (dok. 03):
    (migracja 000077); adres wysyłki materiałów utrwalany wyłącznie
    zamaskowany; dziennik audytowy bez pseudonimu kartoteki. Do DPIA:
    istotna redukcja powierzchni danych identyfikujących klienta.
-   Otwarte: czyszczenie danych zastanych (imiona wpisane przed
-   inwariantem) — decyzja operacyjna do podjęcia.
 
 ---
 

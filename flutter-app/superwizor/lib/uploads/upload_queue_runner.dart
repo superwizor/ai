@@ -33,6 +33,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../utils/debug_flags.dart';
 
+import 'background_upload_channel.dart';
 import 'pending_upload.dart';
 import 'upload_queue.dart';
 import 'upload_worker.dart';
@@ -70,6 +71,7 @@ class UploadQueueRunner {
   UploadQueueRunner({
     required UploadQueue queue,
     required UploadWorker worker,
+    BackgroundUploadChannel? background,
     Duration? periodicInterval,
     Stream<List<ConnectivityResult>>? connectivityStream,
     Future<bool> Function()? hasNetwork,
@@ -80,6 +82,7 @@ class UploadQueueRunner {
     Future<Directory> Function()? documentsDirProvider,
   })  : _queue = queue,
         _worker = worker,
+        _background = background,
         _periodicInterval = periodicInterval ?? const Duration(seconds: 60),
         _connectivityStream =
             connectivityStream ?? Connectivity().onConnectivityChanged,
@@ -92,7 +95,20 @@ class UploadQueueRunner {
 
   final UploadQueue _queue;
   final UploadWorker _worker;
+
+  /// Kanał platformowy (docs/58). Null → zachowanie jak dotąd: żadnego
+  /// oddawania transferu systemowi, żadnego okna wykonania.
+  final BackgroundUploadChannel? _background;
+
+  /// Czy okno wykonania (Android FGS) jest w tej chwili otwarte —
+  /// żeby nie wołać `start` na każdym ticku i zawsze je domknąć.
+  bool _foregroundWindowOpen = false;
   final Duration _periodicInterval;
+
+  /// Backoff nakładany, gdy wiersz wyczerpie budżet przejść fazowych w
+  /// jednym ticku — patrz komentarz w `_tick`. Krótki, bo to nie jest
+  /// kara za błąd, tylko oddanie sterowania innym wierszom.
+  static const _phaseHopBudgetBackoff = Duration(minutes: 2);
   final Stream<List<ConnectivityResult>> _connectivityStream;
   final Future<bool> Function() _hasNetwork;
   final SessionStatusStream? _sessionStatusStream;
@@ -136,6 +152,92 @@ class UploadQueueRunner {
       debugPrint('[upload-runner] path repair failed for ${u.localId}: $e');
       return u;
     }
+  }
+
+  /// Wciąga raporty z warstwy natywnej i zdejmuje martwe leasingi
+  /// (docs/58 §6).
+  ///
+  /// Dwie rzeczy w jednym przebiegu, obie konieczne:
+  ///
+  /// 1. **Journal** — native zapisał plik z wynikiem transferu. Wiersz
+  ///    dostaje ten wynik przez `worker.applyNativeReport`, żeby decyzja o
+  ///    sprzątaniu źródła i klasyfikacji błędu została u workera.
+  /// 2. **Zgubiony raport** — leasing jest świeży, ale system nie ma już
+  ///    żadnego zadania dla tego wiersza (force-quit, reinstall, rotacja
+  ///    kontenera). Bez tego wiersz czekałby do wygaśnięcia TTL, czyli
+  ///    12 h. Zdejmujemy leasing i oddajemy wiersz kolejce w Darcie.
+  ///
+  /// Wołane przy starcie i na początku każdego ticka — czyli także po
+  /// wznowieniu aplikacji w tle przez iOS.
+  Future<bool> _reconcileNativeUploads() async {
+    final bg = _background;
+    if (bg == null || !bg.supportsOsHandOff) return false;
+
+    var changed = false;
+    try {
+      for (final report in await bg.drainJournal()) {
+        final row = _queue.getById(report.localId);
+        if (row == null) continue; // wiersz już zdjęty (cancel/dismiss)
+
+        // Raport dla wiersza BEZ leasingu jest przedawniony i asymetria
+        // jest tu konieczna:
+        //
+        // • `failed` odrzucamy. Anulowanie z Darta (`cancel`) ląduje na
+        //   iOS w tym samym callbacku co prawdziwa porażka, więc każdy
+        //   anulowany-i-ponowiony wiersz dostałby po chwili fałszywy błąd
+        //   i niezasłużony backoff.
+        // • `success` przyjmujemy ZAWSZE. Jeśli w międzyczasie zdjęliśmy
+        //   leasing (obrona przed zgubionym raportem niżej), a system
+        //   jednak dowiózł bajty, to odrzucenie tej wiadomości kazałoby
+        //   Dartowi wysłać obiekt drugi raz — a `ifGenerationMatch=0` w
+        //   sesji resumable zwróci wtedy 412, które klasyfikator uznaje za
+        //   terminalne. Wiersz padłby dla obiektu, który jest już w GCS.
+        if (!report.success && row.nativeLeaseAt == null) {
+          debugPrint('[upload-runner] pomijam przedawniony raport failed '
+              'dla ${report.localId} (wiersz bez leasingu)');
+          continue;
+        }
+        final next = await _worker.applyNativeReport(row, report);
+        if (identical(next, row)) continue;
+        await _queue.update(next);
+        changed = true;
+        debugPrint('[upload-runner] journal ${report.localId}: '
+            '${report.success ? "sukces" : report.failureSummary} '
+            '→ phase=${next.phase.name}');
+        if (report.success) {
+          try {
+            await _onUploadComplete?.call(next);
+          } catch (e) {
+            debugPrint('[upload-runner] onUploadComplete failed: $e');
+          }
+        }
+      }
+
+      // Leasingi bez żywego zadania po stronie systemu.
+      final leased = _queue
+          .all()
+          .where((u) => u.isNativeLeaseFresh && !u.isTerminal)
+          .toList();
+      if (leased.isNotEmpty) {
+        final alive = await bg.pendingIds();
+        for (final row in leased) {
+          if (alive.contains(row.localId)) continue;
+          debugPrint('[upload-runner] leasing bez zadania w systemie dla '
+              '${row.localId} — wracam na ścieżkę Dart');
+          await _queue.update(row.copyWith(
+            clearNativeLease: true,
+            nextAttemptAt: DateTime.now().toUtc(),
+          ));
+          changed = true;
+        }
+      }
+    } catch (e) {
+      // Rekoncyliacja nie może wywalić ticka — najgorszy przypadek to
+      // wiersz czekający na wygaśnięcie leasingu.
+      debugPrint('[upload-runner] rekoncyliacja natywna nieudana: $e');
+    }
+    if (changed) _emitSnapshot();
+    return changed;
   }
 
   /// Active per-sessionId Firestore subscriptions for completed rows
@@ -210,6 +312,11 @@ class UploadQueueRunner {
     // gives every parked row one fresh attempt. If the same error
     // recurs, the worker re-applies the backoff schedule via
     // _scheduleRetry, so we don't trade idle for spam.
+    // Najpierw raporty z warstwy natywnej: wiersz oddany systemowi przed
+    // ubiciem aplikacji mógł się już dowieźć, a wtedy nie ma czego
+    // ponawiać. Rekoncyliacja PRZED resetem backoffów, żeby nie ściągać
+    // do teraz wiersza, który zaraz i tak zostanie domknięty.
+    await _reconcileNativeUploads();
     await _resetBackoffsForColdStart();
 
     _emitSnapshot();
@@ -398,8 +505,16 @@ class UploadQueueRunner {
     _tickInFlight = true;
     var changed = false;
     try {
+      // Raporty z warstwy natywnej najpierw (docs/58 §6): wiersz oddany
+      // systemowi mógł się w tym czasie domknąć albo wywalić, a dopóki
+      // journal nie jest przeczytany, `dueNow()` go pomija przez leasing.
+      // Robimy to na KAŻDYM ticku, więc pokrywa to start, timer, powrót
+      // łączności i powrót z tła bez dotykania providera.
+      if (await _reconcileNativeUploads()) changed = true;
+
       // Cheap age sweep — keeps the queue honest.
       final swept = await _queue.pruneStale();
+      if (await _reconcileNativeUploads()) changed = true;
       if (swept > 0) changed = true;
 
       // Don't even try the network if we know we're offline; saves a
@@ -422,6 +537,12 @@ class UploadQueueRunner {
       // through completed even on a fast network. We still emit
       // snapshots between phases so the UI updates in real time.
       final due = _queue.dueNow();
+      // Okno wykonania na Androidzie (docs/58 §5): izolat Dart żyje po
+      // zejściu w tło, ale traci priorytet procesu, bo mikrofonowy FGS i
+      // wakelock są zwalniane PRZED zakolejkowaniem uploadu. Serwis
+      // `dataSync` na czas drenażu kolejki to cała potrzebna różnica —
+      // żadnego natywnego uploadera. Zamykamy je w `finally`.
+      await _openForegroundWindowIfNeeded(due.length);
       for (final initial in due) {
         if (!_running) break;
         // Re-read live state: a prior row this tick may have hit
@@ -438,7 +559,37 @@ class UploadQueueRunner {
           current = repaired;
           changed = true;
         }
+        // Budżet iteracji na wiersz na tick (2026-07-29). Klasa
+        // signedUrlExpired ustawia phase=pending ORAZ
+        // nextAttemptAt=_clock() (upload_worker.dart:353-364), więc
+        // jedyne wyjście z tej pętli przez backoff (:527) jest
+        // STRUKTURALNIE nieosiągalne — porównanie `isAfter(now)` jest
+        // zawsze fałszywe. Wiersz, którego PUT wraca 403/410, kręci
+        // create → PUT → 403 → create w jednym ticku bez końca, głodząc
+        // każdy inny wiersz w kolejce (dueNow sortuje najstarsze
+        // pierwsze, przetwarzanie jest seryjne). 30-minutowy bezpiecznik
+        // z 13fd2c6f obejmuje JEDNO runOne, nie pętlę.
+        //
+        // Sześć przejść wystarcza na najdłuższą uczciwą ścieżkę
+        // (pending → created → uploaded → completed z jednym ponowieniem);
+        // po wyczerpaniu budżetu oddajemy wiersz następnemu tickowi
+        // z prawdziwym backoffem, żeby nie zamienić głodzenia w spam.
+        var phaseHops = 0;
+        const maxPhaseHopsPerTick = 6;
         while (_running) {
+          if (phaseHops++ >= maxPhaseHopsPerTick) {
+            debugPrint('[upload-runner] budżet $maxPhaseHopsPerTick przejść '
+                'wyczerpany dla ${current.localId} (${current.phase.name}) — '
+                'backoff do następnego ticka');
+            await _queue.update(current.copyWith(
+              attemptCount: current.attemptCount + 1,
+              nextAttemptAt: DateTime.now().toUtc().add(_phaseHopBudgetBackoff),
+              lastError: 'upload.phase_hop_budget_exceeded',
+            ));
+            changed = true;
+            _emitSnapshot();
+            break;
+          }
           // Deadlock breaker (2026-07-23): a single hung await inside
           // runOne (deadline-less gRPC in airplane mode, sesja a5ce601f)
           // held _tickInFlight forever and froze the ENTIRE queue with
@@ -545,10 +696,35 @@ class UploadQueueRunner {
     } catch (e, st) {
       debugPrint('[upload-runner] tick crashed: $e\n$st');
     } finally {
+      // Okno wykonania zamykamy ZAWSZE, także po wyjątku — otwarty serwis
+      // dataSync bez pracy to widoczne powiadomienie i naliczanie limitu
+      // 6 h/24 h na Androidzie 15.
+      await _closeForegroundWindow();
       _tickInFlight = false;
       ticksCompleted++;
       if (changed) _emitSnapshot();
     }
+  }
+
+  /// Otwiera okno wykonania (Android FGS `dataSync`), jeśli jest co robić.
+  /// Idempotentne — na iOS i bez kanału jest no-opem.
+  Future<void> _openForegroundWindowIfNeeded(int pendingCount) async {
+    final bg = _background;
+    if (bg == null || !bg.supportsForegroundWindow) return;
+    if (pendingCount <= 0 || _foregroundWindowOpen) return;
+    _foregroundWindowOpen = await bg.startForegroundWindow(pendingCount);
+    if (!_foregroundWindowOpen) {
+      // API 34+ nie pozwala startować FGS z tła. To nie błąd — po prostu
+      // pracujemy bez podwyższonego priorytetu, czyli jak dotąd.
+      debugPrint('[upload-runner] okno wykonania niedostępne — '
+          'tick bez FGS');
+    }
+  }
+
+  Future<void> _closeForegroundWindow() async {
+    if (!_foregroundWindowOpen) return;
+    _foregroundWindowOpen = false;
+    await _background?.stopForegroundWindow();
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {

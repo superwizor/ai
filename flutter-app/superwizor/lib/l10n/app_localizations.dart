@@ -4770,6 +4770,24 @@ abstract class AppLocalizations {
   /// **'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.'**
   String get sessionStatus_bg_processing_notice;
 
+  /// No description provided for @sessionStatus_keep_app_open.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer'**
+  String get sessionStatus_keep_app_open;
+
+  /// No description provided for @sessionStatus_analysis_on_server.
+  ///
+  /// In pl, this message translates to:
+  /// **'Możesz zamknąć aplikację. Analiza trwa na naszych serwerach.'**
+  String get sessionStatus_analysis_on_server;
+
+  /// No description provided for @sessionStatus_stalled_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie czeka już {minutes} min. Zostaw ten ekran otwarty, aby je dokończyć.'**
+  String sessionStatus_stalled_hint(int minutes);
+
   /// No description provided for @sessionStatus_btn_delete_session.
   ///
   /// In pl, this message translates to:
@@ -5021,18 +5039,6 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Język aplikacji'**
   String get settings_language_app;
-
-  /// No description provided for @settings_licenses.
-  ///
-  /// In pl, this message translates to:
-  /// **'Licencje oprogramowania'**
-  String get settings_licenses;
-
-  /// No description provided for @settings_licenses_desc.
-  ///
-  /// In pl, this message translates to:
-  /// **'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.'**
-  String get settings_licenses_desc;
 
   /// No description provided for @settings_live_activities.
   ///

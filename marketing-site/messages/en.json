@@ -336,7 +336,7 @@
       "tokensUsedLabel": "New tokens_used value",
       "tokensLimitLabel": "New tokens_limit (optional, blank = unchanged)",
       "changePlanTitle": "Change plan",
-      "changePlanBody": "Takes effect immediately. A new billing period starts now.",
+      "changePlanBody": "The plan change takes effect immediately — the new session limit applies at once. Stripe-billed subscriptions keep their current billing period and accrued usage; the renewal date is set by Stripe. Manually managed (B2B) subscriptions start a new period now, and the used-sessions counter resets to zero.",
       "tierLabel": "Tier",
       "cycleLabel": "Billing cycle",
       "cycleMonthly": "Monthly",
@@ -371,7 +371,9 @@
         "quality": "AI Quality",
         "funnel": "Funnel & Retention",
         "ops": "Operations",
-        "feedback": "Report Feedback"
+        "feedback": "Report Feedback",
+        "usage": "Usage",
+        "clientloop": "Client loop"
       },
       "timeRange": {
         "7d": "7 days",
@@ -417,7 +419,19 @@
         "gcpFixedCosts": "GCP Fixed Costs",
         "gcpFixedCostsInfo": "Total monthly fixed costs for GCP infrastructure (e.g. Cloud SQL instance, storage, KMS keyring).",
         "firebaseFixedCosts": "Firebase Fixed Costs",
-        "firebaseFixedCostsInfo": "Total monthly fixed costs for Firebase infrastructure (e.g. SMS authentication, hosting, Firestore baseline)."
+        "firebaseFixedCostsInfo": "Total monthly fixed costs for Firebase infrastructure (e.g. SMS authentication, hosting, Firestore baseline).",
+        "readMedian": "Median report reading time",
+        "readMedianInfo": "Half of therapists read a report for less than this. Time is ACTIVE — the counter pauses when the app goes to the background. A short median with a long p90 means most people skim while a minority read carefully.",
+        "readP90": "Reading — longest 10%",
+        "readP90Info": "The value 90% of reads stay below. Compared with the median it shows the spread: if p90 is a multiple of the median, there are two distinct groups of users.",
+        "readAbandoned": "Abandoned reads",
+        "readAbandonedInfo": "Share of report opens with no matching finish — the user left the screen. A high value suggests the report fails to hold attention or loads too slowly.",
+        "sharedPct": "Reports shared with clients",
+        "sharedPctInfo": "Share of completed sessions whose report the therapist sent to the client. This measures use of the product's differentiating feature.",
+        "inviteAccepted": "Invitations accepted",
+        "inviteAcceptedInfo": "Share of client-app invitations the client accepted. The rest expired or were revoked.",
+        "inviteMedianHours": "Time to accept invitation",
+        "inviteMedianHoursInfo": "Median time from sending an invitation to the client accepting it. A value near zero means clients accept immediately — usually during the session, with the therapist present."
       },
       "chart": {
         "fixedCostsBreakdown": "Platform Fixed Costs Breakdown",
@@ -476,7 +490,19 @@
         "sessionDurationTrendDesc": "Average session duration per week (minutes)",
         "sessionDurationTrendInfo": "Weekly trend of average session duration in minutes. Allows monitoring engagement and checking session length stability over time.",
         "showDetails": "Show details",
-        "hideDetails": "Hide details"
+        "hideDetails": "Hide details",
+        "readingPlatforms": "Where reports are read",
+        "readingPlatformsDesc": "Report opens by platform",
+        "readingPlatformsInfo": "Distribution of platforms therapists open reports on. Shows where polishing the report screen pays off — and whether the web version is used at all.",
+        "clientSharing": "Sharing reports with clients",
+        "clientSharingDesc": "Sessions completed, shared and hidden by the client",
+        "clientSharingInfo": "Three weekly series: all completed sessions, those whose report was sent to the client, and those the client hid. Hiding is a reception signal — the report arrived but the client put it away.",
+        "inviteFunnel": "Client app invitation funnel",
+        "inviteFunnelDesc": "Sent, accepted, expired, revoked",
+        "inviteFunnelInfo": "What happens to invitations therapists send to clients. A large expired share means the invitation does not arrive or the client does not know what to do with it.",
+        "pairingAttempts": "Pairing code attempts",
+        "pairingAttemptsDesc": "How many tries a client needs",
+        "pairingAttemptsInfo": "Distribution of pairing-code attempts. A tail on the right means UI friction; all zeros mean the code causes no trouble."
       },
       "registrationsDetail": {
         "title": "Detailed New Registrations List",
@@ -630,6 +656,31 @@
       "emailLabel": "Manager e-mail",
       "emailInvalid": "Enter a valid e-mail address.",
       "hint": "Re-inviting the same address refreshes the link and re-sends the e-mail."
+    },
+    "orgTherapistAssign": {
+      "cta": "Assign therapist",
+      "dialogTitle": "Assign therapist to organization",
+      "dialogBody": "Enter the e-mail of an existing therapist account. It will be attached to this organization and start consuming its limits.",
+      "dialogBodyTransfer": "This therapist already belongs to another organization. Below is what the transfer would carry over. Confirm again to proceed.",
+      "emailLabel": "Therapist e-mail",
+      "emailInvalid": "Enter a valid e-mail address.",
+      "hint": "The account must already exist. The therapist keeps their patient files and sessions.",
+      "confirmNeeded": "Transfer confirmation required — review the details below.",
+      "warningTitle": "Warning: cross-organization transfer",
+      "warningCurrentOrg": "Current organization: {org}",
+      "warningSessions": "Sessions: {total} (billable: {billable})",
+      "warningTokens": "Tokens consumed: {tokens}",
+      "warningLastSession": "Last session: {date}",
+      "warningSeat": "The therapist holds an active seat — it will be released.",
+      "warningConfirmHint": "Patient files and sessions stay with the therapist. Only the billing assignment changes.",
+      "unassignCta": "Detach",
+      "unassignDialogTitle": "Detach therapist from organization",
+      "unassignDialogBody": "{name} will no longer belong to this organization and their seat will be released. Patient files, sessions and the account itself stay untouched — this is not a therapist removal.",
+      "unassignNoTarget": "No therapist selected.",
+      "seatLabel": "Seat allocation",
+      "seatPlaceholder": "— choose a plan —",
+      "seatHint": "This organization has several allocations. Pick which plan the therapist consumes.",
+      "seatRequired": "Choose a seat allocation."
     }
   },
   "errors": {
@@ -661,7 +712,9 @@
       "alreadyExists": "An entry like this already exists (for example the email is already registered).",
       "taxIdConflict": "This tax ID (NIP) already belongs to another organization. Use a different NIP or open the existing one from the \"Organizations\" list.",
       "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
-      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead."
+      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead.",
+      "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes.",
+      "tokensLimitBelowPlan": "The new limit is below this organization's plan limit. The values you entered are valid — the plan rule blocks this. Change the plan or the seat allocation instead of lowering the counter."
     }
   },
   "nav": {
@@ -1210,6 +1263,7 @@
     "errorNoProfile": "Your Firebase account exists, but no Superwizor profile was found. Please contact support.",
     "errorPendingDeletion": "This account is in the process of deletion. All data will be permanently erased 30 days after the request.",
     "errorReauth": "Please log in again before deleting your account for security reasons.",
+    "errorSessionRequired": "To finish setting up your account, sign in from this browser window.",
     "redirectingApp": "Redirecting to your account…",
     "redirectingAdmin": "Redirecting to the admin panel…",
     "noAccount": "Don't have an account?",
@@ -1513,8 +1567,7 @@
     "verifyingTitle": "Verifying your email...",
     "verifyingBody": "This will take only a moment. Preparing your cognitive exoskeleton...",
     "successTitle": "Email Verified!",
-    "successBody": "Your email address has been successfully verified. You can close this tab and return to the previous page, or click below to continue.",
-    "successCta": "Continue to App",
+    "successBody": "Your email address has been successfully verified. You can close this tab and return to the previous page.",
     "errorTitle": "Invalid or expired link",
     "errorBody": "This verification link has expired, has already been used, or is invalid. Please try generating a new verification link in the app or contact support.",
     "errorCta": "Back to home page",
@@ -1642,7 +1695,6 @@
       "managerRevokeCta": "Cancel invite",
       "managerRevoked": "Invitation cancelled.",
       "colManager": "Manager",
-      "colStatus": "Status",
       "managerYou": "you",
       "managersEmpty": "No managers.",
       "period": "Billing period: {start} – {end}",
@@ -1664,7 +1716,18 @@
       "mTotals": "Total",
       "analyticsEmpty": "No data in the selected period.",
       "analyticsPrivacyNote": "Metadata aggregates only — no session content, reports, or patient identity.",
-      "resendCta": "Resend"
+      "resendCta": "Resend",
+      "managerSeatCta": "Manager sees patients",
+      "managerSeatTitle": "Manager as therapist",
+      "managerSeatHint": "Give a manager a seat in a plan so they can run their own sessions. They keep their manager permissions — the only change is that they get their own session limit.",
+      "managerSeatPickPerson": "— pick a manager —",
+      "managerSeatConfirm": "Assign seat",
+      "managerSeatSaving": "Saving…",
+      "managerSeatGranted": "The manager can now run sessions. A seat in the plan is taken.",
+      "managerSeatReleased": "Seat released. The manager no longer runs sessions; the account and panel access stay.",
+      "managerSeatReleaseCta": "Release seat",
+      "managerSeatNoPlans": "This organization has no purchased seats. Contact Superwizor AI.",
+      "managerBadge": "Manager"
     },
     "analytics": {
       "loading": "Loading analytics…",

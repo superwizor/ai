@@ -114,7 +114,7 @@ class AiChatService {
 
   /// Generates a structured summary for a transcript using Gemini 2.5 Flash.
   static Future<String> generateSummaryForTranscript(String transcript) async {
-    final model = FirebaseAI.vertexAI().generativeModel(
+    final model = FirebaseAI.vertexAI(location: 'europe-west4').generativeModel(
       model: _kModel,
       generationConfig: GenerationConfig(
         temperature: 0.2,
@@ -208,7 +208,7 @@ class AiChatServiceFactory {
         : contextParts.join('\n\n');
 
     // 3. Create the Gemini model + chat session
-    final model = FirebaseAI.vertexAI().generativeModel(
+    final model = FirebaseAI.vertexAI(location: 'europe-west4').generativeModel(
       model: _kModel,
       systemInstruction: Content.system(
         _buildSystemPrompt(patientAlias, contextBlock),

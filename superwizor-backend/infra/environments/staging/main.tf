@@ -87,10 +87,16 @@ module "cloud_functions" {
   session_deleted_topic        = module.pubsub.session_deleted_topic
   session_status_changed_topic = module.pubsub.session_status_changed_topic
   billing_svc_url              = var.billing_svc_url
-  # Deepgram provider (docs/39). Defaults: chirp + pusty canary.
-  # Walidacyjne przelaczenie: TF_VAR_stt_provider=deepgram terragrunt apply.
-  stt_provider                   = var.stt_provider
-  stt_provider_allowlist         = var.stt_provider_allowlist
+  # Wybor silnika STT (docs/59). Default utrwalony w variables.tf;
+  # walidacyjne przelaczenie: TF_VAR_stt_provider=elevenlabs terragrunt apply.
+  stt_provider           = var.stt_provider
+  stt_provider_allowlist = var.stt_provider_allowlist
+  stt_provider_canary    = var.stt_provider_canary
+  # Pusty secret id = provider wylaczony (klucz nie trafia do workera).
+  # Ustawic na "elevenlabs-api-key" dopiero gdy sekret istnieje.
+  elevenlabs_api_key_secret_id   = var.elevenlabs_api_key_secret_id
+  elevenlabs_api_url             = var.elevenlabs_api_url
+  elevenlabs_allow_non_eu        = var.elevenlabs_allow_non_eu
   stt_order_gate                 = var.stt_order_gate
   llm_pseudonymize               = var.llm_pseudonymize
   llm_pseudonymize_canonical     = var.llm_pseudonymize_canonical

@@ -99,6 +99,7 @@ class AddSessionModal extends ConsumerWidget {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
+                        settings: const RouteSettings(name: 'NewSessionScreen'),
                         builder: (_) => NewSessionScreen(
                           patientFileId: patientId,
                           therapistId: therapistId,

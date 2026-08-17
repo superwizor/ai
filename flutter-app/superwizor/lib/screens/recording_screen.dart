@@ -708,6 +708,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   /// offer the safe exits instead of pretending to record.
   Future<void> _onResumeTap() async {
     if (_resuming) return;
+    // Arkusz „Zakończ" nie pauzuje już nagrywania, więc wybór „wróć do
+    // nagrywania" (albo zamknięcie arkusza gestem) trafia tu przy wciąż
+    // działającym mikrofonie. Bez tej bramki wołalibyśmy resume() na
+    // nagrywaniu, które trwa — a to na iOS potrafi dopisać nowy
+    // pod-strumień FLAC, czyli wprowadzić dokładnie to uszkodzenie,
+    // które ta zmiana usuwa.
+    if (_recState == RecordingState.recording) return;
     setState(() => _resuming = true);
     final wasInterrupted = _recState == RecordingState.interrupted;
     final gapSeconds = _service.currentDuration.inSeconds;
@@ -785,8 +792,23 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       return;
     }
 
-    // ≥ 5 min → pause and confirm.
-    await _service.pause();
+    // NIE pauzujemy przed potwierdzeniem (2026-07-31). Pauza w tym
+    // miejscu kosztowała podwójnie:
+    //
+    // 1. Wszystko, co terapeuta powiedział między tapnięciem „Zakończ"
+    //    a potwierdzeniem, nie trafiało do pliku — a `currentDuration`
+    //    też się zatrzymywało, więc deklarowana długość była krótsza o
+    //    tyle samo i żaden cross-check tego nie łapał.
+    // 2. `stop()` ze stanu `paused` robi resume → 200 ms → stop
+    //    (recording_service.dart:611-631), czyli KAŻDE zakończenie
+    //    przepuszczało plik przez cykl pauza-wznowienie, który zostawia
+    //    zaniżone STREAMINFO. Serwer wykrywał to jako
+    //    `reason=size_vs_header` i normalizował plik, ratując tylko tę
+    //    część, którą dekoder przeczytał z nagłówka — u testera z 62 s
+    //    zostawało 15 s transkrypcji.
+    //
+    // Mikrofon pracuje więc do momentu wyboru „zakończ"; dopiero
+    // _finishAndUpload woła stop() ze stanu `recording`, bez cyklu.
     await _showConfirmEndSheet();
   }
 
@@ -1089,6 +1111,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // listeners.
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
+          settings: const RouteSettings(name: 'SessionStatusScreen'),
           builder: (_) => SessionStatusScreen(localId: sessionId),
         ),
       );

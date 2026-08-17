@@ -32,6 +32,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/http"
@@ -70,10 +71,9 @@ func initTracer() *sdktrace.TracerProvider {
 }
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
+	// pkg/logging: bez mapowania level→severity Cloud Logging widzi
+	// wszystko jako DEFAULT.
+	logger := logging.Setup(slog.LevelInfo)
 
 	port := getEnv("PORT", "8080")
 	projectID := getEnv("GCP_PROJECT_ID", "superwizor-staging")
@@ -112,7 +112,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
-	
+
 	analyticsCollector := analytics.NewCollector(pool)
 	defer analyticsCollector.Shutdown()
 

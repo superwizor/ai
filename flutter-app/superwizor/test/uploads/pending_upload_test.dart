@@ -31,6 +31,7 @@ PendingUpload _sample() => PendingUpload(
       queuedAt: DateTime.utc(2026, 5, 20, 19, 0, 0),
       nextAttemptAt: DateTime.utc(2026, 5, 20, 19, 5, 0),
       lastError: 'gRPC UNAVAILABLE',
+      nativeLeaseAt: DateTime.utc(2026, 5, 20, 19, 2, 0),
     );
 
 void main() {
@@ -56,7 +57,11 @@ void main() {
       expect(decoded.resumableExpiresAt?.toUtc(),
           original.resumableExpiresAt?.toUtc());
       expect(decoded.resumableChunkSize, 8 * 1024 * 1024);
-      expect((jsonDecode(encoded) as Map).length, 24,
+      // Leasing transferu natywnego (docs/58) — bez tego wiersz oddany
+      // systemowi wracałby do kolejki po restarcie i drugi pisarz
+      // uszkodziłby obiekt w GCS.
+      expect(decoded.nativeLeaseAt?.toUtc(), original.nativeLeaseAt?.toUtc());
+      expect((jsonDecode(encoded) as Map).length, 25,
           reason:
               'field-count guard — add toJson/fromJson coverage for new fields');
     });

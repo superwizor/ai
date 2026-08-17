@@ -19,6 +19,9 @@ import { identityClient, billingClient, clinicalClient } from "@/lib/connect/cli
 import {
   InviteTherapistRequestSchema,
   SetTherapistStatusRequestSchema,
+  SetManagerTherapistSeatRequestSchema,
+  UserRole,
+  type ManagerEntry,
   type Organization,
   type TherapistEntry,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
@@ -51,6 +54,7 @@ export function OrgPanel() {
 
   const [tab, setTab] = useState<Tab>("team");
   const [entries, setEntries] = useState<TherapistEntry[]>([]);
+  const [managers, setManagers] = useState<ManagerEntry[]>([]);
   const [seatUsage, setSeatUsage] = useState<OrgSeatSummary | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,14 +65,19 @@ export function OrgPanel() {
     setLoading(true);
     setError(null);
     try {
-      const [team, usage, myOrg] = await Promise.all([
+      const [team, usage, myOrg, mgrs] = await Promise.all([
         identityClient.listTherapistsInMyOrg(create(EmptySchema, {})),
         billingClient.getMyOrgSeatUsage(create(EmptySchema, {})).catch(() => null),
         identityClient.getMyOrganization(create(EmptySchema, {})).catch(() => null),
+        // Lista menedżerów zasila modal "menedżer przyjmuje pacjentów".
+        // .catch → panel zespołu ma działać nawet, gdy ta lista padnie;
+        // wtedy po prostu nie ma kogo aktywować.
+        identityClient.listMyOrgManagers(create(EmptySchema, {})).catch(() => null),
       ]);
       setEntries(team.therapists);
       setSeatUsage(usage);
       setOrg(myOrg);
+      setManagers(mgrs?.managers ?? []);
     } catch (err) {
       setError(translateError(err, tErrors));
     } finally {
@@ -159,6 +168,70 @@ export function OrgPanel() {
     setInvAllocation(inv.allocationId ?? "");
     setInvError(null);
     setInviteOpen(true);
+  };
+
+  // ── menedżer przyjmujący pacjentów ──
+  //
+  // Osobny modal, nie rozbudowa "Zaproś terapeutę": tamten wysyła
+  // zaproszenie na adres e-mail osoby, której jeszcze nie ma w systemie.
+  // Tutaj konto już istnieje i jest w organizacji — nie ma czego wysyłać,
+  // a wymagane pola są inne (wybór osoby z listy zamiast imienia,
+  // nazwiska i adresu). Wciśnięcie tego w jeden formularz dałoby dialog,
+  // w którym połowa pól jest wyszarzona zależnie od trybu.
+  const [seatOpen, setSeatOpen] = useState(false);
+  const [seatManager, setSeatManager] = useState("");
+  const [seatAllocation, setSeatAllocation] = useState("");
+  const [seatBusy, setSeatBusy] = useState(false);
+  const [seatError, setSeatError] = useState<string | null>(null);
+
+  // Menedżer, który już praktykuje, jest w liście zespołu — nie ma go po
+  // co aktywować drugi raz.
+  const practicingIds = useMemo(
+    () =>
+      new Set(
+        entries
+          .filter((e) => e.user?.role === UserRole.ORG_ADMIN)
+          .map((e) => e.user?.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [entries],
+  );
+  // Wyłączone konto nie może zająć miejsca — backend odbija to jako
+  // MANAGER_INACTIVE. Nie pokazujemy go na liście, zamiast pozwalać
+  // wybrać i dopiero potem odmówić.
+  const activatableManagers = useMemo(
+    () => managers.filter((m) => m.user?.isActive && !practicingIds.has(m.user.id)),
+    [managers, practicingIds],
+  );
+
+  const setManagerSeat = async (
+    userId: string,
+    practicing: boolean,
+    allocationId: string,
+  ) => {
+    setSeatBusy(true);
+    setSeatError(null);
+    setError(null);
+    try {
+      await identityClient.setManagerTherapistSeat(
+        create(SetManagerTherapistSeatRequestSchema, {
+          userId,
+          practicing,
+          allocationId,
+        }),
+      );
+      setSeatOpen(false);
+      setSeatManager("");
+      setSeatAllocation("");
+      setFlash(practicing ? t("managerSeatGranted") : t("managerSeatReleased"));
+      await reload();
+    } catch (err) {
+      const msg = seatsError(err) ?? translateError(err, tErrors);
+      if (practicing) setSeatError(msg);
+      else setError(msg);
+    } finally {
+      setSeatBusy(false);
+    }
   };
 
   const toggleStatus = async (userId: string, isActive: boolean) => {
@@ -275,7 +348,12 @@ export function OrgPanel() {
             </div>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            {activatableManagers.length > 0 && (
+              <button className={btnGhost} onClick={() => setSeatOpen(true)}>
+                {t("managerSeatCta")}
+              </button>
+            )}
             <button className={btnPrimary} onClick={() => setInviteOpen(true)}>
               {t("inviteCta")}
             </button>
@@ -295,10 +373,21 @@ export function OrgPanel() {
                 {entries.map((e, i) => {
                   if (e.user) {
                     const u = e.user;
+                    // Menedżer trafia na tę listę tylko wtedy, gdy zajmuje
+                    // miejsce (backend: ListTherapistsByOrganization).
+                    // Oznaczamy go, bo akcja jest inna: "Deaktywuj"
+                    // wyłączyłoby mu konto razem z dostępem do panelu,
+                    // a chodzi wyłącznie o odebranie praktyki.
+                    const isManager = u.role === UserRole.ORG_ADMIN;
                     return (
                       <tr key={u.id} className="border-t border-frost/5">
                         <td className="px-4 py-3 font-display text-frost">
                           {u.firstName} {u.lastName}
+                          {isManager && (
+                            <span className="ml-2 inline-flex rounded-button bg-frost/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+                              {t("managerBadge")}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-mono text-mist text-xs">{u.email}</td>
                         <td className="px-4 py-3">
@@ -312,10 +401,19 @@ export function OrgPanel() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
-                            className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-ember hover:underline"
-                            onClick={() => void toggleStatus(u.id, !u.isActive)}
+                            className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-ember hover:underline disabled:opacity-40"
+                            disabled={isManager && seatBusy}
+                            onClick={() =>
+                              isManager
+                                ? void setManagerSeat(u.id, false, "")
+                                : void toggleStatus(u.id, !u.isActive)
+                            }
                           >
-                            {u.isActive ? t("deactivateCta") : t("reactivateCta")}
+                            {isManager
+                              ? t("managerSeatReleaseCta")
+                              : u.isActive
+                                ? t("deactivateCta")
+                                : t("reactivateCta")}
                           </button>
                         </td>
                       </tr>
@@ -595,6 +693,71 @@ export function OrgPanel() {
                 onClick={() => void sendInvite()}
               >
                 {invBusy ? t("inviteSending") : t("inviteSend")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Menedżer przyjmujący pacjentów — nadanie miejsca w planie. */}
+      {seatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md rounded-card border border-frost/15 bg-evergreen p-6 grid gap-4 shadow-[var(--shadow-large)]">
+            <h2 className="font-display text-frost text-lg font-semibold">
+              {t("managerSeatTitle")}
+            </h2>
+            <p className="font-serif text-mist text-sm">{t("managerSeatHint")}</p>
+
+            <select
+              className={inputCls}
+              value={seatManager}
+              onChange={(e) => setSeatManager(e.target.value)}
+            >
+              <option value="">{t("managerSeatPickPerson")}</option>
+              {activatableManagers.map((m) => {
+                const u = m.user!;
+                const label = `${u.firstName} ${u.lastName}`.trim();
+                return (
+                  <option key={u.id} value={u.id}>
+                    {label ? `${label} — ${u.email}` : u.email}
+                  </option>
+                );
+              })}
+            </select>
+
+            {allocations.length > 0 ? (
+              <select
+                className={inputCls}
+                value={seatAllocation}
+                onChange={(e) => setSeatAllocation(e.target.value)}
+              >
+                <option value="">{t("invitePickPlan")}</option>
+                {allocations.map((a) => {
+                  const free = a.seats - a.seatsAssigned - a.seatsPending;
+                  return (
+                    <option key={a.allocationId} value={a.allocationId} disabled={free <= 0}>
+                      {planName(a.planTier)} — {t("freeSeats", { count: Math.max(0, free) })}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              // Bez alokacji nie ma czego przydzielić — mówimy to wprost,
+              // zamiast pokazywać pusty select.
+              <p className="font-serif text-magma text-sm">{t("managerSeatNoPlans")}</p>
+            )}
+
+            {seatError && <p className="font-serif text-magma text-sm">{seatError}</p>}
+            <div className="flex justify-end gap-3">
+              <button className={btnGhost} onClick={() => setSeatOpen(false)} disabled={seatBusy}>
+                {t("cancel")}
+              </button>
+              <button
+                className={btnPrimary}
+                disabled={seatBusy || !seatManager || !seatAllocation}
+                onClick={() => void setManagerSeat(seatManager, true, seatAllocation)}
+              >
+                {seatBusy ? t("managerSeatSaving") : t("managerSeatConfirm")}
               </button>
             </div>
           </div>

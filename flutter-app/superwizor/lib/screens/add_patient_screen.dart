@@ -793,6 +793,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     final title = AppLocalizations.of(context).settings_dpa;
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'LegalMarkdownScreen'),
         builder: (_) =>
             LegalMarkdownScreen(assetPath: _kDpaAssetPath, title: title),
       ),
@@ -900,6 +901,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         if (_createdPatientId != null) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
+              settings: const RouteSettings(name: 'ClientDetailsScreen'),
               builder: (_) => ClientDetailsScreen(
                 patientId: _createdPatientId!,
                 clientName: alias,

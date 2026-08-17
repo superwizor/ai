@@ -336,7 +336,7 @@
       "tokensUsedLabel": "Nowa wartość tokens_used",
       "tokensLimitLabel": "Nowa wartość tokens_limit (opcjonalnie, puste = bez zmian)",
       "changePlanTitle": "Zmień plan",
-      "changePlanBody": "Zmiana wchodzi w życie natychmiast. Nowy okres rozliczeniowy startuje teraz.",
+      "changePlanBody": "Zmiana planu wchodzi w życie natychmiast — nowy limit sesji obowiązuje od razu. Subskrypcje rozliczane przez Stripe zachowują bieżący okres rozliczeniowy i dotychczasowe zużycie; datę odnowienia wyznacza Stripe. Subskrypcje obsługiwane ręcznie (B2B) rozpoczynają nowy okres od teraz, a licznik wykorzystanych sesji startuje od zera.",
       "tierLabel": "Tier",
       "cycleLabel": "Okres rozliczeniowy",
       "cycleMonthly": "Miesięcznie",
@@ -371,7 +371,9 @@
         "quality": "Jakość AI",
         "funnel": "Lejek i Retencja",
         "ops": "Operacje",
-        "feedback": "Feedback raportów"
+        "feedback": "Feedback raportów",
+        "usage": "Użycie",
+        "clientloop": "Pętla z klientem"
       },
       "timeRange": {
         "7d": "7 dni",
@@ -417,7 +419,19 @@
         "gcpFixedCosts": "Koszty stałe GCP",
         "gcpFixedCostsInfo": "Suma miesięcznych kosztów stałych za infrastrukturę GCP (np. instancja bazy danych Cloud SQL, storage, KMS).",
         "firebaseFixedCosts": "Koszty stałe Firebase",
-        "firebaseFixedCostsInfo": "Suma miesięcznych kosztów stałych za Firebase (np. uwierzytelnianie SMS, hosting, Firestore)."
+        "firebaseFixedCostsInfo": "Suma miesięcznych kosztów stałych za Firebase (np. uwierzytelnianie SMS, hosting, Firestore).",
+        "readMedian": "Mediana czytania raportu",
+        "readMedianInfo": "Połowa terapeutów czyta raport krócej niż ta wartość. Czas AKTYWNY — licznik zatrzymuje się, gdy aplikacja schodzi w tło. Krótka mediana przy długim p90 oznacza, że większość skanuje wzrokiem, a mniejszość czyta uważnie.",
+        "readP90": "Czytanie — 10% najdłuższych",
+        "readP90Info": "Wartość, której nie przekracza 90% czytań. Porównanie z medianą pokazuje rozpiętość: jeśli p90 jest wielokrotnością mediany, mamy dwie różne grupy użytkowników.",
+        "readAbandoned": "Czytania przerwane",
+        "readAbandonedInfo": "Odsetek otwarć raportu, po których nie nastąpiło domknięcie czytania — użytkownik wyszedł z ekranu. Wysoka wartość sugeruje, że raport nie utrzymuje uwagi albo ładuje się zbyt wolno.",
+        "sharedPct": "Raporty udostępnione klientom",
+        "sharedPctInfo": "Odsetek ukończonych sesji, których raport terapeuta wysłał klientowi. To miara użycia funkcji wyróżniającej produkt.",
+        "inviteAccepted": "Zaproszenia przyjęte",
+        "inviteAcceptedInfo": "Odsetek zaproszeń do aplikacji klienta, które klient przyjął. Reszta wygasła albo została cofnięta.",
+        "inviteMedianHours": "Czas do przyjęcia zaproszenia",
+        "inviteMedianHoursInfo": "Mediana czasu od wysłania zaproszenia do jego przyjęcia przez klienta. Wartość bliska zeru oznacza, że klienci akceptują je od razu — zwykle podczas sesji, przy terapeucie."
       },
       "chart": {
         "fixedCostsBreakdown": "Rozkład kosztów stałych platformy",
@@ -476,7 +490,19 @@
         "sessionDurationTrendDesc": "Średni czas trwania sesji na tydzień (minuty)",
         "sessionDurationTrendInfo": "Tygodniowy trend średniego czasu trwania sesji terapeutycznych w minutach. Pozwala monitorować zaangażowanie i sprawdzać, czy czas trwania nagrań jest stabilny w czasie.",
         "showDetails": "Rozwiń listę",
-        "hideDetails": "Zwiń listę"
+        "hideDetails": "Zwiń listę",
+        "readingPlatforms": "Gdzie czytane są raporty",
+        "readingPlatformsDesc": "Podział otwarć raportu według platformy",
+        "readingPlatformsInfo": "Rozkład platform, na których terapeuci otwierają raporty. Pokazuje, gdzie warto inwestować w dopracowanie ekranu raportu — i czy wersja webowa w ogóle jest używana.",
+        "clientSharing": "Udostępnianie raportów klientom",
+        "clientSharingDesc": "Sesje ukończone, udostępnione i ukryte przez klienta",
+        "clientSharingInfo": "Trzy serie tygodniowo: wszystkie ukończone sesje, te z raportem wysłanym klientowi oraz te, których raport klient u siebie ukrył. Ukrycie to sygnał odbioru — raport dotarł, ale klient go schował.",
+        "inviteFunnel": "Lejek zaproszeń do aplikacji klienta",
+        "inviteFunnelDesc": "Wysłane, przyjęte, wygasłe, cofnięte",
+        "inviteFunnelInfo": "Co dzieje się z zaproszeniami wysyłanymi klientom przez terapeutów. Duży udział wygasłych oznacza, że zaproszenie nie dociera albo klient nie wie, co z nim zrobić.",
+        "pairingAttempts": "Próby kodu parowania",
+        "pairingAttemptsDesc": "Ile podejść potrzebuje klient",
+        "pairingAttemptsInfo": "Rozkład liczby prób wpisania kodu parowania. Ogon po prawej stronie oznacza tarcie w interfejsie; same zera oznaczają, że kod nie sprawia kłopotu."
       },
       "registrationsDetail": {
         "title": "Szczegółowa lista nowych rejestracji",
@@ -630,6 +656,31 @@
       "emailLabel": "E-mail managera",
       "emailInvalid": "Podaj poprawny adres e-mail.",
       "hint": "Ponowne zaproszenie tego samego adresu odświeża link i wysyła e-mail jeszcze raz."
+    },
+    "orgTherapistAssign": {
+      "cta": "Przypisz terapeutę",
+      "dialogTitle": "Przypisz terapeutę do organizacji",
+      "dialogBody": "Podaj adres e-mail istniejącego konta terapeuty. Konto zostanie przypięte do tej organizacji i zacznie zużywać jej limity.",
+      "dialogBodyTransfer": "Ten terapeuta należy już do innej organizacji. Poniżej widać, co przeniesienie ze sobą zabierze. Potwierdź ponownie, aby je wykonać.",
+      "emailLabel": "E-mail terapeuty",
+      "emailInvalid": "Podaj poprawny adres e-mail.",
+      "hint": "Konto musi już istnieć. Terapeuta zachowuje swoje kartoteki i sesje.",
+      "confirmNeeded": "Wymagane potwierdzenie przeniesienia — sprawdź szczegóły poniżej.",
+      "warningTitle": "Uwaga: przeniesienie między organizacjami",
+      "warningCurrentOrg": "Obecna organizacja: {org}",
+      "warningSessions": "Sesje: {total} (w tym płatnych: {billable})",
+      "warningTokens": "Zużyte tokeny: {tokens}",
+      "warningLastSession": "Ostatnia sesja: {date}",
+      "warningSeat": "Terapeuta zajmuje aktywne miejsce — zostanie ono zwolnione.",
+      "warningConfirmHint": "Kartoteki i sesje zostają przy terapeucie. Zmienia się wyłącznie przypisanie rozliczeniowe.",
+      "unassignCta": "Odepnij",
+      "unassignDialogTitle": "Odepnij terapeutę od organizacji",
+      "unassignDialogBody": "Konto {name} przestanie należeć do tej organizacji i zwolni zajmowane miejsce. Kartoteki, sesje i samo konto pozostają nietknięte — to nie jest usunięcie terapeuty.",
+      "unassignNoTarget": "Nie wybrano terapeuty.",
+      "seatLabel": "Przydział miejsc",
+      "seatPlaceholder": "— wybierz plan —",
+      "seatHint": "Ta organizacja ma kilka przydziałów. Wskaż, który plan ma obciążyć terapeuta.",
+      "seatRequired": "Wybierz przydział miejsc."
     }
   },
   "errors": {
@@ -661,7 +712,9 @@
       "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany).",
       "taxIdConflict": "Ten NIP jest już przypisany do innej organizacji. Użyj innego NIP lub otwórz istniejącą organizację na liście „Organizacje”.",
       "userHasSessions": "Nie można usunąć: ten użytkownik ma nagrane sesje. Zamiast tego dezaktywuj konto.",
-      "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto."
+      "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto.",
+      "seatAllocationRequired": "Organizacja ma kilka przydziałów miejsc — wskaż, który plan ma obciążyć terapeuta.",
+      "tokensLimitBelowPlan": "Nowy limit jest niższy niż limit wynikający z planu tej organizacji. Wpisane wartości są poprawne — blokuje to reguła planu. Zmień plan albo przydział miejsc zamiast zaniżać licznik."
     }
   },
   "nav": {
@@ -1210,6 +1263,7 @@
     "errorNoProfile": "Twoje konto Firebase istnieje, ale nie znaleziono profilu w Superwizor. Skontaktuj się z zespołem.",
     "errorPendingDeletion": "Konto jest w trakcie usuwania. Dane zostaną bezpowrotnie skasowane po upływie 30 dni od zgłoszenia.",
     "errorReauth": "Zaloguj się ponownie przed usunięciem konta ze względów bezpieczeństwa.",
+    "errorSessionRequired": "Aby dokończyć konfigurację konta, zaloguj się w tym oknie przeglądarki.",
     "redirectingApp": "Przekierowuję na panel konta…",
     "redirectingAdmin": "Przekierowuję do panelu administracyjnego…",
     "noAccount": "Nie masz konta?",
@@ -1513,8 +1567,7 @@
     "verifyingTitle": "Weryfikujemy Twój e-mail...",
     "verifyingBody": "To potrwa tylko chwilkę. Przygotowujemy Twój kognitywny egzoszkielet...",
     "successTitle": "E-mail zweryfikowany!",
-    "successBody": "Twój adres e-mail został pomyślnie potwierdzony. Możesz zamknąć tę kartę i wrócić do poprzedniej strony, lub kliknąć przycisk poniżej, aby kontynuować.",
-    "successCta": "Przejdź do aplikacji",
+    "successBody": "Twój adres e-mail został pomyślnie potwierdzony. Możesz zamknąć tę kartę i wrócić do poprzedniej strony.",
     "errorTitle": "Niepoprawny lub wygasły link",
     "errorBody": "Ten link weryfikacyjny wygasł, został już użyty lub jest nieprawidłowy. Spróbuj wygenerować nowy link weryfikacyjny w aplikacji lub skontaktuj się ze wsparciem.",
     "errorCta": "Powrót do strony głównej",
@@ -1663,7 +1716,18 @@
       "mTotals": "Razem",
       "analyticsEmpty": "Brak danych w wybranym okresie.",
       "analyticsPrivacyNote": "Wyłącznie agregaty metadanych — bez treści sesji, raportów i tożsamości pacjentów.",
-      "resendCta": "Wyślij ponownie"
+      "resendCta": "Wyślij ponownie",
+      "managerSeatCta": "Menedżer przyjmuje pacjentów",
+      "managerSeatTitle": "Menedżer jako terapeuta",
+      "managerSeatHint": "Przydziel menedżerowi miejsce w planie, aby mógł prowadzić własne sesje. Zachowuje uprawnienia menedżerskie — zmienia się tylko to, że dostaje własny limit sesji.",
+      "managerSeatPickPerson": "— wybierz menedżera —",
+      "managerSeatConfirm": "Przydziel miejsce",
+      "managerSeatSaving": "Zapisywanie…",
+      "managerSeatGranted": "Menedżer może prowadzić sesje. Miejsce w planie zostało zajęte.",
+      "managerSeatReleased": "Miejsce zwolnione. Menedżer nie prowadzi już sesji, konto i dostęp do panelu zostają.",
+      "managerSeatReleaseCta": "Odbierz miejsce",
+      "managerSeatNoPlans": "Organizacja nie ma wykupionych miejsc. Skontaktuj się z Superwizor AI.",
+      "managerBadge": "Menedżer"
     },
     "analytics": {
       "loading": "Ładowanie analityki…",

@@ -68,6 +68,7 @@ class PendingUploadsPill extends ConsumerWidget {
           "pending_count": list.length,
         });
         Navigator.of(context).push(MaterialPageRoute(
+          settings: const RouteSettings(name: 'PendingUploadsScreen'),
           builder: (_) => const PendingUploadsScreen(),
         ));
       },

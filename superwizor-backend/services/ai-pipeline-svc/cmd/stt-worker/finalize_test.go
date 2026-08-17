@@ -37,8 +37,8 @@ func TestStripPrefix(t *testing.T) {
 	}{
 		{"abcdef", "abc", "def"},
 		{"transcript_xyz.json", "transcript_", "xyz.json"},
-		{"foo", "bar", "foo"},     // no match → unchanged
-		{"foo", "foobar", "foo"},  // prefix longer than input → unchanged
+		{"foo", "bar", "foo"},    // no match → unchanged
+		{"foo", "foobar", "foo"}, // prefix longer than input → unchanged
 		{"", "", ""},
 	}
 	for _, tc := range cases {

@@ -2661,6 +2661,19 @@ class AppLocalizationsPl extends AppLocalizations {
       'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.';
 
   @override
+  String get sessionStatus_keep_app_open =>
+      'Zostaw aplikację otwartą do momentu przesłania danych na bezpieczny serwer';
+
+  @override
+  String get sessionStatus_analysis_on_server =>
+      'Możesz zamknąć aplikację. Analiza trwa na naszych serwerach.';
+
+  @override
+  String sessionStatus_stalled_hint(int minutes) {
+    return 'Przesyłanie czeka już $minutes min. Zostaw ten ekran otwarty, aby je dokończyć.';
+  }
+
+  @override
   String get sessionStatus_btn_delete_session => 'Usuń sesję';
 
   @override
@@ -2802,13 +2815,6 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_language_app => 'Język aplikacji';
-
-  @override
-  String get settings_licenses => 'Licencje oprogramowania';
-
-  @override
-  String get settings_licenses_desc =>
-      'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.';
 
   @override
   String get settings_live_activities => 'Aktywność na ekranie blokady';

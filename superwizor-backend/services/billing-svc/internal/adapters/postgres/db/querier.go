@@ -35,6 +35,19 @@ type Querier interface {
 	// Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
 	// row — used by AdminChangePlan to look up the new tier's tokens_per_period.
 	AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanByTierCycleParams) (SubscriptionPlan, error)
+	// AdminResetTokens zawężony do JEDNEGO terapeuty (pole therapist_id w
+	// żądaniu). Panel wysyła to z karty użytkownika — wcześniej karta
+	// wołała wariant obejmujący całą organizację, więc reset "dla tej
+	// osoby" zerował licznik każdemu terapeucie w firmie, a powód w audycie
+	// wymieniał jedną osobę. Ślad twierdził mniej, niż operacja robiła.
+	//
+	// tokens_limit celowo nieobsługiwany, tak samo jak w wariancie zbiorczym:
+	// limit miejsca pochodzi z planu przypisanego do przydziału miejsc.
+	//
+	// Zwraca 0 wierszy, gdy terapeuta nie ma licznika w bieżącym okresie
+	// (nic jeszcze nie zużył) albo należy do innej subskrypcji — handler
+	// rozróżnia te przypadki i nie udaje sukcesu.
+	AdminResetSingleTherapistCounter(ctx context.Context, arg AdminResetSingleTherapistCounterParams) (int64, error)
 	// AdminResetTokens, per-therapist half (docs/38): applies the
 	// tokens_used override to EVERY active per-seat counter of the
 	// subscription. tokens_limit is intentionally NOT applied here — per
@@ -49,6 +62,19 @@ type Querier interface {
 	// Używane w upsertSubscriptionFromStripe żeby uniknąć UNIQUE violation
 	// w transakcji (które by ją unieważniły w Postgresie).
 	CheckUsageCounterExists(ctx context.Context, arg CheckUsageCounterExistsParams) (bool, error)
+	// Domyka bieżący okres na WSZYSTKICH aktywnych licznikach subskrypcji —
+	// org-level i per-terapeutowych — ustawiając period_end na teraz.
+	//
+	// Potrzebne przy restarcie okresu (AdminChangePlan dla subskrypcji
+	// MANUAL). Bez tego stary licznik dalej spełnia predykat aktywności
+	// (period_start <= now() < period_end) razem z nowo utworzonym, a
+	// GetActiveCounter jest zapytaniem :one — przy dwóch pasujących
+	// wierszach wybór staje się losowy i limit potrafiłby "migotać"
+	// między starym a nowym.
+	//
+	// tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
+	// zużycie jako zapis historyczny rozliczenia.
+	CloseActiveCountersForSubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
@@ -82,8 +108,20 @@ type Querier interface {
 	// rezerwację — drugi dostanie unique-violation i handler przechwyci.
 	CreateReservation(ctx context.Context, arg CreateReservationParams) (PendingReservation, error)
 	// Per-seat counter, minted by AdminSetSeatAllocations for already-seated
-	// therapists and lazily by the debit path for later joiners. UNIQUE
-	// (subscription_id, therapist_id, period_start) absorbs races.
+	// therapists and lazily by the debit path for later joiners.
+	//
+	// ON CONFLICT DO NOTHING is load-bearing, not just tidy: without it a
+	// duplicate insert raises 23505, which ABORTS the enclosing pgx
+	// transaction. Both callers "tolerate" the unique violation and keep
+	// going, but the next statement on the poisoned tx fails with 25P02
+	// ("current transaction is aborted") → codes.Internal → the caller 500s.
+	// This is the AdminSetSeatAllocations 500 on EDIT: an org whose seated
+	// therapists already have counters violates on the first insert and
+	// poisons the tx. DO NOTHING makes the insert a no-op on conflict — no
+	// error raised, tx stays healthy. On conflict RETURNING yields no row,
+	// so callers get pgx.ErrNoRows (meaning "already exists"); on a fresh
+	// insert they get the new row. The partial-index predicate is repeated
+	// so ON CONFLICT targets uq_usage_counters_therapist_period.
 	CreateTherapistUsageCounter(ctx context.Context, arg CreateTherapistUsageCounterParams) (UsageCounter, error)
 	// Tworzy nowy bucket licznika dla rozpoczętego okresu. UNIQUE (subscription_id,
 	// period_start) chroni przed double-create przy concurrent renewal.
@@ -148,7 +186,43 @@ type Querier interface {
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
 	ListActivePlans(ctx context.Context) ([]ListActivePlansRow, error)
 	// Per-therapist usage for the current period (GetMyOrgSeatUsage).
+	//
+	// Membership predicate (u.organization_id = s.organization_id) is NOT
+	// decoration. A counter row outlives the membership that created it:
+	// leaving the org sets users.organization_id = NULL but the counter for
+	// the open period stays, so joining on subscription_id alone kept
+	// rendering departed therapists in the org panel's SUBSKRYPCJA tab
+	// (2026-08-01: "Xi Pong" listed in Fenix 666 long after removal).
+	// We keep the counter row — billing history must not be rewritten — and
+	// filter it out of the roster view instead.
 	ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error)
+	// Weekly safety-check, drugi detektor: otwarte liczniki, które dają
+	// MNIEJ sesji, niż obiecuje plan subskrypcji.
+	//
+	// tokens_limit jest migawką z chwili powstania licznika, nie odczytem
+	// planu na żywo. Przecena katalogu (migracja 000070: PRO Monthly 40→90)
+	// nie propaguje się do liczników otwartego okresu, więc klient przez
+	// cały okres widzi stary, niższy limit. Tak właśnie wyszedł na jaw
+	// rozjazd zgłoszony 2026-08-01 — i wyszedł od użytkownika, nie od nas.
+	//
+	// Celowo TYLKO kierunek "<". Nadania administracyjne zawsze podnoszą
+	// limit ponad plan (limit 50 przy planie 30) i są zamierzone; alert na
+	// nich zamieniłby ten detektor w szum, który wszyscy wyciszą.
+	// Nic tu nie naprawiamy automatycznie: podniesienie limitu to decyzja
+	// handlowa, a obniżenie może wyrzucić klienta ponad zużycie.
+	//
+	// Tylko wiersze org-level. Licznik per-terapeutowy bierze limit z planu
+	// JEGO MIEJSCA (docs/38), a nie z planu subskrypcji — terapeuta na
+	// miejscu SOLO (30) w organizacji na PRO (90) jest poprawny, więc
+	// porównanie z planem subskrypcji dałoby tu fałszywy alarm.
+	//
+	// TRIAL jest wyłączony i to nie jest wygodne uproszczenie. Liczniki
+	// trialowe są zakładane z realnym progiem próbnym (3 lub 5), podczas
+	// gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny jest KATALOG,
+	// nie licznik. Bez tego wyłączenia detektor zgłaszał ~190 organizacji
+	// próbnych naraz (sprawdzone na stagingu 2026-08-01) i utonąłby
+	// w szumie razem z dwoma prawdziwymi trafieniami.
+	ListCountersBelowPlanLimit(ctx context.Context) ([]ListCountersBelowPlanLimitRow, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
 	// których bieżący okres rozliczeniowy się skończył (period_end < now).
 	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).

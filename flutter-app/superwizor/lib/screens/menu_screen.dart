@@ -11,13 +11,14 @@
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/services.dart';
+
+import '../client/app_version.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/current_user_provider.dart';
@@ -52,8 +53,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _appVersion = info.version);
+    // Wspólne źródło (client/app_version.dart) — dokładnie ta sama
+    // wartość ląduje w audio_uploads.client_app_version i w logach
+    // serwera, więc numer odczytany z ekranu przez terapeutkę da się
+    // wprost wyszukać przy diagnozie.
+    initAppVersion().then((_) {
+      if (mounted) setState(() => _appVersion = appVersion);
     });
   }
 
@@ -142,6 +147,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         : 'assets/legal/$baseName.md';
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'LegalMarkdownScreen'),
         builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
       ),
     );
@@ -468,6 +474,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(name: 'SubscriptionPlanScreen'),
                                   builder: (_) =>
                                       const SubscriptionPlanScreen(),
                                 ),
@@ -733,23 +740,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               onTap: () => _openLegal('dpa', t.settings_dpa),
                             ),
-                            _Divider(),
-                            _SettingsRow(
-                              icon: Icons.info_outline,
-                              title: t.settings_licenses,
-                              trailing: Icon(
-                                Icons.chevron_right,
-                                color: EuphireColors.mist.withValues(
-                                  alpha: 0.4,
-                                ),
-                                size: 18,
-                              ),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const _LicensesScreen(),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
 
@@ -786,6 +776,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(name: 'DeleteAccountScreen'),
                                   builder: (_) => const DeleteAccountScreen(),
                                 ),
                               ),
@@ -797,15 +788,40 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 32, bottom: 8),
                           child: Center(
-                            child: Text(
-                              _appVersion != null
-                                  ? 'Superwizor AI v$_appVersion'
-                                  : 'Superwizor AI',
-                              style: TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 11,
-                                color: EuphireColors.mist.withValues(
-                                  alpha: 0.35,
+                            child: GestureDetector(
+                              // Dotknięcie kopiuje wersję do schowka —
+                              // przy zgłoszeniu wsparcia numer builda
+                              // jest pierwszą rzeczą, o którą pytamy, a
+                              // przepisywanie "1.0.6+39" z ekranu jest
+                              // zawodne.
+                              onTap: _appVersion == null
+                                  ? null
+                                  : () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: _appVersion!),
+                                      );
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Skopiowano wersję $_appVersion',
+                                          ),
+                                          duration:
+                                              const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                              behavior: HitTestBehavior.opaque,
+                              child: Text(
+                                _appVersion != null
+                                    ? 'Superwizor AI v$_appVersion'
+                                    : 'Superwizor AI',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 11,
+                                  color: EuphireColors.mist.withValues(
+                                    alpha: 0.35,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1649,7 +1665,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
       // Otwórz ekran usuwania z prawej strony
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const DeleteAccountScreen()));
+      ).push(MaterialPageRoute(settings: const RouteSettings(name: 'DeleteAccountScreen'), builder: (_) => const DeleteAccountScreen()));
     } else {
       if (mounted) setState(() => _deleteToggle = false);
     }
@@ -1822,218 +1838,3 @@ class _DeleteWarningSheet extends StatelessWidget {
 
 // ─── Licenses Screen ──────────────────────────────────────────
 
-class _LicensesScreen extends StatefulWidget {
-  const _LicensesScreen();
-
-  @override
-  State<_LicensesScreen> createState() => _LicensesScreenState();
-}
-
-class _LicensesScreenState extends State<_LicensesScreen> {
-  List<LicenseEntry> _licenses = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    LicenseRegistry.licenses.toList().then((list) {
-      if (mounted) {
-        setState(() {
-          _licenses = list;
-          _loading = false;
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Group by package name
-    final Map<String, List<LicenseEntry>> byPkg = {};
-    for (final e in _licenses) {
-      for (final pkg in e.packages) {
-        byPkg.putIfAbsent(pkg, () => []).add(e);
-      }
-    }
-    final pkgs = byPkg.keys.toList()..sort();
-
-    return Scaffold(
-      backgroundColor: EuphireColors.nocturne,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: EuphireColors.backgroundGradient,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: EuphireColors.frostWhite,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context).settings_licenses,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontFamily: 'Merriweather',
-                          fontStyle: FontStyle.italic,
-                          color: EuphireColors.ember,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_loading)
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: EuphireColors.ember,
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                    itemCount: pkgs.length,
-                    itemBuilder: (ctx, i) {
-                      final pkg = pkgs[i];
-                      final entries = byPkg[pkg]!;
-                      return _LicenseTile(pkg: pkg, entries: entries);
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LicenseTile extends StatefulWidget {
-  final String pkg;
-  final List<LicenseEntry> entries;
-  const _LicenseTile({required this.pkg, required this.entries});
-
-  @override
-  State<_LicenseTile> createState() => _LicenseTileState();
-}
-
-class _LicenseTileState extends State<_LicenseTile> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: EuphireColors.ember.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.code,
-                      color: EuphireColors.ember,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.pkg,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.w600,
-                            color: EuphireColors.frostWhite,
-                          ),
-                        ),
-                        Text(
-                          '${widget.entries.length} licencj${widget.entries.length == 1
-                              ? 'a'
-                              : widget.entries.length < 5
-                              ? 'e'
-                              : 'i'}',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 11,
-                            color: EuphireColors.mist.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: EuphireColors.mist.withValues(alpha: 0.5),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                children: [
-                  Divider(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    height: 1,
-                  ),
-                  const SizedBox(height: 12),
-                  for (final e in widget.entries)
-                    ...e.paragraphs.map(
-                      (p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          p.text,
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 10,
-                            color: EuphireColors.mist.withValues(alpha: 0.55),
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

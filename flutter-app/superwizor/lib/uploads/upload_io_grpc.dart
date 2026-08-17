@@ -45,6 +45,8 @@ import '../services/secure_audio_storage_service.dart';
 import 'pending_upload.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
+import '../client/app_version.dart';
+import 'upload_perf.dart';
 
 /// Content types Chirp 3 europe-central2 accepts directly. Anything
 /// outside this set must be transcoded — on-device when we can, else
@@ -291,6 +293,10 @@ class GrpcUploadIo implements UploadIo {
         estimatedDurationSeconds: u.actualDurationSeconds,
         contentType: u.contentType,
         clientPlatform: _platform(),
+        // Bez tego kolumna client_app_version zostawała pusta i przy
+        // zwisach uploadu nie dało się orzec, czy build ma poprawkę
+        // wgrywania w tle. Patrz client/app_version.dart.
+        clientAppVersion: appVersion,
         // Same idempotencyKey across retries — server returns the
         // original audio_uploads row + a fresh signedUrl.
         idempotencyKey: u.idempotencyKey,
@@ -405,8 +411,26 @@ class GrpcUploadIo implements UploadIo {
     String sessionUri,
     PendingUpload u,
     void Function(double)? onProgress,
+  ) {
+    // Ślad wydajnościowy obejmuje CAŁĄ próbę, także nieudaną — to
+    // przerwane transfery są tu najciekawsze. Patrz upload_perf.dart.
+    return traceUpload(
+      'upload_resumable',
+      (slad) => _putResumableMierzone(file, sessionUri, u, onProgress, slad),
+    );
+  }
+
+  Future<void> _putResumableMierzone(
+    File file,
+    String sessionUri,
+    PendingUpload u,
+    void Function(double)? onProgress,
+    UploadTrace slad,
   ) async {
+    slad.attribute('platform', _platform());
+    slad.attribute('app_version', appVersion);
     final total = await file.length();
+    slad.metric('total_bytes', total);
     if (total == 0) throw StateError('resumable: source file is empty');
 
     // Chunk size must be a multiple of 256 KiB (GCS requirement for
@@ -424,9 +448,13 @@ class GrpcUploadIo implements UploadIo {
     // failed attempt the bar would otherwise sit on a stale value until
     // the next full chunk lands.
     onProgress?.call(offset / total);
-    if (offset >= total) return; // GCS already has the whole object
+    if (offset >= total) {
+      slad.attribute('outcome', 'already_complete');
+      return; // GCS already has the whole object
+    }
 
     final startOffset = offset;
+    slad.metric('start_offset', startOffset);
     var stuckRounds = 0;
 
     final raf = await file.open(mode: FileMode.read);
@@ -447,6 +475,8 @@ class GrpcUploadIo implements UploadIo {
                 : (sent) => onProgress((offset + sent) / total),
           );
           if (resp.statusCode == 200 || resp.statusCode == 201) {
+            slad.attribute('outcome', 'completed');
+            slad.metric('bytes_sent', total - startOffset);
             onProgress?.call(1.0); // final chunk → object finalized
             return;
           }
@@ -463,6 +493,8 @@ class GrpcUploadIo implements UploadIo {
             // Session dead/expired — surface as 403 so the worker's
             // signedUrl-expired path drops back to pending and re-creates
             // (CreateAudioUpload re-issues a fresh resumable session).
+            slad.attribute('outcome', 'session_gone');
+            slad.metric('bytes_sent', offset - startOffset);
             throw httpStatusError(
                 403, 'resumable session gone: ${resp.statusCode}');
           }
@@ -489,6 +521,9 @@ class GrpcUploadIo implements UploadIo {
             stuckRounds++;
           }
           if (stuckRounds > _maxStuckRounds) {
+            slad.attribute('outcome', 'stuck');
+            slad.metric('bytes_sent', offset - startOffset);
+            slad.metric('stuck_rounds', stuckRounds);
             debugPrint('[upload-io] resumable stuck at $offset/$total '
                 'after $stuckRounds zero-progress rounds: $e');
             if (offset > startOffset) throw UploadProgressMadeError(e);
@@ -501,6 +536,8 @@ class GrpcUploadIo implements UploadIo {
       }
       // Loop exit without a 200/201: the post-failure offset probe
       // reported all bytes held, i.e. GCS finalized the object.
+      slad.attribute('outcome', 'completed_via_probe');
+      slad.metric('bytes_sent', total - startOffset);
       onProgress?.call(1.0);
     } finally {
       await raf.close();

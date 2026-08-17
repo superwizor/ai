@@ -31,6 +31,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/haptics.dart';
+import '../utils/transcript_fillers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:fixnum/fixnum.dart';
@@ -258,27 +259,9 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       return true;
     }).map((s) {
       if (!_removeFillers) return s;
-      // Regex that matches common Polish filler words and sounds, including:
-      // - common filler interjections: yhy, ehe, yhm, mhm, ehm, uhm, oho
-      // - repetitions of y, e, a, o of length >= 2 (e.g. yyy, eee, aaa)
-      // - single letters y, e at word boundaries
-      // - hyphenated/spaced fillers like e-e, y-y, e myślnik e, e, myślnik e
-      const plLetters = 'a-zA-ZęćłńóśźżĄĘĆŁŃÓŚŹŻ';
-      final fillerRegex = RegExp(
-        '(?<![$plLetters])(?:yhm|mhm|ehm|uhm|yhy|ehe|oho)(?![$plLetters])|'
-        '(?<![$plLetters])(?:[yYeEaAoO]{2,})(?![$plLetters])|'
-        '(?<![$plLetters])[yYeE](?:\\s*(?:-|myślnik|,?\\s*myślnik|,?\\\\s*-)\\s*[yYeE])+(?![$plLetters])|'
-        '(?<![$plLetters])(?:[yYeE])(?![$plLetters])',
-        caseSensitive: false,
-      );
-      var newText = s.text.replaceAll(fillerRegex, '');
-      // Clean up double commas, trailing/leading punctuation/whitespace resulting from removal
-      newText = newText
-          .replaceAll(RegExp(r',\s*,'), ',')
-          .replaceAll(RegExp(r'\s+([.,?!])'), r'$1')
-          .replaceAll(RegExp(r'^\s*,\s*'), '')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+      // Logika mieszka w utils/transcript_fillers.dart, żeby dało się ją
+      // przetestować — tu była nietestowalna i przepuściła błąd z $1.
+      final newText = stripFillers(s.text);
       return SpeakerTurnDto(
         speakerTag: s.speakerTag,
         speakerLabel: s.speakerLabel,

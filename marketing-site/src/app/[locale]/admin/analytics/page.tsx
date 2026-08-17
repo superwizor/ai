@@ -710,6 +710,187 @@ export default function AnalyticsPage() {
       )}
 
       {/* ── Costs & Economics Tab ── */}
+      {activeTab === "usage" && (
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <KpiCard
+              title={t("kpi.readMedian")}
+              info={t("kpi.readMedianInfo")}
+              value={data.reportReading?.medianSeconds ?? 0}
+              suffix=" s"
+              decimals={0}
+            />
+            <KpiCard
+              title={t("kpi.readP90")}
+              info={t("kpi.readP90Info")}
+              value={data.reportReading?.p90Seconds ?? 0}
+              suffix=" s"
+              decimals={0}
+            />
+            <KpiCard
+              title={t("kpi.readAbandoned")}
+              info={t("kpi.readAbandonedInfo")}
+              value={
+                Number(data.reportReading?.started ?? 0) > 0
+                  ? ((Number(data.reportReading!.started) -
+                      Number(data.reportReading!.finished)) /
+                      Number(data.reportReading!.started)) *
+                    100
+                  : 0
+              }
+              suffix=" %"
+              decimals={0}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              title={t("chart.readingPlatforms")}
+              description={t("chart.readingPlatformsDesc")}
+              info={t("chart.readingPlatformsInfo")}
+              isEmpty={!hasData(data.readingPlatforms)}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={(data.readingPlatforms ?? []).map((p) => ({
+                    platform: p.platform,
+                    reads: Number(p.reads),
+                  }))}
+                  layout="vertical"
+                  margin={{ left: 10, right: 20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis type="number" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis type="category" dataKey="platform" stroke={chartTheme.mist} fontSize={11} tickLine={false} width={70} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="reads" name="Otwarcia" fill={chartTheme.ember} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "clientloop" && (
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <KpiCard
+              title={t("kpi.sharedPct")}
+              info={t("kpi.sharedPctInfo")}
+              value={(() => {
+                const w = data.clientSharingTrend ?? [];
+                const sesje = w.reduce((a, r) => a + Number(r.sessionsTotal), 0);
+                const udost = w.reduce((a, r) => a + Number(r.shared), 0);
+                return sesje > 0 ? (udost / sesje) * 100 : 0;
+              })()}
+              suffix=" %"
+              decimals={1}
+            />
+            <KpiCard
+              title={t("kpi.inviteAccepted")}
+              info={t("kpi.inviteAcceptedInfo")}
+              value={
+                Number(data.clientInvitationFunnel?.sent ?? 0) > 0
+                  ? (Number(data.clientInvitationFunnel!.accepted) /
+                      Number(data.clientInvitationFunnel!.sent)) *
+                    100
+                  : 0
+              }
+              suffix=" %"
+              decimals={0}
+            />
+            <KpiCard
+              title={t("kpi.inviteMedianHours")}
+              info={t("kpi.inviteMedianHoursInfo")}
+              value={data.clientInvitationFunnel?.medianHoursToAccept ?? 0}
+              suffix=" h"
+              decimals={1}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              title={t("chart.clientSharing")}
+              description={t("chart.clientSharingDesc")}
+              info={t("chart.clientSharingInfo")}
+              isEmpty={!hasData(data.clientSharingTrend)}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={(data.clientSharingTrend ?? []).map((r) => ({
+                    label: r.label,
+                    sesje: Number(r.sessionsTotal),
+                    udostepnione: Number(r.shared),
+                    ukryte: Number(r.hidden),
+                  }))}
+                  margin={{ left: -20, right: 10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis dataKey="label" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="sesje" stroke={chartTheme.mist} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="udostepnione" stroke={chartTheme.ember} strokeWidth={2} dot={true} />
+                  <Line type="monotone" dataKey="ukryte" stroke={chartTheme.magma} strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard
+              title={t("chart.inviteFunnel")}
+              description={t("chart.inviteFunnelDesc")}
+              info={t("chart.inviteFunnelInfo")}
+              isEmpty={Number(data.clientInvitationFunnel?.sent ?? 0) === 0}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={[
+                    { etap: "Wysłane", n: Number(data.clientInvitationFunnel?.sent ?? 0) },
+                    { etap: "Przyjęte", n: Number(data.clientInvitationFunnel?.accepted ?? 0) },
+                    { etap: "Wygasłe", n: Number(data.clientInvitationFunnel?.expired ?? 0) },
+                    { etap: "Cofnięte", n: Number(data.clientInvitationFunnel?.revoked ?? 0) },
+                  ]}
+                  layout="vertical"
+                  margin={{ left: 10, right: 20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis type="number" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis type="category" dataKey="etap" stroke={chartTheme.mist} fontSize={11} tickLine={false} width={80} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="n" name="Zaproszenia" fill={chartTheme.aurora} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              title={t("chart.pairingAttempts")}
+              description={t("chart.pairingAttemptsDesc")}
+              info={t("chart.pairingAttemptsInfo")}
+              isEmpty={!hasData(data.pairingAttempts)}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={(data.pairingAttempts ?? []).map((r) => ({
+                    proby: String(r.attempts),
+                    zaproszenia: Number(r.invitations),
+                  }))}
+                  margin={{ left: -20, right: 10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
+                  <XAxis dataKey="proby" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
+                  <YAxis stroke={chartTheme.mist} fontSize={10} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="zaproszenia" name="Zaproszenia" fill={chartTheme.series[2]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+        </div>
+      )}
+
       {activeTab === "costs" && (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">

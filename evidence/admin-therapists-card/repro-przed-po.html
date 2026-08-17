@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Karta TERAPEUCI — przed / po</title>
+<style>
+  /* Odwzorowanie klas Tailwinda użytych w OrgDetail.tsx.
+     Nazwy CSS celowo trzymają się nazw utilities, żeby dało się
+     porównać jeden do jednego z komponentem. */
+  body { background:#0d2b2b; color:#e8f1ef; font-family:Georgia,serif; padding:24px; margin:0; }
+  h1 { font:600 14px/1.4 ui-monospace,monospace; letter-spacing:.12em; text-transform:uppercase; color:#c9a227; margin:28px 0 10px; }
+  .note { font:12px/1.5 ui-monospace,monospace; color:#8fb3ad; margin:0 0 12px; }
+
+  /* section: grid grid-cols-1 lg:grid-cols-3 gap-6 */
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+
+  /* Card: rounded-card border border-frost/10 bg-frost/[0.04] p-5 */
+  .card { border-radius:12px; border:1px solid rgba(232,241,239,.18); background:rgba(232,241,239,.04); padding:20px; }
+  .card h2 { font:10px/1 ui-monospace,monospace; letter-spacing:.18em; text-transform:uppercase; color:#c9a227; margin:0 0 12px; }
+  .card-body { display:grid; gap:8px; }
+
+  /* wiersz: flex justify-between gap-3 font-serif text-sm */
+  .row { display:flex; justify-content:space-between; gap:12px; font-size:14px; align-items:baseline; }
+  .name { color:#e8f1ef; }
+  .email { color:#8fb3ad; }
+  .badge { font:9px/1 ui-monospace,monospace; letter-spacing:.12em; text-transform:uppercase; color:#c9a227; margin-left:8px; }
+  .cta { font:10px/1 ui-monospace,monospace; letter-spacing:.12em; text-transform:uppercase; color:#8fb3ad; }
+
+  /* truncate */
+  .truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* min-w-0 — sedno poprawki */
+  .minw0 { min-width:0; }
+  .shrink0 { flex-shrink:0; }
+  .nested { display:flex; align-items:baseline; gap:12px; }
+
+  .marker { outline:2px dashed #ff6b6b; outline-offset:2px; }
+</style>
+
+<h1>PRZED — bez min-w-0 (stan zgłoszony)</h1>
+<p class="note">Karta obramowana na czerwono. Adres wychodzi poza obramowanie i wchodzi na sąsiednią kartę.</p>
+<div class="grid-3">
+  <div class="card"><h2>Dane podstawowe</h2><div class="card-body"><div class="row"><span class="name">NIP</span><span class="email">658423423</span></div></div></div>
+  <div class="card marker">
+    <h2>Terapeuci</h2>
+    <div class="card-body">
+      <div class="row">
+        <span class="name">Daria FEniksowa<span class="badge">manager</span></span>
+        <span class="email truncate">quintessential.louse.ahtp@hidingmail.net</span>
+      </div>
+      <div class="row">
+        <span class="name">Marcin Arch<span class="badge">manager</span></span>
+        <span class="email truncate">archamar@gmail.com</span>
+      </div>
+      <div class="row">
+        <span class="name">Dariusz Piotrak</span>
+        <span class="nested minw0"><span class="email truncate">piotrak@yahoo.com</span><span class="cta shrink0">Odepnij</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="card"><h2>Ostatnie zdarzenia</h2><div class="card-body"><div class="row"><span class="name">organization.assign_therapist</span></div></div></div>
+</div>
+
+<h1>PO — poprawka (nazwisko pelne, ustepuje adres)</h1>
+<p class="note">Ten sam adres, ta sama szerokość. Skraca się wielokropkiem wewnątrz karty; pełna wartość w podpowiedzi (title).</p>
+<div class="grid-3">
+  <div class="card minw0"><h2>Dane podstawowe</h2><div class="card-body minw0"><div class="row"><span class="name">NIP</span><span class="email">658423423</span></div></div></div>
+  <div class="card minw0 marker">
+    <h2>Terapeuci</h2>
+    <div class="card-body minw0">
+      <div class="row minw0">
+        <span class="nested shrink0"><span class="name">Daria FEniksowa</span><span class="badge">manager</span></span>
+        <span class="email truncate minw0" title="quintessential.louse.ahtp@hidingmail.net">quintessential.louse.ahtp@hidingmail.net</span>
+      </div>
+      <div class="row minw0">
+        <span class="nested shrink0"><span class="name">Marcin Arch</span><span class="badge">manager</span></span>
+        <span class="email truncate minw0" title="archamar@gmail.com">archamar@gmail.com</span>
+      </div>
+      <div class="row minw0">
+        <span class="name shrink0">Dariusz Piotrak</span>
+        <span class="nested minw0"><span class="email truncate minw0" title="piotrak@yahoo.com">piotrak@yahoo.com</span><span class="cta shrink0">Odepnij</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="card minw0"><h2>Ostatnie zdarzenia</h2><div class="card-body minw0"><div class="row"><span class="name">organization.assign_therapist</span></div></div></div>
+</div>

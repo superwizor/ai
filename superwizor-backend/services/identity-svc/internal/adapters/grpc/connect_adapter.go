@@ -203,6 +203,14 @@ func (a *ConnectAdapter) SetMyOrgManagerStatus(ctx context.Context, req *connect
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) SetManagerTherapistSeat(ctx context.Context, req *connect.Request[identityv1.SetManagerTherapistSeatRequest]) (*connect.Response[identityv1.User], error) {
+	resp, err := a.s.SetManagerTherapistSeat(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) RevokeMyOrgManagerInvite(ctx context.Context, req *connect.Request[identityv1.RevokeMyOrgManagerInviteRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.RevokeMyOrgManagerInvite(ctx, req.Msg)
 	if err != nil {
@@ -253,6 +261,22 @@ func (a *ConnectAdapter) AdminListOrganizations(ctx context.Context, req *connec
 
 func (a *ConnectAdapter) AdminGetOrganization(ctx context.Context, req *connect.Request[identityv1.AdminGetOrganizationRequest]) (*connect.Response[identityv1.OrganizationDetails], error) {
 	resp, err := a.s.AdminGetOrganization(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminAssignTherapistToOrg(ctx context.Context, req *connect.Request[identityv1.AdminAssignTherapistToOrgRequest]) (*connect.Response[identityv1.AdminAssignTherapistToOrgResponse], error) {
+	resp, err := a.s.AdminAssignTherapistToOrg(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminUnassignTherapistFromOrg(ctx context.Context, req *connect.Request[identityv1.AdminUnassignTherapistFromOrgRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.AdminUnassignTherapistFromOrg(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}

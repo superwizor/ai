@@ -26,17 +26,18 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
+	"connectrpc.com/connect"
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	clinicalv1connect "github.com/superwizor-ai/backend/gen/go/clinical/v1/clinicalv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
-	"connectrpc.com/connect"
 
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/logging"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	psadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/pubsub"
@@ -74,8 +75,9 @@ func initTracer() *sdktrace.TracerProvider {
 }
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// pkg/logging: bez mapowania level→severity Cloud Logging widzi
+	// wszystko jako DEFAULT.
+	logging.SetupDefault()
 
 	port := getEnv("PORT", "8080")
 	dbDSN := os.Getenv("DATABASE_URL")
@@ -122,7 +124,7 @@ func main() {
 
 	// gRPC client → identity-svc with Cloud Run service-to-service auth (if https)
 	var identityConn *grpc.ClientConn
-	
+
 	if len(identityURL) >= 5 && identityURL[:5] == "https" {
 		tokenSource, err := idtoken.NewTokenSource(ctx, identityURL)
 		if err != nil {
@@ -153,7 +155,7 @@ func main() {
 			slog.Error("invalid identity URL", "error", err)
 			os.Exit(1)
 		}
-		
+
 		target := u.Host
 		if target == "" {
 			target = identityURL // fallback if it's just host:port

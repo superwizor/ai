@@ -180,6 +180,15 @@ class PendingUpload {
   /// 7-day max-age sweeper.
   final DateTime? terminatedAt;
 
+  // ── Leasing do transferu natywnego (docs/58) ──────────────────
+  /// Ustawione, gdy bajty tego wiersza zostały oddane systemowi
+  /// (na iOS: background URLSession). Wiersz zostaje w phase=created,
+  /// ale `dueNow()` go pomija — bez tego kolejny tick podałby ten sam
+  /// URI resumable drugi raz i dwa pisarze na różnych offsetach
+  /// uszkodziłyby obiekt. Zdejmowane przy rekoncyliacji journala albo
+  /// po wygaśnięciu leasingu (patrz `isNativeLeaseFresh`).
+  final DateTime? nativeLeaseAt;
+
   const PendingUpload({
     required this.localId,
     required this.therapistId,
@@ -206,6 +215,7 @@ class PendingUpload {
     this.attemptCount = 0,
     this.lastError,
     this.terminatedAt,
+    this.nativeLeaseAt,
   });
 
   /// Convenience: a "just enqueued" upload waiting for its first
@@ -259,6 +269,8 @@ class PendingUpload {
     DateTime? nextAttemptAt,
     String? lastError,
     DateTime? terminatedAt,
+    DateTime? nativeLeaseAt,
+    bool clearNativeLease = false,
     bool clearLastError = false,
     bool clearUploadCredentials = false,
     bool? needsServerSideConversion,
@@ -309,6 +321,8 @@ class PendingUpload {
       attemptCount: attemptCount ?? this.attemptCount,
       lastError: clearLastError ? null : (lastError ?? this.lastError),
       terminatedAt: terminatedAt ?? this.terminatedAt,
+      nativeLeaseAt:
+          clearNativeLease ? null : (nativeLeaseAt ?? this.nativeLeaseAt),
     );
   }
 
@@ -321,9 +335,23 @@ class PendingUpload {
   /// (un-parks → pending) or cancel (removes the row) moves it.
   bool get isParked => phase == UploadPhase.quotaBlocked;
 
+  /// Maksymalny czas, na jaki wierzymy, że system faktycznie wiezie
+  /// bajty. Po tym okienku leasing wygasa i wiersz wraca do kolejki w
+  /// Darcie — inaczej zgubiony raport journala (force-quit, reinstall,
+  /// rotacja kontenera) zamroziłby wiersz na zawsze. 12 h z zapasem
+  /// pokrywa nocny transfer na słabym łączu.
+  static const nativeLeaseTtl = Duration(hours: 12);
+
+  bool get isNativeLeaseFresh {
+    final leased = nativeLeaseAt;
+    if (leased == null) return false;
+    return DateTime.now().toUtc().difference(leased) < nativeLeaseTtl;
+  }
+
   bool get isDue =>
       !isTerminal &&
       !isParked &&
+      !isNativeLeaseFresh &&
       nextAttemptAt.isBefore(DateTime.now().toUtc());
   bool isOlderThan(Duration d, DateTime now) =>
       now.toUtc().difference(queuedAt) > d;
@@ -354,6 +382,7 @@ class PendingUpload {
         'nextAttemptAt': nextAttemptAt.toUtc().toIso8601String(),
         'lastError': lastError,
         'terminatedAt': terminatedAt?.toUtc().toIso8601String(),
+        'nativeLeaseAt': nativeLeaseAt?.toUtc().toIso8601String(),
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -386,6 +415,9 @@ class PendingUpload {
         queuedAt: DateTime.parse(j['queuedAt'] as String).toUtc(),
         nextAttemptAt: DateTime.parse(j['nextAttemptAt'] as String).toUtc(),
         lastError: j['lastError'] as String?,
+        nativeLeaseAt: (j['nativeLeaseAt'] as String?) == null
+            ? null
+            : DateTime.parse(j['nativeLeaseAt'] as String).toUtc(),
         terminatedAt: (j['terminatedAt'] as String?) == null
             ? null
             : DateTime.parse(j['terminatedAt'] as String).toUtc(),

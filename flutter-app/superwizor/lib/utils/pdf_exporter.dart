@@ -18,12 +18,16 @@ class PdfExporter {
 
     // Strip basic markdown to avoid raw symbols in the PDF, since we don't have
     // a full Markdown-to-PDF parser included in the dependencies.
+    // UWAGA: replaceAllMapped, nie replaceAll. Dart NIE rozwija odwołań
+    // $1 — wstawia je dosłownie, więc "**ważne**" stawało się "$1",
+    // czyli treść raportu znikała z PDF-a. Ostrzega o tym komentarz przy
+    // _cleanInline w action_plan_extractor.dart; ta wiedza tu nie dotarła.
     String plainText = markdownContent
-        .replaceAll(RegExp(r'\*\*([^\*]+)\*\*'), r'$1')
-        .replaceAll(RegExp(r'\*([^\*]+)\*'), r'$1')
+        .replaceAllMapped(RegExp(r'\*\*([^\*]+)\*\*'), (m) => m[1] ?? '')
+        .replaceAllMapped(RegExp(r'\*([^\*]+)\*'), (m) => m[1] ?? '')
         .replaceAll(RegExp(r'#+\s'), '')
-        .replaceAll(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), r'$1')
-        .replaceAll(RegExp(r'`([^`]+)`'), r'$1');
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), (m) => m[1] ?? '')
+        .replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m[1] ?? '');
 
     pdf.addPage(
       pw.MultiPage(

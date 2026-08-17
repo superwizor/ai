@@ -55,15 +55,93 @@ variable "e2e_token_minters" {
 
 variable "stt_provider" {
   type = string
-  # "deepgram" od 2026-07-17 (decyzja po walidacji e2e docs/39 Faza 2/3).
-  # Default utrwalony tutaj, zeby zwykly terragrunt apply bez TF_VAR nie
-  # cofnal providera na chirp. Rollback = zmiana tego defaulta.
-  default = "deepgram"
+  # "chirp" od 2026-07-31 — wycofanie z Deepgrama (bylo "deepgram" od
+  # 2026-07-17 po walidacji e2e docs/39 Faza 2/3).
+  #
+  # Powod: nova-3 deterministycznie urywa transkrypcje w polowie nagrania
+  # na monotonnym materiale. Sesja 7 (62 s liczenia) → 13 slow, koniec na
+  # 15,2 s; ten sam plik jako FLAC i jako m4a, z diarize/smart_format i
+  # bez nich — zawsze identycznie. nova-2 urywa na 13,7 s. Model
+  # "enhanced" (arch polaris) transkrybuje cale 62 s, ale to starsza
+  # generacja wypychana z cennika Deepgrama i ~1,6x drozsza, wiec nie jest
+  # to droga na produkcje.
+  #
+  # Uwaga: dgClient nadal wstaje (DEEPGRAM_API_KEY zostaje zamontowany),
+  # wiec jednorazowy fallback deepgram→chirp w deepgram_path.go dziala
+  # bez zmian. Kill-switch w druga strone = zmiana tego defaulta.
+  #
+  # 2026-07-31, decyzja operatora: "elevenlabs" dla wszystkich.
+  #
+  # Podstawa: canary na jednym terapeucie przeszedl trzy sesje, w tym
+  # 65-minutowa — pokrycie 0,99996 (werdykt accept), 8535 slow, 4 mowcow,
+  # 67 s przetwarzania, zero prob ponownych i zero fallbackow. Wczesniej
+  # benchmark na czterech nagraniach dal 5/5 poprawnej diaryzacji przy
+  # pokryciu 98,7-99,9%.
+  #
+  # Alternatywy odpadly: Chirp NIE diaryzuje pl-PL w ogole
+  # (Chirp3DiarizationLanguages["pl-PL"]=false, recognizer eu/_ odrzuca
+  # diarizationConfig bledem 400), a nova-3 urywal transkrypcje na
+  # monotonnym materiale (sesja 62 s -> 24,5% pokrycia) i myli mowcow
+  # (2 osoby -> 1).
+  #
+  # UWAGA co do fallbacku: gdy ElevenLabs zawiedzie trzy razy, watchdog
+  # przerzuca sesje na Chirpa — a ten nie diaryzuje polskiego. Fallback
+  # oznacza wiec degradacje jakosci, nie samo opoznienie.
+  default = "elevenlabs"
 }
 
 variable "stt_provider_allowlist" {
   type    = string
   default = ""
+}
+
+variable "stt_provider_canary" {
+  type = string
+  # Silnik, na ktory allowlista kieruje wskazanych terapeutow/organizacje.
+  # Pusty = allowlista bezczynna (worker to loguje). Do canary Fazy 3
+  # docs/59: TF_VAR_stt_provider_canary=elevenlabs razem z allowlista.
+  default = ""
+}
+
+variable "elevenlabs_api_url" {
+  type = string
+  # DOCELOWO host rezydencji EU. Dzis globalny, bo tenant EU nie jest
+  # udostepniony na koncie: ten sam klucz daje HTTP 200 na
+  # api.elevenlabs.io i 400 invalid_api_key na
+  # api.eu.residency.elevenlabs.io (smieciowy klucz dostaje tam 401,
+  # wiec endpoint rozroznia nasz klucz i odmawia mu dostepu).
+  #
+  # Przelaczenie na globalny wymaga RAZEM z tym
+  # elevenlabs_allow_non_eu="true" — celowa podwojna zgoda; sam
+  # zmieniony URL bez flagi konczy sie odmowa startu workera.
+  #
+  # PRZYWROCIC na host rezydencji, gdy tenant EU ruszy. To jest jedna
+  # linia i powinna byc pierwsza rzecza po potwierdzeniu od ElevenLabs.
+  default = "https://api.elevenlabs.io"
+}
+
+variable "elevenlabs_allow_non_eu" {
+  type = string
+  # "true" = audio terapii OPUSZCZA UE.
+  #
+  # 2026-07-31, decyzja operatora: wlaczone jako default razem z
+  # przelaczeniem stt_provider na elevenlabs, z zastrzezeniem, ze
+  # rezydencje pokryje kontrakt zawierany offline. Od tego momentu
+  # dotyczy to nagran PRAWDZIWYCH sesji, nie tylko materialu testowego —
+  # audio terapii to dane szczegolnej kategorii wg GDPR art. 9.
+  #
+  # Wylaczyc razem z przywroceniem elevenlabs_api_url na host
+  # rezydencji, gdy tenant EU bedzie dzialal.
+  default = "true"
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  type = string
+  # Sekret utworzony 2026-07-31 (wersja 2; wersja 1 z bledna wartoscia
+  # wylaczona). Pusty wylaczalby providera: sekret nie bylby montowany,
+  # elClient zostalby nil, a STT_PROVIDER=elevenlabs wrocilby na chirpa
+  # zamiast wywracac sesje.
+  default = "elevenlabs-api-key"
 }
 
 variable "stt_order_gate" {

@@ -58,58 +58,6 @@ const (
 // and let Pub/Sub redeliver after the in-flight TTL.
 var errDeepgramInFlight = errors.New("deepgram attempt in flight; retry later")
 
-// resolveSTTProvider picks the STT engine for a session (docs/39 §4):
-//
-//	STT_PROVIDER=deepgram            → deepgram for everyone (post-canary)
-//	STT_PROVIDER unset/chirp +
-//	  STT_PROVIDER_ALLOWLIST=<uuids> → deepgram when the session's
-//	                                   therapist or org is listed (canary)
-//	otherwise                        → chirp
-//
-// Any resolution failure falls back to chirp — the provider flag must
-// never be the reason a session doesn't transcribe.
-func resolveSTTProvider(ctx context.Context, sessionID string) string {
-	if dgClient == nil {
-		return "chirp" // no API key wired — flag is irrelevant
-	}
-	switch strings.ToLower(os.Getenv("STT_PROVIDER")) {
-	case "deepgram":
-		return "deepgram"
-	case "", "chirp":
-		// fall through to the allowlist canary
-	default:
-		slog.Warn("unknown STT_PROVIDER value; defaulting to chirp",
-			"value", os.Getenv("STT_PROVIDER"))
-		return "chirp"
-	}
-
-	allow := strings.TrimSpace(os.Getenv("STT_PROVIDER_ALLOWLIST"))
-	if allow == "" || dbPool == nil {
-		return "chirp"
-	}
-	listed := map[string]bool{}
-	for _, id := range strings.Split(allow, ",") {
-		if id = strings.TrimSpace(strings.ToLower(id)); id != "" {
-			listed[id] = true
-		}
-	}
-
-	var therapistID, orgID string
-	err := dbPool.QueryRow(ctx, `
-		SELECT s.therapist_id::text, COALESCE(u.organization_id::text, '')
-		FROM sessions s JOIN users u ON u.id = s.therapist_id
-		WHERE s.id = $1`, sessionID).Scan(&therapistID, &orgID)
-	if err != nil {
-		slog.Warn("provider allowlist lookup failed; defaulting to chirp",
-			"session_id", sessionID, "error", err)
-		return "chirp"
-	}
-	if listed[strings.ToLower(therapistID)] || (orgID != "" && listed[strings.ToLower(orgID)]) {
-		return "deepgram"
-	}
-	return "chirp"
-}
-
 // deepgramLanguage maps the session's BCP47 tag onto Deepgram's short
 // code ("pl-PL" → "pl"). Empty session language falls back to "pl" —
 // the v1 product is Polish-only and Deepgram has no equivalent of
@@ -131,7 +79,7 @@ func processAudioDeepgram(ctx context.Context, logger *slog.Logger, ev AudioUplo
 	logger = logger.With("provider", "deepgram")
 	sourceURI := fmt.Sprintf("gs://%s/%s", bucketName, ev.ObjectPath)
 
-	claim, err := claimDeepgramOperation(ctx, sessionUUID, sourceURI, bcp47Lang)
+	claim, err := claimSyncOperation(ctx, sessionUUID, "deepgram", sourceURI, bcp47Lang)
 	if err != nil {
 		return err // transient DB → NACK
 	}
@@ -168,7 +116,7 @@ func processAudioDeepgram(ctx context.Context, logger *slog.Logger, ev AudioUplo
 	if err != nil {
 		return handleDeepgramError(ctx, logger, sessionUUID, err)
 	}
-	_ = updateDeepgramRequestID(ctx, sessionUUID, res.RequestID)
+	_ = updateProviderRequestID(ctx, sessionUUID, "deepgram", res.RequestID)
 
 	slog.InfoContext(ctx, "analytics",
 		"ae", "stt.submitted",
@@ -259,17 +207,23 @@ type dgClaim struct {
 	rowProvider string
 }
 
-// claimDeepgramOperation makes this invocation the exclusive owner of
-// the session's Deepgram attempt, using the (session_id, chunk_index)
-// UNIQUE row as the lock:
+// claimSyncOperation makes this invocation the exclusive owner of the
+// session's attempt for a SYNCHRONOUS provider, using the
+// (session_id, chunk_index) UNIQUE row as the lock:
 //
-//	no row              → INSERT (attempt 1)
-//	row finalized       → AlreadyDone
-//	row owned by chirp  → ForeignProvider (mid-flight flag flip)
-//	row fresh           → InFlight (live attempt elsewhere)
-//	row stale           → takeover UPDATE (attempt N+1), unless the
-//	                      budget is exhausted → Exhausted (fallback)
-func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceURI, bcp47Lang string) (dgClaim, error) {
+//	no row                  → INSERT (attempt 1)
+//	row finalized           → AlreadyDone
+//	row owned by another    → ForeignProvider (mid-flight flag flip)
+//	row fresh               → InFlight (live attempt elsewhere)
+//	row stale               → takeover UPDATE (attempt N+1), unless the
+//	                          budget is exhausted → Exhausted (fallback)
+//
+// Parameterised by provider rather than duplicated per provider: this
+// locking dance is the subtlest code on the STT path (takeover races,
+// mid-flight flag flips, budget exhaustion) and a second hand-maintained
+// copy would drift. ElevenLabs and Deepgram share it verbatim; Chirp does
+// not use it at all, being async.
+func claimSyncOperation(ctx context.Context, sessionUUID uuid.UUID, provider, sourceURI, bcp47Lang string) (dgClaim, error) {
 	if dbPool == nil {
 		return dgClaim{state: dgClaimOwned, attempt: 1}, nil
 	}
@@ -279,9 +233,9 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 			session_id, chunk_index, chunk_count, start_offset_ms,
 			operation_id, gcs_output_uri, language_code,
 			used_native_diarization, source_audio_uri, provider
-		) VALUES ($1, 0, 1, 0, 'deepgram:sync', '', $2, TRUE, $3, 'deepgram')
+		) VALUES ($1, 0, 1, 0, $4 || ':sync', '', $2, TRUE, $3, $4)
 		ON CONFLICT (session_id, chunk_index) DO NOTHING`,
-		sessionUUID, bcp47Lang, sourceURI)
+		sessionUUID, bcp47Lang, sourceURI, provider)
 	if err != nil {
 		return dgClaim{}, fmt.Errorf("claim insert: %w", err)
 	}
@@ -291,7 +245,7 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 
 	// Conflict — inspect the existing row.
 	var (
-		provider          string
+		rowProvider       string
 		retryCount        int
 		finalized         bool
 		fallbackAttempted bool
@@ -302,7 +256,7 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 		       fallback_attempted, submitted_at
 		FROM stt_operations
 		WHERE session_id = $1 AND chunk_index = 0`,
-		sessionUUID).Scan(&provider, &retryCount, &finalized, &fallbackAttempted, &submittedAt)
+		sessionUUID).Scan(&rowProvider, &retryCount, &finalized, &fallbackAttempted, &submittedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Row vanished between INSERT-conflict and SELECT (session
@@ -315,8 +269,8 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 	switch {
 	case finalized:
 		return dgClaim{state: dgClaimAlreadyDone}, nil
-	case provider != "deepgram" || fallbackAttempted:
-		return dgClaim{state: dgClaimForeignProvider, rowProvider: provider}, nil
+	case rowProvider != provider || fallbackAttempted:
+		return dgClaim{state: dgClaimForeignProvider, rowProvider: rowProvider}, nil
 	case time.Since(submittedAt) < dgInFlightTTL:
 		return dgClaim{state: dgClaimInFlight}, nil
 	case retryCount+1 >= dgMaxAttempts:
@@ -329,9 +283,9 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 		UPDATE stt_operations
 		SET submitted_at = now(), retry_count = retry_count + 1
 		WHERE session_id = $1 AND chunk_index = 0
-		  AND provider = 'deepgram' AND finalized_at IS NULL
+		  AND provider = $3 AND finalized_at IS NULL
 		  AND submitted_at < now() - make_interval(secs => $2)`,
-		sessionUUID, int(dgInFlightTTL.Seconds()))
+		sessionUUID, int(dgInFlightTTL.Seconds()), provider)
 	if err != nil {
 		return dgClaim{}, fmt.Errorf("claim takeover: %w", err)
 	}
@@ -341,14 +295,14 @@ func claimDeepgramOperation(ctx context.Context, sessionUUID uuid.UUID, sourceUR
 	return dgClaim{state: dgClaimOwned, attempt: retryCount + 2}, nil
 }
 
-func updateDeepgramRequestID(ctx context.Context, sessionUUID uuid.UUID, requestID string) error {
+func updateProviderRequestID(ctx context.Context, sessionUUID uuid.UUID, provider, requestID string) error {
 	if dbPool == nil || requestID == "" {
 		return nil
 	}
 	_, err := dbPool.Exec(ctx, `
 		UPDATE stt_operations SET request_id = $2
-		WHERE session_id = $1 AND chunk_index = 0 AND provider = 'deepgram'`,
-		sessionUUID, requestID)
+		WHERE session_id = $1 AND chunk_index = 0 AND provider = $3`,
+		sessionUUID, requestID, provider)
 	return err
 }
 
@@ -384,7 +338,12 @@ func signAudioURL(objectPath string) (string, error) {
 // From then on the ordinary OBJECT_FINALIZE / watchdog machinery owns
 // the session. Callable from both the redelivery path and the watchdog.
 func fallbackToChirp(ctx context.Context, logger *slog.Logger, sessionUUID uuid.UUID, sourceURI, bcp47Lang string) error {
-	logger = logger.With("provider_fallback", "deepgram→chirp")
+	// The row's own provider names the engine we are failing away from.
+	// Reading it rather than hardcoding matters for observability: a
+	// fallback out of ElevenLabs logged as "deepgram→chirp" would send
+	// whoever reads the incident to the wrong provider.
+	from := currentRowProvider(ctx, sessionUUID)
+	logger = logger.With("provider_fallback", from+"→chirp")
 
 	// Transcript already exists → the prior attempt died between persist
 	// and the ops-row update. Just close the row.
@@ -422,9 +381,9 @@ func fallbackToChirp(ctx context.Context, logger *slog.Logger, sessionUUID uuid.
 				    chunk_count = $4, used_native_diarization = $5,
 				    fallback_attempted = TRUE, retry_count = 0,
 				    submitted_at = now(),
-				    finalize_error = 'deepgram fallback; prior request_id=' || COALESCE(request_id, 'n/a')
+				    finalize_error = $6 || ' fallback; prior request_id=' || COALESCE(request_id, 'n/a')
 				WHERE session_id = $1 AND chunk_index = 0`,
-				sessionUUID, opName, outputPrefix, len(chunks), useNativeDiarization); uerr != nil {
+				sessionUUID, opName, outputPrefix, len(chunks), useNativeDiarization, from); uerr != nil {
 				return fmt.Errorf("fallback repoint chunk 0: %w", uerr)
 			}
 		} else {
@@ -500,4 +459,20 @@ func loadChunkPlanBySession(ctx context.Context, sessionUUID uuid.UUID, fallback
 		return single, nil
 	}
 	return out, nil
+}
+
+// currentRowProvider reads the provider recorded on the session's chunk-0
+// ops row. Best-effort: an unreadable row yields "unknown", which is a
+// worse log line than the truth but better than a confidently wrong one.
+func currentRowProvider(ctx context.Context, sessionUUID uuid.UUID) string {
+	if dbPool == nil {
+		return "unknown"
+	}
+	var p string
+	if err := dbPool.QueryRow(ctx, `
+		SELECT provider FROM stt_operations
+		WHERE session_id = $1 AND chunk_index = 0`, sessionUUID).Scan(&p); err != nil || p == "" {
+		return "unknown"
+	}
+	return p
 }

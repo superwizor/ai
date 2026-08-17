@@ -71,15 +71,22 @@ Jako Administratorzy, ponoszą Państwo pełną odpowiedzialność za zgodność
 Usługodawca stosuje zaawansowane środki bezpieczeństwa odpowiadające wysokiemu ryzyku związanemu z przetwarzaniem danych szczególnych kategorii (dane dotyczące zdrowia):
 
 **Rezydencja danych i kontrola regionu:**
-* Infrastruktura przetwarzająca dane sesji (nagrania, transkrypcje, raporty, pamięć kontekstowa) jest zlokalizowana w regionie **europe-central2 (Warszawa, Polska)** platformy Google Cloud Platform. Lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod (Infrastructure as Code) i podlega kontroli wersji oraz przeglądom.
-* Jedynym wyjątkiem jest usługa Vertex AI (służąca do generowania raportów i embeddings), zlokalizowana w regionie **europe-west4 (Holandia)** — nadal w obrębie Europejskiego Obszaru Gospodarczego (EOG). Usługa Speech-to-Text korzysta z dedykowanego endpointu europejskiego (`eu-speech.googleapis.com`).
+* Usługi analityczne AI działają w certyfikowanym regionie **europe-west4 (Holandia)** w obrębie Europejskiego Obszaru Gospodarczego (EOG). Transkrypcja mowy na tekst realizowana jest na dedykowanej infrastrukturze z unijną rezydencją danych (ElevenLabs EU residency endpoint: `api.eu.residency.elevenlabs.io` oraz zapasowy endpoint europejski `eu-speech.googleapis.com`).
+
+**3-warstwowa pseudonimizacja i minimalizacja u źródła:**
+* **Minimalizacja w kartotece:** System w ogóle nie gromadzi imion ani nazwisk Klientów w kartotekach klinicznych. Kartoteka pacjenta operuje wyłącznie na roboczym pseudonimie (working alias), a jedynym bezpośrednim identyfikatorem konta jest adres e-mail przetwarzany w domenie tożsamości.
+* **Redakcja PII w locie:** Przed trwałym zapisaniem transkrypcji i raportu z sesji, treść przechodzi przez deterministyczny silnik redakcji danych identyfikujących (PII). Wykrywane i zastępowane neutralnymi tokenami są: nazwiska, numery PESEL, numery telefonów, adresy e-mail, adresy zamieszkania, nazwy pracodawców, szkół oraz wszystkie nazwy miejscowości.
+* **Pamięć długoterminowa:** Pamięć kontekstowa RAG i reprezentacje wektorowe (embeddings) są tworzone i przechowywane wyłącznie na zredagowanym, pseudonimizowanym tekście.
+
+**Dwuskładnikowa autoryzacja zaproszeń pacjenta:**
+* Aktywacja konta pacjenta wymaga dwóch niezależnych czynników: linku aktywacyjnego e-mail oraz 6-cyfrowego kodu parowania przekazywanego osobiście przez terapeutę (na sesji lub telefonicznie). Kod nigdy nie jest przesyłany e-mailem, w bazie przechowywany jest wyłącznie jego hash, a 5 błędnych prób trwale blokuje zaproszenie.
 
 **Szyfrowanie danych w spoczynku:**
 * **CMEK (Customer-Managed Encryption Keys):** Kluczowe usługi infrastrukturalne (Cloud Storage, Cloud SQL, Secret Manager) korzystają z kluczy szyfrowania zarządzanych przez Usługodawcę w Cloud KMS (keyring `superwizor-keyring`), z automatyczną rotacją co 90 dni.
-* **Szyfrowanie kopertowe (Envelope Encryption):** Wszystkie dane szczególnych kategorii (transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa RAG) są szyfrowane na poziomie aplikacji z użyciem algorytmu AEAD. Każdy rekord posiada unikalny klucz danych (DEK), który jest szyfrowany kluczem głównym (KEK) zarządzanym w Cloud KMS. Oznacza to, że nawet w przypadku uzyskania dostępu do bazy danych, dane pozostają nieczytelne bez dostępu do Cloud KMS.
+* **Szyfrowanie kopertowe (Envelope Encryption):** Wszystkie dane szczególnych kategorii (transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa RAG) są szyfrowane na poziomie aplikacji z użyciem algorytmu AEAD (AES-256-GCM). Każdy rekord posiada unikalny klucz danych (DEK), który jest szyfrowany kluczem głównym (KEK) zarządzanym w Cloud KMS. Oznacza to, że nawet w przypadku uzyskania dostępu do bazy danych, dane pozostają nieczytelne bez dostępu do Cloud KMS.
 
 **Szyfrowanie danych w tranzycie:**
-* Wszystkie połączenia wykorzystują protokół TLS/SSL.
+* Wszystkie połączenia wykorzystują protokół TLS/SSL (TLS 1.3).
 * Komunikacja między serwisami odbywa się przez gRPC (HTTP/2) z szyfrowaniem.
 
 **Izolacja sieciowa:**
@@ -100,7 +107,7 @@ Usługodawca stosuje zaawansowane środki bezpieczeństwa odpowiadające wysokie
 * Każda istotna operacja na danych jest rejestrowana w tabeli zdarzeń audytowych.
 
 **Monitorowanie i testy:**
-* Ciągłe monitorowanie logów i metryk za pośrednictwem Google Cloud Logging i Cloud Monitoring.
+* Ciągłe monitorowanie logów i metryk za pośrednictwem Google Cloud Logging i Cloud Monitoring (z zachowaniem inwariantu braku danych PHI w logach).
 * Regularne przeglądy bezpieczeństwa infrastruktury i kodu.
 
 ### 6. Odbiorcy Danych, Transfer Danych i Sub-procesorzy
@@ -110,7 +117,8 @@ W ramach świadczenia usług korzystamy z następujących zaufanych dostawców (
 | Dostawca | Usługa | Przetwarzane dane | Lokalizacja / podstawa transferu |
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Przetwarzanie backendowe i przechowywanie danych | europe-central2 (Warszawa, Polska) |
-| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (generowanie raportów), Text Embeddings (pamięć RAG) | Transkrypcja audio, generowanie raportów z sesji, embeddingi pamięci | europe-west4 (Holandia) dla Vertex AI; eu-speech.googleapis.com dla STT |
+| **Google Cloud — Vertex AI** | Generowanie raportów AI, Text Embeddings (pamięć RAG), Speech-to-Text (fallback) | Przetwarzanie analityczne raportów, embeddingi | europe-west4 (Holandia) dla Vertex AI; eu-speech.googleapis.com dla STT |
+| **ElevenLabs, Inc.** | Speech-to-Text (Scribe v2) | Przetwarzanie mowy na tekst w trybie synchronicznym (bez trwałego utrwalania audio, zakaz treningu modeli) | Dedykowany endpoint rezydencji danych w UE (api.eu.residency.elevenlabs.io) — EOG |
 | **Google Firebase** | Authentication, Cloud Firestore (wyłącznie synchronizacja statusów — nie jest źródłem prawdy), Cloud Storage (zdjęcia profilowe), FCM (powiadomienia push) | Tokeny uwierzytelniające, lustrzane statusy sesji (bez treści sesji), zdjęcia profilowe, tokeny push | Firestore i Storage: europe-central2. Authentication i FCM są usługami globalnymi Google — dane uwierzytelniające i tokeny push mogą być przetwarzane poza EOG; Google LLC posiada certyfikację EU-US Data Privacy Framework (DPF) |
 | **Stripe** (Stripe Payments Europe, Ltd. — Irlandia; Stripe, Inc. — USA) | Przetwarzanie płatności, zarządzanie subskrypcjami | Dane płatnicze, dane do faktur | UE (Irlandia); transfer do Stripe, Inc. (USA) na podstawie EU-US DPF oraz standardowych klauzul umownych (certyfikat PCI DSS Level 1) |
 | **Resend, Inc.** (USA) | Wysyłka transakcyjnych wiadomości e-mail (powitanie, weryfikacja, powiadomienia o subskrypcji) oraz — za zgodą — wiadomości marketingowych | Adres e-mail, imię, treść wiadomości systemowych | USA; transfer na podstawie standardowych klauzul umownych (art. 46 ust. 2 lit. c RODO) |

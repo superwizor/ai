@@ -48,6 +48,7 @@ import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
+import '../client/app_version.dart';
 
 /// Supported audio extensions for file upload.
 /// All are converted client-side to FLAC before upload.
@@ -469,6 +470,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       return;
     }
     Navigator.of(context).pushReplacement(MaterialPageRoute(
+      settings: const RouteSettings(name: 'RecordingScreen'),
       builder: (_) => RecordingScreen(
         patientFileId: widget.patientFileId,
         therapistId: widget.therapistId,
@@ -547,6 +549,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           estimatedSizeBytes: Int64(bytes.length),
           contentType: contentType,
           clientPlatform: 'web',
+          clientAppVersion: appVersion,
           idempotencyKey: const Uuid().v4(),
           reportLanguage: widget.patientLanguageCode,
         ),
@@ -576,6 +579,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         return;
       }
       await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        settings: const RouteSettings(name: 'SessionStatusScreen'),
         builder: (_) => SessionStatusScreen(sessionId: created.sessionId),
       ));
     } catch (e) {
@@ -804,6 +808,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     // done stepper; once a server-side sessionId materialises it hands
     // off to the Firestore / clinical-svc listeners.
     await Navigator.of(context).pushReplacement(MaterialPageRoute(
+      settings: const RouteSettings(name: 'SessionStatusScreen'),
       builder: (_) => SessionStatusScreen(localId: localId),
     ));
   }

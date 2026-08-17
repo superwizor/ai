@@ -151,6 +151,11 @@ class UploadQueue {
         .where((u) =>
             !u.isTerminal &&
             !u.isParked &&
+            // Bajty są u systemu (docs/58): wiersz nie jest ani terminalny,
+            // ani zaparkowany, ani odroczony — bez tego filtra następny tick
+            // podałby ten sam URI resumable do drugiego transferu, a dwóch
+            // pisarzy na różnych offsetach uszkadza obiekt w GCS.
+            !u.isNativeLeaseFresh &&
             !u.nextAttemptAt.isAfter(now) &&
             !_debugRows.containsKey(u.localId))
         .toList()

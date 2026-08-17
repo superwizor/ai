@@ -79,10 +79,15 @@ class LiveActivityService {
     String? sessionId,
   }) async {
     try {
+      // sessionId trafia do ładunku TYLKO gdy jest. Strona natywna czyta
+      // go przez `args["sessionId"] as? String`
+      // (LiveActivityManager.swift), więc brak klucza i jawny null dają
+      // tam dokładnie to samo `nil` — a pusty klucz to szum na kanale
+      // platformowym. Dwa testy pilnują, że go nie wysyłamy bez potrzeby.
       await _channel.invokeMethod('update', {
         'status': status.name,
         'elapsedSeconds': elapsedSeconds,
-        'sessionId': sessionId,
+        'sessionId': ?sessionId,
       });
     } catch (e) {
       debugPrint('[live-activity] update failed (ignored): $e');

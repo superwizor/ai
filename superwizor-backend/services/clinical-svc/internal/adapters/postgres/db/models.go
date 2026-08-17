@@ -824,6 +824,12 @@ type CrmTag struct {
 	Color        string    `json:"color"`
 }
 
+type CrmTestUser struct {
+	UserID   uuid.UUID `json:"user_id"`
+	MarkedAt time.Time `json:"marked_at"`
+	Reason   *string   `json:"reason"`
+}
+
 type EmailDripLog struct {
 	ID             uuid.UUID `json:"id"`
 	UserID         string    `json:"user_id"`
@@ -1309,8 +1315,9 @@ type User struct {
 	// Per-therapist style preferences for llm-worker call 2 report generation. Empty object {} = all defaults (current behavior). Shape documented in docs/10_REPORT_CUSTOMIZATION.md §7.
 	ReportPreferences []byte `json:"report_preferences"`
 	// FALSE = reversibly deactivated by ORG_ADMIN (SetTherapistStatus). Blocked at ValidateToken with ACCOUNT_DEACTIVATED; data untouched. Independent of deleted_at (soft-delete = RODO path).
-	IsActive      bool               `json:"is_active"`
-	DeactivatedAt pgtype.Timestamptz `json:"deactivated_at"`
+	IsActive        bool               `json:"is_active"`
+	DeactivatedAt   pgtype.Timestamptz `json:"deactivated_at"`
+	FirstAppLoginAt pgtype.Timestamptz `json:"first_app_login_at"`
 }
 
 type VAnalyticsActivation struct {

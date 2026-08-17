@@ -43,17 +43,18 @@ Strony postanawiają, co następuje:
 2.  **Przedmiot przetwarzania:** Realizacja usług świadczonych przez Podmiot Przetwarzający na podstawie Umowy Głównej, polegających na przetwarzaniu nagrań audio sesji terapeutycznych i coachingowych, ich transkrypcji, analizie z wykorzystaniem sztucznej inteligencji oraz generowaniu raportów z sesji. 
 3.  **Charakter i cel przetwarzania:** Wykonywanie operacji na Danych Osobowych niezbędnych do świadczenia na rzecz Administratora usług Aplikacji, zgodnie z funkcjonalnościami opisanymi w § 4 Regulaminu, w szczególności: 
     *   Przechowywanie nagrań audio (tymczasowo — nagranie jest usuwane natychmiast po pomyślnej transkrypcji, a najpóźniej w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania).
-    *   Automatyczna transkrypcja nagrań audio z wykorzystaniem technologii Speech-to-Text (Chirp 3).
+    *   Automatyczna transkrypcja nagrań audio z wykorzystaniem technologii Speech-to-Text na dedykowanej infrastrukturze zlokalizowanej w Unii Europejskiej (ElevenLabs na dedykowanym endpointzie EU z gwarancją braku retencji i zakazem trenowania modeli; Google Speech-to-Text EU jako fallback).
     *   Diaryzacja (identyfikacja i rozróżnienie mówców) wraz z automatycznym przypisaniem etykiet opisujących rolę mówcy w rozmowie (np. „Terapeuta", „Pacjent", w sesjach coachingowych „Trener", „Klient") albo etykiet neutralnych (np. „Osoba 1"), gdy rola nie może zostać ustalona; etykiety nie zawierają imion ani nazwisk i mogą być korygowane przez Administratora.
-    *   Generowanie ustrukturyzowanych raportów z sesji z wykorzystaniem sztucznej inteligencji (Vertex AI / Gemini).
+    *   3-warstwowa pseudonimizacja treści sesji (deterministyczna redakcja w locie nazwisk, numerów PESEL, telefonów, adresów, nazw pracodawców, szkół i miejscowości) przed trwałym zapisem transkrypcji i raportu.
+    *   Generowanie ustrukturyzowanych raportów z sesji z wykorzystaniem sztucznej inteligencji w certyfikowanym środowisku korporacyjnym w EOG (Vertex AI).
     *   Generowanie pomiarów wymiarowych HiTOP.
-    *   Tworzenie i przechowywanie zaszyfrowanej pamięci kontekstowej (RAG) — pseudonimizowanych (pozbawionych bezpośrednich identyfikatorów) podsumowań sesji oraz powiązanych wątków tematycznych, służących zapewnieniu ciągłości terapeutycznej.
-    *   Generowanie embeddings (reprezentacji wektorowych) na potrzeby pamięci kontekstowej.
+    *   Tworzenie i przechowywanie zaszyfrowanej pamięci kontekstowej (RAG) — pseudonimizowanych podsumowań sesji oraz powiązanych wątków tematycznych, służących zapewnieniu ciągłości terapeutycznej.
+    *   Generowanie embeddings (reprezentacji wektorowych) na potrzeby pamięci kontekstowej na zredagowanym tekście.
     *   Przechowywanie zaszyfrowanych transkrypcji i raportów jako Materiałów Użytkownika.
 4.  **Rodzaj Danych Osobowych:** Dane określone w Części II Polityki Prywatności („Informacje dla Klientów"), w szczególności: 
-    *   Dane identyfikacyjne i kontaktowe, w zakresie w jakim pojawią się w nagraniu lub transkrypcji. 
+    *   Dane identyfikacyjne i kontaktowe, z zastrzeżeniem inwariantu minimalizacji: system nie gromadzi imion ani nazwisk Klientów w kartotekach (kartoteka operuje na roboczym pseudonimie, a jedynym bezpośrednim identyfikatorem konta jest adres e-mail przetwarzany w domenie tożsamości). 
     *   Dane Osobowe szczególnych kategorii, tj. dane dotyczące zdrowia fizycznego lub psychicznego Klientów (art. 9 ust. 1 RODO). 
-    *   Wszelkie inne Dane Osobowe zawarte w nagraniach audio, ich transkrypcjach, raportach z sesji i pamięci kontekstowej. 
+    *   Wszelkie inne Dane Osobowe zawarte w nagraniach audio, ich transkrypcjach, raportach z sesji i pamięci kontekstowej (podlegające procedurze automatycznej redakcji PII). 
 5.  **Kategorie osób, których dane dotyczą:** Klienci Administratora, zgodnie z definicją w § 2 pkt 9 Regulaminu, a także inne osoby uczestniczące w nagrywanych sesjach (np. partner w terapii par, członkowie rodziny, opiekunowie). 
 6.  **Czas trwania przetwarzania:** Dane Osobowe będą przetwarzane przez czas obowiązywania Umowy Głównej, zgodnie z § 13 Regulaminu, z zastrzeżeniem że:
     *   Nagrania audio są usuwane natychmiast po pomyślnej transkrypcji, a najpóźniej w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania (niezależnie od statusu Umowy).
@@ -70,6 +71,8 @@ Podmiot Przetwarzający zobowiązuje się do:
 3.  **Bezpieczeństwa przetwarzania (art. 32 RODO):** Wdrożyć i stosować odpowiednie środki techniczne i organizacyjne zapewniające stopień bezpieczeństwa odpowiadający ryzyku, w szczególności opisane w Części I, pkt 5 Polityki Prywatności, obejmujące:
     *   Szyfrowanie kopertowe (Envelope Encryption) danych szczególnych kategorii na poziomie aplikacji oraz klucze CMEK zarządzane w Cloud KMS z automatyczną rotacją co 90 dni.
     *   Przechowywanie i przetwarzanie Danych Osobowych wyłącznie w EOG: region europe-central2 (Warszawa) oraz — dla usług AI — europe-west4 (Holandia); lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod i podlega kontroli wersji.
+    *   3-warstwową pseudonimizację i minimalizację u źródła (brak nazwisk w kartotekach, roboczy pseudonim, redakcja PII w transkrypcjach i raportach).
+    *   Dwuskładnikową procedurę aktywacji konta Klienta (link e-mail oraz 6-cyfrowy kod parowania przekazywany osobiście na sesji, z hashowaniem i blokadą po 5 błędnych próbach).
     *   Dostęp do bazy danych kanałami szyfrowanymi z prywatnej sieci VPC, z bezpośrednim dostępem ograniczonym do kontrolowanej listy autoryzowanych adresów administracyjnych.
     *   Dedykowane konta usługowe z minimalnymi uprawnieniami dla każdego mikroserwisu.
     *   Usuwanie nagrań audio natychmiast po transkrypcji, najpóźniej w ramach automatycznego mechanizmu (OLM) po upływie 48 godzin.
@@ -85,7 +88,7 @@ Podmiot Przetwarzający zobowiązuje się do:
     *   **Zaszyfrowane kopie zapasowe:** dane mogą być obecne w zaszyfrowanych kopiach zapasowych Cloud SQL przez okres ich retencji (nie dłużej niż 30 dni), po czym są automatycznie nadpisywane. Bez dostępu do Cloud KMS dane w kopiach zapasowych pozostają nieczytelne.
     *   **Klucze szyfrowania:** Rotacja klucza KEK (co 90 dni) powoduje, że zaszyfrowane DEK z poprzednich wersji klucza stają się nieprzydatne po usunięciu materiału kryptograficznego starszych wersji.
 8.  **Audytu:** Udostępniać Administratorowi wszelkie informacje niezbędne do wykazania spełnienia obowiązków z art. 28 RODO oraz umożliwiać audyty. Szczegółowe zasady audytu są następujące: 
-    *   Strony ustalają, że w celu minimalizacji zakłóceń operacyjnych, Administrator akceptuje w pierwszej kolejności udostępnienie przez Podmiot Przetwarzający raportu z własnej oceny bezpieczeństwa, dokumentacji środków technicznych i organizacyjnych oraz, w miarę dostępności, certyfikatów lub atestów (np. ISO 27001, SOC 2) lub raportów z audytu przeprowadzonych przez niezależne podmioty trzecie. Na dzień wejścia w życie niniejszej DPA, Podmiot Przetwarzający nie posiada certyfikatów ISO 27001 ani SOC 2, jednak infrastruktura oparta jest na Google Cloud Platform, który posiada certyfikaty ISO 27001, ISO 27017, ISO 27018, SOC 1/2/3.
+    *   Strony ustalają, że w celu minimalizacji zakłóceń operacyjnych, Administrator akceptuje w pierwszej kolejności udostępnienie przez Podmiot Przetwarzający raportu z własnej oceny bezpieczeństwa, dokumentacji środków technicznych i organizacyjnych oraz, w miarę dostępności, certyfikatów lub atestów (np. ISO 27001, SOC 2) lub raportów z audytu przeprowadzonych przez niezależne podmioty trzecie. Na dzień wejście w życie niniejszej DPA, Podmiot Przetwarzający nie posiada certyfikatów ISO 27001 ani SOC 2, jednak infrastruktura oparta jest na Google Cloud Platform, który posiada certyfikaty ISO 27001, ISO 27017, ISO 27018, SOC 1/2/3.
     *   W przypadku, gdy udostępnione informacje nie są wystarczające, Administrator ma prawo przeprowadzić audyt, informując o tym Podmiot Przetwarzający z co najmniej 30-dniowym wyprzedzeniem. Audyt będzie przeprowadzany w godzinach pracy Podmiotu Przetwarzającego, w sposób jak najmniej zakłócający jego działalność. Administrator ponosi wszelkie koszty związane z przeprowadzeniem audytu, w tym koszty audytora.
 
 ---
@@ -105,12 +108,13 @@ Administrator oświadcza i gwarantuje, że:
 ## § 5. PODPOWIERZENIE I TRANSFER DANYCH
 
 1.  **Ogólna zgoda na podpowierzenie:** Administrator wyraża ogólną pisemną zgodę (art. 28 ust. 2 RODO) na korzystanie przez Podmiot Przetwarzający z usług Sub-procesorów wskazanych w ust. 2. 
-2.  **Lista Sub-procesorów:** Podmiot Przetwarzający zobowiązuje się do utrzymywania aktualnej listy Sub-procesorów uczestniczących w przetwarzaniu Danych Osobowych (danych Klientów). Na dzień wejścia w życie niniejszej DPA, lista Sub-procesorów jest następująca:
+2.  **Lista Sub-procesorów:** Podmiot Przetwarzający zobowiązuje się do utrzymywania aktualnej listy Sub-procesorów uczestniczących w przetwarzaniu Danych Osobowych (danych Klientów). Na dzień wejście w życie niniejszej DPA, lista Sub-procesorów jest następująca:
 
 | Sub-procesor | Usługa | Przetwarzane dane | Lokalizacja |
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Przetwarzanie backendowe i przechowywanie Danych Osobowych | europe-central2 (Warszawa, Polska) |
-| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (raporty), Text Embeddings (RAG) | Transkrypcja, generowanie raportów, embeddingi | europe-west4 (Holandia) — EOG |
+| **Google Cloud — Vertex AI** | Generowanie raportów AI, Text Embeddings (RAG), Speech-to-Text (fallback) | Przetwarzanie analityczne raportów, embeddingi | europe-west4 (Holandia) — EOG |
+| **ElevenLabs, Inc.** | Speech-to-Text (Scribe v2) | Przetwarzanie audio na tekst w trybie synchronicznym (bez trwałego utrwalania audio, zakaz użycia danych do trenowania modeli) | Dedykowany endpoint rezydencji danych w UE (api.eu.residency.elevenlabs.io) — EOG |
 | **Google Firebase** | Cloud Firestore (lustrzane statusy przetwarzania sesji — bez treści sesji), FCM (powiadomienia push — bez treści sesji) | Pseudonimowe identyfikatory sesji i statusy przetwarzania | Firestore: europe-central2; FCM: usługa globalna Google (treść powiadomień nie zawiera Danych Osobowych Klientów) |
 
     Dostawcy przetwarzający wyłącznie dane Użytkowników Profesjonalnych (w szczególności Stripe — obsługa płatności, oraz Resend — wysyłka wiadomości e-mail do Użytkownika), nie przetwarzają Danych Osobowych Klientów i nie są Sub-procesorami w rozumieniu niniejszej DPA; są oni wskazani w Polityce Prywatności jako odbiorcy danych Użytkowników Profesjonalnych.

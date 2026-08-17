@@ -311,7 +311,11 @@ func (h *AdminHandler) renewOneSubscription(ctx context.Context, subID uuid.UUID
 type safetyCheckResponse struct {
 	MissingCounterSubs []uuid.UUID `json:"missing_counter_subs"`
 	HealedCount        int         `json:"healed_count"`
-	Message            string      `json:"message"`
+	// Liczniki dające MNIEJ sesji, niż obiecuje plan. Raportowane,
+	// nigdy nie naprawiane automatycznie — patrz
+	// ListCountersBelowPlanLimit.
+	BelowPlanSubs []uuid.UUID `json:"below_plan_subs"`
+	Message       string      `json:"message"`
 }
 
 // handleSafetyCheck — weekly job. Znajduje ACTIVE/TRIALING subs bez aktywnego
@@ -355,9 +359,33 @@ func (h *AdminHandler) handleSafetyCheck(w http.ResponseWriter, r *http.Request)
 			"healed_count", healed)
 	}
 
+	// Drugi detektor: licznik istnieje, ale obiecuje mniej sesji niż
+	// plan. Tak wygląda przecena katalogu, która nie dotarła do
+	// otwartych okresów (migracja 000070 → 000082) — klient płaci za
+	// nowy plan i cały okres dostaje stary limit. Poprzednio wychodziło
+	// to dopiero z jego zgłoszenia.
+	belowIDs := make([]uuid.UUID, 0)
+	below, err := q.ListCountersBelowPlanLimit(ctx)
+	if err != nil {
+		// Detektor nie może wywrócić auto-healu, który już się wykonał.
+		h.logger.ErrorContext(ctx, "cron: safety-check below-plan scan failed",
+			"error", err)
+	} else {
+		for _, b := range below {
+			belowIDs = append(belowIDs, b.SubscriptionID)
+			h.logger.WarnContext(ctx, "cron: counter limit below plan",
+				"sub_id", b.SubscriptionID,
+				"org_id", b.OrganizationID,
+				"tokens_limit", b.TokensLimit,
+				"plan_tokens_per_period", b.PlanTokensPerPeriod,
+				"plan", string(b.Tier)+" "+string(b.Cycle))
+		}
+	}
+
 	writeJSON(w, http.StatusOK, safetyCheckResponse{
 		MissingCounterSubs: missingIDs,
 		HealedCount:        healed,
+		BelowPlanSubs:      belowIDs,
 		Message:            "ok",
 	})
 }

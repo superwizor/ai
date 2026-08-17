@@ -13,6 +13,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumePendingInvitationsForEmail = `-- name: ConsumePendingInvitationsForEmail :execrows
+UPDATE invitations
+SET accepted_at = now(), accepted_user_id = $3
+WHERE organization_id = $1 AND email = $2
+  AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+type ConsumePendingInvitationsForEmailParams struct {
+	OrganizationID uuid.UUID   `json:"organization_id"`
+	Email          string      `json:"email"`
+	AcceptedUserID pgtype.UUID `json:"accepted_user_id"`
+}
+
+// Closes any still-open invitation for this email in this org when the
+// account joins by a route other than the invitation link (today:
+// AdminAssignTherapistToOrg). Without this the row lingers as "pending"
+// and keeps reserving its seat allocation via
+// CountPendingInvitationsForAllocation — the person occupies a seat
+// twice, once as a member and once as a ghost invite.
+//
+// accepted_user_id records who actually landed, so the audit trail
+// still answers "which account consumed this invitation".
+func (q *Queries) ConsumePendingInvitationsForEmail(ctx context.Context, arg ConsumePendingInvitationsForEmailParams) (int64, error) {
+	result, err := q.db.Exec(ctx, consumePendingInvitationsForEmail, arg.OrganizationID, arg.Email, arg.AcceptedUserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countPendingInvitationsForAllocation = `-- name: CountPendingInvitationsForAllocation :one
 SELECT COUNT(*) FROM invitations
 WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now()
@@ -200,11 +230,28 @@ func (q *Queries) IncrementInvitationCodeAttempts(ctx context.Context, id uuid.U
 }
 
 const listPendingInvitationsByOrg = `-- name: ListPendingInvitationsByOrg :many
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id, pairing_code_hash, code_attempts, revoked_at FROM invitations
-WHERE organization_id = $1 AND accepted_at IS NULL
-ORDER BY created_at DESC
+SELECT i.id, i.organization_id, i.invited_by_user, i.email, i.token_hash, i.expires_at, i.accepted_at, i.accepted_user_id, i.created_at, i.invited_role, i.allocation_id, i.invited_first_name, i.invited_last_name, i.patient_file_id, i.pairing_code_hash, i.code_attempts, i.revoked_at FROM invitations i
+WHERE i.organization_id = $1 AND i.accepted_at IS NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.email = i.email
+        AND u.organization_id = i.organization_id
+        AND u.deleted_at IS NULL
+  )
+ORDER BY i.created_at DESC
 `
 
+// "Pending" means the person is NOT in the org yet. accepted_at alone
+// doesn't establish that: a therapist can join through a path that
+// never touches their invitation row — AdminAssignTherapistToOrg links
+// the account directly — leaving accepted_at NULL forever. The org
+// panel then rendered the same person twice, once as AKTYWNY and once
+// as ZAPROSZENIE WYSŁANE (2026-08-01: piotrak@yahoo.com in Fenix 666).
+//
+// ConsumePendingInvitationsForEmail closes that hole going forward; this
+// predicate is the read-side guard that also covers rows already stale
+// in the database and any future path we forget to wire up. Membership
+// is the source of truth for "already in" — the invitation row is not.
 func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error) {
 	rows, err := q.db.Query(ctx, listPendingInvitationsByOrg, organizationID)
 	if err != nil {

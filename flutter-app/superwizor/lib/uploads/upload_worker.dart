@@ -50,6 +50,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
 import 'pending_upload.dart';
+import 'background_upload_channel.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
 
@@ -76,13 +77,18 @@ class UploadWorker {
     BackoffPolicy? backoff,
     int? maxAttemptsForTerminalClassError,
     Duration? putRetryCap,
+    BackgroundUploadChannel? background,
   })  : _io = io,
+        _background = background,
         _clock = clock ?? (() => DateTime.now().toUtc()),
         _backoff = backoff ?? defaultBackoff,
         _terminalRetryCap = maxAttemptsForTerminalClassError ?? 1,
         _putRetryCap = putRetryCap ?? const Duration(seconds: 90);
 
   final UploadIo _io;
+  /// Kanał do warstwy natywnej (docs/58). Null = brak oddawania
+  /// transferu systemowi; wszystko idzie ścieżką w Darcie, jak dotąd.
+  final BackgroundUploadChannel? _background;
   final DateTime Function() _clock;
   final BackoffPolicy _backoff;
   /// Even when an error classifies as "terminal" we tolerate one
@@ -263,6 +269,38 @@ class UploadWorker {
         lastError: 'invariant: uploadId/signedUrl missing in created phase',
       );
     }
+
+    // Bajty są już u systemu — nie ruszamy niczego i zwracamy TĘ SAMĄ
+    // instancję. Runner przerywa wewnętrzną pętlę na `identical(next,
+    // current)`, więc nowy obiekt o równej treści zapętliłby tick.
+    if (u.isNativeLeaseFresh) return u;
+
+    // Oddanie transferu systemowi (docs/58 §5). Warunki są wąskie i
+    // celowo: background URLSession czyta PLIK z dysku, więc wchodzi
+    // tylko ścieżka plainFile — wiersze encryptedChunks wymagają
+    // odszyfrowania do tempa i zostają w Darcie. Wymagamy też URI
+    // resumable, bo bez niego native nie ma czego wznawiać.
+    final bg = _background;
+    if (bg != null &&
+        bg.supportsOsHandOff &&
+        u.sourceKind == UploadSourceKind.plainFile &&
+        (u.resumableSessionUri ?? '').isNotEmpty) {
+      final handed = await bg.handOff(
+        localId: u.localId,
+        uploadUri: u.resumableSessionUri!,
+        filePath: u.sourcePath,
+        contentType: u.contentType,
+        totalBytes: u.sizeBytes,
+      );
+      if (handed) {
+        debugPrint('[upload-worker] ${u.localId} oddany systemowi '
+            '(background URLSession)');
+        return u.copyWith(nativeLeaseAt: _clock());
+      }
+      // Native odmówił (brak pliku, brak wtyczki w tym buildzie) —
+      // spadamy na PUT w procesie, czyli dotychczasowe zachowanie.
+    }
+
     try {
       await _io.putBytes(u, onProgress: onUploadProgress);
       // Option F (2026-05-25): success at PUT is terminal-success
@@ -288,6 +326,38 @@ class UploadWorker {
       }
       return _classify(u, e);
     }
+  }
+
+  /// Nakłada na wiersz raport z warstwy natywnej (docs/58 §6). Wołane
+  /// przez runnera po opróżnieniu journala — worker jest właścicielem
+  /// sprzątania źródła i klasyfikacji błędu, więc decyzja należy tutaj,
+  /// nie w runnerze.
+  ///
+  /// Sukces → dokładnie ta sama ścieżka co udany PUT w procesie:
+  /// czyścimy materiał źródłowy i kończymy na `completed`. Porażka →
+  /// leasing zdjęty, wiersz wraca do `pending` z widocznym błędem i
+  /// zwykłym backoffem; ponowienie samo utworzy nową sesję resumable.
+  Future<PendingUpload> applyNativeReport(
+    PendingUpload u,
+    BackgroundUploadReport report,
+  ) async {
+    if (report.success) {
+      await _cleanupQuiet(u);
+      return u.copyWith(
+        phase: UploadPhase.completed,
+        terminatedAt: _clock(),
+        clearNativeLease: true,
+        clearLastError: true,
+      );
+    }
+    return _scheduleRetry(
+      u.copyWith(
+        phase: UploadPhase.pending,
+        clearNativeLease: true,
+        clearUploadCredentials: true,
+      ),
+      report.failureSummary,
+    );
   }
 
   /// Walk a legacy in-flight row (phase=uploaded or phase=converted,

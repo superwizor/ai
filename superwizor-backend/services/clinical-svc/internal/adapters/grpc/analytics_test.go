@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -105,6 +106,10 @@ func TestGetAdminAnalytics_RoleGate(t *testing.T) {
 
 type fakeAnalyticsQuerier struct {
 	db.Querier
+	sharingTrend []db.GetClientSharingTrendRow
+	sharingErr   error
+	funnelErr    error
+	reading      db.GetReportReadingStatsRow
 }
 
 func (q *fakeAnalyticsQuerier) GetWAU(ctx context.Context) (int64, error) { return 10, nil }
@@ -360,5 +365,61 @@ func TestTrackEvents_DualWrite(t *testing.T) {
 	}
 	if evt.Source != "client" {
 		t.Errorf("expected Source 'client', got %q", evt.Source)
+	}
+}
+
+// Metody zakładek "Użycie" i "Pętla z klientem". Atrapa ma pusty embed
+// db.Querier, więc bez tych implementacji handler wywala się na nil
+// pointerze zamiast pokazać brak danych.
+//
+// Zwracają pustkę z nil-error, czyli realny stan "jeszcze nic nie ma".
+// Ścieżkę błędu pokrywa osobny test niżej.
+func (f *fakeAnalyticsQuerier) GetClientSharingTrend(ctx context.Context) ([]db.GetClientSharingTrendRow, error) {
+	return f.sharingTrend, f.sharingErr
+}
+
+func (f *fakeAnalyticsQuerier) GetClientInvitationFunnel(ctx context.Context) (db.GetClientInvitationFunnelRow, error) {
+	return db.GetClientInvitationFunnelRow{}, f.funnelErr
+}
+
+func (f *fakeAnalyticsQuerier) GetPairingCodeFriction(ctx context.Context) ([]db.GetPairingCodeFrictionRow, error) {
+	return nil, nil
+}
+
+func (f *fakeAnalyticsQuerier) GetReportReadingStats(ctx context.Context) (db.GetReportReadingStatsRow, error) {
+	return f.reading, nil
+}
+
+func (f *fakeAnalyticsQuerier) GetReadingPlatformSplit(ctx context.Context) ([]db.GetReadingPlatformSplitRow, error) {
+	return nil, nil
+}
+
+// Awaria pojedynczej metryki nie może wywrócić całego pulpitu.
+//
+// Pulpit ma sześć zakładek i ~30 wykresów zasilanych niezależnymi
+// zapytaniami. Gdyby jedno z nich propagowało błąd, admin zobaczyłby
+// pustą stronę zamiast 29 działających wykresów — a właśnie wtedy,
+// gdy coś jest nie tak, panel jest najbardziej potrzebny.
+func TestGetAdminAnalytics_JednaAwariaNieWywracaPulpitu(t *testing.T) {
+	q := &fakeAnalyticsQuerier{
+		sharingErr: errors.New("celowa awaria zapytania o udostepnienia"),
+		funnelErr:  errors.New("celowa awaria lejka zaproszen"),
+	}
+	s := &Server{queries: q}
+
+	ctx := context.WithValue(context.Background(), UserRoleKey, "SUPERWIZOR_ADMIN")
+	resp, err := s.GetAdminAnalytics(ctx, &clinicalv1.GetAdminAnalyticsRequest{TimeRange: "12w"})
+	if err != nil {
+		t.Fatalf("awaria jednej metryki wywrocila caly pulpit: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("brak odpowiedzi")
+	}
+	// Sekcja z awarią pokazuje pustkę, nie błąd.
+	if len(resp.ClientSharingTrend) != 0 {
+		t.Errorf("oczekiwano pustej serii po awarii, jest %d punktow", len(resp.ClientSharingTrend))
+	}
+	if resp.ClientInvitationFunnel == nil {
+		t.Error("lejek musi byc niepusty (zerowy), a nie nil — front nie sprawdza nil")
 	}
 }
