@@ -3,9 +3,16 @@
 // context from cached session reports and feeds it as system instruction
 // to Gemini.
 //
-// Model: gemini-2.0-flash via Vertex AI (europe-west4) — cheap, 1M context.
-// PHI note: report content is sent to Gemini via Vertex AI (EU-resident,
-// Google Cloud DPA). No raw transcripts are sent — only report summaries.
+// Model: patrz _kModel. Region przetwarzania: patrz _kLocation.
+//
+// PHI: do modelu ida skroty raportow (surowe transkrypcje NIE), a te niosa
+// dane szczegolnej kategorii. Dlatego region musi byc podany JAWNIE.
+// Domyslne wartosci wyprowadzaja przetwarzanie poza EOG: wycofane
+// `vertexAI()` szlo na 'us-central1', a `agentPlatform()` bez `location`
+// idzie na 'global'. Region jest czescia sciezki zadania
+// (/projects/…/locations/<region>/…), wiec jego pominiecie to nie
+// kosmetyka, tylko zmiana miejsca przetwarzania danych zdrowotnych —
+// sprzeczna z docs/compliance/06 §3, ktora deklaruje europe-west4.
 //
 // Usage: created per-patient via AiChatServiceFactory; holds ChatSession
 // state for the lifetime of the chat screen.
@@ -33,6 +40,10 @@ const int _kMaxSummaryOnlyReports = 20;
 
 /// The Gemini model to use for chat (user requested gemini-2.5-flash).
 const String _kModel = 'gemini-2.5-flash';
+
+/// Region przetwarzania Vertex AI. Musi pozostac w EOG i zgadzac sie z
+/// reszta stosu klinicznego (analiza sesji tez chodzi w europe-west4).
+const String _kLocation = 'europe-west4';
 
 // ── System Prompt ──────────────────────────────────────────
 
@@ -114,7 +125,7 @@ class AiChatService {
 
   /// Generates a structured summary for a transcript using Gemini 2.5 Flash.
   static Future<String> generateSummaryForTranscript(String transcript) async {
-    final model = FirebaseAI.vertexAI().generativeModel(
+    final model = FirebaseAI.agentPlatform(location: _kLocation).generativeModel(
       model: _kModel,
       generationConfig: GenerationConfig(
         temperature: 0.2,
@@ -208,7 +219,7 @@ class AiChatServiceFactory {
         : contextParts.join('\n\n');
 
     // 3. Create the Gemini model + chat session
-    final model = FirebaseAI.vertexAI().generativeModel(
+    final model = FirebaseAI.agentPlatform(location: _kLocation).generativeModel(
       model: _kModel,
       systemInstruction: Content.system(
         _buildSystemPrompt(patientAlias, contextBlock),
