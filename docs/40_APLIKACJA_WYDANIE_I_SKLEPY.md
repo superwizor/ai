@@ -122,6 +122,28 @@ python3 make_iphone_marketing.py
 
 ---
 
+## 🩺 Crashlytics — krok wymagany przed wydaniem iOS
+
+Raportowanie awarii wpięte 13.08.2026 (`main.dart`) działa od razu po
+zainstalowaniu buildu — zgłoszenia przychodzą na obu platformach.
+Symbolizacja to osobna sprawa i **na iOS wymaga ręcznego kroku w Xcode**,
+którego nie da się wiarygodnie dopisać skryptem do `project.pbxproj`:
+
+1. Runner → Build Phases → **+ → New Run Script Phase**
+2. Skrypt: `"${PODS_ROOT}/FirebaseCrashlytics/run"`
+3. Input Files:
+   - `${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}`
+   - `$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)`
+
+Bez tego natywne ślady stosu z iOS przyjdą **nieczytelne**. Błędy Dart/
+Fluttera są czytelne niezależnie od tego kroku, bo niosą własny ślad.
+
+Android nie wymaga niczego ręcznie — wtyczka
+`com.google.firebase.crashlytics` jest w `android/settings.gradle.kts`
+i `android/app/build.gradle.kts`, i sama wysyła mapowanie R8.
+
+---
+
 ## 🤖 Część 2: Google Play Store (Android)
 
 ### 2.1 Status pierwszej publikacji

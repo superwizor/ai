@@ -8,9 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "check:l10n": "node scripts/check-l10n-parity.mjs",
-    "ci": "pnpm run check:l10n && pnpm run lint && pnpm run build",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "ci": "pnpm run check:l10n && pnpm run lint && pnpm run test && pnpm run build",
+    "test:e2e": "playwright test --workers=2",
+    "test:e2e:headed": "playwright test --workers=2 --headed",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:all": "pnpm run typecheck && pnpm run test && pnpm run test:e2e",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.0",
@@ -42,11 +49,15 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "jsdom": "^30.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
   },
   "browserslist": [
     "last 2 Chrome versions",

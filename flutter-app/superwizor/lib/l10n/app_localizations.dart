@@ -5040,18 +5040,6 @@ abstract class AppLocalizations {
   /// **'Język aplikacji'**
   String get settings_language_app;
 
-  /// No description provided for @settings_licenses.
-  ///
-  /// In pl, this message translates to:
-  /// **'Licencje oprogramowania'**
-  String get settings_licenses;
-
-  /// No description provided for @settings_licenses_desc.
-  ///
-  /// In pl, this message translates to:
-  /// **'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.'**
-  String get settings_licenses_desc;
-
   /// No description provided for @settings_live_activities.
   ///
   /// In pl, this message translates to:

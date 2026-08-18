@@ -1,0 +1,32 @@
+# Purger RODO — zadanie wsadowe, nie usługa.
+#
+# Kasuje twardo rekordy usunięte miękko ponad 30 dni temu (pacjenci,
+# kartoteki, sesje, notatki) oraz zdarzenia analityczne starsze niż 90
+# dni. Cała robota dzieje się w jednej transakcji.
+#
+# Dlaczego osobny obraz zamiast dorzucenia do clinical-svc: to zadanie
+# ma się uruchamiać z harmonogramu i kończyć, a nie nasłuchiwać na
+# porcie. Cloud Run Job oczekuje procesu, który wychodzi z kodem 0.
+#
+# Kontekst: binarka istniała od dawna i wołała PurgeOldAnalyticsEvents,
+# ale nigdy nie została wdrożona ani zaplanowana — wykryte 14.08.2026
+# przy przeglądzie kosztów telemetrii. Nieuruchomiony purger RODO to
+# ekspozycja zgodnościowa, nie drobiazg.
+
+FROM golang:1.26-alpine AS builder
+WORKDIR /app
+
+COPY go.work go.work.sum ./
+COPY services/ services/
+COPY pkg/ pkg/
+COPY gen/ gen/
+
+WORKDIR /app/services/clinical-svc
+RUN go mod download
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /purger ./cmd/purger
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /purger /purger
+USER nonroot:nonroot
+ENTRYPOINT ["/purger"]

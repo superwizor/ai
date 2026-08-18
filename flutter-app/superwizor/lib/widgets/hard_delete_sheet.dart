@@ -51,7 +51,7 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
       // 5. Routing: na login screen
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(settings: const RouteSettings(name: 'LoginScreen'), builder: (_) => const LoginScreen()),
         (_) => false,
       );
     } catch (e) {

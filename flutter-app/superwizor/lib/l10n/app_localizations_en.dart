@@ -2798,13 +2798,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_language_app => 'App language';
 
   @override
-  String get settings_licenses => 'Software licenses';
-
-  @override
-  String get settings_licenses_desc =>
-      'This application was built thanks to the work of thousands of developers around the world. Below you\'ll find information about the open-source software we use to deliver the highest quality experience.';
-
-  @override
   String get settings_live_activities => 'Lock screen activity';
 
   @override

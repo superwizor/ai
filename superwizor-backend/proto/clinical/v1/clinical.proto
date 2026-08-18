@@ -921,6 +921,18 @@ message GetAdminAnalyticsResponse {
 
   // Tab 1 registrations detail
   repeated RegisteredUserDetail registrations_detail = 38;
+
+  // Zakładki "Użycie" i "Pętla z klientem" (14.08.2026).
+  //
+  // Panel odpowiadał dotąd na "jak działa system", nie na "jak ludzie z
+  // niego korzystają". Te pola nie wymagają ANI JEDNEGO nowego zdarzenia
+  // — stoją na sessions, invitations i istniejących parach
+  // report.read_started / report.read_finished.
+  repeated ClientSharingPoint client_sharing_trend = 39;
+  ClientInvitationFunnel client_invitation_funnel = 40;
+  repeated PairingAttemptBucket pairing_attempts = 41;
+  ReportReadingStats report_reading = 42;
+  repeated PlatformReads reading_platforms = 43;
 }
 
 message RegisteredUserDetail {
@@ -996,6 +1008,45 @@ message FailureRatePoint {
   double failure_rate = 2;
   int64 total = 3;
   int64 failed = 4;
+}
+
+// Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
+message ClientSharingPoint {
+  string label = 1;
+  int64 sessions_total = 2;
+  int64 shared = 3;
+  // Raport dotarł, ale klient go schował — sygnał odbioru, nie wysyłki.
+  int64 hidden = 4;
+}
+
+message ClientInvitationFunnel {
+  int64 sent = 1;
+  int64 accepted = 2;
+  int64 revoked = 3;
+  int64 expired = 4;
+  double median_hours_to_accept = 5;
+}
+
+// Rozkład, nie średnia — interesuje nas ogon, czyli klienci, którzy
+// męczą się z kodem parowania kilka razy.
+message PairingAttemptBucket {
+  int32 attempts = 1;
+  int64 invitations = 2;
+}
+
+// active_read_ms mierzy klient i zatrzymuje licznik przy zejściu w tło,
+// więc median_seconds to czas AKTYWNY, nie czas otwartego ekranu.
+// Różnica started-finished to czytania przerwane.
+message ReportReadingStats {
+  int64 started = 1;
+  int64 finished = 2;
+  double median_seconds = 3;
+  double p90_seconds = 4;
+}
+
+message PlatformReads {
+  string platform = 1;
+  int64 reads = 2;
 }
 
 message FunnelStep {

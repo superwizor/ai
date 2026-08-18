@@ -576,14 +576,26 @@ export function OrgDetail({ orgId }: { orgId: string }) {
           {details.managers.length > 0 && (
             <div className="mb-3 grid gap-1.5">
               {details.managers.map((u) => (
-                <div key={u.id} className="flex justify-between gap-3 font-serif text-sm">
-                  <span className="text-frost">
-                    {u.firstName} {u.lastName}
-                    <span className="ml-2 font-mono text-[9px] uppercase tracking-[var(--tracking-label)] text-ember">
+                <div
+                  key={u.id}
+                  className="flex min-w-0 items-baseline justify-between gap-3 font-serif text-sm"
+                >
+                  {/* Nazwisko i etykieta roli zachowują pełną szerokość.
+                      Przepełnienie powodował wyłącznie adres — 40-znakowy
+                      token bez miejsca na złamanie — więc to on ustępuje.
+                      Skracanie nazwiska tylko pogarszałoby czytelność. */}
+                  <span className="flex shrink-0 items-baseline gap-2">
+                    <span className="text-frost">
+                      {u.firstName} {u.lastName}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[var(--tracking-label)] text-ember">
                       {tMgr("badge")}
                     </span>
                   </span>
-                  <span className="text-mist truncate">{u.email}</span>
+                  {/* title: skrócony adres bez podpowiedzi byłby bezużyteczny. */}
+                  <span className="min-w-0 truncate text-mist" title={u.email}>
+                    {u.email}
+                  </span>
                 </div>
               ))}
             </div>
@@ -597,13 +609,15 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               {details.therapists.map((u) => (
                 <li
                   key={u.id}
-                  className="flex items-baseline justify-between gap-3 font-serif text-sm"
+                  className="flex min-w-0 items-baseline justify-between gap-3 font-serif text-sm"
                 >
-                  <span className="text-frost">
+                  <span className="shrink-0 text-frost">
                     {u.firstName} {u.lastName}
                   </span>
                   <span className="flex items-baseline gap-3 min-w-0">
-                    <span className="text-mist truncate">{u.email}</span>
+                    <span className="min-w-0 truncate text-mist" title={u.email}>
+                      {u.email}
+                    </span>
                     <button
                       type="button"
                       onClick={() => {
@@ -1202,13 +1216,19 @@ function SelectField({
   );
 }
 
+// min-w-0 na obu poziomach nie jest ozdobą. Element siatki ma domyślnie
+// min-width:auto, czyli NIE kurczy się poniżej wewnętrznej szerokości
+// treści. Adres e-mail to jeden nierozdzielny token, więc rozpychał
+// kolumnę `1fr` i wylewał się poza obramowanie karty, na sąsiednią
+// (zgłoszone 2026-08-02 na karcie TERAPEUCI). `truncate` na samym
+// tekście tego nie ratuje: potrzebuje przodka, który wolno skurczyć.
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-card border border-frost/10 bg-frost/[0.04] p-5">
+    <div className="min-w-0 rounded-card border border-frost/10 bg-frost/[0.04] p-5">
       <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-3">
         {title}
       </h2>
-      <div className="grid gap-2">{children}</div>
+      <div className="grid min-w-0 gap-2">{children}</div>
     </div>
   );
 }

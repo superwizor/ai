@@ -4,14 +4,16 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 
-export type TabKey = "overview" | "costs" | "quality" | "funnel" | "ops" | "feedback";
+export type TabKey = "overview" | "usage" | "clientloop" | "costs" | "quality" | "funnel" | "ops" | "feedback";
 
 interface TabNavProps {
   activeTab: TabKey;
   onChange: (tab: TabKey) => void;
 }
 
-const TAB_KEYS: TabKey[] = ["overview", "costs", "quality", "funnel", "ops", "feedback"];
+// "usage" i "clientloop" tuż po przeglądzie: odpowiadają na pytanie
+// "jak ludzie korzystają", które reszta zakładek pomijała.
+const TAB_KEYS: TabKey[] = ["overview", "usage", "clientloop", "costs", "quality", "funnel", "ops", "feedback"];
 
 export function TabNav({ activeTab, onChange }: TabNavProps) {
   const t = useTranslations("admin.analytics.tabs");

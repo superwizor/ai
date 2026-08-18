@@ -127,6 +127,7 @@ class MainDrawer extends StatelessWidget {
                 onTap: () {
                   final lang = Localizations.localeOf(context).languageCode;
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: 'LegalMarkdownScreen'),
                     builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/terms_en.md' : 'assets/legal/terms.md', title: AppLocalizations.of(context).settings_terms),
                   ));
                 },
@@ -137,6 +138,7 @@ class MainDrawer extends StatelessWidget {
                 onTap: () {
                   final lang = Localizations.localeOf(context).languageCode;
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: 'LegalMarkdownScreen'),
                     builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/privacy_policy_en.md' : 'assets/legal/privacy_policy.md', title: AppLocalizations.of(context).settings_privacy),
                   ));
                 },

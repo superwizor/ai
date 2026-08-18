@@ -2,15 +2,45 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+	  Opcje eksportu paczki App Store, wersjonowane w repozytorium.
+
+	  ISTNIEJE PO TO, ŻEBY WYŁĄCZYĆ manageAppVersionAndBuildNumber.
+
+	  Flutter generuje ten plik sam i ustawia tam wartość true. Przy tym
+	  ustawieniu Xcode PODBIJA numer builda podczas eksportu, żeby uniknąć
+	  kolizji z App Store Connect. Skutek: pubspec.yaml mówił 1.0.7+40,
+	  archiwum też 40, a wyeksportowana paczka niosła 41 — i to 41 trafiło
+	  do testerów 14.08.2026.
+
+	  Rozjazd nie jest kosmetyczny. To numer builda rozstrzyga, którą
+	  paczkę ma użytkownik; przy dochodzeniu w sprawie sesji wiszących
+	  w PENDING_UPLOAD to było pierwsze pytanie, na które nie umieliśmy
+	  odpowiedzieć. Skoro client_app_version raportuje wersję z pubspec,
+	  ta sama liczba musi trafiać do sklepu.
+
+	  Konsekwencja: numer builda podbija się TYLKO ręcznie, w pubspec.yaml,
+	  przed każdym wydaniem. App Store Connect odrzuci paczkę o numerze
+	  równym albo niższym od już wgranego dla tej samej wersji.
+	-->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+
 	<key>method</key>
 	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
 	<key>teamID</key>
 	<string>256MRX722W</string>
-	<key>uploadBitcode</key>
-	<false/>
-	<key>uploadSymbols</key>
-	<true/>
 	<key>signingStyle</key>
 	<string>automatic</string>
+	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>generateAppStoreInformation</key>
+	<false/>
+	<key>testFlightInternalTestingOnly</key>
+	<false/>
 </dict>
 </plist>

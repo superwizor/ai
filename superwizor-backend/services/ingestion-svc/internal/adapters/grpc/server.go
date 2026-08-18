@@ -318,6 +318,28 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
 	}
 
+	// Jedyny ślad w logach wiążący wgranie z buildem klienta.
+	//
+	// Dochodzenie z 13.08.2026 (trzy sesje wiszące w PENDING_UPLOAD)
+	// utknęło na tym, że nie dało się orzec, czy użytkownik pracuje na
+	// buildzie sprzed poprawki uploadu w tle. Kolumna client_app_version
+	// istniała, ale klient jej nie wypełniał, a nic tego nie logowało.
+	// Teraz każde wgranie zostawia wersję i platformę obok swojego id —
+	// wystarczy jedno zapytanie do logów, żeby powiązać zwis z buildem.
+	//
+	// Pusta wersja to sygnał sam w sobie: build sprzed tej zmiany.
+	appVer := req.ClientAppVersion
+	if appVer == "" {
+		appVer = "(nieprzysłana)"
+	}
+	slog.InfoContext(ctx, "CreateAudioUpload: wgranie utworzone",
+		"audio_upload_id", upload.ID.String(),
+		"session_id", session.ID.String(),
+		"client_app_version", appVer,
+		"client_platform", req.ClientPlatform,
+		"estimated_duration_seconds", req.EstimatedDurationSeconds,
+	)
+
 	// Analityka: emisja zdarzenia upload.initiated
 	if s.collector != nil {
 		var orgIDPtr *uuid.UUID

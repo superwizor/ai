@@ -459,6 +459,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       // Report by default (feedback 2026-07-20) — matches the comment
       // above: the user is about to see the report.
       Navigator.of(context).pushReplacement(MaterialPageRoute(
+        settings: const RouteSettings(name: 'ReportScreen'),
         builder: (_) => ReportScreen(sessionId: sid),
       ));
     }
@@ -479,7 +480,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
   void _navigateBackToRecords() {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(settings: const RouteSettings(name: 'HomeScreen'), builder: (_) => const HomeScreen()),
       (route) => false,
     );
   }

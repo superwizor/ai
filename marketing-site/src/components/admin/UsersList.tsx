@@ -391,7 +391,6 @@ function UserEditDialog({
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [tokenLoadState, setTokenLoadState] = useState<"idle" | "loading" | "ready" | "error" | "no-sub">("idle");
   const [newTokensUsed, setNewTokensUsed] = useState("");
-  const [newTokensLimit, setNewTokensLimit] = useState("");
   const [tokenResetBusy, setTokenResetBusy] = useState(false);
   const [tokenResetMsg, setTokenResetMsg] = useState<{ ok?: string; err?: string } | null>(null);
 
@@ -422,16 +421,11 @@ function UserEditDialog({
   const handleResetTokens = async () => {
     if (!user.organizationId) return;
     const used = newTokensUsed.trim() === "" ? -1 : Number.parseInt(newTokensUsed, 10);
-    const limit = newTokensLimit.trim() === "" ? -1 : Number.parseInt(newTokensLimit, 10);
     if (newTokensUsed.trim() !== "" && (Number.isNaN(used) || used < 0)) {
       setTokenResetMsg({ err: t("tokenInvalidUsed") });
       return;
     }
-    if (newTokensLimit.trim() !== "" && (Number.isNaN(limit) || limit <= 0)) {
-      setTokenResetMsg({ err: t("tokenInvalidLimit") });
-      return;
-    }
-    if (used === -1 && limit === -1) {
+    if (used === -1) {
       setTokenResetMsg({ err: t("tokenNoChange") });
       return;
     }
@@ -441,14 +435,22 @@ function UserEditDialog({
       const fresh = await billingClient.adminResetTokens(
         create(AdminResetTokensRequestSchema, {
           organizationId: user.organizationId,
+          // Zakres: TA osoba. Bez tego pola karta użytkownika zerowała
+          // licznik każdemu terapeucie w organizacji, a powód poniżej
+          // wymieniał jedną osobę — ślad audytu opisywał mniej, niż
+          // robiła operacja. W organizacji jednoosobowej backend sam
+          // schodzi na licznik organizacyjny i odnotowuje to w audycie.
+          therapistId: user.id,
           tokensUsed: used,
-          tokensLimit: limit,
+          // tokensLimit celowo nie: limit terapeuty wynika z planu jego
+          // miejsca (org_seat_allocations). Limit organizacji ustawia się
+          // na karcie organizacji, gdzie ma znaczenie.
+          tokensLimit: -1,
           reason: `Admin reset tokens for ${user.email || user.firstName} via user edit`,
         }),
       );
       setSubscription(fresh);
       setNewTokensUsed("");
-      setNewTokensLimit("");
       setTokenResetMsg({ ok: t("tokenResetSuccess") });
     } catch (e) {
       setTokenResetMsg({ err: translateError(e, tErrors) });
@@ -743,18 +745,14 @@ function UserEditDialog({
                 </div>
 
                 {/* Reset inputs */}
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                {/* Tylko zużycie. Limit należy do planu/miejsca, nie do
+                    osoby — ustawia się go na karcie organizacji. */}
+                <div className="mb-3">
                   <SimpleInput
                     id="u-tokens-used"
                     label={t("newTokensUsed")}
                     value={newTokensUsed}
                     onChange={setNewTokensUsed}
-                  />
-                  <SimpleInput
-                    id="u-tokens-limit"
-                    label={t("newTokensLimit")}
-                    value={newTokensLimit}
-                    onChange={setNewTokensLimit}
                   />
                 </div>
                 <p className="font-mono text-[10px] text-mist/60 mb-3">

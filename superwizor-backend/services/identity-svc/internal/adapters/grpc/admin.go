@@ -152,7 +152,10 @@ func (s *Server) AdminGetOrganization(ctx context.Context, req *identityv1.Admin
 			hq = &a
 		}
 	}
-	therapists, _ := s.queries.ListTherapistsByOrganization(ctx,
+	// Konta o roli THERAPIST, nie "praktykujący" — patrz komentarz przy
+	// ListTherapistAccountsByOrganization. Menedżerowie lecą osobną listą
+	// niżej i nie mogą się tu zdublować.
+	therapists, _ := s.queries.ListTherapistAccountsByOrganization(ctx,
 		pgtype.UUID{Bytes: orgID, Valid: true})
 	managers, _ := s.queries.ListManagersByOrganization(ctx,
 		pgtype.UUID{Bytes: orgID, Valid: true})

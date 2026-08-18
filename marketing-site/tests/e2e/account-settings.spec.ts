@@ -20,6 +20,20 @@ import {
 } from "./fixtures/connect-rpc";
 
 test.describe("Account Settings & Deletion", () => {
+  // Szeregowo, ale BEZ przerywania po pierwszym padnięciu.
+  //
+  // Te testy dzielą jedną sesję logowania z beforeEach; przy
+  // fullyParallel workery wchodziły sobie w drogę i logowanie kończyło
+  // się na /login zamiast /dashboard (równolegle 4 padnięcia,
+  // sekwencyjnie 1).
+  //
+  // Tryb "serial" był tu ZŁYM narzędziem: po pierwszym padnięciu
+  // Playwright pomija resztę bloku, więc licznik padnięć spadał, choć
+  // testy przestawały się wykonywać ("3 did not run"). Ukrywanie
+  // zamiast naprawy. "default" szereguje w jednym workerze i wykonuje
+  // wszystko.
+  test.describe.configure({ mode: "default" });
+
   test.beforeEach(async ({ page }) => {
     // Authenticate client routes
     await mockFirebaseAuth(page);
@@ -31,7 +45,7 @@ test.describe("Account Settings & Deletion", () => {
       phoneNumber: "+48 510417781",
       professionalTitle: "Psycholog",
       credentialsNumber: "LIC-1234",
-      defaultModalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+      defaultModalityId: "dd8d84ff-16a5-470a-95cc-4b5a99e61f6b",
       organizationId: "org-uuid-1",
       role: "USER_ROLE_THERAPIST",
     });
@@ -49,7 +63,12 @@ test.describe("Account Settings & Deletion", () => {
     await page.locator("form button[type='submit']").click();
     await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl|/en)?/dashboard`));
 
-    // Navigate to settings page
+    // Poczekaj, aż przekierowanie po logowaniu naprawdę się dokona.
+    // Bez tego goto("/account") startowało w trakcie nawigacji na
+    // /dashboard i Chromium przerywał je z net::ERR_ABORTED — objaw
+    // niestabilny (2 padnięcia na 3 przebiegi), wyglądający na awarię
+    // strony /account, choć była to kolizja dwóch nawigacji.
+    await page.waitForLoadState("networkidle");
     await page.goto(`${prefix}/account`);
   });
 
@@ -85,6 +104,14 @@ test.describe("Account Settings & Deletion", () => {
     await expect(page.locator(`input[placeholder='${vatPlaceholder}']`)).toBeVisible();
   });
 
+  // NIEROZWIĄZANE w chromium-en (2026-08-07): wersja polska przechodzi,
+  // angielska nadal wysyła starą nazwę organizacji. Ustalone dotąd:
+  //  • input jest kontrolowany przez Reacta (AccountSections.tsx:1109),
+  //    więc selektor input[value='...'] nie działa,
+  //  • .first() w formularzu łapał pole z sekcji profilu,
+  //  • celowanie placeholderem naprawiło PL, ale nie EN.
+  // Następny krok: pnpm test:e2e:ui i podejrzenie, w co trafia lokator
+  // przy locale=en-GB.
   test("can update profile and organization successfully", async ({ page }) => {
     const { getCaptured: getProfileCap } = await mockUpdateProfile(page);
     const { getCaptured: getOrgCap } = await mockUpdateMyOrganization(page);
@@ -101,7 +128,29 @@ test.describe("Account Settings & Deletion", () => {
     expect(getProfileCap()?.firstName).toBe("Maciej J");
 
     // Modify org fields and save
-    await page.locator("input[value='Maciej Kolodziejczyk Org']").fill("New Legal Name Ltd");
+    // NIEROZWIĄZANE (2026-08-07): ten przypadek nadal pada — ładunek
+    // UpdateMyOrganization niesie starą nazwę mimo wypełnienia pola.
+    // Ustalone: input jest kontrolowany przez Reacta (AccountSections
+    // .tsx:1109), a strona używa zwijanych sekcji (openSections.
+    // organization), więc pierwotny selektor input[value='...'] był
+    // kruchy. Zakotwiczenie w formularzu z przyciskiem zapisu jest
+    // stabilniejsze, ale NIE naprawia przyczyny — wymaga debugowania
+    // interaktywnego (pnpm test:e2e:ui).
+    // Celujemy PLACEHOLDEREM, bo jest unikalny dla pola nazwy prawnej
+    // w sekcji organizacji (account.legalNamePlaceholder). Wcześniejsze
+    // podejścia trafiały gdzie indziej: selektor input[value='...'] nie
+    // działa na polu kontrolowanym przez Reacta (atrybut nie nadąża za
+    // stanem), a .first() w formularzu łapał pole z sekcji profilu —
+    // formularz wysyłał wtedy niezmienioną nazwę i asercja padała na
+    // starej wartości.
+    await page
+      .getByPlaceholder(
+        forLocale({
+          pl: "np. Gabinet Psychoterapii Jan Kowalski",
+          en: "e.g. Jan Kowalski Psychotherapy",
+        }),
+      )
+      .fill("New Legal Name Ltd");
     const saveOrgBtn = page.getByRole("button", {
       name: forLocale({ pl: "Zapisz organizację", en: "Save organisation" }),
     });

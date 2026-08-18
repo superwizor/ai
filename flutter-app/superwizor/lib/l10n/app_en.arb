@@ -1204,8 +1204,6 @@
   "settings_haptics_on": "Haptics enabled",
   "settings_language": "App language",
   "settings_language_app": "App language",
-  "settings_licenses": "Software licenses",
-  "settings_licenses_desc": "This application was built thanks to the work of thousands of developers around the world. Below you'll find information about the open-source software we use to deliver the highest quality experience.",
   "settings_live_activities": "Lock screen activity",
   "settings_live_activities_off": "Session status visible only inside the app.",
   "settings_live_activities_on": "Session time and status visible without unlocking your phone.",

@@ -2,7 +2,7 @@
 type: Runbook
 title: AI Chat Vertex API Setup
 description: Procedura aktywacji API Firebase Vertex AI dla chata pacjenta.
-resource: file:///Users/maciekckoklormam91/Desktop/Inne/02_APP - Superwizor AI/docs/57_AI_CHAT_VERTEX_API_SETUP.md
+resource: docs/62_AI_CHAT_VERTEX_API_SETUP.md
 tags:
   - runbook
   - firebase

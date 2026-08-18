@@ -208,6 +208,7 @@ class ActiveAnalysisBanner extends ConsumerWidget {
             final hasSessionId =
                 single.sessionId != null && single.sessionId!.isNotEmpty;
             Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: 'SessionStatusScreen'),
               builder: (_) => SessionStatusScreen(
                 sessionId: hasSessionId ? single.sessionId : null,
                 localId: hasSessionId ? null : single.localId,
@@ -215,6 +216,7 @@ class ActiveAnalysisBanner extends ConsumerWidget {
             ));
           } else {
             Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: 'PendingUploadsScreen'),
               builder: (_) => const PendingUploadsScreen(),
             ));
           }

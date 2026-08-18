@@ -153,6 +153,7 @@ class _MinimizedRecordingBarWrapperState
               onTap: () {
                 navigatorKey.currentState?.push(
                   MaterialPageRoute(
+                    settings: const RouteSettings(name: 'RecordingScreen'),
                     builder: (_) => RecordingScreen(
                       patientFileId: svc.patientFileId ?? '',
                       therapistId: svc.therapistId ?? '',

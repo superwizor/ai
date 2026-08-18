@@ -73,6 +73,45 @@ include file paths, branch names, and any non-obvious gotchas (e.g. "sqlc
 generates `*db.OrganizationType` not `NullOrganizationType` — see
 org_profile.go").
 
+## Run the tests before you commit
+
+**Before every commit and before every merge to `main`**, run the test suite
+for whatever you touched:
+
+- `marketing-site/` → `cd marketing-site && pnpm test:all`
+  (typy → jednostkowe → E2E; zatrzymuje się na pierwszym błędzie)
+- `superwizor-backend/` → `cd services/<svc> && go build ./... && go vet ./... && go test ./...`
+- `flutter-app/superwizor/` → `flutter analyze && flutter test`
+
+Why this is a rule and not a suggestion: **CI does not run the Playwright E2E
+suite.** `marketing-site.yml` runs typecheck, l10n parity, unit tests and the
+build — E2E needs a browser and a live dev server, so it stays with whoever
+made the change. If you don't run it, nobody does.
+
+**State of the E2E suite (2026-08-07):** 256 cases, 0–3 fail depending on the
+run (was 34). What's left is flakiness in `account-settings` and
+`dashboard-handheld` — they share one login session from `beforeEach`.
+Compare the failure COUNT before and after your change, always from a clean
+cache, because a stale `.next` fabricates hundreds of unrelated failures:
+
+```bash
+cd marketing-site && rm -rf .next && pnpm test:e2e 2>&1 | grep -c "✘"
+```
+
+`--workers=2` is baked into the `test:e2e` script and must stay: at default
+parallelism the dev server produces 164 phantom failures.
+
+Two traps worth remembering:
+
+- `pnpm test` (vitest) does **not** typecheck. A test can pass while `tsc` and
+  `next build` fail on the same file. That's why `test:all` starts with
+  `typecheck`.
+- After writing a regression test, break the code on purpose and confirm the
+  test fails. A test that always passes is worse than no test — it manufactures
+  false confidence.
+
+Full guide: `docs/61_TESTY_MARKETING_SITE.md`.
+
 ## Commit often
 
 The `Stop` hook commits tracked changes at session end, but also `git add` new
@@ -97,6 +136,10 @@ over one giant blob.
 3. **Verify before merging.** A branch is "verified" when:
    - Smoke check passes (`go build ./... && go vet ./...`, `flutter analyze`,
      `pnpm build` — whichever apply).
+   - **Tests pass, including E2E.** For `marketing-site/` that means
+     `pnpm test:all` — CI will NOT run Playwright for you, so a green CI on the
+     merge commit does not mean the E2E suite passed. See
+     "Run the tests before you commit" above and `docs/61_TESTY_MARKETING_SITE.md`.
    - Tests pass against the live thing (see "Proof before passing" above).
    - For UI changes: a Playwright screenshot of the final state is opened
      with `Read` and confirmed.

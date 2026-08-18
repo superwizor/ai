@@ -88,13 +88,18 @@ type checkoutAddress struct {
 func (h *CheckoutHandler) handleCheckout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if h.secretKey == "" {
-		h.logger.ErrorContext(ctx, "checkout: STRIPE_SECRET_KEY not configured")
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service not configured"})
-		return
-	}
-	stripe.Key = h.secretKey
-
+	// Walidacja wejścia idzie PRZED sprawdzeniem konfiguracji Stripe'a.
+	//
+	// Odwrotna kolejność sprawiała, że źle sformułowane żądanie dostawało
+	// 503 "payment service not configured" zamiast 400 z powodem — czyli
+	// odpowiedź mówiła o stanie serwera, choć błąd był po stronie
+	// klienta. Wywołujący nie miał jak odróżnić "wysłałem śmieci" od
+	// "płatności są chwilowo niedostępne" i widział to drugie.
+	//
+	// Praktyczny skutek: kontraktu tego endpointu nie dało się
+	// przetestować bez klucza Stripe, a klucz w Secret Managerze jest
+	// PRODUKCYJNY (sk_live_) — uruchamianie testów E2E z nim znaczyłoby
+	// dobijanie się do prawdziwego Stripe'a.
 	var req checkoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -109,6 +114,14 @@ func (h *CheckoutHandler) handleCheckout(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "valid organizationId is required"})
 		return
 	}
+
+	// Dopiero teraz potrzebujemy Stripe'a naprawdę.
+	if h.secretKey == "" {
+		h.logger.ErrorContext(ctx, "checkout: STRIPE_SECRET_KEY not configured")
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service not configured"})
+		return
+	}
+	stripe.Key = h.secretKey
 
 	// Determine success/cancel URLs.
 	// Firebase Hosting rewrite sends these requests to billing-svc but the

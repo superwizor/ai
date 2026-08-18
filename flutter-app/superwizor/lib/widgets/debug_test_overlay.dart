@@ -1431,6 +1431,7 @@ class _DebugSheet extends StatelessWidget {
                                 final p = patients.first;
                                 navigatorKey.currentState?.push(
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'RecordingScreen'),
                                     builder: (_) => RecordingScreen(
                                       patientFileId: p.id,
                                       therapistId: therapistId,
@@ -1455,6 +1456,7 @@ class _DebugSheet extends StatelessWidget {
                                 Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'DebugPipelineSimulatorScreen'),
                                     builder: (_) =>
                                         const DebugPipelineSimulatorScreen(
                                           autoAdvance: true,
@@ -1475,6 +1477,7 @@ class _DebugSheet extends StatelessWidget {
                                 Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'DebugPipelineSimulatorScreen'),
                                     builder: (_) =>
                                         const DebugPipelineSimulatorScreen(
                                           autoAdvance: true,
@@ -1495,6 +1498,7 @@ class _DebugSheet extends StatelessWidget {
                                 Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'DebugPipelineSimulatorScreen'),
                                     builder: (_) =>
                                         const DebugPipelineSimulatorScreen(
                                           autoAdvance: false,
@@ -1515,6 +1519,7 @@ class _DebugSheet extends StatelessWidget {
                                 Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'DebugStateGalleryScreen'),
                                     builder: (_) =>
                                         const DebugStateGalleryScreen(),
                                   ),

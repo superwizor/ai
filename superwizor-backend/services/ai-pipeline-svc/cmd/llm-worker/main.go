@@ -27,6 +27,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 	"github.com/superwizor-ai/backend/pkg/logging"
+	"github.com/superwizor-ai/backend/pkg/rag"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/pseudonymize"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
@@ -75,8 +76,8 @@ var (
 	// generateEmbedding(); failures are non-fatal (the worker Warns and
 	// skips persistRAGMemoryV2, preserving report save).
 	//
-	// The RAG read-side knobs live in rag.go (ragLookbackSessions,
-	// ragMaxHits, recency/MMR thresholds, ragContextMaxCharsV2) — see
+	// The RAG read-side knobs live in rag.go (rag.LookbackSessions,
+	// rag.MaxHits, recency/MMR thresholds, rag.ContextMaxChars) — see
 	// docs/30 for the theme-level retrieval design.
 	embeddingModel string = "text-embedding-005"
 	embeddingDims  int    = 768
@@ -2255,7 +2256,7 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 // THIS session's distilled themes (from call-1), not the raw transcript —
 // which both fixes the embedding-truncation bug and matches query
 // representation to the stored theme/summary rows. Ranking (anchor +
-// recency-weighted cosine + MMR diversity) runs in Go via selectRAGHits;
+// recency-weighted cosine + MMR diversity) runs in Go via rag.SelectHits;
 // only the winners are decrypted. Best-effort: returns "" + err on any
 // failure, exactly like the legacy reader.
 func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.UUID, themes []string, ragSummary string, chunks []transcriptfmt.Chunk) (string, error) {
@@ -2269,7 +2270,7 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 
 	// Query texts: each theme is its own query vector; fall back to the
 	// summary, then the transcript head+tail. The per-theme vectors are
-	// what let selectRAGHits surface DISTINCT prior threads.
+	// what let rag.SelectHits surface DISTINCT prior threads.
 	queryTexts := make([]string, 0, len(themes)+1)
 	for _, t := range themes {
 		if t = strings.TrimSpace(t); t != "" {
@@ -2326,7 +2327,7 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 		return "", nil
 	}
 
-	hits := selectRAGHits(pool, qv, anchorID, time.Now())
+	hits := rag.SelectHits(pool, qv, anchorID, time.Now())
 	if len(hits) == 0 {
 		return "", nil
 	}
@@ -2367,11 +2368,11 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 }
 
 // loadRAGPool fetches the ranking pool: every memory row belonging to the
-// patient's most-recent ragLookbackSessions sessions (excluding the
+// patient's most-recent rag.LookbackSessions sessions (excluding the
 // session being processed), embeddings only — no ciphertext, no decrypt.
 // Returns the pool and the anchor id (the summary row of the most recent
 // prior session, uuid.Nil if none).
-func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) ([]ragCandidate, uuid.UUID, error) {
+func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) ([]rag.Candidate, uuid.UUID, error) {
 	rows, err := dbPool.Query(ctx, `
 		WITH recent_sessions AS (
 			SELECT source_session_id, max(created_at) AS session_at
@@ -2387,17 +2388,17 @@ func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) (
 		FROM rag_memories m
 		JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
 		WHERE m.patient_file_id = $1 AND NOT m.is_compacted`,
-		patientFileID, excludeSession, ragLookbackSessions)
+		patientFileID, excludeSession, rag.LookbackSessions)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("rag pool query: %w", err)
 	}
 	defer rows.Close()
 
-	var pool []ragCandidate
+	var pool []rag.Candidate
 	var anchorID uuid.UUID
 	var anchorAt time.Time
 	for rows.Next() {
-		var c ragCandidate
+		var c rag.Candidate
 		var embStr string
 		if scanErr := rows.Scan(&c.ID, &c.SessionID, &c.ChunkType, &c.CreatedAt, &embStr); scanErr != nil {
 			return nil, uuid.Nil, fmt.Errorf("rag pool scan: %w", scanErr)
@@ -2415,9 +2416,9 @@ func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) (
 // assembleRAGContext decrypts the selected rows and renders the call-2
 // context block: hits grouped by session (anchor session first, then in
 // hit order), each session dated, items globally numbered. Honors
-// ragContextMaxCharsV2 (anchor is never trimmed). Returns the block and
+// rag.ContextMaxChars (anchor is never trimmed). Returns the block and
 // the number of memories actually rendered.
-func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.UUID) (string, int) {
+func assembleRAGContext(ctx context.Context, hits []rag.Candidate, anchorID uuid.UUID) (string, int) {
 	ids := make([]uuid.UUID, len(hits))
 	for i, h := range hits {
 		ids[i] = h.ID
@@ -2449,7 +2450,7 @@ func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.
 	// Group by session, preserving hit order (anchor-first, then score).
 	type grp struct {
 		date  time.Time
-		items []ragCandidate
+		items []rag.Candidate
 	}
 	var order []*grp
 	bySession := map[uuid.UUID]*grp{}
@@ -2483,7 +2484,7 @@ func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.
 				continue
 			}
 			line := fmt.Sprintf("%d. %s\n", n+1, txt)
-			if !isAnchor && sb.Len()+len(pending)+len(line) > ragContextMaxCharsV2 {
+			if !isAnchor && sb.Len()+len(pending)+len(line) > rag.ContextMaxChars {
 				break
 			}
 			pending += line

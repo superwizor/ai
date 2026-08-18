@@ -92,6 +92,35 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		return nil, status.Error(codes.InvalidArgument, "tokens_limit must be -1 (skip) or > 0")
 	}
 
+	// Zakres: cała organizacja (domyślnie) albo jeden terapeuta.
+	//
+	// Karta użytkownika w panelu wysyłała dotąd wariant organizacyjny z
+	// powodem wymieniającym jedną osobę — reset "dla tej osoby" zerował
+	// licznik wszystkim terapeutom w firmie, a ślad audytu tego nie
+	// ujawniał. Teraz karta podaje therapist_id i dotyka tylko jego.
+	var scopedTherapist pgtype.UUID
+	if req.GetTherapistId() != "" {
+		tid, terr := uuid.Parse(req.GetTherapistId())
+		if terr != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid therapist_id")
+		}
+		scopedTherapist = pgtype.UUID{Bytes: tid, Valid: true}
+
+		// Limit miejsca pochodzi z planu przypisanego do przydziału
+		// (org_seat_allocations), nie z ręcznego nadpisania. Dopuszczenie
+		// go tutaj odtworzyłoby incydent "40 na planie 90" na poziomie
+		// pojedynczego miejsca.
+		if req.TokensLimit != -1 {
+			return nil, status.Error(codes.InvalidArgument,
+				"TOKENS_LIMIT_PER_SEAT: limit terapeuty wynika z planu jego miejsca — "+
+					"zmień przydział miejsc zamiast nadpisywać licznik")
+		}
+		if req.TokensUsed == -1 {
+			return nil, status.Error(codes.InvalidArgument,
+				"tokens_used is required when therapist_id is set")
+		}
+	}
+
 	// Single tx: advisory lock → load active counter → AdminUpdateCounter
 	// → write audit → commit. The advisory lock prevents a concurrent
 	// ReserveCredit from racing with the reset.
@@ -132,9 +161,109 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		}
 		return nil, status.Errorf(codes.Internal, "load subscription: %v", err)
 	}
+	// Limit poniżej planu to zawsze pomyłka, a kosztuje płacącego
+	// klienta cały okres. Walidacja przy wejściu (req.TokensLimit > 0)
+	// nie mogła tego złapać, bo plan jest znany dopiero tutaj.
+	//
+	// Tak powstało 40 w organizacji na planie PRO Monthly (90): reset
+	// z reason "testujemy czy dziala" wpisał wartość spoza katalogu, a
+	// gałąź mintująca poniżej założyła z nią wiersz org-level. Nikt
+	// tego nie zauważył przez miesiąc — zgłosił to klient. Wartości
+	// POWYŻEJ planu przepuszczamy: to świadome nadania handlowe.
+	//
+	// TRIAL wyłączony: liczniki próbne chodzą z realnym progiem (3-5),
+	// podczas gdy wiersz TRIAL w katalogu niesie 10 — tam nieaktualny
+	// jest katalog, więc ta reguła blokowałaby poprawne resety triali.
+	//
+	// Komunikat zaczyna się od stabilnego kodu TOKENS_LIMIT_BELOW_PLAN.
+	// Panel dopasowuje błędy backendu po fragmencie treści (patrz
+	// marketing-site/src/lib/errors/translate.ts, BACKEND_PATTERNS) i bez
+	// takiego kodu spadał na generyczne "Nieprawidłowe dane formularza.
+	// Sprawdź wprowadzone wartości." — mylące, bo dane formularza były
+	// poprawne, a odrzuciła je reguła biznesowa. Kod jest częścią
+	// kontraktu z interfejsem: nie zmieniaj go bez zmiany wzorca tam.
+	// Pilnuje tego TestAdminResetTokens_RejectsLimitBelowPlan.
+	if req.TokensLimit != -1 && sub.PlanTier != db.PlanTierTRIAL &&
+		req.TokensLimit < sub.PlanTokensPerPeriod {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"TOKENS_LIMIT_BELOW_PLAN: tokens_limit %d jest poniżej limitu planu %s (%d) — "+
+				"zmień plan albo alokację miejsc zamiast zaniżać licznik",
+			req.TokensLimit, sub.PlanTier, sub.PlanTokensPerPeriod)
+	}
+
 	if err := q.AcquireSubscriptionLock(ctx, sub.ID.String()); err != nil {
 		return nil, status.Errorf(codes.Internal, "advisory lock: %v", err)
 	}
+
+	// Wariant zawężony kończy się tutaj: licznika organizacyjnego nie
+	// ruszamy, mintu nie robimy, limitu nie ma (odrzucony przy wejściu).
+	scopeFellBackToOrg := false
+	if scopedTherapist.Valid {
+		used := req.TokensUsed
+		rows, rerr := q.AdminResetSingleTherapistCounter(ctx, db.AdminResetSingleTherapistCounterParams{
+			SubscriptionID: sub.ID,
+			TherapistID:    scopedTherapist,
+			TokensUsed:     &used,
+		})
+		if rerr != nil {
+			return nil, status.Errorf(codes.Internal, "reset therapist counter: %v", rerr)
+		}
+		if rows == 0 {
+			// Brak licznika per-terapeuta ma dwa różne znaczenia i nie
+			// wolno ich mylić.
+			//
+			// Organizacja jednoosobowa (solo/legacy) w ogóle ich nie ma —
+			// jej licznik ORGANIZACYJNY jest licznikiem tego terapeuty.
+			// Zawężenie nie ma tam czego znaleźć, więc schodzimy na zakres
+			// organizacji; audyt odnotuje, że tak się stało, żeby ślad nie
+			// twierdził niczego innego, niż zaszło.
+			//
+			// Organizacja na miejscach to inna historia: skoro terapeuta
+			// licznika nie ma, nic jeszcze nie zużył albo nie należy do tej
+			// subskrypcji. Zejście na całą organizację wyzerowałoby wtedy
+			// wszystkich — dokładnie ta wada, którą tu naprawiamy.
+			hasSeats, serr := q.OrgHasSeatAllocations(ctx, orgID)
+			if serr != nil {
+				return nil, status.Errorf(codes.Internal, "check seat allocations: %v", serr)
+			}
+			if hasSeats {
+				return nil, status.Error(codes.FailedPrecondition, "THERAPIST_COUNTER_MISSING")
+			}
+			scopeFellBackToOrg = true
+		} else {
+			if _, aerr := writeBillingAudit(ctx, q, caller, orgID, sub.ID,
+				"billing.reset_tokens", req.Reason, map[string]any{
+					"scope":                    "therapist",
+					"therapist_id":             req.GetTherapistId(),
+					"therapist_counters_reset": rows,
+					"tokens_used_after":        req.TokensUsed,
+					"idempotency_key":          req.IdempotencyKey,
+					"subscription_reactivated": reactivated,
+				}); aerr != nil {
+				return nil, status.Errorf(codes.Internal, "audit: %v", aerr)
+			}
+			if cerr := tx.Commit(ctx); cerr != nil {
+				return nil, status.Errorf(codes.Internal, "commit: %v", cerr)
+			}
+
+			var canceledAtScoped *time.Time
+			if sub.CanceledAt.Valid {
+				canceledAtScoped = &sub.CanceledAt.Time
+			}
+			u, r, l, _ := s.orgCounterOrAggregate(ctx, sub.ID)
+			return buildSubscriptionProto(subFields{
+				ID:                 sub.ID,
+				PlanTier:           string(sub.PlanTier),
+				PlanCycle:          string(sub.PlanCycle),
+				Status:             string(sub.Status),
+				CurrentPeriodStart: sub.CurrentPeriodStart,
+				CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+				CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+				CanceledAt:         canceledAtScoped,
+			}, u, r, l), nil
+		}
+	}
+
 	// docs/38: the reset covers BOTH counter scopes. The org-level
 	// counter (solo/legacy) takes tokens_used and tokens_limit; every
 	// active per-therapist counter takes tokens_used only (their limits
@@ -155,6 +284,10 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 
 	var updated db.UsageCounter
 	orgCounterFound := true
+	// Rozdzielone od orgCounterFound: wiersz ISTNIEJE po tej operacji
+	// (więc migawka odpowiedzi liczy się z niego normalnie), ale NIE
+	// istniał przed nią — a tylko to rozróżnienie czyni audyt uczciwym.
+	orgCounterMinted := false
 	counter, err := q.LockActiveCounter(ctx, sub.ID)
 	switch {
 	case err == nil:
@@ -172,6 +305,35 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 			return nil, status.Errorf(codes.Internal, "update counter: %v", err)
 		}
 	case errors.Is(err, pgx.ErrNoRows):
+		// Nie ma licznika organizacyjnego — a tylko on przyjmuje
+		// tokens_limit. Zanim cokolwiek zrobimy, rozstrzygnijmy, czy
+		// podany limit ma gdzie wylądować.
+		//
+		// Organizacja na miejscach limitów organizacyjnych NIE używa:
+		// każdy terapeuta ma własny, z planu swojego przydziału. Dotąd
+		// kończyło się to na dwa złe sposoby. Przy MANUAL gałąź poniżej
+		// ZAKŁADAŁA wiersz organizacyjny z wartością operatora — tak
+		// powstało 40 w organizacji na planie 90 (dochodzenie
+		// 2026-08-01). Przy pozostałych dostawcach limit znikał bez
+		// śladu: operacja kończyła się sukcesem, a limit nie trafiał
+		// nigdzie. Obie ścieżki mówiły operatorowi nieprawdę.
+		if req.TokensLimit != -1 {
+			hasSeats, serr := q.OrgHasSeatAllocations(ctx, orgID)
+			if serr != nil {
+				return nil, status.Errorf(codes.Internal, "check seat allocations: %v", serr)
+			}
+			if hasSeats {
+				return nil, status.Error(codes.InvalidArgument,
+					"TOKENS_LIMIT_NOT_APPLICABLE: organizacja rozlicza się przez miejsca — "+
+						"limit terapeuty wynika z planu jego przydziału, nie z licznika organizacji")
+			}
+			if sub.Provider != "MANUAL" {
+				// Bez miejsc i bez mintu limit też nie ma czego opisać.
+				return nil, status.Error(codes.InvalidArgument,
+					"TOKENS_LIMIT_NOT_APPLICABLE: ta subskrypcja nie ma licznika organizacyjnego, "+
+						"więc limit nie zostałby nigdzie zapisany")
+			}
+		}
 		// MANUAL subs (incl. the just-reactivated one) get a fresh
 		// org-level counter minted right here: limit from the plan
 		// unless the request overrides it, usage from the request.
@@ -200,6 +362,16 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 				}
 			}
 			counter = updated
+			// NIE ustawiamy orgCounterFound — wiersza przed tym
+			// wywołaniem nie było, więc "tokens_limit_before" nie ma
+			// czego opisywać. Wcześniej metadane raportowały tu
+			// counter.TokensLimit, czyli wartość DOPIERO CO wstawioną,
+			// jako stan sprzed operacji. Ślad audytu twierdził wtedy
+			// "before=40, after=40" i wyglądał jak reset, który niczego
+			// nie zmienił — przez co wygenerowanie 40 przez ten właśnie
+			// mint było w audycie nie do odróżnienia od zastanej
+			// wartości. Kosztowało to całe dochodzenie 2026-08-01.
+			orgCounterMinted = true
 			break
 		}
 		orgCounterFound = false
@@ -214,9 +386,27 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		"idempotency_key":          req.IdempotencyKey,
 		"subscription_reactivated": reactivated,
 	}
-	if orgCounterFound {
+	if scopeFellBackToOrg {
+		// Żądanie wskazywało terapeutę, ale organizacja nie prowadzi
+		// liczników per-osoba (solo/legacy) — jej licznik organizacyjny
+		// JEST licznikiem tego terapeuty. Ślad musi to powiedzieć wprost,
+		// bo inaczej powtórzylibyśmy grzech, który tu naprawiamy: audyt
+		// opisujący węższy zakres, niż objęła operacja.
+		meta["scope"] = "organization_fallback"
+		meta["therapist_id"] = req.GetTherapistId()
+	}
+	if orgCounterFound && !orgCounterMinted {
 		meta["tokens_used_before"] = counter.TokensUsed
 		meta["tokens_limit_before"] = counter.TokensLimit
+		meta["tokens_used_after"] = updated.TokensUsed
+		meta["tokens_limit_after"] = updated.TokensLimit
+	}
+	if orgCounterMinted {
+		// Bez "_before" — wiersza nie było. Ta flaga jest tym, czego
+		// zabrakło w audycie z 2026-07-05, żeby dało się odczytać, że
+		// licznik org-level POWSTAŁ w tym wywołaniu z wartością podaną
+		// przez operatora.
+		meta["org_counter_minted"] = true
 		meta["tokens_used_after"] = updated.TokensUsed
 		meta["tokens_limit_after"] = updated.TokensLimit
 	}
@@ -319,8 +509,6 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 		return nil, status.Errorf(codes.Internal, "change plan: %v", err)
 	}
 
-	// Update the active counter's tokens_limit to the new tier — leaves
-	// tokens_used + tokens_reserved alone.
 	counter, err := q.LockActiveCounter(ctx, sub.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -329,12 +517,66 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 		return nil, status.Errorf(codes.Internal, "counter lock: %v", err)
 	}
 	newLimit := plan.TokensPerPeriod
-	counterAfter, err := q.AdminUpdateCounter(ctx, db.AdminUpdateCounterParams{
-		ID:          counter.ID,
-		TokensLimit: &newLimit,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "update counter limit: %v", err)
+
+	// Okres rozliczeniowy restartujemy WYŁĄCZNIE dla subskrypcji MANUAL.
+	//
+	// Dla Stripe'a okres jest własnością Stripe'a: ustawia go webhook z
+	// wartości przysłanych przez dostawcę (UpsertStripeSubscription), a
+	// przesunięcie go tutaj rozjechałoby datę odnowienia z faktycznym
+	// obciążeniem karty — i tak zostałoby nadpisane przy najbliższym
+	// customer.subscription.updated. Dla MANUAL nie ma zewnętrznego
+	// źródła prawdy: okres rusza tylko cron odnowienia, więc bez tego
+	// organizacja zostawała na starej dacie końca z nowym planem, mimo
+	// że modal obiecywał start nowego okresu (zgłoszone 2026-08-03).
+	periodRestarted := false
+	var counterAfter db.UsageCounter
+	if sub.Provider == "MANUAL" {
+		now := time.Now()
+		newEnd := now.AddDate(0, 1, 0)
+		if plan.Cycle == db.BillingCycleANNUAL {
+			newEnd = now.AddDate(1, 0, 0)
+		}
+
+		// Domknięcie starych liczników MUSI iść przed utworzeniem nowego:
+		// inaczej przez resztę starego okresu dwa wiersze naraz spełniają
+		// predykat aktywności, a GetActiveCounter (:one) wybiera z nich
+		// niedeterministycznie.
+		if _, err := q.CloseActiveCountersForSubscription(ctx, sub.ID); err != nil {
+			return nil, status.Errorf(codes.Internal, "close counters: %v", err)
+		}
+		if err := q.ShiftSubscriptionPeriod(ctx, db.ShiftSubscriptionPeriodParams{
+			ID:                 sub.ID,
+			CurrentPeriodStart: now,
+			CurrentPeriodEnd:   newEnd,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "shift period: %v", err)
+		}
+		// Liczniki per-terapeutowe odtworzy leniwie lockDebitCounter przy
+		// pierwszym obciążeniu w nowym okresie — tu zakładamy tylko
+		// org-level, dokładnie jak renewOneSubscription.
+		minted, merr := q.CreateUsageCounter(ctx, db.CreateUsageCounterParams{
+			SubscriptionID: sub.ID,
+			PeriodStart:    now,
+			PeriodEnd:      newEnd,
+			TokensLimit:    newLimit,
+		})
+		if merr != nil {
+			return nil, status.Errorf(codes.Internal, "create counter: %v", merr)
+		}
+		counterAfter = minted
+		periodRestarted = true
+	} else {
+		// Stripe: sam limit na istniejącym liczniku, bez ruszania okresu.
+		// tokens_used + tokens_reserved zostają — czyszczy je osobno
+		// AdminResetTokens.
+		updated, uerr := q.AdminUpdateCounter(ctx, db.AdminUpdateCounterParams{
+			ID:          counter.ID,
+			TokensLimit: &newLimit,
+		})
+		if uerr != nil {
+			return nil, status.Errorf(codes.Internal, "update counter limit: %v", uerr)
+		}
+		counterAfter = updated
 	}
 
 	if _, err := writeBillingAudit(ctx, q, caller, orgID, sub.ID,
@@ -346,6 +588,10 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 			"tokens_limit_before": counter.TokensLimit,
 			"tokens_limit_after":  counterAfter.TokensLimit,
 			"idempotency_key":     req.IdempotencyKey,
+			// Bez tego z audytu nie da się odczytać, czy dana zmiana
+			// planu wyzerowała zużycie, czy je zachowała.
+			"provider":         string(sub.Provider),
+			"period_restarted": periodRestarted,
 		}); err != nil {
 		return nil, status.Errorf(codes.Internal, "audit: %v", err)
 	}

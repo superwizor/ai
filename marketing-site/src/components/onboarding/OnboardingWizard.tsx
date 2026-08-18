@@ -16,12 +16,13 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
+import { ConnectError, Code } from "@connectrpc/connect";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient } from "@/lib/connect/clients";
 import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { motion, AnimatePresence } from "framer-motion";
-import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities";
+import { getModalityCatalog, pickModality, type ModalityRow } from "@/lib/clinical/modalities";
 
 const STORAGE_KEY_PREFIX = "sw_onboarding_step";
 const APP_STORE_URL = "https://apps.apple.com/app/superwizor-ai/id6774975751";
@@ -113,9 +114,28 @@ const childFade = {
 // ─── Component ───────────────────────────────────────────────
 
 export function OnboardingWizard({ locale }: { locale: string }) {
-  const { user: fbUser } = useAuth();
+  const { status: authStatus, user: fbUser } = useAuth();
   const router = useRouter();
   const prefix = locale === "en" ? "/en" : "";
+
+  // Strażnik sesji. Bez niego niezalogowany użytkownik dostawał PEŁNY
+  // kreator, przechodził go do końca i dopiero zapis wracał z 401
+  // ("no authorization header" — interceptor w transport.ts pomija
+  // nagłówek, gdy nie ma tokenu, i wysyła żądanie mimo to). Na ekranie
+  // wyglądało to jak awaria zapisu preferencji, choć konto było w
+  // porządku — brakowało sesji w TYM oknie przeglądarki.
+  //
+  // Zdarza się to realnie: użytkownik klika link potwierdzający e-mail
+  // i kończy rejestrację w oknie, które nie dzieli sesji z tym, w
+  // którym ją zaczął (osobny profil przeglądarki = osobny magazyn).
+  //
+  // Logowanie samo wraca tutaj — LoginForm kieruje na /onboarding/,
+  // gdy profil nie jest jeszcze uzupełniony.
+  useEffect(() => {
+    if (authStatus === "signed-out") {
+      router.replace(`${prefix}/login?err=session`);
+    }
+  }, [authStatus, router, prefix]);
 
   // Per-user storage key: prevents one user's progress leaking to another
   // account on the same browser. If no UID yet, we just start at step 4.
@@ -169,6 +189,12 @@ export function OnboardingWizard({ locale }: { locale: string }) {
   // bounce straight to the dashboard. Errors fall through: the wizard
   // is a safe place for a user whose profile we can't read.
   useEffect(() => {
+    // Bez sesji nie ma o co pytać: żądanie poszłoby bez nagłówka
+    // Authorization (transport.ts pomija go przy braku tokenu) i wróciło
+    // z 401. Dokładnie te dwa daremne GetMyProfile widać w logach
+    // produkcyjnych obok nieudanego onboardingu z 2026-08-11.
+    if (authStatus !== "signed-in") return;
+
     let cancelled = false;
     identityClient
       .getMyProfile(create(EmptySchema, {}))
@@ -184,7 +210,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authStatus]);
 
   // Persist step (per-user key — safe across account switches)
   useEffect(() => {
@@ -239,10 +265,42 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     // ── 1. CRITICAL PATH: Save modality to profile ──────────────────
     // This is the gate that Dashboard checks (me.defaultModalityId).
     // If this fails, user MUST stay on this step and retry.
-    const activeMod = !skipped && selectedModality
-      ? modalities.find((m) => m.systemCode === selectedModality)
-      : null;
-    const modalityId = activeMod ? activeMod.id : "33e66b8d-8a71-4770-96f3-42e13297a7e7"; // fallback UNIV
+    //
+    // Identyfikator MUSI pochodzic z katalogu clinical-svc. Wczesniej
+    // stal tu zaszyty UUID "UNIV" (33e66b8d-...), ktorego w tabeli
+    // `modalities` nie ma — wiez `fk_users_default_modality` odrzucal
+    // zapis (SQLSTATE 23503), UpdateProfile zwracal 500 i "Pomin" nie
+    // dzialalo NIGDY. Sciezka "Dalej" byla zdrowa tylko dlatego, ze
+    // brala prawdziwe id z pobranego katalogu.
+    const wanted = !skipped && selectedModality ? selectedModality : "UNIV";
+    let activeMod = pickModality(modalities, wanted);
+
+    // Katalog moze byc pusty, jesli ListModalities padlo przy montowaniu
+    // (krok wyboru dziala wtedy na etykietach zapasowych). Zanim
+    // zablokujemy uzytkownika, sprobujmy raz jeszcze.
+    if (!activeMod) {
+      try {
+        const fresh = await getModalityCatalog();
+        if (fresh.length > 0) setModalities(fresh);
+        activeMod = pickModality(fresh, wanted);
+      } catch (e) {
+        console.error("[onboarding] ponowne pobranie katalogu nurtow nie powiodlo sie", e);
+      }
+    }
+
+    if (!activeMod) {
+      // Bez prawdziwego id nie ma czego zapisac. Zmyslenie go tylko
+      // przenioslo nam blad o warstwe nizej, do wiezu klucza obcego.
+      setError(
+        locale === "en"
+          ? "Could not load the list of therapy approaches. Check your connection and try again."
+          : "Nie udało się wczytać listy nurtów terapii. Sprawdź połączenie i spróbuj ponownie."
+      );
+      setSaving(false);
+      return;
+    }
+
+    const modalityId = activeMod.id;
 
     try {
       await identityClient.updateProfile(
@@ -252,6 +310,16 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       );
     } catch (e) {
       console.error("[onboarding] updateProfile failed — cannot proceed", e);
+
+      // Sesja mogła wygasnąć albo zniknąć w trakcie wypełniania (np. po
+      // wylogowaniu w innej karcie). To NIE jest błąd zapisu i mówienie
+      // "spróbuj ponownie" wysyła użytkownika w pętlę — ponowienie bez
+      // sesji zawsze wróci tym samym 401. Kierujemy na logowanie.
+      if (e instanceof ConnectError && e.code === Code.Unauthenticated) {
+        router.replace(`${prefix}/login?err=session`);
+        return;
+      }
+
       setError(
         locale === "en"
           ? "Failed to save your preferences. Please try again."
@@ -306,7 +374,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     } catch (err) {
       console.warn("[onboarding] CRM note skipped — profile fetch failed (non-blocking)", err);
     }
-  }, [selectedModality, weeklySessions, workFormat, modalities, locale, t]);
+  }, [selectedModality, weeklySessions, workFormat, modalities, locale, t, router, prefix]);
 
   // Animated monthly sessions counter
   const monthlyTarget = weeklySessions === "up_to_7" ? 30 : weeklySessions === "up_to_20" ? 87 : 0;
@@ -332,6 +400,24 @@ export function OnboardingWizard({ locale }: { locale: string }) {
   const visualStep = Math.min(step, 6);
 
   // ─── Render ────────────────────────────────────────────────
+
+  // Te dwa wyjścia MUSZĄ stać po wszystkich hookach — React wymaga, by
+  // liczba i kolejność hooków były takie same przy każdym renderze.
+  if (authStatus !== "signed-in") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 text-center">
+        <div
+          className="w-8 h-8 rounded-full border-2 border-[#8FA5A0] border-t-transparent animate-spin mb-4"
+          aria-hidden="true"
+        />
+        <p className="text-[#8FA5A0]" role="status" aria-live="polite">
+          {authStatus === "signed-out"
+            ? t("Przekierowujemy do logowania…", "Redirecting you to sign in…")
+            : t("Wczytywanie…", "Loading…")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12" style={{ fontSize: '110%' }}>
