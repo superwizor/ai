@@ -130,6 +130,15 @@ service ClinicalService {
     rpc AdminGetModalityPromptHistory(AdminGetModalityPromptHistoryRequest) returns (AdminGetModalityPromptHistoryResponse);
     rpc AdminUpdateModalityPrompt(AdminUpdateModalityPromptRequest) returns (AdminUpdateModalityPromptResponse);
 
+    // ─── AI chat control surface (ADR 62 section 11) ───
+    // Reads and flips the chat kill switch. The runbook (docs/64) also
+    // documents a direct SQL path as break-glass; this RPC is the normal
+    // route because it is the one that writes the audit event. A switch
+    // flipped without a record of who flipped it and why is half a
+    // safety mechanism.
+    rpc AdminGetChatControls(AdminGetChatControlsRequest) returns (AdminChatControls);
+    rpc AdminSetChatControls(AdminSetChatControlsRequest) returns (AdminChatControls);
+
     // ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
     // Per-therapist metadata aggregates for the caller's organization.
     // HARD privacy boundary (§7.3): counts and durations ONLY — never
@@ -1411,6 +1420,46 @@ message GenerateSessionBriefResponse {
   string conversation_id = 2;
   // Number of RAG memory hits used to build context.
   int32 rag_hits_used = 3;
+}
+
+// ─── AI chat admin control ───
+
+message AdminGetChatControlsRequest {
+  // Empty = the global defaults. Set to inspect one organization's
+  // effective settings, including any override.
+  string organization_id = 1;
+}
+
+message AdminChatControls {
+  bool enabled = 1;
+  // "full" | "defined_ops"
+  string mode = 2;
+  double classifier_tau = 3;
+  int64 quota_micro_usd = 4;
+  // True when these values come from an organization override rather
+  // than the global row.
+  bool is_org_override = 5;
+  string note = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message AdminSetChatControlsRequest {
+  // Empty = change the global default; set = create or update an
+  // organization override.
+  string organization_id = 1;
+
+  // Only the fields present are changed. optional (not a default value)
+  // so "leave enabled alone while switching mode" is expressible —
+  // without it, every partial update would silently re-enable a chat
+  // someone had just switched off.
+  optional bool enabled = 2;
+  optional string mode = 3;
+  optional double classifier_tau = 4;
+  optional int64 quota_micro_usd = 5;
+
+  // Why. Required for any change: the note is what the next responder
+  // reads at 3am, and the audit event is worth little without it.
+  string note = 6;
 }
 
 // ─── AI Chat with guardrails (ADR docs/kronikarz/62 v1.3) ───

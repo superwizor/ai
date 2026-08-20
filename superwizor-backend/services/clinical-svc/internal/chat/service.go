@@ -37,6 +37,8 @@ type Service struct {
 	Quota     Quota
 	Config    *appconfig.Reader
 	Decisions DecisionLog
+	// Telemetry receives the section 7.1 events. nil disables them.
+	Telemetry Tracker
 	Now       func() time.Time
 }
 
@@ -236,6 +238,11 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 		}
 		rec.CostMicroUSD = actual
 		rec.LatencyMs = out.Meta.LatencyMs
+		if s.Telemetry != nil {
+			for _, ev := range telemetryFor(t, out, rec) {
+				s.Telemetry.Track(context.WithoutCancel(ctx), ev)
+			}
+		}
 		if s.Decisions != nil {
 			if err := s.Decisions.Record(context.WithoutCancel(ctx), rec); err != nil {
 				// The evidence row is the MDR article 94 artefact. Losing

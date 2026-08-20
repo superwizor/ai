@@ -476,3 +476,19 @@ func (a *ConnectAdapter) AskPatientQuestion(ctx context.Context, req *connect.Re
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) AdminGetChatControls(ctx context.Context, req *connect.Request[clinicalv1.AdminGetChatControlsRequest]) (*connect.Response[clinicalv1.AdminChatControls], error) {
+	resp, err := a.s.AdminGetChatControls(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminSetChatControls(ctx context.Context, req *connect.Request[clinicalv1.AdminSetChatControlsRequest]) (*connect.Response[clinicalv1.AdminChatControls], error) {
+	resp, err := a.s.AdminSetChatControls(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

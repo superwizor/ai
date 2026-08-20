@@ -34,6 +34,7 @@ import (
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 
 	"github.com/superwizor-ai/backend/pkg/analytics"
+	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
@@ -41,6 +42,7 @@ import (
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	psadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/pubsub"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/chat"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -252,6 +254,37 @@ func main() {
 
 	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version, analyticsCollector).
 		WithPanelURL(os.Getenv("PANEL_URL_BASE")) // docs/39 PR9; empty keeps the default app URL
+
+	// ── AI chat (ADR docs/kronikarz/62, plan docs/63) ──────────────
+	//
+	// Always wired; whether it ANSWERS is decided at request time by
+	// app_config, which is what makes the kill switch a row update
+	// instead of a deploy. The seed in migration 000084 has it off, so a
+	// fresh environment starts silent.
+	//
+	// With no Vertex project configured, NewVertexLLM returns a backend
+	// that fails every call — local dev and CI run the whole service
+	// with the chat present and inert.
+	configReader := appconfig.NewReader(appconfigPool{pool})
+	vertexCfg := chat.VertexConfigFromEnv()
+	chatLLM, err := chat.NewVertexLLM(ctx, vertexCfg)
+	if err != nil {
+		slog.Error("clinical-svc: vertex client", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("clinical-svc: ai chat wired",
+		"vertex_project_set", vertexCfg.ProjectID != "",
+		"vertex_location", vertexCfg.Location)
+
+	chatSvc := &chat.Service{
+		LLM:       chatLLM,
+		Retriever: chat.Retriever{Pool: chatPool{pool}, Crypto: crypto},
+		Quota:     chat.Quota{DB: chatPool{pool}},
+		Config:    configReader,
+		Decisions: chat.PostgresDecisionLog{DB: chatPool{pool}},
+		Telemetry: chatTracker{analyticsCollector},
+	}
+	srv = srv.WithChat(chatSvc).WithChatConfig(configReader, chatPool{pool})
 
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()

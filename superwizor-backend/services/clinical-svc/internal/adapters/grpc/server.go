@@ -23,6 +23,7 @@ import (
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/pkg/analytics"
+	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/chat"
@@ -122,6 +123,27 @@ type Server struct {
 	// which is the correct default: a chat that answers must be
 	// deliberately switched on.
 	chat *chat.Service
+	// config reads the runtime flags (app_config). nil = the chat
+	// admin RPCs report Unavailable; the request path falls back to
+	// pkg/appconfig's compiled-in safe defaults.
+	config *appconfig.Reader
+	// pool is the raw pool, used only where sqlc's generated Querier
+	// does not reach: app_config upserts and audit rows written
+	// outside a request transaction.
+	pool ConfigPool
+}
+
+// ConfigPool is the narrow write surface the chat admin RPCs need.
+type ConfigPool interface {
+	Exec(ctx context.Context, sql string, args ...any) (int64, error)
+}
+
+// WithChatConfig injects the runtime-config reader and the write pool
+// used by the chat admin RPCs.
+func (s *Server) WithChatConfig(r *appconfig.Reader, pool ConfigPool) *Server {
+	s.config = r
+	s.pool = pool
+	return s
 }
 
 // WithChat injects the AI chat service. Post-construction option rather
