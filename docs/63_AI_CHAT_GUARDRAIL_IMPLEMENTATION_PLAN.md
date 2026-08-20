@@ -524,4 +524,6 @@ Rekomendacja: wariant 1. Wariant 3 jako uzupełnienie po pomiarze.
 | Odblokowanie Google Play (parytet mobilny) | PO |
 | Decyzja D2 (tokeny redakcji w cytatach) | PO |
 | Teksty czatu do `.arb` / `messages/*.json` (obecnie `TODO(i18n)` w widgetach) | inżynieria |
+| Prompt Studio: edycja klucza `chat` (soczewki modalności; seed 20.08 poszedł obok wersjonowania Studia, źródła w `migrations/modality_prompts/chat_*.txt`) | inżynieria |
+| Warstwa 2 ontologii: rejestr modeli + schemat A7 z zamkniętym enumem kategorii (Model Równowagi jako pierwszy wpis) — domyka odstępstwo o uproszczonych schematach | inżynieria |
 | RPC dla szablonów F10 + UI edytora | inżynieria |

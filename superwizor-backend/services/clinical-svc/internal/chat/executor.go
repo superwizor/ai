@@ -75,9 +75,20 @@ Odpowiadaj po polsku, rzeczowo, bez oceny ryzyka.`
 // TestEducationNeverReceivesClientContext asserts it stays that way.
 func (s Service) executeEducation(ctx context.Context, t Turn) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
 	schema, _ := guardrail.SchemaFor(guardrail.A4Edu)
+
+	// A4 dostaje soczewke WYLACZNIE, gdy pytanie samo wymienia modalnosc
+	// ("jak konceptualizacja wyglada w podejsciu CBT?"). Modalnosc
+	// prowadzonej terapii jest informacja o kliencie, a definicyjna
+	// wlasnoscia A4 jest brak kontekstu klienta — wiec kartoteki tu nie
+	// odpytujemy w ogole (pilnuje tego test).
+	eduPrompt := eduSystemPrompt
+	if lens, ok := s.resolveLens(ctx, t, guardrail.A4Edu); ok {
+		eduPrompt = eduPrompt + "\n\n" + lens.Render()
+	}
+
 	resp, err := s.LLM.Generate(ctx, GenerateRequest{
 		Model:          GeneratorModel,
-		SystemPrompt:   eduSystemPrompt,
+		SystemPrompt:   eduPrompt,
 		UserContent:    "PYTANIE:\n" + t.Question,
 		ResponseSchema: schema,
 		Temperature:    0.2,
@@ -187,6 +198,14 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 	sysPrompt, ok := groundedSystemPrompts[d.Intent]
 	if !ok {
 		return nil, nil, guardrail.Verdict{}, 0, fmt.Errorf("chat: no prompt for intent %s", d.Intent)
+	}
+
+	// Soczewka modalnosci: wymieniona w pytaniu wygrywa z prowadzona w
+	// kartotece (terapeuta PPT moze prosic o ujecie CBT). Prompt intencji
+	// stoi PIERWSZY i definiuje zadanie oraz zasady; soczewka tylko
+	// jezyk i porzadek analizy.
+	if lens, ok := s.resolveLens(ctx, t, d.Intent); ok {
+		sysPrompt = sysPrompt + "\n\n" + lens.Render()
 	}
 
 	// Candidate sessions. RAG preselection applies to the intents whose

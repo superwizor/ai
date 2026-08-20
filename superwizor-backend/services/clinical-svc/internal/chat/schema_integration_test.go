@@ -71,6 +71,8 @@ func TestQueriesMatchLiveSchema(t *testing.T) {
 		{"sqlInsertDecision", sqlInsertDecision},
 		{"sqlLoadHistory", sqlLoadHistory},
 		{"sqlInsertInteraction", sqlInsertInteraction},
+		{"sqlLensByFile", sqlLensByFile},
+		{"sqlLensByCode", sqlLensByCode},
 	}
 
 	for _, q := range queries {

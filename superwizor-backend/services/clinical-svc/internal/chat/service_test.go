@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,9 @@ import (
 	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/pkg/guardrail"
 )
+
+// errNoRows odtwarza sentinel pgx — Retriever po nim poznaje brak wiersza.
+var errNoRows = errors.New("no rows in result set")
 
 // ── scripted LLM ──────────────────────────────────────────────────────
 
@@ -64,7 +68,15 @@ type fakePool struct {
 	stats    SessionStats
 	queries  []string
 	mu       sync.Mutex
+
+	// Soczewki modalnosci. fileLens = modalnosc prowadzona w kartotece;
+	// lensByCode = rejestr modalnosci "do dociagniecia". nil/pusty =
+	// zachowanie sprzed funkcji (brak soczewki).
+	fileLens   *fakeLens
+	lensByCode map[string]fakeLens
 }
+
+type fakeLens struct{ code, name, fragment string }
 
 func (p *fakePool) record(sql string) {
 	p.mu.Lock()
@@ -94,8 +106,37 @@ func (p *fakePool) Query(_ context.Context, sql string, _ ...any) (Rows, error) 
 	return &emptyRows{}, nil
 }
 
-func (p *fakePool) QueryRow(_ context.Context, sql string, _ ...any) RowScanner {
+func (p *fakePool) QueryRow(_ context.Context, sql string, args ...any) RowScanner {
 	p.record(sql)
+	// Wiernie wobec sqlLensByFile/sqlLensByCode: filtr po argumencie,
+	// brak wiersza = blad "no rows" (Retriever traktuje go jako brak
+	// soczewki). Atrapa ignorujaca warunki zapytania testuje kod,
+	// ktorego nie ma w produkcji — lekcja z 20.08.
+	if strings.Contains(sql, "FROM patient_files pf") {
+		if p.fileLens == nil {
+			return scanFunc(func(...any) error { return errNoRows })
+		}
+		l := *p.fileLens
+		return scanFunc(func(d ...any) error {
+			*(d[0].(*string)) = l.code
+			*(d[1].(*string)) = l.name
+			*(d[2].(*string)) = l.fragment
+			return nil
+		})
+	}
+	if strings.Contains(sql, "m.system_code = $1") {
+		code, _ := args[0].(string)
+		l, ok := p.lensByCode[code]
+		if !ok {
+			return scanFunc(func(...any) error { return errNoRows })
+		}
+		return scanFunc(func(d ...any) error {
+			*(d[0].(*string)) = l.code
+			*(d[1].(*string)) = l.name
+			*(d[2].(*string)) = l.fragment
+			return nil
+		})
+	}
 	if strings.Contains(sql, "count(*) FILTER") {
 		st := p.stats
 		return scanFunc(func(d ...any) error {
