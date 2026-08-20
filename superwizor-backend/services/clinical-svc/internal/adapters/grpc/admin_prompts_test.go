@@ -164,9 +164,12 @@ func TestAdminUpdateModalityPrompt_HappyPath(t *testing.T) {
 	if gotVersion.CreatedBy != actorID {
 		t.Errorf("version author: want %s, got %s", actorID, gotVersion.CreatedBy)
 	}
-	if gotVersion.SystemPrompt != gotLive.SystemPrompt {
-		t.Errorf("snapshot text must equal live text")
-	}
+	// Wlasnosc "snapshot = stan zywy" nie jest juz przekazywana przez
+	// parametr: od 20.08.2026 InsertModalityPromptVersion CZYTA zywa
+	// kolumne w SQL (INSERT ... SELECT), zeby historia niosla takze
+	// klucze rownolegle do 'system' (np. 'chat' — soczewke czatu).
+	// Ksztaltu zapytania pilnuje zrodlowy
+	// TestPromptStudioWritesDoNotDropSiblingKeys.
 	if auditCalls != 1 {
 		t.Errorf("want 1 audit event, got %d", auditCalls)
 	}

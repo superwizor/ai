@@ -40,13 +40,26 @@ WHERE m.id = $1
 FOR UPDATE OF m;
 
 -- name: UpdateModalityLivePrompt :exec
+-- jsonb_set, NIGDY jsonb_build_object: kolumna niesie od 20.08.2026 takze
+-- klucz 'chat' (soczewka modalnosci w czacie, seed z
+-- migrations/modality_prompts/chat_*.txt). Przebudowa obiektu od zera
+-- kasowalaby po cichu kazdy klucz poza 'system' przy najblizszej edycji
+-- promptu raportowego w Prompt Studio. Pilnuje tego test zrodlowy
+-- TestPromptStudioWritesDoNotDropSiblingKeys.
 UPDATE modalities
-SET therapist_ai_general_prompt = jsonb_build_object('system', sqlc.arg(system_prompt)::text)
+SET therapist_ai_general_prompt =
+    jsonb_set(coalesce(therapist_ai_general_prompt, '{}'::jsonb),
+              '{system}', to_jsonb(sqlc.arg(system_prompt)::text), true)
 WHERE id = $1;
 
 -- name: InsertModalityPromptVersion :one
+-- Snapshot CALEJ zywej kolumny (po UPDATE w tej samej transakcji), nie
+-- odbudowa {'system': ...}: historia ma oddawac stan faktyczny, wlacznie
+-- z kluczem 'chat'. Snapshot budowany z parametru gubilby klucze
+-- rownolegle i przywrocenie wersji tez by je kasowalo.
 INSERT INTO modality_prompt_versions (modality_id, version, prompt, change_note, created_by)
-VALUES ($1, $2, jsonb_build_object('system', sqlc.arg(system_prompt)::text), $3, $4)
+SELECT $1, $2, m.therapist_ai_general_prompt, $3, $4
+  FROM modalities m WHERE m.id = $1
 RETURNING id, created_at;
 
 -- name: ListModalityPromptVersions :many

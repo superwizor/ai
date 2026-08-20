@@ -127,3 +127,37 @@ func TestEvidenceLogHoldsNoConversationContent(t *testing.T) {
 		}
 	}
 }
+
+// therapist_ai_general_prompt niesie od 20.08.2026 dwa klucze: 'system'
+// (prompt raportowy, edytowany w Prompt Studio) i 'chat' (soczewka
+// modalnosci w czacie). Zapis, ktory PRZEBUDOWUJE obiekt zamiast ustawic
+// jeden klucz, kasuje po cichu wszystkie pozostale — dokladnie to robil
+// UpdateModalityLivePrompt przez jsonb_build_object: najblizsza edycja
+// promptu raportowego usunelaby soczewki wszystkich edytowanych
+// modalnosci, bez bledu i bez sladu.
+func TestPromptStudioWritesDoNotDropSiblingKeys(t *testing.T) {
+	sql := stripSQLComments(read(t, "queries/modality_prompts.sql"))
+
+	for _, stmt := range strings.Split(sql, ";") {
+		up := strings.ToUpper(stmt)
+		writes := strings.Contains(up, "UPDATE MODALITIES") ||
+			(strings.Contains(up, "INSERT") && strings.Contains(stmt, "modality_prompt_versions"))
+		if !writes {
+			continue
+		}
+		if strings.Contains(stmt, "jsonb_build_object") {
+			t.Errorf("zapis przebudowuje JSONB od zera i skasuje klucze rownolegle "+
+				"(np. 'chat'):\n%s\nUzyj jsonb_set na jednym kluczu albo snapshotu "+
+				"calej zywej kolumny.", strings.TrimSpace(stmt))
+		}
+	}
+
+	// Zapis zywego wiersza musi dotykac WYLACZNIE klucza 'system'.
+	if !strings.Contains(sql, "'{system}'") {
+		t.Error("UpdateModalityLivePrompt nie uzywa jsonb_set na kluczu 'system'")
+	}
+	// A snapshot wersji ma pochodzic z zywej kolumny, nie z parametru.
+	if !strings.Contains(sql, "m.therapist_ai_general_prompt") {
+		t.Error("snapshot wersji nie czyta zywej kolumny — historia zgubi klucze rownolegle")
+	}
+}

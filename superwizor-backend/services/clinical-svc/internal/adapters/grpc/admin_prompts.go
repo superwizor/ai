@@ -168,12 +168,14 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 		slog.Error("UpdateModalityLivePrompt", "error", err, "modality_id", modalityID)
 		return nil, status.Error(codes.Internal, "update live prompt")
 	}
+	// Snapshot wersji pochodzi z ZYWEJ kolumny (patrz modality_prompts.sql)
+	// — nie z parametru — zeby historia niosla takze klucze rownolegle do
+	// 'system' (np. 'chat'). Dlatego parametr tekstu promptu tu znika.
 	inserted, err := qtx.InsertModalityPromptVersion(ctx, db.InsertModalityPromptVersionParams{
-		ModalityID:   modalityID,
-		Version:      newVersion,
-		SystemPrompt: prompt,
-		ChangeNote:   note,
-		CreatedBy:    actorID,
+		ModalityID: modalityID,
+		Version:    newVersion,
+		ChangeNote: note,
+		CreatedBy:  actorID,
 	})
 	if err != nil {
 		slog.Error("InsertModalityPromptVersion", "error", err, "modality_id", modalityID)

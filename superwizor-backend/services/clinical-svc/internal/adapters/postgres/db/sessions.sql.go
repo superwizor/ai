@@ -481,7 +481,7 @@ func (q *Queries) HardDeleteSession(ctx context.Context, arg HardDeleteSessionPa
 }
 
 const listReportsBySession = `-- name: ListReportsBySession :many
-SELECT id, session_id, transcript_id, modality_id, report_ciphertext, report_encrypted_dek, title, summary_short, sentiment_label, risk_level, speaker_role_inference, llm_model, llm_input_tokens, llm_output_tokens, llm_processing_seconds, llm_total_cost_usd, parent_report_id, generation_count, created_at FROM reports
+SELECT id, session_id, transcript_id, modality_id, report_ciphertext, report_encrypted_dek, title, summary_short, sentiment_label, risk_level, speaker_role_inference, llm_model, llm_input_tokens, llm_output_tokens, llm_processing_seconds, llm_total_cost_usd, parent_report_id, generation_count, created_at, template_id, template_version FROM reports
 WHERE session_id = $1
 ORDER BY created_at DESC
 `
@@ -515,6 +515,8 @@ func (q *Queries) ListReportsBySession(ctx context.Context, sessionID uuid.UUID)
 			&i.ParentReportID,
 			&i.GenerationCount,
 			&i.CreatedAt,
+			&i.TemplateID,
+			&i.TemplateVersion,
 		); err != nil {
 			return nil, err
 		}
