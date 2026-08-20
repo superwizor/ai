@@ -26,7 +26,9 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
+	"github.com/superwizor-ai/backend/pkg/llmcost"
 	"github.com/superwizor-ai/backend/pkg/logging"
+	"github.com/superwizor-ai/backend/pkg/rag"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/pseudonymize"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
@@ -58,9 +60,11 @@ var (
 	// array of speaker_groups with nested chunk index arrays) is
 	// exactly the shape that struggles. Flash's structured output is
 	// "plugged directly into a downstream parser without cleaning in
-	// most cases." Cost increases from $0.0375/M+$0.15/M to
-	// $0.075/M+$0.30/M input/output — roughly $0.002/session at
-	// typical 40-min volumes (vs $0.0007). Negligible at our scale.
+	// most cases." Rates are NOT quoted here any more: this comment
+	// carried gemini-1.5-flash numbers ($0.075/M+$0.30/M) long after
+	// the workload moved to 2.5-flash ($0.30/M+$2.50/M), understating
+	// input 4x and output 8.3x. The authoritative table is
+	// pkg/llmcost; a duplicated rate in a comment only rots.
 	//
 	// Available in europe-west4 since the 2.5 GA rollout. When
 	// gemini-3-flash lands in europe-west4 we'll evaluate the swap
@@ -75,8 +79,8 @@ var (
 	// generateEmbedding(); failures are non-fatal (the worker Warns and
 	// skips persistRAGMemoryV2, preserving report save).
 	//
-	// The RAG read-side knobs live in rag.go (ragLookbackSessions,
-	// ragMaxHits, recency/MMR thresholds, ragContextMaxCharsV2) — see
+	// The RAG read-side knobs live in rag.go (rag.LookbackSessions,
+	// rag.MaxHits, recency/MMR thresholds, rag.ContextMaxChars) — see
 	// docs/30 for the theme-level retrieval design.
 	embeddingModel string = "text-embedding-005"
 	embeddingDims  int    = 768
@@ -2255,7 +2259,7 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 // THIS session's distilled themes (from call-1), not the raw transcript —
 // which both fixes the embedding-truncation bug and matches query
 // representation to the stored theme/summary rows. Ranking (anchor +
-// recency-weighted cosine + MMR diversity) runs in Go via selectRAGHits;
+// recency-weighted cosine + MMR diversity) runs in Go via rag.SelectHits;
 // only the winners are decrypted. Best-effort: returns "" + err on any
 // failure, exactly like the legacy reader.
 func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.UUID, themes []string, ragSummary string, chunks []transcriptfmt.Chunk) (string, error) {
@@ -2269,7 +2273,7 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 
 	// Query texts: each theme is its own query vector; fall back to the
 	// summary, then the transcript head+tail. The per-theme vectors are
-	// what let selectRAGHits surface DISTINCT prior threads.
+	// what let rag.SelectHits surface DISTINCT prior threads.
 	queryTexts := make([]string, 0, len(themes)+1)
 	for _, t := range themes {
 		if t = strings.TrimSpace(t); t != "" {
@@ -2326,7 +2330,7 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 		return "", nil
 	}
 
-	hits := selectRAGHits(pool, qv, anchorID, time.Now())
+	hits := rag.SelectHits(pool, qv, anchorID, time.Now())
 	if len(hits) == 0 {
 		return "", nil
 	}
@@ -2367,11 +2371,11 @@ func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.
 }
 
 // loadRAGPool fetches the ranking pool: every memory row belonging to the
-// patient's most-recent ragLookbackSessions sessions (excluding the
+// patient's most-recent rag.LookbackSessions sessions (excluding the
 // session being processed), embeddings only — no ciphertext, no decrypt.
 // Returns the pool and the anchor id (the summary row of the most recent
 // prior session, uuid.Nil if none).
-func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) ([]ragCandidate, uuid.UUID, error) {
+func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) ([]rag.Candidate, uuid.UUID, error) {
 	rows, err := dbPool.Query(ctx, `
 		WITH recent_sessions AS (
 			SELECT source_session_id, max(created_at) AS session_at
@@ -2387,17 +2391,17 @@ func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) (
 		FROM rag_memories m
 		JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
 		WHERE m.patient_file_id = $1 AND NOT m.is_compacted`,
-		patientFileID, excludeSession, ragLookbackSessions)
+		patientFileID, excludeSession, rag.LookbackSessions)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("rag pool query: %w", err)
 	}
 	defer rows.Close()
 
-	var pool []ragCandidate
+	var pool []rag.Candidate
 	var anchorID uuid.UUID
 	var anchorAt time.Time
 	for rows.Next() {
-		var c ragCandidate
+		var c rag.Candidate
 		var embStr string
 		if scanErr := rows.Scan(&c.ID, &c.SessionID, &c.ChunkType, &c.CreatedAt, &embStr); scanErr != nil {
 			return nil, uuid.Nil, fmt.Errorf("rag pool scan: %w", scanErr)
@@ -2415,9 +2419,9 @@ func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) (
 // assembleRAGContext decrypts the selected rows and renders the call-2
 // context block: hits grouped by session (anchor session first, then in
 // hit order), each session dated, items globally numbered. Honors
-// ragContextMaxCharsV2 (anchor is never trimmed). Returns the block and
+// rag.ContextMaxChars (anchor is never trimmed). Returns the block and
 // the number of memories actually rendered.
-func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.UUID) (string, int) {
+func assembleRAGContext(ctx context.Context, hits []rag.Candidate, anchorID uuid.UUID) (string, int) {
 	ids := make([]uuid.UUID, len(hits))
 	for i, h := range hits {
 		ids[i] = h.ID
@@ -2449,7 +2453,7 @@ func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.
 	// Group by session, preserving hit order (anchor-first, then score).
 	type grp struct {
 		date  time.Time
-		items []ragCandidate
+		items []rag.Candidate
 	}
 	var order []*grp
 	bySession := map[uuid.UUID]*grp{}
@@ -2483,7 +2487,7 @@ func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.
 				continue
 			}
 			line := fmt.Sprintf("%d. %s\n", n+1, txt)
-			if !isAnchor && sb.Len()+len(pending)+len(line) > ragContextMaxCharsV2 {
+			if !isAnchor && sb.Len()+len(pending)+len(line) > rag.ContextMaxChars {
 				break
 			}
 			pending += line
@@ -2549,7 +2553,18 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	costUSD := float64(tokenStats.InputTokens)*0.00000125 + float64(tokenStats.OutputTokens)*0.000005
+	// Priced through pkg/llmcost, the single versioned rate table. Until
+	// 2026-08-20 this line used gemini-2.5-pro rates ($1.25/$5.00 per
+	// million) for a gemini-2.5-flash workload, overstating every row it
+	// ever wrote. Historical rows are NOT corrected here (plan section 6).
+	costUSD, costErr := llmcost.CostUSD(geminiModel,
+		int64(tokenStats.InputTokens), int64(tokenStats.OutputTokens), time.Now())
+	if costErr != nil {
+		// An unpriced model must not silently record $0 — that would make
+		// the spend dashboards quietly wrong. Store NULL and shout.
+		slog.ErrorContext(ctx, "llm cost: model not in price table — storing NULL cost",
+			"error", costErr, "model", geminiModel)
+	}
 
 	roleInferenceJSON, _ := json.Marshal(report.SpeakerRoleInference)
 
@@ -2565,7 +2580,7 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		nil, nil, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
-		int(processingTime.Seconds()), costUSD)
+		int(processingTime.Seconds()), nullableCost(costUSD, costErr))
 	if err != nil {
 		return "", err
 	}
@@ -2798,4 +2813,16 @@ func debugLogChunked(logger *slog.Logger, msg string, kvs ...any) {
 		)
 		logger.Info(msg, fields...)
 	}
+}
+
+// nullableCost renders a computed cost for the reports.llm_total_cost_usd
+// column. A pricing failure stores NULL rather than 0: a zero would be
+// indistinguishable from a genuinely free call and would quietly drag the
+// spend dashboards down, which is how the previous mispricing survived
+// for months without anyone noticing.
+func nullableCost(costUSD float64, err error) any {
+	if err != nil {
+		return nil
+	}
+	return costUSD
 }

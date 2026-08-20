@@ -15,8 +15,9 @@ SELECT EXISTS(
 -- name: CreateUser :one
 INSERT INTO users (
     role, firebase_uid, email,
-    first_name, last_name, ui_language, timezone, has_accepted_tos
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    first_name, last_name, ui_language, timezone, has_accepted_tos,
+    phone_number, has_marketing_consent
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: UpdateProfile :one

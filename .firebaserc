@@ -5,8 +5,12 @@
   "targets": {
     "superwizor-ai-25ecd": {
       "hosting": {
-        "superwizor": ["superwizor"],
-        "superwizor-app": ["superwizor-app"]
+        "superwizor": [
+          "superwizor"
+        ],
+        "superwizor-app": [
+          "superwizor-app"
+        ]
       }
     }
   },

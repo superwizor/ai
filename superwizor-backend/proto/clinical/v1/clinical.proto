@@ -130,6 +130,15 @@ service ClinicalService {
     rpc AdminGetModalityPromptHistory(AdminGetModalityPromptHistoryRequest) returns (AdminGetModalityPromptHistoryResponse);
     rpc AdminUpdateModalityPrompt(AdminUpdateModalityPromptRequest) returns (AdminUpdateModalityPromptResponse);
 
+    // ─── AI chat control surface (ADR 62 section 11) ───
+    // Reads and flips the chat kill switch. The runbook (docs/64) also
+    // documents a direct SQL path as break-glass; this RPC is the normal
+    // route because it is the one that writes the audit event. A switch
+    // flipped without a record of who flipped it and why is half a
+    // safety mechanism.
+    rpc AdminGetChatControls(AdminGetChatControlsRequest) returns (AdminChatControls);
+    rpc AdminSetChatControls(AdminSetChatControlsRequest) returns (AdminChatControls);
+
     // ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
     // Per-therapist metadata aggregates for the caller's organization.
     // HARD privacy boundary (§7.3): counts and durations ONLY — never
@@ -180,6 +189,23 @@ service ClinicalService {
     // ─── Transcript segment editing and splitting ───
     rpc EditTranscriptSegment(EditTranscriptSegmentRequest) returns (EditTranscriptSegmentResponse);
     rpc SplitTranscriptSegment(SplitTranscriptSegmentRequest) returns (SplitTranscriptSegmentResponse);
+
+    // ─── AI Assistant (Faza 1+2, docs/critical_analysis) ───
+    // Generates a one-shot session briefing for a patient using RAG
+    // context from rag_memories. Runs Gemini Flash server-side (no PHI
+    // leaves the backend). Audit-logged to chat_interactions.
+    rpc GenerateSessionBrief(GenerateSessionBriefRequest) returns (GenerateSessionBriefResponse);
+
+    // Conversational AI with the guardrail layer (ADR
+    // docs/kronikarz/62 sections 4-5). UNARY, not streaming: the
+    // verifier inspects the complete model response before any of it
+    // reaches the therapist, and a token already on the wire cannot be
+    // withdrawn. Streaming is admissible only for A4_EDU (no client
+    // context) and is not implemented.
+    //
+    // Every call runs: kill switch -> quota reservation -> classifier
+    // -> router -> intent executor -> schema validation -> verifier.
+    rpc AskPatientQuestion(AskPatientQuestionRequest) returns (AskPatientQuestionResponse);
 }
 
 enum ProcessType {
@@ -786,6 +812,12 @@ message AdminModalityPrompt {
   // migration-seeded v1 when no admin edit happened yet.
   string updated_by_email = 8;
   google.protobuf.Timestamp updated_at = 9;
+  // Chat modality lens — therapist_ai_general_prompt["chat"]. Empty =
+  // lens disabled for this modality (the chat then runs on the bare
+  // per-intent prompts). Appended to the generator's system prompt for
+  // grounded intents; invariants are re-asserted by code (Render()), so
+  // an edit here can change language and framing, never the rules.
+  string chat_prompt = 10;
 }
 
 message AdminListModalityPromptsResponse {
@@ -806,6 +838,10 @@ message AdminModalityPromptVersion {
   string change_note = 4;
   string created_by_email = 5;
   google.protobuf.Timestamp created_at = 6;
+  // Snapshot of the chat lens at this version. Versions predating the
+  // lens (before 2026-08-20) return "" here — the snapshot column holds
+  // the full JSONB, so no backfill is needed or possible.
+  string chat_prompt = 7;
 }
 
 message AdminGetModalityPromptHistoryResponse {
@@ -815,8 +851,11 @@ message AdminGetModalityPromptHistoryResponse {
 
 message AdminUpdateModalityPromptRequest {
   string modality_id = 1;
-  // Full replacement text for therapist_ai_general_prompt["system"].
-  // Trimmed non-empty, ≤ 20000 chars.
+  // Full replacement text for the key selected by prompt_key.
+  // For "system": trimmed non-empty, ≤ 20000 chars.
+  // For "chat": ≤ 2500 chars (latency budget — the lens rides on every
+  // grounded generator call); EMPTY IS VALID and disables the lens.
+  // Brand-frame banned words are rejected server-side for "chat".
   string system_prompt = 2;
   // Mandatory reason (≥ 10 chars) — stored on the version row and the
   // audit_log entry.
@@ -824,7 +863,17 @@ message AdminUpdateModalityPromptRequest {
   // Optimistic lock: must equal the current latest version for this
   // modality or the call fails FailedPrecondition (someone else saved
   // in between — reload before retrying).
+  //
+  // ONE counter guards BOTH keys on purpose: every version row snapshots
+  // the whole JSONB, so two admins editing "system" and "chat"
+  // concurrently would still silently overwrite each other's snapshot if
+  // the locks were separate.
   int32 expected_version = 4;
+  // Which key this save targets: "system" (default, report prompt) or
+  // "chat" (modality lens for the chat). A string, not an enum, because
+  // the storage is a JSONB key and inventing a parallel enum would just
+  // add a translation layer to drift.
+  string prompt_key = 5;
 }
 
 message AdminUpdateModalityPromptResponse {
@@ -1375,3 +1424,242 @@ message SplitTranscriptSegmentResponse {
   Transcript transcript = 2;
 }
 
+// ─── AI Assistant Messages ────────────────────────────────────────────
+
+// Faza 1: one-shot briefing. The server fetches RAG context, generates
+// a Gemini response, and returns it in a single unary call.
+message GenerateSessionBriefRequest {
+  string patient_file_id = 1;
+  // Optional free-text focus hint: "wzorce lękowe", "cele terapii", etc.
+  // When empty, the server uses a generic "session preparation" query.
+  string focus_hint = 2;
+}
+
+message GenerateSessionBriefResponse {
+  // The generated brief in markdown format.
+  string brief_markdown = 1;
+  // Stable conversation ID. Pass this to AskPatientQuestion to continue
+  // asking follow-up questions in the context of this brief.
+  string conversation_id = 2;
+  // Number of RAG memory hits used to build context.
+  int32 rag_hits_used = 3;
+}
+
+// ─── AI chat admin control ───
+
+message AdminGetChatControlsRequest {
+  // Empty = the global defaults. Set to inspect one organization's
+  // effective settings, including any override.
+  string organization_id = 1;
+}
+
+message AdminChatControls {
+  bool enabled = 1;
+  // "full" | "defined_ops"
+  string mode = 2;
+  double classifier_tau = 3;
+  int64 quota_micro_usd = 4;
+  // True when these values come from an organization override rather
+  // than the global row.
+  bool is_org_override = 5;
+  string note = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message AdminSetChatControlsRequest {
+  // Empty = change the global default; set = create or update an
+  // organization override.
+  string organization_id = 1;
+
+  // Only the fields present are changed. optional (not a default value)
+  // so "leave enabled alone while switching mode" is expressible —
+  // without it, every partial update would silently re-enable a chat
+  // someone had just switched off.
+  optional bool enabled = 2;
+  optional string mode = 3;
+  optional double classifier_tau = 4;
+  optional int64 quota_micro_usd = 5;
+
+  // Why. Required for any change: the note is what the next responder
+  // reads at 3am, and the audit event is worth little without it.
+  string note = 6;
+}
+
+// ─── AI Chat with guardrails (ADR docs/kronikarz/62 v1.3) ───
+//
+// The wire format is part of the control surface, not just a carrier.
+// There is no field on it for a diagnosis, a medication, or a risk
+// assessment, because those categories are refused rather than rendered
+// — a client cannot display what the protocol cannot express.
+
+message AskPatientQuestionRequest {
+  string patient_file_id = 1;
+  string question = 2;
+  // Conversation ID from GenerateSessionBrief or a prior
+  // AskPatientQuestion response. Empty = new conversation.
+  string conversation_id = 3;
+
+  // Starter prompt this text came from, if any (ADR v1.3 section 6).
+  // Set only when the therapist tapped a curated starter.
+  string starter_id = 4;
+  // True when the therapist edited the starter text before sending.
+  // An UNEDITED starter has a known intent and curated wording, so the
+  // server may skip the classifier for it; an edited one never is.
+  bool starter_edited = 5;
+}
+
+// ChatIntent mirrors the taxonomy in ADR section 5.4 v1.1. The
+// prohibited categories appear here so a refusal can name what was
+// refused — never so a payload can carry one.
+enum ChatIntent {
+  CHAT_INTENT_UNSPECIFIED = 0;
+
+  // ALLOWED — extractive
+  CHAT_INTENT_A1_SEARCH = 1;        // find where a topic was discussed
+  CHAT_INTENT_A2_FACTS = 2;         // counts, attendance, gaps (no model call)
+  CHAT_INTENT_A3_FORMAT = 3;        // format existing material into a document
+  CHAT_INTENT_A4_EDU = 4;           // general education, NO client context
+  CHAT_INTENT_A5_SUPERVISION_PACK = 5;          // session preparation
+  CHAT_INTENT_A6_ADMIN = 6;         // administrative lookups
+  CHAT_INTENT_A7_TEMPLATE_MAP = 7;      // map material onto a model/template
+
+  // ALLOWED — generative, grounded (decision D1, 2026-08-20)
+  CHAT_INTENT_A8_CONCEPT = 8;       // case conceptualization as hypotheses
+  CHAT_INTENT_A9_PROGRESS = 9;      // progress assessment, conditional
+  CHAT_INTENT_A10_TREAT = 10; // intervention proposals
+
+  // PROHIBITED
+  CHAT_INTENT_P1_DIAG = 11;         // nosological diagnosis
+  CHAT_INTENT_P2_MED = 12;          // pharmacotherapy
+  CHAT_INTENT_R_RISK = 13;          // risk / crisis assessment
+  CHAT_INTENT_X_OTHER = 14;         // outside the product's scope
+}
+
+// ChatOutcome says what the server did, so the client renders the right
+// surface without re-deriving it from which fields are populated.
+enum ChatOutcome {
+  CHAT_OUTCOME_UNSPECIFIED = 0;
+  CHAT_OUTCOME_ANSWERED = 1;
+  // Answered, but not the way that was asked: low classifier confidence,
+  // defined_ops mode, or an exhausted quota downgraded the operation.
+  CHAT_OUTCOME_DEGRADED = 2;
+  // Refused on category grounds (P1/P2/R/X).
+  CHAT_OUTCOME_REFUSED = 3;
+  // The model answered but the verifier blocked the result.
+  CHAT_OUTCOME_VERIFIER_BLOCKED = 4;
+  // Chat is switched off (kill switch) for this caller.
+  CHAT_OUTCOME_UNAVAILABLE = 5;
+}
+
+// SectionKind drives presentation AND encodes authorship. Article 50 of
+// the AI Act requires AI-generated clinical material to be marked as
+// such; HYPOTHESIS is the marked kind, USER_ONLY is never model-authored.
+enum SectionKind {
+  SECTION_KIND_UNSPECIFIED = 0;
+  SECTION_KIND_EXTRACT = 1;     // quoted material, minimal prose
+  SECTION_KIND_SUMMARY = 2;     // summarized session material
+  SECTION_KIND_STATS = 3;       // computed numbers, no model involvement
+  SECTION_KIND_HYPOTHESIS = 4;  // A8-A10: generated, grounded, MARKED
+  SECTION_KIND_USER_ONLY = 5;   // therapist writes this; model never sees the field
+}
+
+// Quote is a verbatim span of a decrypted transcript segment. The
+// verifier checks each one as a literal substring of its source before
+// the response leaves the server, so a quote here is evidence, not a
+// paraphrase the model believes it saw.
+message Quote {
+  string session_id = 1;
+  string segment_id = 2;
+  // Verbatim text. May contain pseudonymization tokens such as
+  // [MIEJSCOWOSC-A] — the transcript is redacted at rest (decision D2
+  // is open on whether to change that for this surface).
+  string text = 3;
+  string speaker = 4;
+  int32 ts_start_ms = 5;
+  int32 ts_end_ms = 6;
+  google.protobuf.Timestamp session_at = 7;
+}
+
+message AnswerSection {
+  string title = 1;
+  // Model-authored prose. ALWAYS empty when kind is USER_ONLY.
+  string body = 2;
+  // Grounding. For SECTION_KIND_HYPOTHESIS the server guarantees at
+  // least one quote: the schema handed to the model makes a hypothesis
+  // without a quote structurally unrepresentable.
+  repeated Quote quotes = 3;
+  SectionKind kind = 4;
+  // True when this field belongs to the therapist. The schema sent to
+  // the model has no such field at all; the server appends it empty
+  // after validation.
+  bool user_authored = 5;
+}
+
+// SuggestedQuestion is an AI-proposed question for the therapist to
+// consider asking (ADR v1.2, A5). Grounded like any hypothesis, and put
+// through the verifier for smuggled diagnosis / medication / risk
+// content — a question is a cheap place to hide an assertion.
+message SuggestedQuestion {
+  string question = 1;
+  repeated Quote quotes = 2;
+}
+
+message ChatAnswer {
+  repeated AnswerSection sections = 1;
+  repeated SuggestedQuestion suggested_questions = 2;
+}
+
+// ChatRefusal is a constructive refusal: one sentence plus up to three
+// offered alternatives. It never repeats the refusal text on retry.
+message ChatRefusal {
+  // Localized single-sentence explanation.
+  string message = 1;
+  // Offered alternatives, e.g. "conceptualization instead of diagnosis"
+  // for a P1 refusal.
+  repeated RefusalAlternative alternatives = 2;
+  // Set for R_RISK: crisis information is always reachable and does not
+  // depend on the chat working.
+  bool show_crisis_information = 3;
+}
+
+message RefusalAlternative {
+  // Intent the alternative would run as.
+  ChatIntent intent = 1;
+  // Localized button label.
+  string label = 2;
+  // Pre-filled question text for the composer.
+  string prefill = 3;
+}
+
+// ChatMeta is observability, not content. It carries nothing that could
+// reconstruct the question or the answer.
+message ChatMeta {
+  ChatIntent intent = 1;
+  // Bucketed, never the raw score — the raw value is a model artefact
+  // that invites over-reading.
+  string confidence_bucket = 2;
+  // Why the answer was degraded, when it was: "low_conf" | "defined_ops"
+  // | "quota" | "verifier_block".
+  string degrade_reason = 3;
+  // Micro-USD charged for this turn, and what is left this period.
+  int64 cost_micro_usd = 4;
+  int64 quota_remaining_micro_usd = 5;
+  // Number of rag_memories rows used to preselect candidate sessions.
+  int32 rag_hits_used = 6;
+  int32 latency_ms = 7;
+}
+
+message AskPatientQuestionResponse {
+  string conversation_id = 1;
+  ChatOutcome outcome = 2;
+
+  // Exactly one of these is set, keyed by outcome. A oneof rather than
+  // two optional fields so a response can never be both an answer and a
+  // refusal — the client has no branch to get wrong.
+  oneof payload {
+    ChatAnswer answer = 3;
+    ChatRefusal refusal = 4;
+  }
+
+  ChatMeta meta = 5;
+}

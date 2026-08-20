@@ -1,0 +1,46 @@
+{"id":"a2-001","text":"Ile sesji odbyliśmy od stycznia?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-002","text":"W ilu sesjach pojawił się temat matki?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-003","text":"Kiedy była nasza pierwsza sesja?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-004","text":"Ile razy odwołał sesję w tym roku?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-005","text":"Policz, ile zadań domowych faktycznie wykonała","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a2-006","text":"Jaka jest średnia długość naszych sesji?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-007","text":"ile spotkan w maju","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["terse","typo"],"label_status":"proposed"}
+{"id":"a2-008","text":"Od jak dawna prowadzę tego klienta?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-009","text":"Zestaw mi liczbę sesji miesiąc po miesiącu","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-010","text":"W ilu sesjach rozmawialiśmy o pracy, a w ilu o związku?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-011","text":"Ile czasu minęło od sesji, na której pierwszy raz wspomniał o bracie?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-012","text":"Jak często pojawia się temat snu? Podaj liczby, nie interpretację","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-013","text":"Która sesja była najdłuższa?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-014","text":"Ile sesji odbyło się online, a ile w gabinecie?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-015","text":"Policz wzmianki o teściowej w całym materiale","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-016","text":"Czy częstotliwość spotkań się zmieniała? Pokaż daty","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-017","text":"Ile było przerw dłuższych niż dwa tygodnie między sesjami?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-018","text":"W ilu sesjach z ostatnich dziesięciu pojawiły się ćwiczenia ekspozycyjne?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a2-019","text":"Podaj datę ostatniej sesji przed wakacyjną przerwą","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-020","text":"Ile łącznie godzin terapii mamy za sobą?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-021","text":"Zlicz sesje, na których była mowa o sferze przyszłości i sensu","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:ppt"],"label_status":"proposed"}
+{"id":"a2-022","text":"Kiedy dokładnie zgłosiła się na terapię i ile sesji minęło do dziś?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-023","text":"Ile razy w transkryptach pada imię Kasia?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-024","text":"statystyka tematow z ostatnich 5 sesji","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["terse","typo"],"label_status":"proposed"}
+{"id":"a2-025","text":"Jaki procent sesji zaczynał od tematu pracy?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-026","text":"Ile spotkań odbyło się w tym kwartale w porównaniu z poprzednim?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-027","text":"Czy da się policzyć, ile razy przełożyliśmy sesję na jego prośbę?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-028","text":"Ile dni upłynęło między sesją dziesiątą a jedenastą?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-029","text":"Zlicz wzmianki o dziadku po mieczu w genogramie i sesjach","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:system"],"label_status":"proposed"}
+{"id":"a2-030","text":"Ile sesji temu rozmawialiśmy o jego wypadku?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-031","text":"Pokaż liczbę wypowiedzi klientki na sesji dwunastej w porównaniu z pierwszą","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-032","text":"W ilu sesjach padło słowo wstyd, a w ilu wina?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-033","text":"Od której sesji zaczęliśmy pracować dziennikiem myśli?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a2-034","text":"Ile mamy nagranych godzin materiału?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-035","text":"Które tematy pojawiały się w więcej niż połowie sesji? Sama lista z liczbami","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-036","text":"Ile razy sesja zaczęła się spóźnieniem klienta?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-037","text":"Podaj daty wszystkich sesji, na których była mowa o wypaleniu","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-038","text":"Jak długo trwa terapia tej pary? Ile wspólnych, ile indywidualnych spotkań?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:system"],"label_status":"proposed"}
+{"id":"a2-039","text":"Ile zadań między sesjami zaplanowaliśmy, a ile omówiliśmy?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-040","text":"Czy w tym roku było więcej sesji niż w zeszłym o tej porze?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-041","text":"Zlicz, ile razy wracał temat wyprowadzki od rodziców","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-042","text":"ile sesji od poczatku","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["terse"],"label_status":"proposed"}
+{"id":"a2-043","text":"Kiedy wypadnie setna sesja przy obecnym rytmie co tydzień?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-044","text":"Ile wzmianek o piciu w ostatnim półroczu versus wcześniej? Same liczby","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a2-045","text":"Na ilu sesjach obecna była tylko żona, a na ilu oboje?","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":["jargon:system"],"label_status":"proposed"}
+{"id":"a2-046","text":"Policz sesje, po których wysłałem notatkę do klienta","expected_intent":"A2_FACTS","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}

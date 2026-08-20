@@ -56,10 +56,22 @@ class GrpcClients {
     );
 
     final interceptors = [AuthInterceptor()];
-    identity = IdentityServiceClient(identityChannel, interceptors: interceptors);
-    clinical = ClinicalServiceClient(clinicalChannel, interceptors: interceptors);
-    ingestion = IngestionServiceClient(ingestionChannel, interceptors: interceptors);
-    notification = NotificationServiceClient(notificationChannel, interceptors: interceptors);
+    identity = IdentityServiceClient(
+      identityChannel,
+      interceptors: interceptors,
+    );
+    clinical = ClinicalServiceClient(
+      clinicalChannel,
+      interceptors: interceptors,
+    );
+    ingestion = IngestionServiceClient(
+      ingestionChannel,
+      interceptors: interceptors,
+    );
+    notification = NotificationServiceClient(
+      notificationChannel,
+      interceptors: interceptors,
+    );
 
     // billing-svc jest internal (no allUsers). W obecnej fazie 3 Flutter NIE
     // wywołuje go bezpośrednio — clinical-svc/ingestion-svc proxy'ują quota
@@ -71,7 +83,10 @@ class GrpcClients {
         port: billingPort,
         transportSecure: billingPort == 443,
       );
-      billing = BillingServiceClient(billingChannel!, interceptors: interceptors);
+      billing = BillingServiceClient(
+        billingChannel!,
+        interceptors: interceptors,
+      );
     } else {
       billingChannel = null;
       billing = null;
@@ -90,27 +105,45 @@ class GrpcClients {
 class AuthInterceptor extends ClientInterceptor {
   @override
   ResponseFuture<R> interceptUnary<Q, R>(
-      ClientMethod<Q, R> method, Q request, CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
+    ClientMethod<Q, R> method,
+    Q request,
+    CallOptions options,
+    ClientUnaryInvoker<Q, R> invoker,
+  ) {
     return invoker(
       method,
       request,
-      options.mergedWith(CallOptions(
-        providers: [_authProvider],
-        timeout: const Duration(seconds: 30),
-      )),
+      options.mergedWith(
+        CallOptions(
+          providers: [_authProvider],
+          // Domyslne 30 s, ale TYLKO gdy wywolujacy nie podal wlasnego.
+          // mergedWith daje pierwszenstwo argumentowi, wiec bezwarunkowe
+          // `timeout: 30s` deptalo kazda wartosc ustawiona przy wywolaniu —
+          // i czyni loby serwerowy limit ozdoba. Czat potrzebuje wiecej:
+          // tura A8 zmierzona na produkcji 20.08.2026 trwala 25,5 s, czyli
+          // ocierala sie o te trzydziestke.
+          timeout: options.timeout ?? const Duration(seconds: 30),
+        ),
+      ),
     );
   }
 
   @override
   ResponseStream<R> interceptStreaming<Q, R>(
-      ClientMethod<Q, R> method, Stream<Q> requests, CallOptions options, ClientStreamingInvoker<Q, R> invoker) {
+    ClientMethod<Q, R> method,
+    Stream<Q> requests,
+    CallOptions options,
+    ClientStreamingInvoker<Q, R> invoker,
+  ) {
     return invoker(
       method,
       requests,
-      options.mergedWith(CallOptions(
-        providers: [_authProvider],
-        timeout: const Duration(seconds: 30),
-      )),
+      options.mergedWith(
+        CallOptions(
+          providers: [_authProvider],
+          timeout: options.timeout ?? const Duration(seconds: 30),
+        ),
+      ),
     );
   }
 

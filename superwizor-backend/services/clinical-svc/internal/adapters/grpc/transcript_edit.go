@@ -18,7 +18,7 @@ import (
 
 func (s *Server) EditTranscriptSegment(ctx context.Context, req *clinicalv1.EditTranscriptSegmentRequest) (*clinicalv1.EditTranscriptSegmentResponse, error) {
 	slog.Info("EditTranscriptSegment: request received", "sessionId", req.SessionId, "startOffsetMs", req.StartOffsetMs, "newSpeakerTag", req.NewSpeakerTag)
-	
+
 	sessionID, err := uuid.Parse(req.SessionId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid session_id")
@@ -80,14 +80,14 @@ func (s *Server) EditTranscriptSegment(ctx context.Context, req *clinicalv1.Edit
 		if int64(line.StartMS) == req.StartOffsetMs {
 			found = true
 			firstIdx = i
-			
+
 			// Scan contiguous segments with same speaker tag to find turn boundary
 			targetTag := line.SpeakerTag
 			var targetTagVal int32
 			if targetTag != nil {
 				targetTagVal = *targetTag
 			}
-			
+
 			lastIdx = i
 			for j := i + 1; j < len(lines); j++ {
 				tag := lines[j].SpeakerTag
@@ -130,7 +130,7 @@ func (s *Server) EditTranscriptSegment(ctx context.Context, req *clinicalv1.Edit
 	var updatedLines []transcriptBlobLine
 	updatedLines = append(updatedLines, lines[:firstIdx+1]...)
 	updatedLines = append(updatedLines, lines[lastIdx+1:]...)
-	
+
 	// Re-index chunk indices
 	for i := range updatedLines {
 		updatedLines[i].ChunkIdx = i
@@ -211,7 +211,7 @@ func (s *Server) EditTranscriptSegment(ctx context.Context, req *clinicalv1.Edit
 
 func (s *Server) SplitTranscriptSegment(ctx context.Context, req *clinicalv1.SplitTranscriptSegmentRequest) (*clinicalv1.SplitTranscriptSegmentResponse, error) {
 	slog.Info("SplitTranscriptSegment: request received", "sessionId", req.SessionId, "startOffsetMs", req.StartOffsetMs, "splitWordIndex", req.SplitWordIndex, "secondPartSpeakerTag", req.SecondPartSpeakerTag)
-	
+
 	sessionID, err := uuid.Parse(req.SessionId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid session_id")

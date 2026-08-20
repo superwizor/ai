@@ -70,10 +70,10 @@ func TestEditTranscriptSegment_Success(t *testing.T) {
 	s := &Server{queries: q, tx: opener, crypto: crypto}
 
 	req := &clinicalv1.EditTranscriptSegmentRequest{
-		SessionId:      sessionID.String(),
-		StartOffsetMs:  1000,
-		NewText:        "Dzień dobry, dzisiaj deszcz pada.",
-		NewSpeakerTag:  2,
+		SessionId:     sessionID.String(),
+		StartOffsetMs: 1000,
+		NewText:       "Dzień dobry, dzisiaj deszcz pada.",
+		NewSpeakerTag: 2,
 	}
 
 	resp, err := s.EditTranscriptSegment(ctx, req)
@@ -175,10 +175,10 @@ func TestSplitTranscriptSegment_Success(t *testing.T) {
 
 	// Split at index 2 ("trzy"), so part 1 is "Jeden dwa" and part 2 is "trzy cztery"
 	req := &clinicalv1.SplitTranscriptSegmentRequest{
-		SessionId:             sessionID.String(),
-		StartOffsetMs:         1000,
-		SplitWordIndex:        2,
-		SecondPartSpeakerTag:  2,
+		SessionId:            sessionID.String(),
+		StartOffsetMs:        1000,
+		SplitWordIndex:       2,
+		SecondPartSpeakerTag: 2,
 	}
 
 	resp, err := s.SplitTranscriptSegment(ctx, req)

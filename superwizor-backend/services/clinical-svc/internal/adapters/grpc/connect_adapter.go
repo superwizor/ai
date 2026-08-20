@@ -121,6 +121,17 @@ func (a *ConnectAdapter) GetActionPlanDraft(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+// GenerateSessionBrief — drugie z RPC asystenta AI (obok strumieniowego
+// AskPatientQuestion w connect_adapter_stream.go). Handler istniał od
+// feat/chat-window, brakowało tylko opakowania Connect.
+func (a *ConnectAdapter) GenerateSessionBrief(ctx context.Context, req *connect.Request[clinicalv1.GenerateSessionBriefRequest]) (*connect.Response[clinicalv1.GenerateSessionBriefResponse], error) {
+	resp, err := a.s.GenerateSessionBrief(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) SavePatientNote(ctx context.Context, req *connect.Request[clinicalv1.SavePatientNoteRequest]) (*connect.Response[clinicalv1.SavePatientNoteResponse], error) {
 	resp, err := a.s.SavePatientNote(ctx, req.Msg)
 	if err != nil {
@@ -447,6 +458,35 @@ func (a *ConnectAdapter) EditTranscriptSegment(ctx context.Context, req *connect
 
 func (a *ConnectAdapter) SplitTranscriptSegment(ctx context.Context, req *connect.Request[clinicalv1.SplitTranscriptSegmentRequest]) (*connect.Response[clinicalv1.SplitTranscriptSegmentResponse], error) {
 	resp, err := a.s.SplitTranscriptSegment(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// AskPatientQuestion is unary since ADR 62 section 4.2 — the verifier
+// needs the complete response before any of it is shown. The bridge that
+// used to adapt a Connect server-stream onto a gRPC stream handler
+// (connect_adapter_stream.go) existed only for this RPC and was deleted
+// with the streaming signature.
+func (a *ConnectAdapter) AskPatientQuestion(ctx context.Context, req *connect.Request[clinicalv1.AskPatientQuestionRequest]) (*connect.Response[clinicalv1.AskPatientQuestionResponse], error) {
+	resp, err := a.s.AskPatientQuestion(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminGetChatControls(ctx context.Context, req *connect.Request[clinicalv1.AdminGetChatControlsRequest]) (*connect.Response[clinicalv1.AdminChatControls], error) {
+	resp, err := a.s.AdminGetChatControls(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminSetChatControls(ctx context.Context, req *connect.Request[clinicalv1.AdminSetChatControlsRequest]) (*connect.Response[clinicalv1.AdminChatControls], error) {
+	resp, err := a.s.AdminSetChatControls(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}

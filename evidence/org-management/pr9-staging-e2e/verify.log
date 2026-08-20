@@ -1,0 +1,43 @@
+Org management — staging deploy + full e2e (2026-07-03)
+
+DEPLOY
+- Migrations 000061-064 applied to staging Cloud SQL: version 60 → 64
+  (BEFORE service deploy; backward compatible).
+- PR #33 merged to main (user-authorized). CI/CD Pipeline run
+  28678087667 → success (all Cloud Run services). marketing-site run
+  28678087657 → success (Firebase Hosting).
+- Live checks: https://superwizor.ai/pl/org/ → 200 (renders OrgGuard),
+  https://superwizor.ai/pl/admin/orgs/new/ → 200.
+
+E2E — TestOrgManagement_FullFlow: PASS (17.06s), all stages live:
+  ✓ AdminSetSeatAllocations: 2 seats @79.99, MANUAL b2b sub ACTIVE
+  ✓ seat-pinned InviteTherapist reserved the 2nd seat
+  ✓ SEATS_EXHAUSTED on overbooking (assignment + pending invite = 2/2)
+  ✓ ReserveCredit lazily minted the per-therapist counter + recorded
+    scope on pending_reservations.therapist_id
+  ✓ CommitUsage debited the SAME therapist counter (used=1)
+  ✓ GetMyOrgSeatUsage: 1 assigned + 1 pending + usage row
+  ✓ deactivation freed the seat; ValidateToken → PermissionDenied
+    ACCOUNT_DEACTIVATED
+  ✓ reactivation restored access
+  (fresh Firebase TEST users, org cleaned child-first)
+
+E2E — billing regression suite: PASS
+  All functional tests green (CheckQuota, Reserve/Commit/Release,
+  token boundaries, idempotency, concurrent last-token,
+  GetSubscription) — first with BILLING_ORG_ID pinned, then re-run
+  green on auto-discovery after safety-check healed the stale
+  "Demo Sp. z o.o." fixture (org counter minted, healed_count=1).
+  Cron endpoints verified via REAL Cloud Scheduler run-now:
+    reservation-expiry done expired=0 counters_touched=0 (new
+    per-scope code path live), safety-check done healed=1.
+  The 2 in-suite cron tests 403 by design since the 2026-07 incident
+  hardening (only cloud-scheduler-billing@ SA may call them;
+  workstation lacks token-creator on it) — pre-existing test debt.
+
+E2E — TestFullSession_HappyPath: pipeline PASSED end-to-end
+  (upload → STT → transcript → report → ratings → prefs → re-report →
+  RODO cascade → Firestore cleanup). Single assertion failure =
+  pre-existing stale test expecting the old "Pacjent" label after the
+  product-wide Pacjent→Klient rename (same failure as 2026-07-02,
+  pre-dates this branch). Fix: PR #34 (one line, open for review).

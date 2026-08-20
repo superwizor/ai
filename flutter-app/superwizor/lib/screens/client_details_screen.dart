@@ -20,6 +20,7 @@ import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/kartoteka_filters_provider.dart';
+import '../screens/ai_chat_report_screen.dart';
 import '../providers/patient_notes_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
@@ -32,6 +33,7 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/client_invite_sheet.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/pending_quota_sessions_widget.dart';
+import 'ai_chat_screen.dart';
 import 'new_session_screen.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
@@ -58,6 +60,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   late Animation<double> _recordAnim; // mini-FAB #1 (closer to main FAB)
   late Animation<double> _noteAnim; // action card #2 (middle)
   late Animation<double> _uploadAnim; // action card #3 (higher up)
+  late Animation<double> _aiChatAnim; // action card #4 (highest — AI chat)
   late Animation<double> _bannerAnim; // security banner from top
   late AnimationController _pulseController; // mic icon pulse
   late Animation<double> _pulseScale;
@@ -159,11 +162,15 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     );
     _uploadAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.16, 0.80, curve: Curves.easeOutCubic),
+      curve: const Interval(0.16, 0.75, curve: Curves.easeOutCubic),
+    );
+    _aiChatAnim = CurvedAnimation(
+      parent: _fabController,
+      curve: const Interval(0.22, 0.85, curve: Curves.easeOutCubic),
     );
     _bannerAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.25, 1.0, curve: Curves.easeOutCubic),
+      curve: const Interval(0.30, 1.0, curve: Curves.easeOutCubic),
     );
 
     // Mic pulse: 2 gentle beats when FAB opens
@@ -302,6 +309,22 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
       MaterialPageRoute(
         settings: const RouteSettings(name: 'NoteEditorScreen'),
         builder: (_) => NoteEditorScreen(patientId: widget.patientId),
+      ),
+    );
+  }
+
+  Future<void> _onAiChatTapped() async {
+    _closeFab();
+    final ctx = await _resolveSessionContext();
+    if (ctx == null || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AiChatScreen(
+          patientId: widget.patientId,
+          patientAlias: ctx.alias,
+          therapistId: ctx.therapistId,
+        ),
       ),
     );
   }
@@ -647,8 +670,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             final kartFilters = ref.watch(
                               kartotekaFiltersProvider(widget.patientId),
                             );
-                            final sessionsVisible = kartFilters.isEmpty ||
-                                kartFilters
+                            final sessionsVisible = kartFilters
                                     .contains(KartotekaFilter.sessions);
                             final visibleTimeline = _applyKartotekaFilter(
                               timeline,
@@ -758,151 +780,16 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                     direction: DismissDirection.endToStart,
                                     confirmDismiss: (_) async {
                                       final l = AppLocalizations.of(context);
-                                      return await showModalBottomSheet<bool>(
+                                      return await showTwoStepDeleteConfirmSheet(
                                         context: context,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (ctx) => Container(
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF0A2326),
-                                            borderRadius: BorderRadius.vertical(
-                                              top: Radius.circular(32),
-                                            ),
-                                            border: Border(
-                                              top: BorderSide(
-                                                color: Colors.white10,
-                                              ),
-                                            ),
-                                          ),
-                                          child: SafeArea(
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    24,
-                                                    20,
-                                                    24,
-                                                    16,
-                                                  ),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Center(
-                                                    child: Container(
-                                                      width: 40,
-                                                      height: 4,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white24,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              2,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 20),
-                                                  Text(
-                                                    l.note_delete_confirm,
-                                                    style: const TextStyle(
-                                                      fontFamily: 'Montserrat',
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: EuphireColors
-                                                          .frostWhite,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                  const SizedBox(height: 20),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                ctx,
-                                                                false,
-                                                              ),
-                                                          style: TextButton.styleFrom(
-                                                            padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  vertical: 14,
-                                                                ),
-                                                            shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    12,
-                                                                  ),
-                                                              side: BorderSide(
-                                                                color: Colors
-                                                                    .white
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.1,
-                                                                    ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          child: Text(
-                                                            l.note_sheet_cancel,
-                                                            style: const TextStyle(
-                                                              fontFamily:
-                                                                  'Montserrat',
-                                                              fontSize: 15,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              color:
-                                                                  EuphireColors
-                                                                      .mist,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: ElevatedButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                ctx,
-                                                                true,
-                                                              ),
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor:
-                                                                EuphireColors
-                                                                    .magma,
-                                                            foregroundColor:
-                                                                EuphireColors
-                                                                    .frostWhite,
-                                                            padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  vertical: 14,
-                                                                ),
-                                                            shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    12,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                          child: Text(
-                                                            l.note_delete_action,
-                                                            style: const TextStyle(
-                                                              fontFamily:
-                                                                  'Montserrat',
-                                                              fontSize: 15,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                        step1Title: 'Usunąć notatkę?',
+                                        step1Description:
+                                            'Wybrałeś opcję usunięcia notatki. Wymagane jest dwustopniowe potwierdzenie, aby zapobiec przypadkowemu skasowaniu.',
+                                        step2Title:
+                                            'OSTATNIE POTWIERDZENIE USUNIĘCIA NOTATKI',
+                                        step2Description: l.note_delete_desc,
+                                        confirmText: l.note_delete_action,
+                                        cancelText: l.note_sheet_cancel,
                                       );
                                     },
                                     onDismissed: (_) {
@@ -947,10 +834,6 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                 }
 
                                 final session = item.session!;
-                                // Option E (2026-05-25): server-side
-                                // PENDING_UPLOAD sessions render with
-                                // the same placeholder style as the
-                                // Hive-queue-driven _PendingUploadCard.
                                 if (session.status ==
                                     SessionStatus.pendingUpload) {
                                   return _PendingUploadServerCard(
@@ -958,10 +841,75 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                     patientId: widget.patientId,
                                   );
                                 }
-                                return _SessionCard(
-                                  session: session,
-                                  patientId: widget.patientId,
-                                  sessionNumber: item.sessionNumber,
+
+                                return Dismissible(
+                                  key: ValueKey('session_${session.id}'),
+                                  direction: DismissDirection.endToStart,
+                                  confirmDismiss: (_) async {
+                                    final l = AppLocalizations.of(context);
+                                    return await showTwoStepDeleteConfirmSheet(
+                                      context: context,
+                                      step1Title:
+                                          l.clientDetails_delete_session_title,
+                                      step1Description:
+                                          'Wybrałeś opcję usunięcia sesji. Wymagane jest dwustopniowe potwierdzenie, aby zapobiec przypadkowemu skasowaniu.',
+                                      step2Title:
+                                          'OSTATNIE POTWIERDZENIE USUNIĘCIA SESJI',
+                                      step2Description:
+                                          l.clientDetails_delete_session_desc,
+                                      confirmText:
+                                          l.clientDetails_btn_yes_delete,
+                                      cancelText: l.common_cancel,
+                                    );
+                                  },
+                                  onDismissed: (_) async {
+                                    AppHapticFeedback.heavyImpact();
+                                    final l = AppLocalizations.of(context);
+                                    try {
+                                      await ref
+                                          .read(sessionsProvider.notifier)
+                                          .deleteSession(
+                                            widget.patientId,
+                                            session.id,
+                                          );
+                                      if (context.mounted) {
+                                        EuphireToast.success(
+                                          context,
+                                          message: 'Sesja została usunięta',
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        EuphireToast.error(
+                                          context,
+                                          message: l.session_delete_error,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 24),
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    decoration: BoxDecoration(
+                                      color: EuphireColors.magma.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: EuphireColors.magma.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      size: 24,
+                                    ),
+                                  ),
+                                  child: _SessionCard(
+                                    session: session,
+                                    patientId: widget.patientId,
+                                    sessionNumber: item.sessionNumber,
+                                  ),
                                 );
                               },
                             );
@@ -1117,7 +1065,39 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              // ── Action Card #3: Upload file (highest) ──
+                              // ── Action Card #4: AI Chat (highest) ──
+                              // Visible only when the patient has at least
+                              // one completed session (otherwise there's
+                              // nothing for the AI to analyze).
+                              if (currentSessions.any((s) =>
+                                  s.status == SessionStatus.completed))
+                                SizeTransition(
+                                  sizeFactor: _aiChatAnim,
+                                  axisAlignment: 1.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: SizedBox(
+                                      width: screenWidth - 48,
+                                      child: _buildActionCard(
+                                        animation: _aiChatAnim,
+                                        icon: Icons.auto_awesome,
+                                        label: 'Zapytaj AI',
+                                        subtitle:
+                                            'Czat z kontekstem wszystkich sesji',
+                                        onTap: _onAiChatTapped,
+                                        isPrimary: false,
+                                        cardColor: const Color(0xFF2D1E0B),
+                                        borderOverride: Border.all(
+                                          color: EuphireColors.ember.withValues(alpha: 0.45),
+                                          width: 1,
+                                        ),
+                                        iconColor: EuphireColors.ember,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // ── Action Card #3: Upload file ──
                               // Web: hidden — recording/file upload are native-only
                               // for now (see new_session web-upload deferral).
                               if (!kIsWeb)
@@ -1312,6 +1292,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     required VoidCallback onTap,
     required bool isPrimary,
     Color? cardColor,
+    Border? borderOverride,
+    Color? iconColor,
   }) {
     return FadeTransition(
       opacity: animation,
@@ -1330,9 +1312,10 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                   cardColor ??
                   (isPrimary ? EuphireColors.ember : const Color(0xFF0F1F21)),
               borderRadius: BorderRadius.circular(14),
-              border: isPrimary
-                  ? null
-                  : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: borderOverride ??
+                  (isPrimary
+                      ? null
+                      : Border.all(color: Colors.white.withValues(alpha: 0.1))),
               boxShadow: isPrimary
                   ? [
                       ...EuphireColors.emberGlow,
@@ -1363,15 +1346,18 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                     decoration: BoxDecoration(
                       color: isPrimary
                           ? Colors.white.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.06),
+                          : (iconColor != null
+                              ? iconColor.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.06)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       icon,
                       size: 22,
-                      color: isPrimary
-                          ? EuphireColors.frostWhite
-                          : EuphireColors.frostWhite.withValues(alpha: 0.7),
+                      color: iconColor ??
+                          (isPrimary
+                              ? EuphireColors.obsidianBlack
+                              : EuphireColors.frostWhite.withValues(alpha: 0.7)),
                     ),
                   ),
                 ),
@@ -1739,6 +1725,13 @@ class _SessionCard extends ConsumerWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
+      onSecondaryTap: () => _showSessionOptionsSheet(
+        context,
+        ref,
+        session,
+        patientId,
+        title,
+      ),
       onTap: () {
         // Mark as viewed when opening a completed report
         if (isCompleted) {
@@ -2044,140 +2037,28 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
     final rootContext = Navigator.of(context, rootNavigator: true).context;
 
     Navigator.pop(context);
-    showModalBottomSheet(
+    showTwoStepDeleteConfirmSheet(
       context: rootContext,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF0A2326),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          border: Border(top: BorderSide(color: Colors.white10)),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: EuphireColors.magma.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.delete_forever_rounded,
-                      size: 28,
-                      color: EuphireColors.magma.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  l.clientDetails_delete_session_title,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  l.clientDetails_delete_session_desc,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 14,
-                    color: EuphireColors.mist.withValues(alpha: 0.8),
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1),
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          l.common_cancel,
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: EuphireColors.mist,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          // Close the confirm sheet first, then delete via the
-                          // CAPTURED notifier (the widget's `ref` is gone now).
-                          Navigator.pop(ctx);
-                          try {
-                            await notifier.deleteSession(patientId, sessionId);
-                          } catch (e) {
-                            if (rootContext.mounted) {
-                              EuphireToast.error(
-                                rootContext,
-                                message: l.session_delete_error,
-                              );
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: EuphireColors.magma,
-                          foregroundColor: EuphireColors.frostWhite,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                        ),
-                        child: Text(
-                          l.clientDetails_btn_yes_delete,
-                          style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+      step1Title: l.clientDetails_delete_session_title,
+      step1Description: 'Wybrałeś opcję usunięcia sesji. Wymagane jest dwustopniowe potwierdzenie, aby zapobiec przypadkowemu skasowaniu.',
+      step2Title: 'OSTATNIE POTWIERDZENIE USUNIĘCIA SESJI',
+      step2Description: l.clientDetails_delete_session_desc,
+      confirmText: l.clientDetails_btn_yes_delete,
+      cancelText: l.common_cancel,
+    ).then((confirmed) async {
+      if (confirmed) {
+        try {
+          await notifier.deleteSession(patientId, sessionId);
+        } catch (e) {
+          if (rootContext.mounted) {
+            EuphireToast.error(
+              rootContext,
+              message: l.session_delete_error,
+            );
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -2506,7 +2387,7 @@ class _TimelineItem {
 /// shaped is the therapist's own (free notes + action plans).
 List<_TimelineItem> _applyKartotekaFilter(
     List<_TimelineItem> items, Set<KartotekaFilter> active) {
-  if (active.isEmpty) return items;
+  if (active.isEmpty) return [];
   return items.where((i) {
     if (!i.isNote) return active.contains(KartotekaFilter.sessions);
     return i.note!.isClientNote
@@ -2603,10 +2484,17 @@ class _NoteCard extends ConsumerWidget {
   final PatientNote note;
   final String patientId;
 
-  const _NoteCard({required this.note, required this.patientId});
+  const _NoteCard({
+    required this.note,
+    required this.patientId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final patients = ref.watch(patientsProvider).asData?.value ?? [];
+    final patient = patients.where((p) => p.id == patientId).firstOrNull;
+    final alias = patient?.workingAlias ?? 'Klient';
+
     final d = note.createdAt;
     final dateStr = DateFormat(
       'd MMM',
@@ -2618,14 +2506,71 @@ class _NoteCard extends ConsumerWidget {
     final l = AppLocalizations.of(context);
     final displayTitle = note.title.isNotEmpty ? note.title : l.note_untitled;
 
+    String aiSummary = '';
+    String aiTranscript = '';
+    
+    if (note.title == l.ai_chat_note_title) {
+      final headerPattern = RegExp(r'###\s*(Zapis rozmowy z AI|Transkrypcja)[^\n]*\n?');
+      if (note.text.contains(headerPattern)) {
+        final splitParts = note.text.split(headerPattern);
+        final rawSummary = splitParts[0].replaceFirst(RegExp(r'\n*---+\s*$'), '').trim();
+        final rawTranscript = splitParts.sublist(1).join('\n').trim();
+
+        final isRoleHeader = rawSummary.startsWith('**System:**') ||
+            rawSummary.startsWith('**Terapeuta:**') ||
+            rawSummary.startsWith('**Superwizor AI:**') ||
+            rawSummary.startsWith('**AI:**') ||
+            rawSummary.startsWith('###');
+
+        if (rawSummary.isNotEmpty && !isRoleHeader) {
+          aiSummary = rawSummary;
+        } else {
+          aiSummary = '';
+        }
+        aiTranscript = rawTranscript;
+      } else {
+        final trimmedText = note.text.trim();
+        final isRoleHeader = trimmedText.startsWith('**System:**') ||
+            trimmedText.startsWith('**Terapeuta:**') ||
+            trimmedText.startsWith('**Superwizor AI:**') ||
+            trimmedText.startsWith('**AI:**') ||
+            trimmedText.startsWith('###');
+
+        if (isRoleHeader) {
+          aiSummary = '';
+          aiTranscript = trimmedText;
+        } else {
+          aiSummary = trimmedText;
+          aiTranscript = trimmedText;
+        }
+      }
+    }
+
     return GestureDetector(
+      onSecondaryTap: () =>
+          _showNoteOptionsSheet(context, ref, patientId, note),
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => _NoteViewScreen(note: note, patientId: patientId),
-          ),
-        );
+        if (note.title == l.ai_chat_note_title) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AiChatReportScreen(
+                patientId: patientId,
+                patientAlias: alias,
+                initialSummary: aiSummary,
+                fullTranscript: aiTranscript,
+                noteId: note.id,
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => _NoteViewScreen(note: note, patientId: patientId),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -2638,17 +2583,45 @@ class _NoteCard extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Emoji badge ──
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: EuphireColors.ember.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(note.isClientNote ? '💬' : '📝',
-                  style: const TextStyle(fontSize: 18)),
+            // ── Emoji / Logo badge ──
+            Builder(
+              builder: (context) {
+                final isAiNote = note.title == l.ai_chat_note_title ||
+                    note.title.contains('AI') ||
+                    note.title.toLowerCase().contains('rozmowa') ||
+                    note.text.contains('Superwizor AI');
+
+                return Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isAiNote
+                        ? const Color(0xFF00B37E).withValues(alpha: 0.18)
+                        : EuphireColors.ember.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: isAiNote
+                        ? Border.all(
+                            color: const Color(0xFF00B37E).withValues(alpha: 0.4),
+                            width: 1,
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: note.isClientNote
+                      ? const Icon(Icons.chat_bubble_rounded, size: 18, color: EuphireColors.mist)
+                      : isAiNote
+                          ? ClipOval(
+                              child: Image.asset(
+                                // ignore: avoid_hardcoded_strings_in_widgets
+                                'assets/images/PNG/v02_supervisor_logo_gradient.png',
+                                width: 22,
+                                height: 22,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(Icons.edit_note_rounded, size: 22, color: EuphireColors.ember),
+                );
+              },
             ),
             const SizedBox(width: 14),
             // ── Title + preview + meta ──
@@ -2704,17 +2677,41 @@ class _NoteCard extends ConsumerWidget {
                   ),
                   if (note.text.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      note.text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: EuphireColors.frostWhite.withValues(alpha: 0.6),
-                        height: 1.4,
-                      ),
+                    Builder(
+                      builder: (context) {
+                        String preview = note.title == l.ai_chat_note_title && aiSummary.isNotEmpty 
+                            ? aiSummary 
+                            : note.text;
+                        
+                        // Clean up markdown delimiters and role headers
+                        preview = preview.replaceFirst(RegExp(r'^\s*---\s*'), '');
+                        preview = preview.replaceFirst(RegExp(r'^\s*###\s*Transkrypcja\s*'), '');
+                        preview = preview.replaceFirst(RegExp(r'^\s*###\s*Transkrypt\s*'), '');
+                        preview = preview.replaceAll('**Terapeuta:**', 'Terapeuta:');
+                        preview = preview.replaceAll('**Superwizor AI:**', 'Superwizor AI:');
+                        preview = preview.replaceAll('**AI:**', 'Superwizor AI:');
+                        preview = preview.replaceAll('**System:**', 'System:');
+                        preview = preview.replaceAll(RegExp(r'\*+'), '');
+                        preview = preview.replaceAll(RegExp(r'#+'), '');
+                        preview = preview.replaceAll(RegExp(r'\n+'), ' ').trim();
+
+                        if (preview.isEmpty) {
+                          preview = 'Zapisana rozmowa z Asystentem AI';
+                        }
+
+                        return Text(
+                          preview,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: EuphireColors.frostWhite.withValues(alpha: 0.6),
+                            height: 1.4,
+                          ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 6),
@@ -3002,124 +2999,286 @@ class _NoteCard extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     AppLocalizations l,
-  ) {
-    showModalBottomSheet(
+  ) async {
+    final confirmed = await showTwoStepDeleteConfirmSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF0A2326),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          border: Border(top: BorderSide(color: Colors.white10)),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+      step1Title: l.note_delete_confirm,
+      step1Description: 'Wybrałeś opcję usunięcia notatki. Wymagane jest dwustopniowe potwierdzenie, aby zapobiec przypadkowemu skasowaniu.',
+      step2Title: 'OSTATNIE POTWIERDZENIE USUNIĘCIA NOTATKI',
+      step2Description: l.note_delete_desc,
+      confirmText: l.note_delete_action,
+      cancelText: l.note_sheet_cancel,
+    );
+    if (confirmed) {
+      AppHapticFeedback.heavyImpact();
+      ref.read(patientNotesMapProvider.notifier).deleteNote(patientId, note.id);
+      if (context.mounted) {
+        EuphireToast.success(context, message: l.note_deleted);
+      }
+    }
+  }
+}
+
+Future<bool> showTwoStepDeleteConfirmSheet({
+  required BuildContext context,
+  required String step1Title,
+  required String step1Description,
+  required String step2Title,
+  required String step2Description,
+  required String confirmText,
+  required String cancelText,
+}) async {
+  // ── STEP 1: First Confirmation Sheet ──
+  final firstResult = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  l.note_delete_confirm,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: EuphireColors.ember.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  note.title.isNotEmpty ? note.title : note.text,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 28,
+                    color: EuphireColors.ember,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1),
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          l.note_sheet_cancel,
-                          style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: EuphireColors.mist,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                step1Title,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.frostWhite,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                step1Description,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  color: EuphireColors.mist.withValues(alpha: 0.8),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          AppHapticFeedback.heavyImpact();
-                          ref
-                              .read(patientNotesMapProvider.notifier)
-                              .deleteNote(patientId, note.id);
-                          EuphireToast.success(
-                            context,
-                            message: l.note_deleted,
-                          );
-                          Navigator.pop(ctx);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: EuphireColors.magma,
-                          foregroundColor: EuphireColors.frostWhite,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          l.note_delete_action,
-                          style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      child: Text(
+                        cancelText,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: EuphireColors.mist,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.ember,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Dalej (1/2)',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 
+  if (firstResult != true) return false;
+  if (!context.mounted) return false;
+
+  // ── STEP 2: Final Critical Confirmation Sheet ──
+  final secondResult = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: EuphireColors.magma, width: 1.5)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: EuphireColors.magma.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.delete_forever_rounded,
+                    size: 32,
+                    color: EuphireColors.magma.withValues(alpha: 0.95),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                step2Title,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.magma,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                step2Description,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  color: EuphireColors.frostWhite.withValues(alpha: 0.9),
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        'Zostaw',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.frostWhite,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.magma,
+                        foregroundColor: EuphireColors.frostWhite,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        confirmText,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  return secondResult ?? false;
 }
 
 // ─── Note Option Tile (used in the note options bottom sheet) ────────

@@ -714,6 +714,18 @@ type AnalyticsEvent struct {
 	CreatedAt      time.Time   `json:"created_at"`
 }
 
+// Runtime configuration with per-organization overrides. Read via pkg/appconfig (30 s cache). Hosts the AI chat kill switch — see docs/63 F0/F5 and ADR 62 section 11. NOT covered by the GDPR purger: contains no personal data.
+type AppConfig struct {
+	ID    uuid.UUID `json:"id"`
+	Key   string    `json:"key"`
+	Value string    `json:"value"`
+	// NULL = global default; non-NULL = override for that organization.
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Note           string      `json:"note"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	UpdatedBy      pgtype.UUID `json:"updated_by"`
+}
+
 type AudioChunk struct {
 	ID            uuid.UUID `json:"id"`
 	AudioUploadID uuid.UUID `json:"audio_upload_id"`
@@ -768,6 +780,46 @@ type AuditEvent struct {
 	OccurredAt     time.Time   `json:"occurred_at"`
 	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
 	Reason *string `json:"reason"`
+}
+
+// Audit trail for AI assistant interactions. Content is KMS envelope-encrypted (ADR-DM-002). Cascades from patient_files for RODO erasure.
+type ChatInteraction struct {
+	ID                  uuid.UUID `json:"id"`
+	TherapistID         uuid.UUID `json:"therapist_id"`
+	PatientFileID       uuid.UUID `json:"patient_file_id"`
+	ConversationID      uuid.UUID `json:"conversation_id"`
+	InteractionType     string    `json:"interaction_type"`
+	ContentCiphertext   []byte    `json:"content_ciphertext"`
+	ContentEncryptedDek []byte    `json:"content_encrypted_dek"`
+	RagHitsCount        int32     `json:"rag_hits_count"`
+	ModelUsed           string    `json:"model_used"`
+	InputTokens         int32     `json:"input_tokens"`
+	OutputTokens        int32     `json:"output_tokens"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
+// Per-therapist AI chat budget in micro-USD. Reserve-before-classifier, commit-by-UsageMetadata. See docs/63 F6 and ADR 62 section 10.
+type ChatUsageCounter struct {
+	ID           uuid.UUID `json:"id"`
+	TherapistID  uuid.UUID `json:"therapist_id"`
+	PeriodStart  time.Time `json:"period_start"`
+	PeriodEnd    time.Time `json:"period_end"`
+	MicroUsdUsed int64     `json:"micro_usd_used"`
+	// In-flight reservations, NOT spend. A crashed turn leaves one behind; the reclaim path in internal/chat/quota.go sweeps stale reservations.
+	MicroUsdReserved int64 `json:"micro_usd_reserved"`
+	// Copied from app_config at period creation. Deliberately not read live: a mid-period change to the global default must not rewrite a period already in progress.
+	MicroUsdLimit int64              `json:"micro_usd_limit"`
+	WarnedAt      pgtype.Timestamptz `json:"warned_at"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+// Open reservations, one row per in-flight turn. Deleted on commit or release; swept when older than the stale window (see quota.go).
+type ChatUsageReservation struct {
+	ID        uuid.UUID `json:"id"`
+	CounterID uuid.UUID `json:"counter_id"`
+	MicroUsd  int64     `json:"micro_usd"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ConsentRecord struct {
@@ -857,6 +909,32 @@ type FcmToken struct {
 	CreatedAt         time.Time          `json:"created_at"`
 	InvalidatedAt     pgtype.Timestamptz `json:"invalidated_at"`
 	InvalidatedReason *string            `json:"invalidated_reason"`
+}
+
+// MDR article 94 evidence log for the AI chat guardrail. 24-month retention. CONTAINS NO PERSONAL DATA and is DELIBERATELY EXCLUDED from the GDPR purger — see migration 000085 header and the negative test in clinical-svc. Do not add a patient_file_id, a therapist_id, or any free text derived from the conversation to this table.
+type GuardrailDecision struct {
+	ID uuid.UUID `json:"id"`
+	// One-way digest of the conversation ID. Not a foreign key: a join path back to patient material is what this table must not have.
+	ChatSessionHash  string `json:"chat_session_hash"`
+	Intent           string `json:"intent"`
+	RiskFlag         bool   `json:"risk_flag"`
+	ConfidenceBucket string `json:"confidence_bucket"`
+	Decision         string `json:"decision"`
+	EffectiveIntent  string `json:"effective_intent"`
+	DecisionReason   string `json:"decision_reason"`
+	VerifierResult   string `json:"verifier_result"`
+	BlockReason      string `json:"block_reason"`
+	// Quotes carried by the served response. Zero on a generative intent is an alarm condition (ADR section 8.3).
+	GroundingQuoteCount     int32     `json:"grounding_quote_count"`
+	ClassifierPromptVersion string    `json:"classifier_prompt_version"`
+	VerifierPromptVersion   string    `json:"verifier_prompt_version"`
+	ClassifierModel         string    `json:"classifier_model"`
+	GeneratorModel          string    `json:"generator_model"`
+	ChatMode                string    `json:"chat_mode"`
+	Platform                string    `json:"platform"`
+	CostMicroUsd            int64     `json:"cost_micro_usd"`
+	LatencyMs               int32     `json:"latency_ms"`
+	CreatedAt               time.Time `json:"created_at"`
 }
 
 type HitopDimension struct {
@@ -1116,6 +1194,9 @@ type Report struct {
 	ParentReportID       pgtype.UUID    `json:"parent_report_id"`
 	GenerationCount      int32          `json:"generation_count"`
 	CreatedAt            time.Time      `json:"created_at"`
+	// Template that produced this document, if any. NULL = the standard per-modality pipeline.
+	TemplateID      pgtype.UUID `json:"template_id"`
+	TemplateVersion *int32      `json:"template_version"`
 }
 
 // LLM-chat-style 👍/👎 feedback on therapist_reports. See docs/10_REPORT_CUSTOMIZATION.md §5.
@@ -1131,6 +1212,23 @@ type ReportRating struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	// Admin review status for the feedback dashboard. pending = unreviewed/to-do, done = admin marked as actioned.
 	AdminReviewStatus string `json:"admin_review_status"`
+}
+
+// Therapist-authored document templates. A template composes typed SECTIONS over guardrailed executors — it is not a saved prompt (decision D7, docs/63 F10). Versions are append-only; sharing forks a version rather than linking to it.
+type ReportTemplate struct {
+	ID               uuid.UUID   `json:"id"`
+	OwnerTherapistID uuid.UUID   `json:"owner_therapist_id"`
+	OrganizationID   pgtype.UUID `json:"organization_id"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	Version          int32       `json:"version"`
+	// Array of typed sections. Validated at save time by pkg/guardrail. Prohibited operations are unreachable: no section type produces one.
+	Sections          []byte             `json:"sections"`
+	ForkedFromID      pgtype.UUID        `json:"forked_from_id"`
+	ForkedFromVersion *int32             `json:"forked_from_version"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type SeatAssignment struct {

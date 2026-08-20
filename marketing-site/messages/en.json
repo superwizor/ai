@@ -76,7 +76,8 @@
       "analytics": "Analytics",
       "crm": "CRM",
       "prompts": "Prompts",
-      "stripeTest": "Stripe Testing"
+      "stripeTest": "Stripe Testing",
+      "aiChat": "AI Chat"
     },
     "header": {
       "signOut": "Sign out",
@@ -596,7 +597,11 @@
       "restoreDialogBody": "Version {version}'s text will be saved as a NEW version of the {code} prompt (history stays intact). Suggested reason: „restore version {version}”.",
       "diffTitle": "Changes vs version {version}",
       "viewTitle": "Version {version}",
-      "compareTitle": "Version {from} → current (v{to})"
+      "compareTitle": "Version {from} → current (v{to})",
+      "tabReport": "Report",
+      "tabChat": "Chat — lens",
+      "keyTabsLabel": "Which prompt to edit",
+      "chatKeyHint": "The lens changes the chat's language and analytic ordering — the task and rules live in per-intent prompts in code, and invariants are appended by Render() regardless of this field. Empty text disables the lens for this modality. 2,500-char cap: the lens rides on every generator call."
     },
     "orgCreate": {
       "metaTitle": "New organization",
@@ -681,6 +686,34 @@
       "seatPlaceholder": "— choose a plan —",
       "seatHint": "This organization has several allocations. Pick which plan the therapist consumes.",
       "seatRequired": "Choose a seat allocation."
+    },
+    "aiChat": {
+      "metaTitle": "AI Chat — controls",
+      "loading": "Loading…",
+      "switchTitle": "Kill switch",
+      "switchBody": "Takes effect without a deploy — instances pick it up within 30 seconds. Every change needs a reason and is recorded in the audit log.",
+      "stateOn": "Chat enabled",
+      "stateOff": "Chat disabled",
+      "modeFull": "Full mode",
+      "modeDefinedOps": "Restricted mode",
+      "btnDisable": "Disable chat",
+      "btnEnable": "Enable chat",
+      "btnModeFull": "Restore full mode",
+      "btnModeDefinedOps": "Restrict to defined operations",
+      "guidance": "Restricting costs less operationally than switching off: the therapist keeps quote search and statistics, and loses only the generative functions. Switch off entirely when the problem might also affect the extractive paths. Crisis information stays visible either way.",
+      "configTitle": "Configuration",
+      "labelTau": "Classifier confidence threshold",
+      "labelQuota": "Default therapist budget",
+      "perMonth": "month",
+      "tauNote": "The confidence threshold is calibrated on the evaluation set. Never lower it to reduce false refusals — that moves the boundary toward answering questions that should be refused.",
+      "confirmDisableTitle": "Disable the chat?",
+      "confirmDisableBody": "Every query will be refused as unavailable. Crisis information stays visible. Give a reason — it goes to the audit log.",
+      "confirmEnableTitle": "Enable the chat?",
+      "confirmEnableBody": "The chat will start answering in the current mode. Give a reason — it goes to the audit log.",
+      "confirmRestrictTitle": "Restrict to defined operations?",
+      "confirmRestrictBody": "Conceptualization, progress assessment and intervention suggestions become unavailable and are replaced with source material. The rest of the chat is unaffected.",
+      "confirmUnrestrictTitle": "Restore full mode?",
+      "confirmUnrestrictBody": "Generative functions come back. Do this only once the cause of the restriction is understood and covered by a test in the evaluation set."
     }
   },
   "errors": {

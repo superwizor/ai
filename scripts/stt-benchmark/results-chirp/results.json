@@ -1,0 +1,62 @@
+[
+ {
+  "case": "s7-liczenie",
+  "provider": "chirp3",
+  "audio_duration_s": 62.07,
+  "expected_speakers": 1,
+  "eu_residency": "locations/eu — recognizer i przetwarzanie w UE",
+  "word_count": 60,
+  "last_word_end_s": 62.0,
+  "coverage_pct": 99.9,
+  "speaker_count": null,
+  "words_per_speaker": null,
+  "latency_s": 18.4,
+  "raw": "raw/chirp3_s7-liczenie.json",
+  "diarization_ok": null
+ },
+ {
+  "case": "lilith",
+  "provider": "chirp3",
+  "audio_duration_s": 72.98,
+  "expected_speakers": 2,
+  "eu_residency": "locations/eu — recognizer i przetwarzanie w UE",
+  "word_count": 0,
+  "last_word_end_s": 0.0,
+  "coverage_pct": 0.0,
+  "speaker_count": null,
+  "words_per_speaker": null,
+  "latency_s": 11.6,
+  "raw": "raw/chirp3_lilith.json",
+  "diarization_ok": null
+ },
+ {
+  "case": "gabriela-cbt",
+  "provider": "chirp3",
+  "audio_duration_s": 820.26,
+  "expected_speakers": 2,
+  "eu_residency": "locations/eu — recognizer i przetwarzanie w UE",
+  "word_count": 2390,
+  "last_word_end_s": 812.28,
+  "coverage_pct": 99.0,
+  "speaker_count": null,
+  "words_per_speaker": null,
+  "latency_s": 145.3,
+  "raw": "raw/chirp3_gabriela-cbt.json",
+  "diarization_ok": null
+ },
+ {
+  "case": "konsultacja-pary",
+  "provider": "chirp3",
+  "audio_duration_s": 1585.83,
+  "expected_speakers": 3,
+  "eu_residency": "locations/eu — recognizer i przetwarzanie w UE",
+  "word_count": 0,
+  "last_word_end_s": 0.0,
+  "coverage_pct": 0.0,
+  "speaker_count": null,
+  "words_per_speaker": null,
+  "latency_s": 16.5,
+  "raw": "raw/chirp3_konsultacja-pary.json",
+  "diarization_ok": null
+ }
+]

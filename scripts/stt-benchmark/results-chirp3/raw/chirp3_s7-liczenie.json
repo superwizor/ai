@@ -1,0 +1,370 @@
+{
+ "name": "projects/344724821207/locations/eu/operations/v2-77affede-0000-2f82-9790-c82add6da240",
+ "metadata": {
+  "@type": "type.googleapis.com/google.cloud.speech.v2.OperationMetadata",
+  "createTime": "2026-07-31T09:56:52.943787Z",
+  "updateTime": "2026-07-31T09:57:02.165435Z",
+  "resource": "projects/superwizor-ai-25ecd/locations/eu/recognizers/_",
+  "method": "google.cloud.speech.v2.Speech.BatchRecognize",
+  "batchRecognizeRequest": {
+   "recognizer": "projects/superwizor-ai-25ecd/locations/eu/recognizers/_",
+   "files": [
+    {
+     "uri": "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/s7-liczenie-s7_oryginal.flac"
+    }
+   ],
+   "config": {
+    "features": {
+     "enableWordTimeOffsets": true,
+     "enableAutomaticPunctuation": true
+    },
+    "autoDecodingConfig": {},
+    "model": "chirp_3",
+    "languageCodes": [
+     "pl-PL"
+    ]
+   },
+   "recognitionOutputConfig": {
+    "gcsOutputConfig": {
+     "uri": "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/out-s7-liczenie"
+    }
+   }
+  },
+  "progressPercent": 100
+ },
+ "done": true,
+ "response": {
+  "@type": "type.googleapis.com/google.cloud.speech.v2.BatchRecognizeResponse",
+  "results": {
+   "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/s7-liczenie-s7_oryginal.flac": {
+    "uri": "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/out-s7-liczenie/s7-liczenie-s7_oryginal_transcript_77affee0-0000-2f82-9790-c82add6da240.json",
+    "metadata": {
+     "totalBilledDuration": "63s"
+    },
+    "cloudStorageResult": {
+     "uri": "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/out-s7-liczenie/s7-liczenie-s7_oryginal_transcript_77affee0-0000-2f82-9790-c82add6da240.json"
+    }
+   }
+  },
+  "totalBilledDuration": "63s"
+ },
+ "_transcripts": [
+  {
+   "results": [
+    {
+     "alternatives": [
+      {
+       "transcript": "Okej, mamy kolejne nagrywanie. 5 6 7 8 9 10 11 12 13 14 15 16 18 19 20 21 22 23 24 25 26 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 stop naciska.",
+       "words": [
+        {
+         "endOffset": "1.360s",
+         "word": "Okej,"
+        },
+        {
+         "startOffset": "1.400s",
+         "endOffset": "1.720s",
+         "word": "mamy"
+        },
+        {
+         "startOffset": "1.720s",
+         "endOffset": "2.160s",
+         "word": "kolejne"
+        },
+        {
+         "startOffset": "2.160s",
+         "endOffset": "3.160s",
+         "word": "nagrywanie."
+        },
+        {
+         "startOffset": "5.280s",
+         "endOffset": "6.240s",
+         "word": "5"
+        },
+        {
+         "startOffset": "6.280s",
+         "endOffset": "7.160s",
+         "word": "6"
+        },
+        {
+         "startOffset": "7.200s",
+         "endOffset": "8.080s",
+         "word": "7"
+        },
+        {
+         "startOffset": "8.120s",
+         "endOffset": "8.960s",
+         "word": "8"
+        },
+        {
+         "startOffset": "9s",
+         "endOffset": "9.880s",
+         "word": "9"
+        },
+        {
+         "startOffset": "9.920s",
+         "endOffset": "10.920s",
+         "word": "10"
+        },
+        {
+         "startOffset": "10.960s",
+         "endOffset": "11.800s",
+         "word": "11"
+        },
+        {
+         "startOffset": "11.800s",
+         "endOffset": "12.760s",
+         "word": "12"
+        },
+        {
+         "startOffset": "12.760s",
+         "endOffset": "13.800s",
+         "word": "13"
+        },
+        {
+         "startOffset": "13.840s",
+         "endOffset": "15s",
+         "word": "14"
+        },
+        {
+         "startOffset": "15.040s",
+         "endOffset": "15.920s",
+         "word": "15"
+        },
+        {
+         "startOffset": "15.920s",
+         "endOffset": "16.800s",
+         "word": "16"
+        },
+        {
+         "startOffset": "18.280s",
+         "endOffset": "19.280s",
+         "word": "18"
+        },
+        {
+         "startOffset": "19.280s",
+         "endOffset": "20.280s",
+         "word": "19"
+        },
+        {
+         "startOffset": "20.280s",
+         "endOffset": "21.240s",
+         "word": "20"
+        },
+        {
+         "startOffset": "21.280s",
+         "endOffset": "22.160s",
+         "word": "21"
+        },
+        {
+         "startOffset": "22.160s",
+         "endOffset": "22.960s",
+         "word": "22"
+        },
+        {
+         "startOffset": "22.960s",
+         "endOffset": "24s",
+         "word": "23"
+        },
+        {
+         "startOffset": "24.040s",
+         "endOffset": "25.040s",
+         "word": "24"
+        },
+        {
+         "startOffset": "25.080s",
+         "endOffset": "26s",
+         "word": "25"
+        },
+        {
+         "startOffset": "26s",
+         "endOffset": "26.880s",
+         "word": "26"
+        },
+        {
+         "startOffset": "28.120s",
+         "endOffset": "29.040s",
+         "word": "28"
+        },
+        {
+         "startOffset": "29.040s",
+         "endOffset": "30.040s",
+         "word": "29"
+        },
+        {
+         "startOffset": "30.040s",
+         "endOffset": "31.280s",
+         "word": "30"
+        },
+        {
+         "startOffset": "31.320s",
+         "endOffset": "32.040s",
+         "word": "31"
+        },
+        {
+         "startOffset": "32.040s",
+         "endOffset": "32.680s",
+         "word": "32"
+        },
+        {
+         "startOffset": "33.280s",
+         "endOffset": "33.880s",
+         "word": "33"
+        },
+        {
+         "startOffset": "34.960s",
+         "endOffset": "35.680s",
+         "word": "34"
+        },
+        {
+         "startOffset": "35.680s",
+         "endOffset": "36.360s",
+         "word": "35"
+        },
+        {
+         "startOffset": "36.360s",
+         "endOffset": "37.240s",
+         "word": "36"
+        },
+        {
+         "startOffset": "37.240s",
+         "endOffset": "37.920s",
+         "word": "37"
+        },
+        {
+         "startOffset": "37.960s",
+         "endOffset": "38.760s",
+         "word": "38"
+        },
+        {
+         "startOffset": "38.760s",
+         "endOffset": "39.800s",
+         "word": "39"
+        },
+        {
+         "startOffset": "39.800s",
+         "endOffset": "40.680s",
+         "word": "40"
+        },
+        {
+         "startOffset": "41.560s",
+         "endOffset": "42.040s",
+         "word": "41"
+        },
+        {
+         "startOffset": "42.360s",
+         "endOffset": "42.680s",
+         "word": "42"
+        },
+        {
+         "startOffset": "43.360s",
+         "endOffset": "44.160s",
+         "word": "43"
+        },
+        {
+         "startOffset": "44.160s",
+         "endOffset": "45s",
+         "word": "44"
+        },
+        {
+         "startOffset": "45s",
+         "endOffset": "45.840s",
+         "word": "45"
+        },
+        {
+         "startOffset": "45.840s",
+         "endOffset": "46.840s",
+         "word": "46"
+        },
+        {
+         "startOffset": "46.840s",
+         "endOffset": "47.680s",
+         "word": "47"
+        },
+        {
+         "startOffset": "47.680s",
+         "endOffset": "48.600s",
+         "word": "48"
+        },
+        {
+         "startOffset": "48.600s",
+         "endOffset": "49.920s",
+         "word": "49"
+        },
+        {
+         "startOffset": "49.960s",
+         "endOffset": "50.720s",
+         "word": "50"
+        },
+        {
+         "startOffset": "50.720s",
+         "endOffset": "51.520s",
+         "word": "51"
+        },
+        {
+         "startOffset": "52s",
+         "endOffset": "52.640s",
+         "word": "52"
+        },
+        {
+         "startOffset": "52.640s",
+         "endOffset": "53.800s",
+         "word": "53"
+        },
+        {
+         "startOffset": "53.840s",
+         "endOffset": "54.840s",
+         "word": "54"
+        },
+        {
+         "startOffset": "54.840s",
+         "endOffset": "55.680s",
+         "word": "55"
+        },
+        {
+         "startOffset": "56.320s",
+         "endOffset": "57s",
+         "word": "56"
+        },
+        {
+         "startOffset": "57s",
+         "endOffset": "57.880s",
+         "word": "57"
+        },
+        {
+         "startOffset": "57.880s",
+         "endOffset": "58.840s",
+         "word": "58"
+        },
+        {
+         "startOffset": "58.840s",
+         "endOffset": "59.880s",
+         "word": "59"
+        },
+        {
+         "startOffset": "59.920s",
+         "endOffset": "61s",
+         "word": "60"
+        },
+        {
+         "startOffset": "61.040s",
+         "endOffset": "61.440s",
+         "word": "stop"
+        },
+        {
+         "startOffset": "61.440s",
+         "endOffset": "62.040s",
+         "word": "naciska."
+        }
+       ]
+      }
+     ],
+     "languageCode": "pl-PL"
+    }
+   ],
+   "metadata": {
+    "prompt": "Transcribe the following speech segment in Polish. Follow these specific instructions for formatting the answer:\n* Only output the transcript, with no newlines.\n* When transcribing numbers, write the digits, i.e. write 1.7 and not one point seven, and write 100 instead of one hundred etc.\n* Only output the transcript, exactly as said in the speech segment.\n* Do not continue the speech segment.\n* Include everything said in the speech segment.\n* Use mathematical notation where needed, eg. x ^ 6Y.\n* If there is background speech that is not part of the main conversation, discard the background speech and only output the main conversation.\n* If there is no clear speech, just output [BACKGROUND].\nRespond in the original language of the speech, Polish. Include the end timestamp for each word in ctrl token format using numerals from <ctrl1> to <ctrl64>."
+   },
+   "_chunk_offset_s": 0
+  }
+ ]
+}

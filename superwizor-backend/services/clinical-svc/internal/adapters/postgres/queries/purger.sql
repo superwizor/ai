@@ -33,3 +33,20 @@ WHERE id = $1;
 -- name: PurgeOldAnalyticsEvents :execrows
 DELETE FROM analytics_events
 WHERE occurred_at < NOW() - INTERVAL '90 days';
+
+-- ── Guardrail evidence log: 24-month retention, NOT the GDPR sweep ───
+--
+-- guardrail_decisions is the MDR article 94 evidence pack (migration
+-- 000085). It is deliberately NOT part of the 30/90-day GDPR erasure
+-- above: it holds no personal data, and sweeping it on that cycle would
+-- destroy the evidence three months into a 24-month obligation.
+--
+-- This query exists so the retention limit is enforced rather than
+-- unbounded, and it is separate from every query above so the two
+-- policies cannot be confused for one another. The interval below is
+-- asserted by TestGuardrailDecisionsAreOutsideTheGDPRSweep — changing it
+-- to a GDPR interval fails CI.
+
+-- name: PurgeExpiredGuardrailDecisions :execrows
+DELETE FROM guardrail_decisions
+WHERE created_at < NOW() - INTERVAL '24 months';

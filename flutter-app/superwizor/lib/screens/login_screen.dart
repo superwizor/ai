@@ -408,10 +408,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     height: 1.5,
                   ),
                   children: [
-                    const TextSpan(
+                    TextSpan(
                       text: 'Ze względów bezpieczeństwa oraz spójności konfiguracji Twojej praktyki terapeutycznej, rejestracja nowych kont odbywa się ',
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: 'wyłącznie na naszej stronie internetowej.',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,

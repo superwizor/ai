@@ -368,6 +368,26 @@ class ClinicalServiceClient extends $grpc.Client {
         options: options);
   }
 
+  /// ─── AI chat control surface (ADR 62 section 11) ───
+  /// Reads and flips the chat kill switch. The runbook (docs/64) also
+  /// documents a direct SQL path as break-glass; this RPC is the normal
+  /// route because it is the one that writes the audit event. A switch
+  /// flipped without a record of who flipped it and why is half a
+  /// safety mechanism.
+  $grpc.ResponseFuture<$0.AdminChatControls> adminGetChatControls(
+    $0.AdminGetChatControlsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminGetChatControls, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AdminChatControls> adminSetChatControls(
+    $0.AdminSetChatControlsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminSetChatControls, request, options: options);
+  }
+
   /// ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
   /// Per-therapist metadata aggregates for the caller's organization.
   /// HARD privacy boundary (§7.3): counts and durations ONLY — never
@@ -517,6 +537,33 @@ class ClinicalServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$splitTranscriptSegment, request,
         options: options);
+  }
+
+  /// ─── AI Assistant (Faza 1+2, docs/critical_analysis) ───
+  /// Generates a one-shot session briefing for a patient using RAG
+  /// context from rag_memories. Runs Gemini Flash server-side (no PHI
+  /// leaves the backend). Audit-logged to chat_interactions.
+  $grpc.ResponseFuture<$0.GenerateSessionBriefResponse> generateSessionBrief(
+    $0.GenerateSessionBriefRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateSessionBrief, request, options: options);
+  }
+
+  /// Conversational AI with the guardrail layer (ADR
+  /// docs/kronikarz/62 sections 4-5). UNARY, not streaming: the
+  /// verifier inspects the complete model response before any of it
+  /// reaches the therapist, and a token already on the wire cannot be
+  /// withdrawn. Streaming is admissible only for A4_EDU (no client
+  /// context) and is not implemented.
+  ///
+  /// Every call runs: kill switch -> quota reservation -> classifier
+  /// -> router -> intent executor -> schema validation -> verifier.
+  $grpc.ResponseFuture<$0.AskPatientQuestionResponse> askPatientQuestion(
+    $0.AskPatientQuestionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$askPatientQuestion, request, options: options);
   }
 
   // method descriptors
@@ -703,6 +750,16 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/AdminUpdateModalityPrompt',
       ($0.AdminUpdateModalityPromptRequest value) => value.writeToBuffer(),
       $0.AdminUpdateModalityPromptResponse.fromBuffer);
+  static final _$adminGetChatControls =
+      $grpc.ClientMethod<$0.AdminGetChatControlsRequest, $0.AdminChatControls>(
+          '/clinical.v1.ClinicalService/AdminGetChatControls',
+          ($0.AdminGetChatControlsRequest value) => value.writeToBuffer(),
+          $0.AdminChatControls.fromBuffer);
+  static final _$adminSetChatControls =
+      $grpc.ClientMethod<$0.AdminSetChatControlsRequest, $0.AdminChatControls>(
+          '/clinical.v1.ClinicalService/AdminSetChatControls',
+          ($0.AdminSetChatControlsRequest value) => value.writeToBuffer(),
+          $0.AdminChatControls.fromBuffer);
   static final _$getOrgTherapistMetrics = $grpc.ClientMethod<
           $0.GetOrgTherapistMetricsRequest, $0.OrgTherapistMetricsResponse>(
       '/clinical.v1.ClinicalService/GetOrgTherapistMetrics',
@@ -788,6 +845,16 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/SplitTranscriptSegment',
       ($0.SplitTranscriptSegmentRequest value) => value.writeToBuffer(),
       $0.SplitTranscriptSegmentResponse.fromBuffer);
+  static final _$generateSessionBrief = $grpc.ClientMethod<
+          $0.GenerateSessionBriefRequest, $0.GenerateSessionBriefResponse>(
+      '/clinical.v1.ClinicalService/GenerateSessionBrief',
+      ($0.GenerateSessionBriefRequest value) => value.writeToBuffer(),
+      $0.GenerateSessionBriefResponse.fromBuffer);
+  static final _$askPatientQuestion = $grpc.ClientMethod<
+          $0.AskPatientQuestionRequest, $0.AskPatientQuestionResponse>(
+      '/clinical.v1.ClinicalService/AskPatientQuestion',
+      ($0.AskPatientQuestionRequest value) => value.writeToBuffer(),
+      $0.AskPatientQuestionResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -1096,6 +1163,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminUpdateModalityPromptRequest.fromBuffer(value),
         ($0.AdminUpdateModalityPromptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminGetChatControlsRequest,
+            $0.AdminChatControls>(
+        'AdminGetChatControls',
+        adminGetChatControls_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminGetChatControlsRequest.fromBuffer(value),
+        ($0.AdminChatControls value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminSetChatControlsRequest,
+            $0.AdminChatControls>(
+        'AdminSetChatControls',
+        adminSetChatControls_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminSetChatControlsRequest.fromBuffer(value),
+        ($0.AdminChatControls value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.GetOrgTherapistMetricsRequest,
             $0.OrgTherapistMetricsResponse>(
         'GetOrgTherapistMetrics',
@@ -1239,6 +1324,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.SplitTranscriptSegmentRequest.fromBuffer(value),
         ($0.SplitTranscriptSegmentResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GenerateSessionBriefRequest,
+            $0.GenerateSessionBriefResponse>(
+        'GenerateSessionBrief',
+        generateSessionBrief_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GenerateSessionBriefRequest.fromBuffer(value),
+        ($0.GenerateSessionBriefResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AskPatientQuestionRequest,
+            $0.AskPatientQuestionResponse>(
+        'AskPatientQuestion',
+        askPatientQuestion_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AskPatientQuestionRequest.fromBuffer(value),
+        ($0.AskPatientQuestionResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -1547,6 +1650,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$0.AdminUpdateModalityPromptResponse> adminUpdateModalityPrompt(
       $grpc.ServiceCall call, $0.AdminUpdateModalityPromptRequest request);
 
+  $async.Future<$0.AdminChatControls> adminGetChatControls_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminGetChatControlsRequest> $request) async {
+    return adminGetChatControls($call, await $request);
+  }
+
+  $async.Future<$0.AdminChatControls> adminGetChatControls(
+      $grpc.ServiceCall call, $0.AdminGetChatControlsRequest request);
+
+  $async.Future<$0.AdminChatControls> adminSetChatControls_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminSetChatControlsRequest> $request) async {
+    return adminSetChatControls($call, await $request);
+  }
+
+  $async.Future<$0.AdminChatControls> adminSetChatControls(
+      $grpc.ServiceCall call, $0.AdminSetChatControlsRequest request);
+
   $async.Future<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.GetOrgTherapistMetricsRequest> $request) async {
@@ -1690,4 +1811,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.SplitTranscriptSegmentResponse> splitTranscriptSegment(
       $grpc.ServiceCall call, $0.SplitTranscriptSegmentRequest request);
+
+  $async.Future<$0.GenerateSessionBriefResponse> generateSessionBrief_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GenerateSessionBriefRequest> $request) async {
+    return generateSessionBrief($call, await $request);
+  }
+
+  $async.Future<$0.GenerateSessionBriefResponse> generateSessionBrief(
+      $grpc.ServiceCall call, $0.GenerateSessionBriefRequest request);
+
+  $async.Future<$0.AskPatientQuestionResponse> askPatientQuestion_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AskPatientQuestionRequest> $request) async {
+    return askPatientQuestion($call, await $request);
+  }
+
+  $async.Future<$0.AskPatientQuestionResponse> askPatientQuestion(
+      $grpc.ServiceCall call, $0.AskPatientQuestionRequest request);
 }

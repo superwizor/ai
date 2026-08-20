@@ -42,25 +42,20 @@ import (
 	"time"
 
 	"google.golang.org/genai"
+
+	"github.com/superwizor-ai/backend/pkg/llmcost"
 )
 
-// PriceRow is per-million-token cost in USD, separate for input vs
-// output. These are approximate Vertex AI list prices — verify at
-// https://cloud.google.com/vertex-ai/generative-ai/pricing before
-// quoting numbers externally. Used only for relative comparison in
-// the summary table.
-type PriceRow struct {
-	InputPerM  float64
-	OutputPerM float64
-}
-
-var priceTable = map[string]PriceRow{
-	"gemini-3.1-pro":        {InputPerM: 1.25, OutputPerM: 5.00},
-	"gemini-3.1-flash":      {InputPerM: 0.075, OutputPerM: 0.30},
-	"gemini-3.1-flash-lite": {InputPerM: 0.0375, OutputPerM: 0.15},
-	"gemini-2.5-pro":        {InputPerM: 1.25, OutputPerM: 5.00},
-	"gemini-2.5-flash":      {InputPerM: 0.075, OutputPerM: 0.30},
-}
+// Costing delegates to pkg/llmcost, the single versioned rate table.
+// This file used to carry its own copy, and it had drifted: gemini-2.5-flash
+// was priced at $0.075/$0.30 per million (gemini-1.5-flash era rates) when
+// the real rate is $0.30/$2.50 — so every eval run understated input cost
+// 4x and output cost 8.3x, and the model-comparison column that the matrix
+// exists to produce was ranking on fiction.
+//
+// Models the eval matrix exercises but that pkg/llmcost has no rate for
+// (unreleased or preview SKUs) report a zero cost and a warning rather
+// than a guess; see costForRun.
 
 // MatrixCell is one (model, format) combination to test. The full
 // matrix is the cross-product of all cells with all input transcripts.
@@ -194,9 +189,9 @@ TRANSKRYPT BIEŻĄCEJ SESJI:
 				AttachSchema:     true,
 			},
 			MatrixCell{
-				Label:            m + "-markdown-text",
-				Model:            m,
-				Temperature:      0.3,
+				Label:       m + "-markdown-text",
+				Model:       m,
+				Temperature: 0.3,
 				// Production uses 65536 for the Markdown step. Keep
 				// parity so eval cost + truncation behaviour match.
 				MaxOutputTokens:  65536,
@@ -517,10 +512,7 @@ func runCell(ctx context.Context, client *genai.Client, runDir, promptsDir, tID,
 		r.InputTokens = resp.UsageMetadata.PromptTokenCount
 		r.OutputTokens = resp.UsageMetadata.CandidatesTokenCount
 	}
-	if p, ok := priceTable[cell.Model]; ok {
-		r.CostUSD = float64(r.InputTokens)/1_000_000*p.InputPerM +
-			float64(r.OutputTokens)/1_000_000*p.OutputPerM
-	}
+	r.CostUSD = costForRun(cell.Model, int64(r.InputTokens), int64(r.OutputTokens))
 
 	// Write the raw output to a file so the human reviewer can read it.
 	// Sanitize the filename — labels contain colons that play badly with
@@ -699,4 +691,39 @@ func schemaToVertexSchema(s map[string]any) *genai.Schema {
 	}
 
 	return vs
+}
+
+// previewRates covers models the eval matrix exercises that pkg/llmcost
+// deliberately does not price: unreleased or preview SKUs with no published
+// rate, which the platform therefore cannot bill against.
+//
+// These are ESTIMATES for the relative comparison the matrix exists to
+// produce. They must never reach a billing path — that is precisely why
+// they live here and not in pkg/llmcost, whose table is the authority for
+// anything that touches money. costForRun reports which of the two sources
+// a number came from so a reader of the summary table can tell.
+//
+// Values in USD per million tokens, carried forward from the table this
+// file used before 2026-08-20 and NOT verified against a public price list
+// (none exists for these SKUs in our regions — as of 2026-08-20 no Gemini
+// 3.x model is served from any EU Vertex region we can reach).
+var previewRates = map[string]struct{ InputPerM, OutputPerM float64 }{
+	"gemini-3.1-pro":        {1.25, 5.00},
+	"gemini-3.1-flash":      {0.30, 2.50},
+	"gemini-3.1-flash-lite": {0.10, 0.40},
+}
+
+// costForRun prices one eval run, preferring the authoritative table.
+func costForRun(model string, inTok, outTok int64) float64 {
+	if usd, err := llmcost.CostUSD(model, inTok, outTok, time.Now()); err == nil {
+		return usd
+	}
+	if p, ok := previewRates[model]; ok {
+		slog.Warn("llm-eval: using an UNVERIFIED preview rate — comparison only, never billing",
+			"model", model)
+		return float64(inTok)/1_000_000*p.InputPerM + float64(outTok)/1_000_000*p.OutputPerM
+	}
+	slog.Warn("llm-eval: no rate at all for model, cost column will read 0",
+		"model", model)
+	return 0
 }

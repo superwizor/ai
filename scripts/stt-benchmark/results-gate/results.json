@@ -1,0 +1,96 @@
+[
+ {
+  "case": "s7-liczenie",
+  "provider": "elevenlabs",
+  "audio_duration_s": 62.07,
+  "expected_speakers": 1,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 94,
+  "last_word_end_s": 62.0,
+  "coverage_pct": 99.9,
+  "bogus_timestamps": 0,
+  "speaker_count": 1,
+  "words_per_speaker": {
+   "speaker_0": 94
+  },
+  "latency_s": 4.2,
+  "raw": "raw/elevenlabs_s7-liczenie.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "s7-converted",
+  "provider": "elevenlabs",
+  "audio_duration_s": 62.07,
+  "expected_speakers": 1,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 94,
+  "last_word_end_s": 62.0,
+  "coverage_pct": 99.9,
+  "bogus_timestamps": 0,
+  "speaker_count": 1,
+  "words_per_speaker": {
+   "speaker_0": 94
+  },
+  "latency_s": 4.3,
+  "raw": "raw/elevenlabs_s7-converted.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "lilith",
+  "provider": "elevenlabs",
+  "audio_duration_s": 72.98,
+  "expected_speakers": 2,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 127,
+  "last_word_end_s": 72.02,
+  "coverage_pct": 98.7,
+  "bogus_timestamps": 0,
+  "speaker_count": 2,
+  "words_per_speaker": {
+   "speaker_0": 61,
+   "speaker_1": 66
+  },
+  "latency_s": 4.9,
+  "raw": "raw/elevenlabs_lilith.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "gabriela-cbt",
+  "provider": "elevenlabs",
+  "audio_duration_s": 820.26,
+  "expected_speakers": 2,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 2405,
+  "last_word_end_s": 812.24,
+  "coverage_pct": 99.0,
+  "bogus_timestamps": 0,
+  "speaker_count": 2,
+  "words_per_speaker": {
+   "speaker_0": 1129,
+   "speaker_1": 1276
+  },
+  "latency_s": 31.0,
+  "raw": "raw/elevenlabs_gabriela-cbt.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "konsultacja-pary",
+  "provider": "elevenlabs",
+  "audio_duration_s": 1585.83,
+  "expected_speakers": 3,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 3252,
+  "last_word_end_s": 1575.65,
+  "coverage_pct": 99.4,
+  "bogus_timestamps": 0,
+  "speaker_count": 3,
+  "words_per_speaker": {
+   "speaker_0": 1447,
+   "speaker_1": 949,
+   "speaker_2": 856
+  },
+  "latency_s": 38.0,
+  "raw": "raw/elevenlabs_konsultacja-pary.json",
+  "diarization_ok": true
+ }
+]

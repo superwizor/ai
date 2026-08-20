@@ -1,0 +1,50 @@
+{
+ "name": "projects/344724821207/locations/eu/operations/v2-6a6c7a6b-0000-2175-b64a-34c7e91de043",
+ "metadata": {
+  "@type": "type.googleapis.com/google.cloud.speech.v2.OperationMetadata",
+  "createTime": "2026-07-31T09:45:24.796306Z",
+  "updateTime": "2026-07-31T09:45:27.973651Z",
+  "resource": "projects/superwizor-ai-25ecd/locations/eu/recognizers/_",
+  "method": "google.cloud.speech.v2.Speech.BatchRecognize",
+  "batchRecognizeRequest": {
+   "recognizer": "projects/superwizor-ai-25ecd/locations/eu/recognizers/_",
+   "files": [
+    {
+     "uri": "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/lilith-lilith.m4a"
+    }
+   ],
+   "config": {
+    "features": {
+     "enableWordTimeOffsets": true,
+     "enableAutomaticPunctuation": true
+    },
+    "autoDecodingConfig": {},
+    "model": "chirp_3",
+    "languageCodes": [
+     "pl-PL"
+    ]
+   },
+   "recognitionOutputConfig": {
+    "inlineResponseConfig": {}
+   }
+  },
+  "progressPercent": 100
+ },
+ "done": true,
+ "response": {
+  "@type": "type.googleapis.com/google.cloud.speech.v2.BatchRecognizeResponse",
+  "results": {
+   "gs://superwizor-ai-25ecd-temp-eu-bucket/stt-bench/lilith-lilith.m4a": {
+    "error": {
+     "code": 13,
+     "message": "An internal error occurred."
+    },
+    "transcript": {},
+    "inlineResult": {
+     "transcript": {}
+    }
+   }
+  },
+  "totalBilledDuration": "0s"
+ }
+}

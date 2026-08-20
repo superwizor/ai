@@ -3,16 +3,20 @@ go 1.26.2
 use (
 	./gen/go
 	./pkg/analytics
+	./pkg/appconfig
 	./pkg/authz
 	./pkg/connectmd
 	./pkg/cors
 	./pkg/cryptobox
 	./pkg/errors
+	./pkg/guardrail
 	./pkg/i18n
 	./pkg/idempotency
+	./pkg/llmcost
 	./pkg/logging
 	./pkg/observability
 	./pkg/pubsubx
+	./pkg/rag
 	./pkg/testutil
 	./pkg/transcription
 	./services/ai-pipeline-svc

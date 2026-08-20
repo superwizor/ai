@@ -353,6 +353,10 @@ type Querier interface {
 	HideNoteFromClient(ctx context.Context, id uuid.UUID) (int64, error)
 	// docs/39 PR13: dismiss a shared session from the client's panel only.
 	HideSessionFromClient(ctx context.Context, id uuid.UUID) (int64, error)
+	// Snapshot CALEJ zywej kolumny (po UPDATE w tej samej transakcji), nie
+	// odbudowa {'system': ...}: historia ma oddawac stan faktyczny, wlacznie
+	// z kluczem 'chat'. Snapshot budowany z parametru gubilby klucze
+	// rownolegle i przywrocenie wersji tez by je kasowalo.
 	InsertModalityPromptVersion(ctx context.Context, arg InsertModalityPromptVersionParams) (InsertModalityPromptVersionRow, error)
 	// ─── preference_suggestions_log ─────────────────────────────
 	// Telemetry-only. Three action values: 'shown' | 'applied' |
@@ -426,6 +430,19 @@ type Querier interface {
 	// Sessions per ISO week (last 9 weeks incl. current) + distinct
 	// therapists + avg completed duration — one scan feeds three charts.
 	OrgWeeklySessionTrend(ctx context.Context, organizationID pgtype.UUID) ([]OrgWeeklySessionTrendRow, error)
+	// ── Guardrail evidence log: 24-month retention, NOT the GDPR sweep ───
+	//
+	// guardrail_decisions is the MDR article 94 evidence pack (migration
+	// 000085). It is deliberately NOT part of the 30/90-day GDPR erasure
+	// above: it holds no personal data, and sweeping it on that cycle would
+	// destroy the evidence three months into a 24-month obligation.
+	//
+	// This query exists so the retention limit is enforced rather than
+	// unbounded, and it is separate from every query above so the two
+	// policies cannot be confused for one another. The interval below is
+	// asserted by TestGuardrailDecisionsAreOutsideTheGDPRSweep — changing it
+	// to a GDPR interval fails CI.
+	PurgeExpiredGuardrailDecisions(ctx context.Context) (int64, error)
 	PurgeOldAnalyticsEvents(ctx context.Context) (int64, error)
 	PurgePatientFile(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgePatientNote(ctx context.Context, id uuid.UUID) (int64, error)
@@ -462,6 +479,17 @@ type Querier interface {
 	SoftDeletePatientNotesForDSAR(ctx context.Context, patientFileID uuid.UUID) error
 	SoftDeletePatientUserForDSAR(ctx context.Context, id uuid.UUID) (int64, error)
 	SoftDeleteSessionsForDSAR(ctx context.Context, patientFileID uuid.UUID) error
+	// Blizniak UpdateModalityLivePrompt dla klucza 'chat' (soczewka czatu).
+	// Ta sama zasada: jsonb_set na JEDNYM kluczu, nigdy odbudowa obiektu.
+	// Pusty tekst jest poprawny i wylacza soczewke tej modalnosci — czat
+	// wraca wtedy do golych promptow per intencja.
+	UpdateModalityLiveChatPrompt(ctx context.Context, arg UpdateModalityLiveChatPromptParams) error
+	// jsonb_set, NIGDY jsonb_build_object: kolumna niesie od 20.08.2026 takze
+	// klucz 'chat' (soczewka modalnosci w czacie, seed z
+	// migrations/modality_prompts/chat_*.txt). Przebudowa obiektu od zera
+	// kasowalaby po cichu kazdy klucz poza 'system' przy najblizszej edycji
+	// promptu raportowego w Prompt Studio. Pilnuje tego test zrodlowy
+	// TestPromptStudioWritesDoNotDropSiblingKeys.
 	UpdateModalityLivePrompt(ctx context.Context, arg UpdateModalityLivePromptParams) error
 	// Mutates only the therapist-editable kartoteka fields. modality_id is
 	// intentionally NOT here: sessions/reports were analyzed under the

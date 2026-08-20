@@ -1684,6 +1684,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get note_delete_confirm => 'Delete note?';
 
   @override
+  String get note_delete_desc =>
+      'The note will be permanently deleted from the client file. This action cannot be undone.';
+
+  @override
   String get note_deleted => 'Note deleted';
 
   @override
@@ -3241,4 +3245,52 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get invite_client_revoke_confirm_body =>
       'The link in the sent e-mail will stop working immediately. You can send a new invitation afterwards.';
+
+  @override
+  String get ai_chat_title => 'Superwizor AI';
+
+  @override
+  String get ai_chat_fab_label => 'Ask AI';
+
+  @override
+  String get ai_chat_fab_subtitle => 'Chat with session context';
+
+  @override
+  String get ai_chat_input_hint => 'Ask about the client...';
+
+  @override
+  String get ai_chat_loading_context => 'Preparing conversation context...';
+
+  @override
+  String get ai_chat_save_dialog_title => 'Save the conversation?';
+
+  @override
+  String get ai_chat_save_dialog_body =>
+      'Would you like to save a summary of this conversation as a clinical note?';
+
+  @override
+  String get ai_chat_save_yes => 'Save as note';
+
+  @override
+  String get ai_chat_save_no => 'Don\'t save';
+
+  @override
+  String get ai_chat_save_cancel => 'Cancel';
+
+  @override
+  String get ai_chat_saving => 'Generating summary...';
+
+  @override
+  String get ai_chat_saved_toast => 'AI conversation note saved';
+
+  @override
+  String get ai_chat_error_init =>
+      'Failed to initialize AI chat. Check your connection and try again.';
+
+  @override
+  String get ai_chat_system_intro =>
+      'I have the context of past sessions with this client. I can recall details, show patterns, or help you prepare for the next meeting.';
+
+  @override
+  String get ai_chat_note_title => 'AI conversation note';
 }

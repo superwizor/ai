@@ -1,0 +1,42 @@
+{"id":"a6-001","text":"Przypomnij mi o zadaniu dla klienta przed następną sesją","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-002","text":"Ustaw przypomnienie o odesłaniu notatki klientce do piątku","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-003","text":"Kiedy mam najbliższą sesję z tym klientem?","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-004","text":"Wyślij klientowi ustalone zadanie do panelu","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-005","text":"Dodaj notatkę do terminarza: zapytać o wyniki badań na kolejnym spotkaniu","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-006","text":"przypomnienie: kontrakt do odnowienia we wrzesniu","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["terse","typo"],"label_status":"proposed"}
+{"id":"a6-007","text":"Przygotuj wiadomość z przypomnieniem o jutrzejszej sesji","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-008","text":"Zaplanuj mi blok na uzupełnienie dokumentacji tej kartoteki w czwartek","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-009","text":"Oznacz tę kartotekę do przeglądu na koniec miesiąca","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-010","text":"Wystaw klientce dostęp do raportu z ostatniej sesji","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-011","text":"Przypomnij mi po sesji o wysłaniu zaproszenia do aplikacji dla nowego klienta","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-012","text":"Ustaw cotygodniowe przypomnienie o notatkach z tej terapii","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-013","text":"O której mam jutro pierwszą sesję?","expected_intent":"A6_ADMIN","has_client_reference":false,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-014","text":"Dopisz do zadań: przygotować materiały psychoedukacyjne o śnie dla tej klientki","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-015","text":"Przenieś przypomnienie o superwizji na przyszły tydzień","expected_intent":"A6_ADMIN","has_client_reference":false,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-016","text":"Wyślij do klienta plan ekspozycji, który zapisaliśmy — jako zadanie w aplikacji","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a6-017","text":"Zanotuj w kalendarzu przerwę urlopową klienta od 10 do 24 sierpnia","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-018","text":"Przypomnij mi na godzinę przed sesją, żebym przejrzał notatki z poprzedniej","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-019","text":"Utwórz zadanie: dziennik snu na najbliższy tydzień, wyślij klientce","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-020","text":"Pokaż listę moich zadań do zrobienia przy tej kartotece","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-021","text":"Zaznacz, że sesja z 12 sierpnia była odwołana przez klienta","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-022","text":"Dodaj przypomnienie o odnowieniu zgody na nagrywanie","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-023","text":"Ile mam dziś sesji i o których godzinach?","expected_intent":"A6_ADMIN","has_client_reference":false,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-024","text":"Zaplanuj wysyłkę materiału o higienie snu na jutro rano","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-025","text":"przypomnij o fakturze dla pana z 16:00","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["colloquial"],"label_status":"proposed"}
+{"id":"a6-026","text":"Oznacz zadanie z dziennikiem myśli jako omówione","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a6-027","text":"Przypomnij mi zapytać na kolejnej sesji o rozmowę z bratem","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-028","text":"Zapisz na później: sprawdzić dostępność sali na sesję rodzinną","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["jargon:system"],"label_status":"proposed"}
+{"id":"a6-029","text":"Wyślij klientowi przypomnienie o uzupełnieniu skali nastroju w aplikacji","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-030","text":"Zablokuj mi kalendarz na pisanie epikryzy w piątek po południu","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-031","text":"Dodaj do listy: skonsultować dostępność miejsc w grupie DDA dla tej klientki","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-032","text":"Przypomnij mi jutro o oddzwonieniu do matki nastoletniego klienta w sprawie terminu","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-033","text":"Pokaż nadchodzące terminy dla wszystkich moich klientów w tym tygodniu","expected_intent":"A6_ADMIN","has_client_reference":false,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-034","text":"Ustaw przypomnienie o przeglądzie celów terapii co dziesiątą sesję","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-035","text":"Odnotuj zmianę częstotliwości spotkań na co dwa tygodnie od września","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-036","text":"Wyślij zadanie: lista sytuacji unikanych, termin do niedzieli","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":["jargon:cbt"],"label_status":"proposed"}
+{"id":"a6-037","text":"Przygotuj do wysyłki przypomnienie o zaległej płatności — grzecznie","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-038","text":"Zsynchronizuj termin kolejnej sesji z kalendarzem klientki","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-039","text":"Zanotuj, że od października sesje przechodzą na online","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-040","text":"Przypomnij mi co miesiąc o eksporcie dokumentacji tej kartoteki","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-041","text":"Dodaj zadanie dla mnie: przygotować zaświadczenie o uczestnictwie w terapii","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}
+{"id":"a6-042","text":"Pokaż, które zadania wysłane klientowi czekają na odpowiedź","expected_intent":"A6_ADMIN","has_client_reference":true,"risk_flag":false,"tags":[],"label_status":"proposed"}

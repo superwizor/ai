@@ -33,6 +33,79 @@ final $typed_data.Uint8List processTypeDescriptor = $convert.base64Decode(
     'RZUEVfSU5ESVZJRFVBTBABEhcKE1BST0NFU1NfVFlQRV9DT1VQTEUQAhIXChNQUk9DRVNTX1RZ'
     'UEVfRkFNSUxZEAMSFgoSUFJPQ0VTU19UWVBFX0dST1VQEAQ=');
 
+@$core.Deprecated('Use chatIntentDescriptor instead')
+const ChatIntent$json = {
+  '1': 'ChatIntent',
+  '2': [
+    {'1': 'CHAT_INTENT_UNSPECIFIED', '2': 0},
+    {'1': 'CHAT_INTENT_A1_SEARCH', '2': 1},
+    {'1': 'CHAT_INTENT_A2_FACTS', '2': 2},
+    {'1': 'CHAT_INTENT_A3_FORMAT', '2': 3},
+    {'1': 'CHAT_INTENT_A4_EDU', '2': 4},
+    {'1': 'CHAT_INTENT_A5_SUPERVISION_PACK', '2': 5},
+    {'1': 'CHAT_INTENT_A6_ADMIN', '2': 6},
+    {'1': 'CHAT_INTENT_A7_TEMPLATE_MAP', '2': 7},
+    {'1': 'CHAT_INTENT_A8_CONCEPT', '2': 8},
+    {'1': 'CHAT_INTENT_A9_PROGRESS', '2': 9},
+    {'1': 'CHAT_INTENT_A10_TREAT', '2': 10},
+    {'1': 'CHAT_INTENT_P1_DIAG', '2': 11},
+    {'1': 'CHAT_INTENT_P2_MED', '2': 12},
+    {'1': 'CHAT_INTENT_R_RISK', '2': 13},
+    {'1': 'CHAT_INTENT_X_OTHER', '2': 14},
+  ],
+};
+
+/// Descriptor for `ChatIntent`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List chatIntentDescriptor = $convert.base64Decode(
+    'CgpDaGF0SW50ZW50EhsKF0NIQVRfSU5URU5UX1VOU1BFQ0lGSUVEEAASGQoVQ0hBVF9JTlRFTl'
+    'RfQTFfU0VBUkNIEAESGAoUQ0hBVF9JTlRFTlRfQTJfRkFDVFMQAhIZChVDSEFUX0lOVEVOVF9B'
+    'M19GT1JNQVQQAxIWChJDSEFUX0lOVEVOVF9BNF9FRFUQBBIjCh9DSEFUX0lOVEVOVF9BNV9TVV'
+    'BFUlZJU0lPTl9QQUNLEAUSGAoUQ0hBVF9JTlRFTlRfQTZfQURNSU4QBhIfChtDSEFUX0lOVEVO'
+    'VF9BN19URU1QTEFURV9NQVAQBxIaChZDSEFUX0lOVEVOVF9BOF9DT05DRVBUEAgSGwoXQ0hBVF'
+    '9JTlRFTlRfQTlfUFJPR1JFU1MQCRIZChVDSEFUX0lOVEVOVF9BMTBfVFJFQVQQChIXChNDSEFU'
+    'X0lOVEVOVF9QMV9ESUFHEAsSFgoSQ0hBVF9JTlRFTlRfUDJfTUVEEAwSFgoSQ0hBVF9JTlRFTl'
+    'RfUl9SSVNLEA0SFwoTQ0hBVF9JTlRFTlRfWF9PVEhFUhAO');
+
+@$core.Deprecated('Use chatOutcomeDescriptor instead')
+const ChatOutcome$json = {
+  '1': 'ChatOutcome',
+  '2': [
+    {'1': 'CHAT_OUTCOME_UNSPECIFIED', '2': 0},
+    {'1': 'CHAT_OUTCOME_ANSWERED', '2': 1},
+    {'1': 'CHAT_OUTCOME_DEGRADED', '2': 2},
+    {'1': 'CHAT_OUTCOME_REFUSED', '2': 3},
+    {'1': 'CHAT_OUTCOME_VERIFIER_BLOCKED', '2': 4},
+    {'1': 'CHAT_OUTCOME_UNAVAILABLE', '2': 5},
+  ],
+};
+
+/// Descriptor for `ChatOutcome`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List chatOutcomeDescriptor = $convert.base64Decode(
+    'CgtDaGF0T3V0Y29tZRIcChhDSEFUX09VVENPTUVfVU5TUEVDSUZJRUQQABIZChVDSEFUX09VVE'
+    'NPTUVfQU5TV0VSRUQQARIZChVDSEFUX09VVENPTUVfREVHUkFERUQQAhIYChRDSEFUX09VVENP'
+    'TUVfUkVGVVNFRBADEiEKHUNIQVRfT1VUQ09NRV9WRVJJRklFUl9CTE9DS0VEEAQSHAoYQ0hBVF'
+    '9PVVRDT01FX1VOQVZBSUxBQkxFEAU=');
+
+@$core.Deprecated('Use sectionKindDescriptor instead')
+const SectionKind$json = {
+  '1': 'SectionKind',
+  '2': [
+    {'1': 'SECTION_KIND_UNSPECIFIED', '2': 0},
+    {'1': 'SECTION_KIND_EXTRACT', '2': 1},
+    {'1': 'SECTION_KIND_SUMMARY', '2': 2},
+    {'1': 'SECTION_KIND_STATS', '2': 3},
+    {'1': 'SECTION_KIND_HYPOTHESIS', '2': 4},
+    {'1': 'SECTION_KIND_USER_ONLY', '2': 5},
+  ],
+};
+
+/// Descriptor for `SectionKind`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List sectionKindDescriptor = $convert.base64Decode(
+    'CgtTZWN0aW9uS2luZBIcChhTRUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIYChRTRUNUSU9OX0'
+    'tJTkRfRVhUUkFDVBABEhgKFFNFQ1RJT05fS0lORF9TVU1NQVJZEAISFgoSU0VDVElPTl9LSU5E'
+    'X1NUQVRTEAMSGwoXU0VDVElPTl9LSU5EX0hZUE9USEVTSVMQBBIaChZTRUNUSU9OX0tJTkRfVV'
+    'NFUl9PTkxZEAU=');
+
 @$core.Deprecated('Use patientFileDescriptor instead')
 const PatientFile$json = {
   '1': 'PatientFile',
@@ -1911,6 +1984,46 @@ const GetAdminAnalyticsResponse$json = {
       '6': '.clinical.v1.RegisteredUserDetail',
       '10': 'registrationsDetail'
     },
+    {
+      '1': 'client_sharing_trend',
+      '3': 39,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.ClientSharingPoint',
+      '10': 'clientSharingTrend'
+    },
+    {
+      '1': 'client_invitation_funnel',
+      '3': 40,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ClientInvitationFunnel',
+      '10': 'clientInvitationFunnel'
+    },
+    {
+      '1': 'pairing_attempts',
+      '3': 41,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.PairingAttemptBucket',
+      '10': 'pairingAttempts'
+    },
+    {
+      '1': 'report_reading',
+      '3': 42,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ReportReadingStats',
+      '10': 'reportReading'
+    },
+    {
+      '1': 'reading_platforms',
+      '3': 43,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.PlatformReads',
+      '10': 'readingPlatforms'
+    },
   ],
 };
 
@@ -1960,7 +2073,14 @@ final $typed_data.Uint8List getAdminAnalyticsResponseDescriptor = $convert.base6
     'twaV9yYXRpbmdzX25lZ2F0aXZlGCQgASgDUhJrcGlSYXRpbmdzTmVnYXRpdmUSMwoWa3BpX3Jh'
     'dGluZ3Nfd2l0aF9ub3RlcxglIAEoA1ITa3BpUmF0aW5nc1dpdGhOb3RlcxJUChRyZWdpc3RyYX'
     'Rpb25zX2RldGFpbBgmIAMoCzIhLmNsaW5pY2FsLnYxLlJlZ2lzdGVyZWRVc2VyRGV0YWlsUhNy'
-    'ZWdpc3RyYXRpb25zRGV0YWls');
+    'ZWdpc3RyYXRpb25zRGV0YWlsElEKFGNsaWVudF9zaGFyaW5nX3RyZW5kGCcgAygLMh8uY2xpbm'
+    'ljYWwudjEuQ2xpZW50U2hhcmluZ1BvaW50UhJjbGllbnRTaGFyaW5nVHJlbmQSXQoYY2xpZW50'
+    'X2ludml0YXRpb25fZnVubmVsGCggASgLMiMuY2xpbmljYWwudjEuQ2xpZW50SW52aXRhdGlvbk'
+    'Z1bm5lbFIWY2xpZW50SW52aXRhdGlvbkZ1bm5lbBJMChBwYWlyaW5nX2F0dGVtcHRzGCkgAygL'
+    'MiEuY2xpbmljYWwudjEuUGFpcmluZ0F0dGVtcHRCdWNrZXRSD3BhaXJpbmdBdHRlbXB0cxJGCg'
+    '5yZXBvcnRfcmVhZGluZxgqIAEoCzIfLmNsaW5pY2FsLnYxLlJlcG9ydFJlYWRpbmdTdGF0c1IN'
+    'cmVwb3J0UmVhZGluZxJHChFyZWFkaW5nX3BsYXRmb3JtcxgrIAMoCzIaLmNsaW5pY2FsLnYxLl'
+    'BsYXRmb3JtUmVhZHNSEHJlYWRpbmdQbGF0Zm9ybXM=');
 
 @$core.Deprecated('Use registeredUserDetailDescriptor instead')
 const RegisteredUserDetail$json = {
@@ -2167,6 +2287,93 @@ final $typed_data.Uint8List failureRatePointDescriptor = $convert.base64Decode(
     'ChBGYWlsdXJlUmF0ZVBvaW50EhQKBWxhYmVsGAEgASgJUgVsYWJlbBIhCgxmYWlsdXJlX3JhdG'
     'UYAiABKAFSC2ZhaWx1cmVSYXRlEhQKBXRvdGFsGAMgASgDUgV0b3RhbBIWCgZmYWlsZWQYBCAB'
     'KANSBmZhaWxlZA==');
+
+@$core.Deprecated('Use clientSharingPointDescriptor instead')
+const ClientSharingPoint$json = {
+  '1': 'ClientSharingPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'sessions_total', '3': 2, '4': 1, '5': 3, '10': 'sessionsTotal'},
+    {'1': 'shared', '3': 3, '4': 1, '5': 3, '10': 'shared'},
+    {'1': 'hidden', '3': 4, '4': 1, '5': 3, '10': 'hidden'},
+  ],
+};
+
+/// Descriptor for `ClientSharingPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientSharingPointDescriptor = $convert.base64Decode(
+    'ChJDbGllbnRTaGFyaW5nUG9pbnQSFAoFbGFiZWwYASABKAlSBWxhYmVsEiUKDnNlc3Npb25zX3'
+    'RvdGFsGAIgASgDUg1zZXNzaW9uc1RvdGFsEhYKBnNoYXJlZBgDIAEoA1IGc2hhcmVkEhYKBmhp'
+    'ZGRlbhgEIAEoA1IGaGlkZGVu');
+
+@$core.Deprecated('Use clientInvitationFunnelDescriptor instead')
+const ClientInvitationFunnel$json = {
+  '1': 'ClientInvitationFunnel',
+  '2': [
+    {'1': 'sent', '3': 1, '4': 1, '5': 3, '10': 'sent'},
+    {'1': 'accepted', '3': 2, '4': 1, '5': 3, '10': 'accepted'},
+    {'1': 'revoked', '3': 3, '4': 1, '5': 3, '10': 'revoked'},
+    {'1': 'expired', '3': 4, '4': 1, '5': 3, '10': 'expired'},
+    {
+      '1': 'median_hours_to_accept',
+      '3': 5,
+      '4': 1,
+      '5': 1,
+      '10': 'medianHoursToAccept'
+    },
+  ],
+};
+
+/// Descriptor for `ClientInvitationFunnel`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientInvitationFunnelDescriptor = $convert.base64Decode(
+    'ChZDbGllbnRJbnZpdGF0aW9uRnVubmVsEhIKBHNlbnQYASABKANSBHNlbnQSGgoIYWNjZXB0ZW'
+    'QYAiABKANSCGFjY2VwdGVkEhgKB3Jldm9rZWQYAyABKANSB3Jldm9rZWQSGAoHZXhwaXJlZBgE'
+    'IAEoA1IHZXhwaXJlZBIzChZtZWRpYW5faG91cnNfdG9fYWNjZXB0GAUgASgBUhNtZWRpYW5Ib3'
+    'Vyc1RvQWNjZXB0');
+
+@$core.Deprecated('Use pairingAttemptBucketDescriptor instead')
+const PairingAttemptBucket$json = {
+  '1': 'PairingAttemptBucket',
+  '2': [
+    {'1': 'attempts', '3': 1, '4': 1, '5': 5, '10': 'attempts'},
+    {'1': 'invitations', '3': 2, '4': 1, '5': 3, '10': 'invitations'},
+  ],
+};
+
+/// Descriptor for `PairingAttemptBucket`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List pairingAttemptBucketDescriptor = $convert.base64Decode(
+    'ChRQYWlyaW5nQXR0ZW1wdEJ1Y2tldBIaCghhdHRlbXB0cxgBIAEoBVIIYXR0ZW1wdHMSIAoLaW'
+    '52aXRhdGlvbnMYAiABKANSC2ludml0YXRpb25z');
+
+@$core.Deprecated('Use reportReadingStatsDescriptor instead')
+const ReportReadingStats$json = {
+  '1': 'ReportReadingStats',
+  '2': [
+    {'1': 'started', '3': 1, '4': 1, '5': 3, '10': 'started'},
+    {'1': 'finished', '3': 2, '4': 1, '5': 3, '10': 'finished'},
+    {'1': 'median_seconds', '3': 3, '4': 1, '5': 1, '10': 'medianSeconds'},
+    {'1': 'p90_seconds', '3': 4, '4': 1, '5': 1, '10': 'p90Seconds'},
+  ],
+};
+
+/// Descriptor for `ReportReadingStats`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportReadingStatsDescriptor = $convert.base64Decode(
+    'ChJSZXBvcnRSZWFkaW5nU3RhdHMSGAoHc3RhcnRlZBgBIAEoA1IHc3RhcnRlZBIaCghmaW5pc2'
+    'hlZBgCIAEoA1IIZmluaXNoZWQSJQoObWVkaWFuX3NlY29uZHMYAyABKAFSDW1lZGlhblNlY29u'
+    'ZHMSHwoLcDkwX3NlY29uZHMYBCABKAFSCnA5MFNlY29uZHM=');
+
+@$core.Deprecated('Use platformReadsDescriptor instead')
+const PlatformReads$json = {
+  '1': 'PlatformReads',
+  '2': [
+    {'1': 'platform', '3': 1, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'reads', '3': 2, '4': 1, '5': 3, '10': 'reads'},
+  ],
+};
+
+/// Descriptor for `PlatformReads`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List platformReadsDescriptor = $convert.base64Decode(
+    'Cg1QbGF0Zm9ybVJlYWRzEhoKCHBsYXRmb3JtGAEgASgJUghwbGF0Zm9ybRIUCgVyZWFkcxgCIA'
+    'EoA1IFcmVhZHM=');
 
 @$core.Deprecated('Use funnelStepDescriptor instead')
 const FunnelStep$json = {
@@ -3253,3 +3460,409 @@ final $typed_data.Uint8List splitTranscriptSegmentResponseDescriptor =
         'Ch5TcGxpdFRyYW5zY3JpcHRTZWdtZW50UmVzcG9uc2USHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2'
         'Vzc2lvbklkEjcKCnRyYW5zY3JpcHQYAiABKAsyFy5jbGluaWNhbC52MS5UcmFuc2NyaXB0Ugp0'
         'cmFuc2NyaXB0');
+
+@$core.Deprecated('Use generateSessionBriefRequestDescriptor instead')
+const GenerateSessionBriefRequest$json = {
+  '1': 'GenerateSessionBriefRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'focus_hint', '3': 2, '4': 1, '5': 9, '10': 'focusHint'},
+  ],
+};
+
+/// Descriptor for `GenerateSessionBriefRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateSessionBriefRequestDescriptor =
+    $convert.base64Decode(
+        'ChtHZW5lcmF0ZVNlc3Npb25CcmllZlJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg'
+        '1wYXRpZW50RmlsZUlkEh0KCmZvY3VzX2hpbnQYAiABKAlSCWZvY3VzSGludA==');
+
+@$core.Deprecated('Use generateSessionBriefResponseDescriptor instead')
+const GenerateSessionBriefResponse$json = {
+  '1': 'GenerateSessionBriefResponse',
+  '2': [
+    {'1': 'brief_markdown', '3': 1, '4': 1, '5': 9, '10': 'briefMarkdown'},
+    {'1': 'conversation_id', '3': 2, '4': 1, '5': 9, '10': 'conversationId'},
+    {'1': 'rag_hits_used', '3': 3, '4': 1, '5': 5, '10': 'ragHitsUsed'},
+  ],
+};
+
+/// Descriptor for `GenerateSessionBriefResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateSessionBriefResponseDescriptor =
+    $convert.base64Decode(
+        'ChxHZW5lcmF0ZVNlc3Npb25CcmllZlJlc3BvbnNlEiUKDmJyaWVmX21hcmtkb3duGAEgASgJUg'
+        '1icmllZk1hcmtkb3duEicKD2NvbnZlcnNhdGlvbl9pZBgCIAEoCVIOY29udmVyc2F0aW9uSWQS'
+        'IgoNcmFnX2hpdHNfdXNlZBgDIAEoBVILcmFnSGl0c1VzZWQ=');
+
+@$core.Deprecated('Use adminGetChatControlsRequestDescriptor instead')
+const AdminGetChatControlsRequest$json = {
+  '1': 'AdminGetChatControlsRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+  ],
+};
+
+/// Descriptor for `AdminGetChatControlsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminGetChatControlsRequestDescriptor =
+    $convert.base64Decode(
+        'ChtBZG1pbkdldENoYXRDb250cm9sc1JlcXVlc3QSJwoPb3JnYW5pemF0aW9uX2lkGAEgASgJUg'
+        '5vcmdhbml6YXRpb25JZA==');
+
+@$core.Deprecated('Use adminChatControlsDescriptor instead')
+const AdminChatControls$json = {
+  '1': 'AdminChatControls',
+  '2': [
+    {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'mode', '3': 2, '4': 1, '5': 9, '10': 'mode'},
+    {'1': 'classifier_tau', '3': 3, '4': 1, '5': 1, '10': 'classifierTau'},
+    {'1': 'quota_micro_usd', '3': 4, '4': 1, '5': 3, '10': 'quotaMicroUsd'},
+    {'1': 'is_org_override', '3': 5, '4': 1, '5': 8, '10': 'isOrgOverride'},
+    {'1': 'note', '3': 6, '4': 1, '5': 9, '10': 'note'},
+    {
+      '1': 'updated_at',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `AdminChatControls`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminChatControlsDescriptor = $convert.base64Decode(
+    'ChFBZG1pbkNoYXRDb250cm9scxIYCgdlbmFibGVkGAEgASgIUgdlbmFibGVkEhIKBG1vZGUYAi'
+    'ABKAlSBG1vZGUSJQoOY2xhc3NpZmllcl90YXUYAyABKAFSDWNsYXNzaWZpZXJUYXUSJgoPcXVv'
+    'dGFfbWljcm9fdXNkGAQgASgDUg1xdW90YU1pY3JvVXNkEiYKD2lzX29yZ19vdmVycmlkZRgFIA'
+    'EoCFINaXNPcmdPdmVycmlkZRISCgRub3RlGAYgASgJUgRub3RlEjkKCnVwZGF0ZWRfYXQYByAB'
+    'KAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQ=');
+
+@$core.Deprecated('Use adminSetChatControlsRequestDescriptor instead')
+const AdminSetChatControlsRequest$json = {
+  '1': 'AdminSetChatControlsRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {
+      '1': 'enabled',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '9': 0,
+      '10': 'enabled',
+      '17': true
+    },
+    {'1': 'mode', '3': 3, '4': 1, '5': 9, '9': 1, '10': 'mode', '17': true},
+    {
+      '1': 'classifier_tau',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '9': 2,
+      '10': 'classifierTau',
+      '17': true
+    },
+    {
+      '1': 'quota_micro_usd',
+      '3': 5,
+      '4': 1,
+      '5': 3,
+      '9': 3,
+      '10': 'quotaMicroUsd',
+      '17': true
+    },
+    {'1': 'note', '3': 6, '4': 1, '5': 9, '10': 'note'},
+  ],
+  '8': [
+    {'1': '_enabled'},
+    {'1': '_mode'},
+    {'1': '_classifier_tau'},
+    {'1': '_quota_micro_usd'},
+  ],
+};
+
+/// Descriptor for `AdminSetChatControlsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminSetChatControlsRequestDescriptor = $convert.base64Decode(
+    'ChtBZG1pblNldENoYXRDb250cm9sc1JlcXVlc3QSJwoPb3JnYW5pemF0aW9uX2lkGAEgASgJUg'
+    '5vcmdhbml6YXRpb25JZBIdCgdlbmFibGVkGAIgASgISABSB2VuYWJsZWSIAQESFwoEbW9kZRgD'
+    'IAEoCUgBUgRtb2RliAEBEioKDmNsYXNzaWZpZXJfdGF1GAQgASgBSAJSDWNsYXNzaWZpZXJUYX'
+    'WIAQESKwoPcXVvdGFfbWljcm9fdXNkGAUgASgDSANSDXF1b3RhTWljcm9Vc2SIAQESEgoEbm90'
+    'ZRgGIAEoCVIEbm90ZUIKCghfZW5hYmxlZEIHCgVfbW9kZUIRCg9fY2xhc3NpZmllcl90YXVCEg'
+    'oQX3F1b3RhX21pY3JvX3VzZA==');
+
+@$core.Deprecated('Use askPatientQuestionRequestDescriptor instead')
+const AskPatientQuestionRequest$json = {
+  '1': 'AskPatientQuestionRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'question', '3': 2, '4': 1, '5': 9, '10': 'question'},
+    {'1': 'conversation_id', '3': 3, '4': 1, '5': 9, '10': 'conversationId'},
+    {'1': 'starter_id', '3': 4, '4': 1, '5': 9, '10': 'starterId'},
+    {'1': 'starter_edited', '3': 5, '4': 1, '5': 8, '10': 'starterEdited'},
+  ],
+};
+
+/// Descriptor for `AskPatientQuestionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List askPatientQuestionRequestDescriptor = $convert.base64Decode(
+    'ChlBc2tQYXRpZW50UXVlc3Rpb25SZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcG'
+    'F0aWVudEZpbGVJZBIaCghxdWVzdGlvbhgCIAEoCVIIcXVlc3Rpb24SJwoPY29udmVyc2F0aW9u'
+    'X2lkGAMgASgJUg5jb252ZXJzYXRpb25JZBIdCgpzdGFydGVyX2lkGAQgASgJUglzdGFydGVySW'
+    'QSJQoOc3RhcnRlcl9lZGl0ZWQYBSABKAhSDXN0YXJ0ZXJFZGl0ZWQ=');
+
+@$core.Deprecated('Use quoteDescriptor instead')
+const Quote$json = {
+  '1': 'Quote',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'segment_id', '3': 2, '4': 1, '5': 9, '10': 'segmentId'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'speaker', '3': 4, '4': 1, '5': 9, '10': 'speaker'},
+    {'1': 'ts_start_ms', '3': 5, '4': 1, '5': 5, '10': 'tsStartMs'},
+    {'1': 'ts_end_ms', '3': 6, '4': 1, '5': 5, '10': 'tsEndMs'},
+    {
+      '1': 'session_at',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sessionAt'
+    },
+  ],
+};
+
+/// Descriptor for `Quote`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quoteDescriptor = $convert.base64Decode(
+    'CgVRdW90ZRIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSHQoKc2VnbWVudF9pZBgCIA'
+    'EoCVIJc2VnbWVudElkEhIKBHRleHQYAyABKAlSBHRleHQSGAoHc3BlYWtlchgEIAEoCVIHc3Bl'
+    'YWtlchIeCgt0c19zdGFydF9tcxgFIAEoBVIJdHNTdGFydE1zEhoKCXRzX2VuZF9tcxgGIAEoBV'
+    'IHdHNFbmRNcxI5CgpzZXNzaW9uX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFt'
+    'cFIJc2Vzc2lvbkF0');
+
+@$core.Deprecated('Use answerSectionDescriptor instead')
+const AnswerSection$json = {
+  '1': 'AnswerSection',
+  '2': [
+    {'1': 'title', '3': 1, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'body', '3': 2, '4': 1, '5': 9, '10': 'body'},
+    {
+      '1': 'quotes',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.Quote',
+      '10': 'quotes'
+    },
+    {
+      '1': 'kind',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.clinical.v1.SectionKind',
+      '10': 'kind'
+    },
+    {'1': 'user_authored', '3': 5, '4': 1, '5': 8, '10': 'userAuthored'},
+  ],
+};
+
+/// Descriptor for `AnswerSection`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List answerSectionDescriptor = $convert.base64Decode(
+    'Cg1BbnN3ZXJTZWN0aW9uEhQKBXRpdGxlGAEgASgJUgV0aXRsZRISCgRib2R5GAIgASgJUgRib2'
+    'R5EioKBnF1b3RlcxgDIAMoCzISLmNsaW5pY2FsLnYxLlF1b3RlUgZxdW90ZXMSLAoEa2luZBgE'
+    'IAEoDjIYLmNsaW5pY2FsLnYxLlNlY3Rpb25LaW5kUgRraW5kEiMKDXVzZXJfYXV0aG9yZWQYBS'
+    'ABKAhSDHVzZXJBdXRob3JlZA==');
+
+@$core.Deprecated('Use suggestedQuestionDescriptor instead')
+const SuggestedQuestion$json = {
+  '1': 'SuggestedQuestion',
+  '2': [
+    {'1': 'question', '3': 1, '4': 1, '5': 9, '10': 'question'},
+    {
+      '1': 'quotes',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.Quote',
+      '10': 'quotes'
+    },
+  ],
+};
+
+/// Descriptor for `SuggestedQuestion`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List suggestedQuestionDescriptor = $convert.base64Decode(
+    'ChFTdWdnZXN0ZWRRdWVzdGlvbhIaCghxdWVzdGlvbhgBIAEoCVIIcXVlc3Rpb24SKgoGcXVvdG'
+    'VzGAIgAygLMhIuY2xpbmljYWwudjEuUXVvdGVSBnF1b3Rlcw==');
+
+@$core.Deprecated('Use chatAnswerDescriptor instead')
+const ChatAnswer$json = {
+  '1': 'ChatAnswer',
+  '2': [
+    {
+      '1': 'sections',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.AnswerSection',
+      '10': 'sections'
+    },
+    {
+      '1': 'suggested_questions',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.SuggestedQuestion',
+      '10': 'suggestedQuestions'
+    },
+  ],
+};
+
+/// Descriptor for `ChatAnswer`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatAnswerDescriptor = $convert.base64Decode(
+    'CgpDaGF0QW5zd2VyEjYKCHNlY3Rpb25zGAEgAygLMhouY2xpbmljYWwudjEuQW5zd2VyU2VjdG'
+    'lvblIIc2VjdGlvbnMSTwoTc3VnZ2VzdGVkX3F1ZXN0aW9ucxgCIAMoCzIeLmNsaW5pY2FsLnYx'
+    'LlN1Z2dlc3RlZFF1ZXN0aW9uUhJzdWdnZXN0ZWRRdWVzdGlvbnM=');
+
+@$core.Deprecated('Use chatRefusalDescriptor instead')
+const ChatRefusal$json = {
+  '1': 'ChatRefusal',
+  '2': [
+    {'1': 'message', '3': 1, '4': 1, '5': 9, '10': 'message'},
+    {
+      '1': 'alternatives',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.RefusalAlternative',
+      '10': 'alternatives'
+    },
+    {
+      '1': 'show_crisis_information',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'showCrisisInformation'
+    },
+  ],
+};
+
+/// Descriptor for `ChatRefusal`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatRefusalDescriptor = $convert.base64Decode(
+    'CgtDaGF0UmVmdXNhbBIYCgdtZXNzYWdlGAEgASgJUgdtZXNzYWdlEkMKDGFsdGVybmF0aXZlcx'
+    'gCIAMoCzIfLmNsaW5pY2FsLnYxLlJlZnVzYWxBbHRlcm5hdGl2ZVIMYWx0ZXJuYXRpdmVzEjYK'
+    'F3Nob3dfY3Jpc2lzX2luZm9ybWF0aW9uGAMgASgIUhVzaG93Q3Jpc2lzSW5mb3JtYXRpb24=');
+
+@$core.Deprecated('Use refusalAlternativeDescriptor instead')
+const RefusalAlternative$json = {
+  '1': 'RefusalAlternative',
+  '2': [
+    {
+      '1': 'intent',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.clinical.v1.ChatIntent',
+      '10': 'intent'
+    },
+    {'1': 'label', '3': 2, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'prefill', '3': 3, '4': 1, '5': 9, '10': 'prefill'},
+  ],
+};
+
+/// Descriptor for `RefusalAlternative`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List refusalAlternativeDescriptor = $convert.base64Decode(
+    'ChJSZWZ1c2FsQWx0ZXJuYXRpdmUSLwoGaW50ZW50GAEgASgOMhcuY2xpbmljYWwudjEuQ2hhdE'
+    'ludGVudFIGaW50ZW50EhQKBWxhYmVsGAIgASgJUgVsYWJlbBIYCgdwcmVmaWxsGAMgASgJUgdw'
+    'cmVmaWxs');
+
+@$core.Deprecated('Use chatMetaDescriptor instead')
+const ChatMeta$json = {
+  '1': 'ChatMeta',
+  '2': [
+    {
+      '1': 'intent',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.clinical.v1.ChatIntent',
+      '10': 'intent'
+    },
+    {
+      '1': 'confidence_bucket',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'confidenceBucket'
+    },
+    {'1': 'degrade_reason', '3': 3, '4': 1, '5': 9, '10': 'degradeReason'},
+    {'1': 'cost_micro_usd', '3': 4, '4': 1, '5': 3, '10': 'costMicroUsd'},
+    {
+      '1': 'quota_remaining_micro_usd',
+      '3': 5,
+      '4': 1,
+      '5': 3,
+      '10': 'quotaRemainingMicroUsd'
+    },
+    {'1': 'rag_hits_used', '3': 6, '4': 1, '5': 5, '10': 'ragHitsUsed'},
+    {'1': 'latency_ms', '3': 7, '4': 1, '5': 5, '10': 'latencyMs'},
+  ],
+};
+
+/// Descriptor for `ChatMeta`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatMetaDescriptor = $convert.base64Decode(
+    'CghDaGF0TWV0YRIvCgZpbnRlbnQYASABKA4yFy5jbGluaWNhbC52MS5DaGF0SW50ZW50UgZpbn'
+    'RlbnQSKwoRY29uZmlkZW5jZV9idWNrZXQYAiABKAlSEGNvbmZpZGVuY2VCdWNrZXQSJQoOZGVn'
+    'cmFkZV9yZWFzb24YAyABKAlSDWRlZ3JhZGVSZWFzb24SJAoOY29zdF9taWNyb191c2QYBCABKA'
+    'NSDGNvc3RNaWNyb1VzZBI5ChlxdW90YV9yZW1haW5pbmdfbWljcm9fdXNkGAUgASgDUhZxdW90'
+    'YVJlbWFpbmluZ01pY3JvVXNkEiIKDXJhZ19oaXRzX3VzZWQYBiABKAVSC3JhZ0hpdHNVc2VkEh'
+    '0KCmxhdGVuY3lfbXMYByABKAVSCWxhdGVuY3lNcw==');
+
+@$core.Deprecated('Use askPatientQuestionResponseDescriptor instead')
+const AskPatientQuestionResponse$json = {
+  '1': 'AskPatientQuestionResponse',
+  '2': [
+    {'1': 'conversation_id', '3': 1, '4': 1, '5': 9, '10': 'conversationId'},
+    {
+      '1': 'outcome',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.clinical.v1.ChatOutcome',
+      '10': 'outcome'
+    },
+    {
+      '1': 'answer',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ChatAnswer',
+      '9': 0,
+      '10': 'answer'
+    },
+    {
+      '1': 'refusal',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ChatRefusal',
+      '9': 0,
+      '10': 'refusal'
+    },
+    {
+      '1': 'meta',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ChatMeta',
+      '10': 'meta'
+    },
+  ],
+  '8': [
+    {'1': 'payload'},
+  ],
+};
+
+/// Descriptor for `AskPatientQuestionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List askPatientQuestionResponseDescriptor = $convert.base64Decode(
+    'ChpBc2tQYXRpZW50UXVlc3Rpb25SZXNwb25zZRInCg9jb252ZXJzYXRpb25faWQYASABKAlSDm'
+    'NvbnZlcnNhdGlvbklkEjIKB291dGNvbWUYAiABKA4yGC5jbGluaWNhbC52MS5DaGF0T3V0Y29t'
+    'ZVIHb3V0Y29tZRIxCgZhbnN3ZXIYAyABKAsyFy5jbGluaWNhbC52MS5DaGF0QW5zd2VySABSBm'
+    'Fuc3dlchI0CgdyZWZ1c2FsGAQgASgLMhguY2xpbmljYWwudjEuQ2hhdFJlZnVzYWxIAFIHcmVm'
+    'dXNhbBIpCgRtZXRhGAUgASgLMhUuY2xpbmljYWwudjEuQ2hhdE1ldGFSBG1ldGFCCQoHcGF5bG'
+    '9hZA==');
