@@ -469,6 +469,49 @@ specyficzności — do rozstrzygnięcia, czy dociągnąć przed GA.
 model bez klasyfikatora, schematu i weryfikatora, żeby wytworzyć nową
 treść kliniczną o kliencie. Usunięte; rozmowa zapisuje się dosłownie.
 
+### Latencja: budżet §8.2 nie jest osiągalny (odkryte 20.08 na produkcji)
+
+Pierwsze prawdziwe tury, zmierzone przez `guardrail_decisions`:
+
+| intencja | czas | cytaty | koszt |
+|---|---|---|---|
+| A1_SEARCH | 10,4 s | 2 | $0,0012 |
+| A8_CONCEPT | 25,5 s | 1 | $0,0022 |
+
+Rozkład na składniki (`internal/chat/latency_test.go`):
+
+| krok | czas |
+|---|---|
+| klasyfikator | 1,60 s |
+| embedding | 0,19 s |
+| generator @4096 | 12,83 s (912 tokenów wyjścia) |
+| **generator @2048** | **7,41 s (903 tokeny — to samo wyjście)** |
+| generator @1024 | 7,01 s (139 tokenów — ucięte) |
+| weryfikator | 2,47 s |
+
+Zastosowano: `MaxTokens` 4096 → 2048 (5,4 s za dziewięć tokenów treści),
+`callTimeout` 20 s → 45 s po tym, jak A5 wywaliło się twardo na 504
+DEADLINE_EXCEEDED przed terapeutą.
+
+Po poprawce tura to **~11,5 s** samych wywołań modelu, plus pobieranie i
+KMS. Próg §8.2 mówi **p95 ≤ 1,5 s**.
+
+**To nie jest kwestia dalszego strojenia.** Trzy sekwencyjne wywołania
+modelu, z których jedno pisze prozę kliniczną, nie zmieszczą się w 1,5 s.
+Streaming to ukrywa, ale weryfikator go zabrania z założenia (§4.2) — i
+ten kompromis jest słuszny, tylko liczba w ADR mu nie odpowiada.
+
+Warianty do rozstrzygnięcia przez PO:
+1. **Zrewidować próg** do wartości osiągalnej (np. p95 ≤ 15 s) i przenieść
+   ciężar na komunikat w UI („przygotowuję odpowiedź…"). Guardrail bez zmian.
+2. **Zdjąć weryfikator LLM** dla intencji ekstraktywnych — oszczędza 2,5 s,
+   ale osłabia warstwę, która złapała diagnozę w teście na żywym modelu.
+   Odradzam.
+3. **Skrócić kontekst** poniżej 8000 znaków — tanie kilka sekund kosztem
+   recall cytatów; wymaga pomiaru, ile recall się traci.
+
+Rekomendacja: wariant 1. Wariant 3 jako uzupełnienie po pomiarze.
+
 ### Co pozostaje przed GA
 
 | pozycja | właściciel |
