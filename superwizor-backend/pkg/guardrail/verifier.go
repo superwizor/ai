@@ -147,12 +147,65 @@ func (v Verifier) VerifyDeterministic(units []Unit, segments map[string]Segment)
 // difference. Normalizing anything MORE — case, punctuation, diacritics —
 // would start accepting quotes that are not what was said, which is
 // precisely what this check exists to prevent.
+//
+// One structured exception: the elision marker. A quote may drop its
+// middle with "[...]" (report-style), and each remaining part must STILL
+// be a verbatim span, in order, with a minimum meaningful length. This
+// admits honest shortening and nothing else: a paraphrase does not
+// become admissible by inserting brackets, because its parts still fail
+// the verbatim test.
 func containsQuote(source, quote string) bool {
-	q := normalizeWS(quote)
-	if q == "" {
+	parts := splitElided(quote)
+	if len(parts) == 0 {
 		return false
 	}
-	return strings.Contains(normalizeWS(source), q)
+	src := normalizeWS(source)
+	pos := 0
+	for _, part := range parts {
+		p := normalizeWS(part)
+		if p == "" {
+			return false
+		}
+		// Below the minimum a "part" stops identifying anything — an
+		// elision of two words each would match half the transcript.
+		if len(parts) > 1 && len([]rune(p)) < minElidedPartRunes {
+			return false
+		}
+		idx := strings.Index(src[pos:], p)
+		if idx < 0 {
+			return false
+		}
+		pos += idx + len(p)
+	}
+	return true
+}
+
+// minElidedPartRunes is the shortest part an elided quote may contain.
+const minElidedPartRunes = 8
+
+// elisionMarkers are the accepted "middle dropped" tokens. The report
+// pipeline writes "[...]"; the others are what models and humans type.
+var elisionMarkers = []string{"[...]", "[…]", "(...)", "(…)"}
+
+// splitElided splits a quote on elision markers. A quote without markers
+// comes back whole, in one part.
+func splitElided(quote string) []string {
+	parts := []string{quote}
+	for _, marker := range elisionMarkers {
+		var next []string
+		for _, p := range parts {
+			next = append(next, strings.Split(p, marker)...)
+		}
+		parts = next
+	}
+	// Drop empty fragments produced by leading/trailing markers.
+	out := parts[:0]
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func normalizeWS(s string) string {

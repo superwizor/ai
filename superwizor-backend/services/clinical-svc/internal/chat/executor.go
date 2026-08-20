@@ -138,6 +138,20 @@ func (s Service) executeEducation(ctx context.Context, t Turn) (*Answer, []Model
 	return &answer, costs, verdict, 0, nil
 }
 
+// quoteRules to bezwzgledne zasady cytowania, wspolne dla wszystkich
+// intencji uziemionych.
+const quoteRules = `
+
+ZASADY CYTOWANIA (bezwzgledne):
+- Cytat kopiuj 1:1 z fragmentow, W ORYGINALNYM JEZYKU wypowiedzi.
+  NIE tlumacz, nawet gdy odpowiadasz po polsku, a fragment jest po
+  angielsku.
+- Zachowaj powtorzenia, zajakniecia i bledy transkrypcji — to zapis
+  mowy, nie tekst do redakcji.
+- Mozesz skrocic srodek cytatu znacznikiem [...] — czesci przed i po
+  musza pozostac doslowne.
+- segment_id i session_id przepisuj dokladnie z naglowka fragmentu.`
+
 // maxGenerationTokens caps the generated answer.
 //
 // 2048, not 4096. Measured 2026-08-20 on a real A5 turn: the model
@@ -220,6 +234,14 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 	if !ok {
 		return nil, nil, guardrail.Verdict{}, 0, fmt.Errorf("chat: no prompt for intent %s", d.Intent)
 	}
+
+	// Reguly cytowania doklejane KODEM, nie w literalach promptow: musza
+	// obowiazywac kazda intencje uziemiona bez wyjatku, a incydent 19:28
+	// (A10, blok 'fabricated') pokazal skutek luki — transkrypcja byla
+	// angielska, pytanie polskie, i model przetlumaczyl/wygladzil cytat.
+	// Deterministyczny weryfikator slusznie to odrzucil; tu usuwamy
+	// POKUSE, nie kontrole.
+	sysPrompt += quoteRules
 
 	// Soczewka modalnosci: wymieniona w pytaniu wygrywa z prowadzona w
 	// kartotece (terapeuta PPT moze prosic o ujecie CBT). Prompt intencji
@@ -349,6 +371,18 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 	segMap := SegmentMap(relevant)
 	answer, units := assemble(d.Intent, m, relevant)
 
+	// Walidacja serwerowa PO odpowiedzi modelu (ADR 4.3): odpowiedz
+	// uziemiona bez ani jednej jednostki jest niepoprawna, chocby JSON
+	// byl skladny — "{}" dekoduje sie bez bledu i bez tej bramki
+	// wyszedlby pusty dymek udajacy odpowiedz.
+	if len(units) == 0 {
+		slog.WarnContext(ctx, "chat.verifier_block",
+			"intent", string(d.Intent), "reason", guardrail.BlockSchema,
+			"detail", "decoded answer carries no units")
+		return extractiveFallback(relevant), costs,
+			guardrail.Verdict{Blocked: true, Reason: guardrail.BlockSchema}, ragHits, nil
+	}
+
 	v := guardrail.Verifier{Caller: modelCaller{s.LLM}, Model: GeneratorModel}
 	verdict := v.Verify(ctx, d.Intent, units, segMap)
 	if verdict.Cost.Model != "" {
@@ -361,6 +395,45 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 		// na produkcji wymagala dedukcji z samej latencji.
 		slog.WarnContext(ctx, "chat.verifier_block",
 			"intent", string(d.Intent), "reason", verdict.Reason, "detail", verdict.Detail)
+
+		// Samonaprawa: blad DOSLOWNOSCI cytatu (tlumaczenie, wygladzenie
+		// zajakniec) to jedyna klasa bledu, ktora model umie naprawic
+		// mechanicznie — dostaje wlasna odpowiedz i polecenie skopiowania
+		// cytatow 1:1, reszta tresci bez zmian. Jedna proba; po niej
+		// werdykt liczy sie od nowa, wiec gwarancja deterministyczna nie
+		// slabnie ani o wlos. Bledy tresciowe (diagnoza itd.) NIE sa
+		// naprawiane — tam blokada jest wlasnie celem.
+		if verdict.Reason == guardrail.BlockFabricated || verdict.Reason == guardrail.BlockUngrounded {
+			slog.InfoContext(ctx, "chat.quote_repair_attempt", "intent", string(d.Intent))
+			repair, rerr := s.LLM.Generate(ctx, GenerateRequest{
+				Model: GeneratorModel, SystemPrompt: sysPrompt,
+				UserContent: user + "\n\nPOPRZEDNIA ODPOWIEDZ (do naprawy):\n" + resp.Text +
+					"\n\nNAPRAW WYLACZNIE CYTATY: skopiuj kazdy doslownie z fragmentow " +
+					"powyzej, w oryginalnym jezyku, znak w znak. Tresci hipotez nie zmieniaj.",
+				ResponseSchema: schema, Temperature: 0, MaxTokens: retryGenerationTokens,
+			})
+			costs = append(costs, ModelCost{Model: GeneratorModel,
+				InputTokens: repair.Usage.InputTokens, OutputTokens: repair.Usage.OutputTokens})
+			if rerr == nil {
+				if m2, derr := decodeModelAnswer(repair.Text); derr == nil {
+					answer2, units2 := assemble(d.Intent, m2, relevant)
+					if len(units2) > 0 {
+						verdict2 := v.Verify(ctx, d.Intent, units2, segMap)
+						if verdict2.Cost.Model != "" {
+							costs = append(costs, ModelCost{Model: verdict2.Cost.Model,
+								InputTokens: verdict2.Cost.InputTokens, OutputTokens: verdict2.Cost.OutputTokens})
+						}
+						if !verdict2.Blocked {
+							slog.InfoContext(ctx, "chat.quote_repair_succeeded", "intent", string(d.Intent))
+							appendUserOnlyFields(d.Intent, answer2)
+							return answer2, costs, verdict2, ragHits, nil
+						}
+						slog.WarnContext(ctx, "chat.quote_repair_failed",
+							"intent", string(d.Intent), "reason", verdict2.Reason)
+					}
+				}
+			}
+		}
 		return extractiveFallback(relevant), costs, verdict, ragHits, nil
 	}
 

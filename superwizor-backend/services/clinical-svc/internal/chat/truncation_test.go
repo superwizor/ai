@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // Regresja produkcyjna z 20.08.2026 (A8 17:42, A7 18:29): odpowiedz
@@ -103,5 +105,85 @@ func TestEducationSchemaBlockStaysARefusal(t *testing.T) {
 	}
 	if out.Kind != OutcomeVerifierBlocked {
 		t.Fatalf("outcome = %v, want verifier blocked (A4 nie ma na co spasc)", out.Kind)
+	}
+}
+
+// Regresja incydentu 19:28 (A10, block 'fabricated'): transkrypcja
+// angielska, pytanie polskie — model przetlumaczyl cytat. Deterministyczny
+// weryfikator slusznie odrzucil, ale jedyna reakcja byl fallback.
+// Samonaprawa daje modelowi wlasna odpowiedz z poleceniem skopiowania
+// cytatow 1:1; werdykt liczy sie OD NOWA, wiec gwarancja nie slabnie.
+func TestQuoteRepairFixesUnfaithfulQuote(t *testing.T) {
+	segs := sampleSegments()
+	english := Segment{
+		ID: uuid.New(), SessionID: segs[0].SessionID,
+		Text:    "I'm just feeling down a lot, and I can't really snap out of it.",
+		Speaker: "KLIENT", TsStartMs: 50000, SessionAt: segs[0].SessionAt,
+	}
+	segs = append(segs, english)
+
+	badQuote := `{"hypotheses":[{"title":"Kierunek","body":"Warto rozważyć pracę z nastrojem.","quotes":[{"session_id":"` +
+		english.SessionID.String() + `","segment_id":"` + english.ID.String() +
+		`","text":"Czuję się ostatnio bardzo przygnębiona i nie umiem się otrząsnąć."}]}]}` // tlumaczenie!
+	fixedQuote := `{"hypotheses":[{"title":"Kierunek","body":"Warto rozważyć pracę z nastrojem.","quotes":[{"session_id":"` +
+		english.SessionID.String() + `","segment_id":"` + english.ID.String() +
+		`","text":"I'm just feeling down a lot, and I can't really snap out of it."}]}]}`
+
+	h := newHarness(t, enabledConfig(), []string{
+		`{"intent":"A10_TREAT","confidence":0.95,"risk_flag":false}`,
+		badQuote,
+		fixedQuote,
+		`{"violation":false,"code":"none"}`,
+	}, segs)
+
+	tq := turn()
+	tq.Question = "Jakie kierunki warto rozważyć?" // bez terminow lapiacych
+	// polskie segmenty: wyszukiwanie nic nie trafia i spada na PELNY
+	// material (tak jak realna tura z 19:28 — polskie pytanie nad
+	// angielska transkrypcja), wiec angielski segment jest w segMap
+	out, err := h.svc.Ask(context.Background(), tq)
+	if err != nil {
+		t.Fatalf("Ask: %v", err)
+	}
+	if out.Kind != OutcomeAnswered {
+		t.Fatalf("outcome = %v, want answered — naprawa miala uratowac ture (reason=%q)",
+			out.Kind, out.Meta.DegradeReason)
+	}
+
+	// Wywolanie naprawcze: niesie wlasna odpowiedz modelu i wylacznie
+	// polecenie poprawy cytatow.
+	var repairCall *GenerateRequest
+	for i := range h.llm.calls {
+		if strings.Contains(h.llm.calls[i].UserContent, "NAPRAW WYLACZNIE CYTATY") {
+			repairCall = &h.llm.calls[i]
+		}
+	}
+	if repairCall == nil {
+		t.Fatal("brak wywolania naprawczego")
+	}
+	if !strings.Contains(repairCall.UserContent, "przygnębiona") {
+		t.Error("naprawa nie dostala wlasnej (blednej) odpowiedzi do poprawy")
+	}
+	if repairCall.Temperature != 0 {
+		t.Errorf("naprawa przy T=%v — kopiowanie cytatow ma byc deterministyczne", repairCall.Temperature)
+	}
+
+	// Reguly cytowania musza siedziec w promptcie SYSTEMOWYM generatora.
+	if !strings.Contains(repairCall.SystemPrompt, "NIE tlumacz") {
+		t.Error("prompt systemowy nie niesie zakazu tlumaczenia cytatow")
+	}
+
+	// Zwyciezca jest odpowiedz naprawiona, z cytatem doslownym.
+	var served string
+	for _, sec := range out.Answer.Sections {
+		for _, q := range sec.Quotes {
+			served += q.Text
+		}
+	}
+	if !strings.Contains(served, "feeling down a lot") {
+		t.Errorf("serwowany cytat nie jest doslowny: %q", served)
+	}
+	if h.recs.last().VerifierResult != "pass" {
+		t.Errorf("po udanej naprawie verifier_result=%q, want pass", h.recs.last().VerifierResult)
 	}
 }

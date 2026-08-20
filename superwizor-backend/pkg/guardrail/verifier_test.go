@@ -438,3 +438,48 @@ func TestProseFieldsAreBounded(t *testing.T) {
 		}
 	}
 }
+
+// Elizja srodka cytatu znacznikiem [...] jest dopuszczalna — obie czesci
+// musza pozostac doslowne i we wlasciwej kolejnosci. Raport tak cytuje
+// od dawna; blokowanie tego stylu w czacie bylo zbedna surowoscia.
+func TestElidedQuotePassesWhenBothPartsAreVerbatim(t *testing.T) {
+	src := "Naprawdę bardzo trudno jest ogarnąć cały dom, dwójka dzieci, załatwić wszystko. " +
+		"I jak on wraca około dwudziestej pierwszej jest zmęczony i on jeszcze chce rozmawiać."
+	s := segs(seg("s1", "sess1", src))
+	u := []Unit{{Kind: "hypothesis", MustBeGrounded: true, Text: "x",
+		Quotes: []QuoteRef{{SegmentID: "s1",
+			Text: "Naprawdę bardzo trudno jest ogarnąć cały dom [...] on jeszcze chce rozmawiać."}}}}
+	if vd := (Verifier{}).VerifyDeterministic(u, s); vd.Blocked {
+		t.Fatalf("uczciwa elizja zablokowana: %+v", vd)
+	}
+}
+
+// Nawiasy nie legalizuja parafrazy: czesci nadal musza byc doslowne.
+func TestElisionDoesNotLaunderAParaphrase(t *testing.T) {
+	s := segs(seg("s1", "sess1", "Nie mam już siły na tę rozmowę i chcę się położyć."))
+	u := []Unit{{Kind: "hypothesis", MustBeGrounded: true, Text: "x",
+		Quotes: []QuoteRef{{SegmentID: "s1", Text: "Brakuje mi sił [...] chcę się położyć."}}}}
+	if vd := (Verifier{}).VerifyDeterministic(u, s); !vd.Blocked {
+		t.Fatal("parafraza przeszla dzieki nawiasom")
+	}
+}
+
+// Czesci w zlej kolejnosci = inny cytat, nie skrot.
+func TestElidedPartsMustStayInOrder(t *testing.T) {
+	s := segs(seg("s1", "sess1", "Najpierw była rozmowa o pracy, a potem o dzieciach."))
+	u := []Unit{{Kind: "hypothesis", MustBeGrounded: true, Text: "x",
+		Quotes: []QuoteRef{{SegmentID: "s1", Text: "o dzieciach [...] rozmowa o pracy"}}}}
+	if vd := (Verifier{}).VerifyDeterministic(u, s); !vd.Blocked {
+		t.Fatal("przestawiona elizja przeszla")
+	}
+}
+
+// Dwuslowne strzepki nie identyfikuja niczego.
+func TestElidedTinyFragmentsAreRejected(t *testing.T) {
+	s := segs(seg("s1", "sess1", "To jest bardzo długa wypowiedź o wielu sprawach naraz."))
+	u := []Unit{{Kind: "hypothesis", MustBeGrounded: true, Text: "x",
+		Quotes: []QuoteRef{{SegmentID: "s1", Text: "To [...] naraz."}}}}
+	if vd := (Verifier{}).VerifyDeterministic(u, s); !vd.Blocked {
+		t.Fatal("strzepkowa elizja przeszla")
+	}
+}
