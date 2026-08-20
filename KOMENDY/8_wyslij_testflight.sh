@@ -12,7 +12,22 @@ set -e
 # Wyglądało to na sukces (kod wyjścia 0), a wysyłka się nie odbywała.
 # Zdarzyło się 13.08.2026.
 KATALOG_SKRYPTU="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$KATALOG_SKRYPTU/../credentials.env"
+# credentials.env szukany w obu sensownych miejscach: w katalogu repo i
+# poziom wyzej. Do 20.08.2026 sprawdzane bylo tylko to pierwsze, a plik
+# lezal w drugim — czyli dokladnie ten sam tryb awarii, ktory opisuje
+# komentarz powyzej, przesuniety o jeden katalog. Skrypt wchodzil wtedy
+# w galaz "brak klucza API" albo szedl na zmienne ze srodowiska.
+ENV_FILE=""
+for KANDYDAT in "$KATALOG_SKRYPTU/../credentials.env" "$KATALOG_SKRYPTU/../../credentials.env"; do
+    if [ -f "$KANDYDAT" ]; then
+        ENV_FILE="$KANDYDAT"
+        echo "🔑 Konfiguracja API: $ENV_FILE"
+        break
+    fi
+done
+if [ -z "$ENV_FILE" ]; then
+    echo "⚠️  Nie znaleziono credentials.env w zadnej ze sprawdzanych lokalizacji."
+fi
 
 echo "🚀 Przygotowanie wersji do TestFlight..."
 cd "$KATALOG_SKRYPTU/../flutter-app/superwizor"
