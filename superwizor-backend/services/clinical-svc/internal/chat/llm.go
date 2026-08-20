@@ -101,11 +101,30 @@ func (nopLLM) Embed(context.Context, string) ([]float32, Usage, error) {
 // NopLLM returns a backend that always fails with ErrLLMUnavailable.
 func NopLLM() LLM { return nopLLM{} }
 
-// timeout bounds a single model call. The ADR budgets p95 <= 1.5 s for a
-// whole turn, which includes up to three model calls; a call that has
-// already blown past this has lost the turn regardless, and holding the
-// request open only makes the failure slower.
-const callTimeout = 20 * time.Second
+// callTimeout bounds a single model call.
+//
+// Was 20 s, chosen on the assumption that a call exceeding it had lost
+// the turn anyway. Measurement on 2026-08-20 showed that assumption was
+// wrong: a real A5 generation over an 8000-character context takes 7-13 s,
+// and a slow one crossed 20 s and hard-failed in front of a therapist
+// ("chat turn failed"). 45 s leaves room for the tail without hanging a
+// request indefinitely.
+//
+// This is a ceiling for pathological cases, NOT a latency target. The
+// measured breakdown of one turn is roughly:
+//
+//	classifier   1.6 s
+//	generator    7.4 s   (at MaxTokens 2048; 12.8 s at 4096)
+//	verifier     2.5 s
+//	------------------
+//	~11.5 s, plus retrieval and KMS
+//
+// The ADR budgets p95 <= 1.5 s for the whole turn. That target is not
+// reachable with three sequential model calls, one of which writes
+// clinical prose — streaming is what would hide it, and the verifier
+// forbids streaming by design. The number needs a product decision, not
+// more tuning; see docs/63 section 9.
+const callTimeout = 45 * time.Second
 
 // withTimeout applies callTimeout unless the caller's deadline is sooner.
 func withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {

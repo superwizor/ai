@@ -109,6 +109,18 @@ func (s Service) executeEducation(ctx context.Context, t Turn) (*Answer, []Model
 	return &answer, costs, verdict, 0, nil
 }
 
+// maxGenerationTokens caps the generated answer.
+//
+// 2048, not 4096. Measured 2026-08-20 on a real A5 turn: the model
+// produced 903 output tokens at 2048 and 912 at 4096 — the same answer —
+// but took 7.4 s instead of 12.8 s. The cap changes how the model plans
+// its output, so the larger value bought five and a half seconds of
+// latency for nine tokens of content.
+//
+// Not lower: at 1024 the same call returned 139 tokens, which is a
+// truncated answer, and a truncated hypothesis is worse than a slow one.
+const maxGenerationTokens int32 = 2048
+
 // groundedSystemPrompts are the per-intent instructions for everything
 // that works from client material.
 var groundedSystemPrompts = map[guardrail.Intent]string{
@@ -225,7 +237,7 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 
 	resp, err := s.LLM.Generate(ctx, GenerateRequest{
 		Model: GeneratorModel, SystemPrompt: sysPrompt, UserContent: user,
-		ResponseSchema: schema, Temperature: 0.3, MaxTokens: 4096,
+		ResponseSchema: schema, Temperature: 0.3, MaxTokens: maxGenerationTokens,
 	})
 	costs = append(costs, ModelCost{Model: GeneratorModel,
 		InputTokens: resp.Usage.InputTokens, OutputTokens: resp.Usage.OutputTokens})
