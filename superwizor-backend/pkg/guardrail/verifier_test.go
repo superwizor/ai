@@ -412,8 +412,8 @@ func TestProseFieldsAreBounded(t *testing.T) {
 				// Pola wskaznikowe (identyfikatory, dokladny cytat) nie
 				// potrzebuja limitu — proza tak.
 				if name == "body" || name == "question" || name == "title" {
-					if max, _ := sub["maxLength"].(int64); max < 1 || max > 1200 {
-						t.Errorf("%s.%s: maxLength=%v — proza musi miec limit w [1,1200]",
+					if max, _ := sub["maxLength"].(int64); max < 1 || max > 1600 {
+						t.Errorf("%s.%s: maxLength=%v — proza musi miec limit w [1,1600]",
 							path, name, sub["maxLength"])
 					}
 				}

@@ -78,10 +78,18 @@ var hypothesisSchema = map[string]any{
 		// PPT zapraszala do glebi) — nawet ponowienie z podwojonym
 		// budzetem wyszlo uciete i tura skonczyla sie blokiem 'schema'.
 		"title": map[string]any{"type": "string", "maxLength": int64(120)},
+		// 1500, nie 8000: polski tekst kliniczny to ~3,6 znaka/token
+		// (zmierzone na tym korpusie), wiec 8000 znakow = ~2200 tokenow
+		// JEDNEGO body — trzy takie plus cytaty przekraczaja nawet budzet
+		// ponowienia (4096) i odtwarzaja blokade z 20.08 co do joty.
+		// 3 x 1500 + cytaty ~= 1950 tokenow: miesci sie w pierwszym
+		// budzecie, ponowienie zostaje siatka. Dluzsze formy maja swoje
+		// miejsca: doprecyzowanie w kolejnej turze (czat ma juz pamiec)
+		// albo raport/szablon — nie dymek czatu.
 		"body": map[string]any{
 			"type":        "string",
-			"maxLength":   int64(900),
-			"description": "Hipoteza sformułowana warunkowo, 3-6 zdań. Bez etykiet diagnostycznych, bez leków, bez oceny ryzyka.",
+			"maxLength":   int64(1500),
+			"description": "Hipoteza sformułowana warunkowo, do ok. 10 zdań. Bez etykiet diagnostycznych, bez leków, bez oceny ryzyka.",
 		},
 		// minItems 1: this is the grounding requirement.
 		"quotes": quotesArray(1),
