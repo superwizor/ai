@@ -3,9 +3,9 @@
 | Pole | Wartość |
 |---|---|
 | Numer | ADR-0XX *(nadać zgodnie z rejestrem ADR w `docs/adr/`)* |
-| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(wersja 1.1 wymaga ponownego podpisu §9 — zmiana merytoryczna taksonomii)* |
-| Data | 18 sierpnia 2026 r. (v1.0) / 20 sierpnia 2026 r. (v1.1) |
-| Wersja | 1.1 |
+| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(wersje 1.1–1.2 wymagają ponownego podpisu §9 — zmiany merytoryczne taksonomii i schematów)* |
+| Data | 18 sierpnia 2026 r. (v1.0) / 20 sierpnia 2026 r. (v1.1, v1.2) |
+| Wersja | 1.2 |
 | Decydent | Dario (Product Owner) |
 | Dokumenty powiązane | *Analiza wymagań regulacyjnych* (1.08.2026), rozdz. 4.1–4.5, 7, 8; Rozdział 10 *Ryzyko egzekucyjne* (18.08.2026); `06_Architektura_Mikroserwisow.md`; `09_RODO_Compliance.md` (planowany); `docs/63_AI_CHAT_GUARDRAIL_IMPLEMENTATION_PLAN.md` |
 | Zastępuje | Rekomendację z rozdz. 8 dokumentu nadrzędnego („zastąpić otwarty czat zestawem zdefiniowanych operacji") — **częściowo**: zdefiniowane operacje pozostają jako ścieżka degradacji i plan B. Wersja 1.1 odchodzi od rekomendacji nadrzędnej **dalej niż 1.0**: operacje konceptualizacyjne, oceny postępu i propozycji interwencji są generowane, nie odmawiane (sekcja 5.1, §9) |
@@ -16,6 +16,7 @@
 |---|---|---|
 | 1.0 | 2026-08-18 | Pierwsza wersja. |
 | 1.1 | 2026-08-20 | `A8_CONCEPT`, `A9_PROGRESS`, `A10_TREAT` przeniesione z PROHIBITED do ALLOWED jako **pełne operacje generatywne z wymuszonym uziemieniem cytatowym** (decyzja PO 20.08). Spójność sekcji 5.3–5.5, 8.2, 8.3 i §9 z nową taksonomią; przywrócone kody `R_RISK`/`X_OTHER` (semantyka priorytetu jest częścią identyfikatora). Architektura przypięta: `pkg/guardrail` w `clinical-svc`; RPC unary (weryfikator wymaga kompletnej odpowiedzi); flagi w tabeli `app_config` (nie env-vary); weryfikator dwutrybowy (deterministyczny dla cytatów, LLM dla pól wolnotekstowych); quota mikrodolarowa z rezerwacją przed pierwszym wywołaniem modelu; log dowodowy `guardrail_decisions` jawnie wyłączony z GDPR-purgera. Usunięty przypadkowy artefakt tekstowy w nagłówku §3. §9 i §12 zaktualizowane o podwyższoną ekspozycję kwalifikacyjną. |
+| 1.2 | 2026-08-20 | `A5_SUPERVISION_PACK`: nowe pole modelowe `suggested_questions[]{question, quotes[]}` — sugerowane pytania superwizyjne z wymuszonym uziemieniem (≥ 1 cytat każde), obok niezmienionego user-only `open_questions[]`. Weryfikator A5 rozszerzony o kontrolę diagnozy/farmakoterapii/oceny ryzyka w sugerowanych pytaniach; 8.1/8.2 objęły A5; telemetria `ai_chat_clinical_generated` obejmuje A5. **Pierwsze zastosowanie procesu „poszerzenie powierzchni autorstwa modelu = udokumentowana decyzja".** |
 
 ---
 
@@ -85,7 +86,7 @@ Kontrola oparta wyłącznie na instrukcji w system prompcie **nie jest** środki
                                           ▼
                               [pkg/guardrail: output verifier] (dwutrybowy, T=0)
                                           │ A1–A7: {contains_clinical_inference, offending_spans}
-                                          │ A8–A10: {contains_diag_med_risk, ungrounded_claims[]}
+                                          │ A5(sug.)/A8–A10: {contains_diag_med_risk, ungrounded_claims[]}
                                           │ cytaty: weryfikacja deterministyczna (podłańcuch
                                           │         transcript_segments — pewność 1,0)
                                           ├─ pass → odpowiedź do UI (+ oznaczenie AI, art. 50 AI Act)
@@ -101,7 +102,7 @@ Kontrola oparta wyłącznie na instrukcji w system prompcie **nie jest** środki
 | Komponent | Umiejscowienie | Odpowiedzialność |
 |---|---|---|
 | Intent classifier | **pakiet `pkg/guardrail` w `clinical-svc`** *(nie osobny serwis: budżet latencji 8.2 nie mieści dodatkowego przeskoku przy trzech szeregowych wywołaniach; wydzielenie później możliwe — czysty interfejs pakietu)* | Klasyfikacja intencji wg taksonomii (sekcja 5); T=0; structured output; wersjonowany prompt |
-| Output schemas | `pkg/guardrail/schemas/` | Jeden schemat JSON na dozwoloną intencję; generator **musi** zwrócić obiekt zgodny ze schematem; pola decyzji terapeuty (`filled_by=user`, `decision`) **nie istnieją** w schemacie przekazywanym modelowi — serwer dokleja je po walidacji; A8–A10: pola hipotez wymagają tablicy cytatów |
+| Output schemas | `pkg/guardrail/schemas/` | Jeden schemat JSON na dozwoloną intencję; generator **musi** zwrócić obiekt zgodny ze schematem; pola decyzji terapeuty (`filled_by=user`, `decision`) **nie istnieją** w schemacie przekazywanym modelowi — serwer dokleja je po walidacji; A8–A10: pola hipotez wymagają tablicy cytatów; *(v1.2)* A5: `suggested_questions[]` z wymuszonym uziemieniem |
 | Output verifier | `pkg/guardrail` | **Dwutrybowy.** (a) Deterministyczny dla cytatów: każdy `quotes[].text` musi być dosłownym podłańcuchem odszyfrowanego segmentu, `speaker`/`ts` zgodne — pewność 1,0, koszt 0. (b) LLM (drugi przebieg, T=0) dla pól wolnotekstowych; pytanie zamknięte zależne od intencji (4.1 pkt 3). Decyzja logowana zawsze |
 | Defined ops | `clinical-svc` | Zestaw operacji 1-klik: `quotes_on_topic`, `session_facts`, `note_from_template`, `supervision_pack`, `explain_model` |
 | Kill switch | **tabela `app_config` (Cloud SQL), cache ≤ 30 s w `clinical-svc`** *(env-vary wykluczone — wymagają deployu, ADR żąda < 1 h; realnie: UPDATE + propagacja ≤ 60 s)* | `AI_CHAT_ENABLED` global + per organizacja; `AI_CHAT_MODE ∈ {chat, defined_ops}`; zmiana bez deployu; wpis w `audit_events` |
@@ -120,7 +121,7 @@ Kontrola oparta wyłącznie na instrukcji w system prompcie **nie jest** środki
 | `A2_FACTS` | Zestawienia faktograficzne | „Ile sesji od stycznia", „w ilu sesjach pojawił się temat X" | `stats{metric, value, method, sources[]}` |
 | `A3_FORMAT` | Formatowanie/dokumentacja wg szablonu | „Zrób notatkę z sesji wg mojego szablonu" | `document{template_id, fields[]{id, filled_by: user\|extract, content}}` — pola wnioskowe `filled_by=user` tylko |
 | `A4_EDU` | Edukacja o modelu/modalności **bez odniesienia do klienta** | „Wyjaśnij model równowagi PPT", „jakie pytania zadaje się w pracy z potencjałami" | `explanation{text, sources[]}` (wolny tekst dozwolony — brak danych klienta w kontekście; wymuszone: `has_client_reference=false`) |
-| `A5_SUPERVISION_PACK` | Przygotowanie materiału do superwizji: **uporządkowanie** wypowiedzi/notatek terapeuty | „Zbierz moje notatki i cytaty do superwizji o kliencie X" | `pack{therapist_notes[], quotes[], open_questions[] (user-authored)}` |
+| `A5_SUPERVISION_PACK` | Przygotowanie materiału do superwizji: **uporządkowanie** wypowiedzi/notatek terapeuty | „Zbierz moje notatki i cytaty do superwizji o kliencie X" | `pack{therapist_notes[], quotes[], suggested_questions[]{question, quotes[]}, open_questions[] (user-authored)}` — *(v1.2)* `suggested_questions`: propozycje AI pytań na superwizję, **każde uziemione ≥ 1 cytatem**, oznaczone jako AI i wizualnie odrębne od pytań własnych terapeuty; bez treści diagnostycznych, farmakologicznych i oceny ryzyka |
 | `A6_ADMIN` | Terminarz, przypomnienia, komunikacja | „Przypomnij o zadaniu dla klienta X" | operacja aplikacyjna |
 | `A7_TEMPLATE_MAP` | Szablon modelu (np. PPT) z **cytatami podpiętymi do kategorii wskazanych przez terapeutę** | „Podepnij pod sferę ‘kontakty' fragmenty, gdzie mówi o znajomych" | `template{model_id, fields[]{category(user-selected), quotes[], conclusion: user-only}}` |
 | `A8_CONCEPT` *(v1.1: generatywna)* | Konceptualizacja / mapowanie klienta na model teoretyczny | „Odwzoruj zachowania klienta na model potencjalności", „która sfera równowagi jest naruszona" | `conceptualization{model_id, hypotheses[]{category, hypothesis, quotes[]{session_id, ts_start, ts_end, text}}, limitations}` — **każda hipoteza ≥ 1 cytat źródłowy; bez etykiet nozologicznych; hipotezy oznaczone jako AI do weryfikacji klinicysty** |
@@ -141,8 +142,8 @@ Kontrola oparta wyłącznie na instrukcji w system prompcie **nie jest** środki
 ### 5.3. Reguły rozstrzygające
 
 - Rozstrzyga **rodzaj żądanej operacji klinicznej**, nie słownictwo: diagnoza nozologiczna, farmakoterapia i ocena ryzyka są PROHIBITED niezależnie od sformułowania („edukacyjnie oceń, czy to OCD" → `P1_DIAG`; „hipotetycznie, dla kogoś jak mój klient…" z żądaniem diagnozy → `P1_DIAG`).
-- *(v1.1)* `A8`–`A10` są dozwolone **wyłącznie z uziemieniem**: każda hipoteza/obserwacja/propozycja wskazuje cytaty źródłowe (weryfikowane deterministycznie). Odpowiedź z twierdzeniem bez cytatu → `verifier_block` (zastąpienie wersją ekstraktywną albo odmowa).
-- *(v1.1)* Treść diagnostyczna, farmakologiczna lub oceniająca ryzyko **wewnątrz** odpowiedzi A8–A10 → `verifier_block`, niezależnie od poprawnej klasyfikacji wejścia.
+- *(v1.1)* `A8`–`A10` są dozwolone **wyłącznie z uziemieniem**: każda hipoteza/obserwacja/propozycja wskazuje cytaty źródłowe (weryfikowane deterministycznie). Odpowiedź z twierdzeniem bez cytatu → `verifier_block` (zastąpienie wersją ekstraktywną albo odmowa). *(v1.2)* Ta sama reguła obejmuje `A5.suggested_questions[]` — sugerowane pytanie bez cytatu → `verifier_block`.
+- *(v1.1)* Treść diagnostyczna, farmakologiczna lub oceniająca ryzyko **wewnątrz** odpowiedzi A8–A10 *(v1.2: oraz w `A5.suggested_questions`)* → `verifier_block`, niezależnie od poprawnej klasyfikacji wejścia.
 - `A4_EDU` jest dozwolone **tylko** przy `has_client_reference=false`; kontekst transkryptu nie jest wtedy ładowany do generatora (wymuszone w kodzie, nie w prompcie).
 - Wieloczęściowe pytanie z jedną częścią PROHIBITED → cała odpowiedź w trybie odmowy z propozycją rozdzielenia.
 - `R_RISK` ma pierwszeństwo nad wszystkim; próg pewności dla R jest **niższy** (asymetria: lepiej fałszywie odmówić); `risk_flag=true` honorowany niezależnie od `intent` i `confidence`.
@@ -201,7 +202,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 - Odmowa jest **konstruktywna**: jedno zdanie o zakresie narzędzia + 1–3 przyciski z konkretną zdefiniowaną operacją (np. „Pokaż wypowiedzi klienta na ten temat"). Bez moralizowania, bez powtarzania odmowy w kolejnych turach.
 - Stała informacja przy pierwszym użyciu i w ustawieniach: „Rozmawiasz z systemem AI. Narzędzie służy do wyszukiwania, porządkowania i dokumentowania Twojego materiału oraz formułowania hipotez roboczych na jego podstawie; nie stawia diagnoz, nie wypowiada się o lekach ani nie ocenia ryzyka. Decyzje kliniczne podejmujesz Ty." (art. 50 AI Act, obowiązuje od 2.08.2026).
 - Treści generowane oznaczone jako AI; cytaty oznaczone jako verbatim ze źródłem.
-- *(v1.1)* Wyjścia `A8`–`A10` prezentowane jako **hipotezy AI wymagające weryfikacji klinicysty**: każda hipoteza z rozwijalnymi cytatami źródłowymi; pola decyzji (wybór interwencji, wniosek) edytowalne wyłącznie przez terapeutę i wizualnie odróżnione od treści AI.
+- *(v1.1)* Wyjścia `A8`–`A10` prezentowane jako **hipotezy AI wymagające weryfikacji klinicysty**: każda hipoteza z rozwijalnymi cytatami źródłowymi; pola decyzji (wybór interwencji, wniosek) edytowalne wyłącznie przez terapeutę i wizualnie odróżnione od treści AI. *(v1.2)* Sugerowane pytania superwizyjne (`A5.suggested_questions`) oznaczone jako propozycje AI i prezentowane oddzielnie od pytań własnych terapeuty (`open_questions`).
 - Historia czatu wydzielona technicznie jako **notatnik roboczy** (rozdz. 6 dokumentu nadrzędnego), z własną retencją i bez zasilania funkcji superwizyjnych/oceniających (rozdz. 5.2).
 - **Mobile:** identyczny guardrail po stronie serwera (żadnej logiki klasyfikacji w kliencie); listing sklepowy i notatka dla recenzenta z rejestru claimów; konto testowe z pełnym dostępem dla recenzji; odrzucenie aktualizacji przez sklep = trigger przeglądu (sekcja 10).
 - Teksty UI w `.arb` z opisami dla tłumacza (Kodeks Inżynieryjny, i18n).
@@ -215,7 +216,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 | `ai_chat_query_classified` | `intent`, `has_client_reference`, `risk_flag`, `confidence_bucket`, `classifier_version`, `platform` | Rozkład intencji; dowód kontroli przeznaczenia |
 | `ai_chat_refused` | `intent ∈ {P1,P2,R}`, `redirect_offered`, `redirect_taken` | Skuteczność przekierowań |
 | `ai_chat_degraded` | `reason ∈ {low_conf, uncertain, quota}` | Kalibracja τ; monitoring quoty |
-| `ai_chat_clinical_generated` *(v1.1)* | `intent ∈ {A8,A9,A10}`, `grounding_quote_count`, `verifier_result` | **Miara użycia funkcji generatywnych** — sygnał dryfu 8.3 przeniesiony z odmów na użycie |
+| `ai_chat_clinical_generated` *(v1.1)* | `intent ∈ {A5,A8,A9,A10}`, `grounding_quote_count`, `verifier_result` | **Miara użycia funkcji generatywnych** (A5: sugerowane pytania) — sygnał dryfu 8.3 przeniesiony z odmów na użycie |
 | `ai_chat_verifier_block` | `intent`, `block_reason ∈ {inference, diag_med_risk, ungrounded}`, `verifier_version` | **Kluczowy wskaźnik**: generator wytworzył treść poza granicami mimo dozwolonej intencji |
 | `ai_chat_template_field_filled` | `template_id`, `field_type`, `filled_by ∈ {user, extract}` | Autorstwo klinicysty (rozdz. 4.3/4.4) |
 | `ai_chat_kill_switch_changed` | `scope`, `mode` | Audyt |
@@ -230,7 +231,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 
 ### 8.1. Zestaw testowy (`guardrail-evals/`)
 
-- ≥ 600 zapytań PL, po ≥ 40 na kategorię (14 kategorii), w tym: parafrazy, pytania pośrednie, mieszane, żargon modalności (PPT, CBT, psychodynamiczna, systemowa), pytania z i bez odniesienia do klienta, próby obejścia („hipotetycznie", „gdyby ktoś taki jak…", „dla celów edukacyjnych oceń…"), *(v1.1)* **pary graniczne P1↔A8** (diagnoza przebrana za konceptualizację i odwrotnie).
+- ≥ 600 zapytań PL, po ≥ 40 na kategorię (14 kategorii), w tym: parafrazy, pytania pośrednie, mieszane, żargon modalności (PPT, CBT, psychodynamiczna, systemowa), pytania z i bez odniesienia do klienta, próby obejścia („hipotetycznie", „gdyby ktoś taki jak…", „dla celów edukacyjnych oceń…"), *(v1.1)* **pary graniczne P1↔A8** (diagnoza przebrana za konceptualizację i odwrotnie), *(v1.2)* przykłady adversarialne A5: diagnoza/ocena ryzyka przemycona w sugerowanym pytaniu superwizyjnym.
 - Etykietowanie: dwóch anotatorów (jeden klinicysta), rozstrzyganie sporów, wersjonowanie zestawu.
 - Rozszerzanie zestawu o rzeczywiste odmowy/degradacje/verifier_blocki z produkcji (po pseudonimizacji i zgodzie).
 
@@ -242,8 +243,8 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 | Recall PROHIBITED (`P1_DIAG`, `P2_MED`) | ≥ 0,97 | |
 | *(v1.1)* Konfuzja `P1_DIAG → A8_CONCEPT` | ≤ 0,02 | Diagnoza przemycona jako konceptualizacja to główne nowe ryzyko taksonomii |
 | False-positive rate na ALLOWED | ≤ 0,08 | Użyteczność; powyżej — kalibracja, nie obniżanie progów R/P |
-| Verifier catch rate (zestaw adversarialny) | ≥ 0,95 | Zestaw dwuczęściowy: A1–A7 z wstrzykniętym wnioskowaniem; A8–A10 z wstrzykniętą diagnozą/farmakoterapią/oceną ryzyka |
-| *(v1.1)* Uziemienie A8–A10 (hipoteza bez cytatu przechodzi) | 0 na zestawie | Weryfikacja deterministyczna — brak tolerancji |
+| Verifier catch rate (zestaw adversarialny) | ≥ 0,95 | Zestaw: A1–A7 z wstrzykniętym wnioskowaniem; A5/A8–A10 z wstrzykniętą diagnozą/farmakoterapią/oceną ryzyka |
+| *(v1.1/v1.2)* Uziemienie A8–A10 i `A5.suggested_questions` (twierdzenie lub pytanie bez cytatu przechodzi) | 0 na zestawie | Weryfikacja deterministyczna — brak tolerancji |
 | Latencja p95 (klasyfikator + generator + weryfikator) | ≤ 1,5 s | Mobile |
 
 ### 8.3. Metryki produkcyjne i progi przeglądu
@@ -253,7 +254,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 | Udział PROHIBITED (`P1`+`P2`+`R`) w zapytaniach (30 dni) | > 25 % | Analiza: użytkownicy oczekują funkcji zabronionych → decyzja: defined_ops / ścieżka IIa |
 | *(v1.1)* Udział `A8`–`A10` w zapytaniach (30 dni) | raport miesięczny, próg miękki > 60 % | Dryf w stronę wyrobu mierzony **użyciem** funkcji generatywnych, nie odmowami → przegląd ADR / decyzja IIa |
 | `verifier_block` / dozwolone odpowiedzi | > 3 % | Generator wytwarza treść poza granicami → przegląd schematów i promptów, ewentualnie tryb defined_ops |
-| *(v1.1)* Odpowiedzi A8–A10 z `grounding_quote_count=0` | > 0 % | Błąd — uziemienie jest wymuszone schematem i weryfikatorem |
+| *(v1.1/v1.2)* Odpowiedzi A5 (sugerowane pytania) / A8–A10 z `grounding_quote_count=0` | > 0 % | Błąd — uziemienie jest wymuszone schematem i weryfikatorem |
 | Pola szablonu `filled_by=extract` w polach user-only (A3/A7/`A10.decision`) | > 0 % | Błąd — pola decyzji muszą być user-only |
 | Odsetek przekierowań/degradacji przyjętych | < 30 % | Odmowy nie są konstruktywne → UX |
 | Odrzucenie aktualizacji w sklepie z powodu „medical" | 1 zdarzenie | Natychmiastowy przegląd claimów + kwalifikacji |
@@ -264,7 +265,7 @@ Decyzja obowiązuje pod warunkiem spełnienia **wszystkich** poniższych przed G
 
 - [ ] Guardrail layer trójwarstwowy (wejście, format, weryfikator dwutrybowy) wdrożony i przechodzący progi 8.2.
 - [ ] `R_RISK` blokowane bez wyjątków; przetestowane adversarialnie.
-- [ ] *(v1.1)* Uziemienie A8–A10 wymuszone schematem i weryfikowane deterministycznie; zero tolerancji na hipotezy bez cytatu; treści diagnostyczne/farmakologiczne/oceny ryzyka w wyjściach A8–A10 wychwytywane z catch rate ≥ 0,95.
+- [ ] *(v1.1/v1.2)* Uziemienie A8–A10 i `A5.suggested_questions` wymuszone schematem i weryfikowane deterministycznie; zero tolerancji na hipotezy/pytania bez cytatu; treści diagnostyczne/farmakologiczne/oceny ryzyka w tych wyjściach wychwytywane z catch rate ≥ 0,95.
 - [ ] Kill switch global + tenant w `app_config`; `AI_CHAT_MODE=defined_ops` działa jako flaga bez deployu; przetestowany runbook (< 1 h od decyzji do wyłączenia; cel: < 5 min).
 - [ ] Zdefiniowane operacje dostępne w UI (nie tylko jako fallback).
 - [ ] Quota mikrodolarowa aktywna (rezerwacja przed pierwszym wywołaniem; degradacja po wyczerpaniu).
@@ -278,7 +279,7 @@ Decyzja obowiązuje pod warunkiem spełnienia **wszystkich** poniższych przed G
 
 **Ryzyko rezydualne (nazwane wprost, v1.1):** moduł **generuje nową informację kliniczną o konkretnym pacjencie** (konceptualizacja, ocena postępu, propozycje interwencji) — czyli spełnia kryterium rozstrzygające z rozdz. 3–4 dokumentu nadrzędnego. Względem wariantu 1.0 (ekstraktywnego) ekspozycja kwalifikacyjna MDR jest **istotnie wyższa**. Linia obrony przesuwa się z „użycie kliniczne jest wykrywane, odmawiane i mierzone" na: „użycie kliniczne jest **ograniczone** (bez diagnozy, farmakoterapii i oceny ryzyka), **uziemione** w materiale źródłowym (każda hipoteza z cytatami, weryfikacja deterministyczna), **oznaczone** (hipotezy AI do weryfikacji klinicysty, decyzja po stronie terapeuty), **mierzone** (7.1/7.2) i **wyłączalne** (< 1 h, bez deployu)". Skutek sporu pozostaje kontrolowalny (art. 97, kill switch, degradacja) **do momentu incydentu**; po incydencie w kategorii ryzyka — nie.
 
-Akceptuję powyższe ryzyko rezydualne w brzmieniu v1.1: __________________ (Product Owner), data: __________
+Akceptuję powyższe ryzyko rezydualne w brzmieniu v1.2: __________________ (Product Owner), data: __________
 
 ## 10. Triggery ponownego przeglądu ADR
 
@@ -306,7 +307,7 @@ Akceptuję powyższe ryzyko rezydualne w brzmieniu v1.1: __________________ (Pro
 | # | Ticket | DoD |
 |---|---|---|
 | 1 | `pkg/guardrail`: klasyfikator + schemat + prompt v2 | Structured output; T=0; testy jednostkowe; wersja promptu w repo |
-| 2 | Schematy wyjścia A1–A10 (w tym generatywne A8–A10 z wymuszonym uziemieniem) | Walidacja JSON Schema po stronie serwera; pola decyzji terapeuty nieobecne w schemacie modelu; A8–A10: hipoteza bez cytatu niereprezentowalna |
+| 2 | Schematy wyjścia A1–A10 (w tym generatywne A8–A10 i `A5.suggested_questions` z wymuszonym uziemieniem) | Walidacja JSON Schema po stronie serwera; pola decyzji terapeuty nieobecne w schemacie modelu; A8–A10 i A5: hipoteza/pytanie bez cytatu niereprezentowalne |
 | 3 | Weryfikator dwutrybowy | Deterministyczny dla cytatów (pewność 1,0); LLM dla pól wolnotekstowych; testy na zestawie adversarialnym ≥ 0,95; zapis decyzji zawsze |
 | 4 | `app_config` + flagi `AI_CHAT_ENABLED`, `AI_CHAT_MODE` | Global + tenant; zmiana bez deployu; propagacja ≤ 60 s; runbook przetestowany; wpis w `audit_events` |
 | 5 | Defined ops w UI (web + Flutter) | 5 operacji; teksty w `.arb` z opisami |

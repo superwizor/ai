@@ -1,8 +1,8 @@
-# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.1)
+# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.2)
 
 | Pole | Wartość |
 |---|---|
-| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.1** (2026-08-20) |
+| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.2** (2026-08-20) |
 | Data | 2026-08-20 (aktualizacja po rozstrzygnięciu D1) |
 | Gałąź robocza | `feat/chat-window` |
 | Status | Gotowy do startu F0 — blokery pozakodowe w sekcji 4 |
@@ -40,7 +40,7 @@ Niespójności v1.0_2 (enum 5.4, prompt 5.5, progi 8.2, kody R_RISK,
 artefakt w §3, kolumny schematów A8–A10, changelog) — **naprawione w ADR
 v1.1** (ten sam plik, commit razem z tym planem). Otwarte pozostają:
 
-- **podpis §9** w brzmieniu v1.1 (zmiana merytoryczna → ponowna akceptacja),
+- **podpis §9** w brzmieniu v1.2 (zmiany merytoryczne → ponowna akceptacja),
 - przeniesienie ADR z `docs/kronikarz/` do rejestru `docs/adr/` z nadaniem numeru.
 
 ---
@@ -68,11 +68,13 @@ v1.1** (ten sam plik, commit razem z tym planem). Otwarte pozostają:
        A10        → cytaty + raporty (biblioteka protokołów: przyszłe wzbogacenie)
   5. generator ze schematem per intencja
        — pola decyzji terapeuty NIE ISTNIEJĄ w schemacie modelu
-       — A8–A10: hipoteza bez tablicy cytatów jest niereprezentowalna
+       — A8–A10 i A5.suggested_questions: twierdzenie bez tablicy cytatów
+         jest niereprezentowalne
   6. weryfikator dwutrybowy (decyzja logowana ZAWSZE):
        deterministyczny: cytaty ⊂ transcript_segments (1,0) + uziemienie A8–A10
        LLM T=0:  A1–A7 → „czy zawiera wnioskowanie kliniczne o osobie"
-                 A8–A10 → „czy zawiera diagnozę / farmakoterapię / ocenę ryzyka"
+                 A5(sug. pytania)/A8–A10 → „czy zawiera diagnozę /
+                 farmakoterapię / ocenę ryzyka"
        brak: A2 (same liczby), A4 (brak osoby)
   7. zapis: chat_interactions + guardrail_decisions (24 mies., poza purgerem)
   8. commit quoty wg UsageMetadata (wycena: pkg/llmcost)
@@ -139,7 +141,7 @@ integracyjnych).
 |---|---|---|
 | A1, A7 | `transcript_segments` | cytat + mówca + ts + session_id |
 | A2 | agregacje SQL | zero wywołań modelu |
-| A5 | notatki + cytaty | `open_questions` wyłącznie user-authored |
+| A5 | notatki + cytaty | `open_questions` wyłącznie user-authored; *(ADR v1.2)* `suggested_questions` — propozycje AI z uziemieniem |
 | A4 | **brak kontekstu klienta** | wymuszone w kodzie, test negatywny |
 | A6 | istniejące RPC | |
 | **A8** | cytaty tematyczne (`transcript_segments`) + raporty; `rag_memories` jako preselekcja sesji kandydackich | kontekst ograniczony do ~8 000 znaków; selekcja cytatów pod kategorie modelu |
@@ -162,14 +164,18 @@ A4 z testem „kontekst nieobecny w promptcie".
   odpowiedzi modelu. Pola decyzji terapeuty (`conclusion`, `decision`,
   `filled_by=user`) **nieobecne w schemacie modelu** — serwer dokleja po
   walidacji. A8–A10: `hypotheses[].quotes` z `minItems: 1` — hipoteza bez
-  cytatu jest niereprezentowalna strukturalnie.
+  cytatu jest niereprezentowalna strukturalnie. **A5 *(ADR v1.2)*: pole
+  modelowe `suggested_questions[]{question, quotes[] minItems:1}` obok
+  user-only `open_questions[]` — pierwsza kalibracja granicy autorstwa
+  w trybie „poszerzenie = udokumentowana decyzja" (changelog 1.2,
+  osobny wpis).**
 - Weryfikator:
   - **deterministyczny** (koszt 0, pewność 1,0): każdy cytat dosłownym
     podłańcuchem odszyfrowanego segmentu; mówca/ts zgodne; A8–A10 —
     kompletność uziemienia;
   - **LLM** (T=0, pytanie zamknięte per intencja): A1/A3/A5/A7 —
-    wnioskowanie kliniczne o osobie; A8–A10 — diagnoza nozologiczna /
-    farmakoterapia / ocena ryzyka w treści hipotez;
+    wnioskowanie kliniczne o osobie; `A5.suggested_questions` i A8–A10 —
+    diagnoza nozologiczna / farmakoterapia / ocena ryzyka w treści;
   - `verifier_block` → zastąpienie wersją ekstraktywną albo odmowa + log.
 - **Migracja 000085: `guardrail_decisions`** (bez treści; hash sesji
   czatu; intent, risk_flag, confidence_bucket, decision, verifier_result,
@@ -177,8 +183,8 @@ A4 z testem „kontekst nieobecny w promptcie".
   wyłączenie z gdpr-purgera + test negatywny w CI**.
 
 DoD: zestaw adversarialny wstępny (50 przykładów, w tym wstrzyknięta
-diagnoza w A8 i ocena ryzyka w A9); catch-rate mierzony; test purgera
-zielony.
+diagnoza w A8, ocena ryzyka w A9 i diagnoza w sugerowanym pytaniu A5);
+catch-rate mierzony; test purgera zielony.
 
 ### F5 — Kill switch + plan B (2 dni)
 
@@ -208,7 +214,7 @@ limicie; test degradacji.
 
 Zdarzenia 7.1 ADR v1.1: `ai_chat_query_classified`, `ai_chat_refused`
 (P1/P2/R), `ai_chat_degraded` (low_conf | uncertain | quota),
-**`ai_chat_clinical_generated`** (A8–A10: grounding_quote_count,
+**`ai_chat_clinical_generated`** (A5/A8–A10: grounding_quote_count,
 verifier_result), `ai_chat_verifier_block` (block_reason ∈ {inference,
 diag_med_risk, ungrounded}), `ai_chat_template_field_filled`,
 `ai_chat_kill_switch_changed`.
@@ -226,7 +232,8 @@ Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
 - ≥ 600 zapytań PL (celujemy w 700), ≥ 40/kategorię × 14 kategorii;
   parafrazy, pytania pośrednie, mieszane (reguła 5.3), żargon modalności,
   próby obejścia; **pary graniczne P1↔A8** (diagnoza przebrana za
-  konceptualizację i odwrotnie) — nowa, najważniejsza klasa przykładów.
+  konceptualizację i odwrotnie) — nowa, najważniejsza klasa przykładów;
+  adversarialne A5: diagnoza/ryzyko przemycone w sugerowanym pytaniu.
 - Dwóch anotatorów, w tym klinicysta — **zamówić natychmiast**, reszta F8
   czeka na etykiety.
 - Progi CI (8.2 v1.1): recall R ≥ 0,99 · recall P1+P2 ≥ 0,97 ·
