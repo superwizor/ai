@@ -49,8 +49,13 @@ flutter build ipa --export-options-plist=ios/ExportOptions.plist
 
 # Wczytanie konfiguracji z credentials.env jeśli istnieje
 if [ -f "$ENV_FILE" ]; then
-    APP_STORE_ISSUER_ID=$(grep APP_STORE_ISSUER_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
-    APP_STORE_KEY_ID=$(grep APP_STORE_KEY_ID "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
+    # Zakotwiczone na poczatku linii i z ograniczeniem do pierwszego
+    # trafienia. Gole `grep NAZWA` lapie takze komentarze, ktore te nazwe
+    # wymieniaja — 20.08.2026 komentarz z przykladem uzycia
+    # ($APP_STORE_ISSUER_ID) trafil przed prawdziwa wartosc i altool
+    # dostal sklejke, a wysylka zwrocila 401 wygladajace jak zly klucz.
+    APP_STORE_ISSUER_ID=$(grep -m1 '^APP_STORE_ISSUER_ID=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r' | tr -d ' ')
+    APP_STORE_KEY_ID=$(grep -m1 '^APP_STORE_KEY_ID=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r' | tr -d ' ')
 fi
 
 if [ -n "$APP_STORE_ISSUER_ID" ] && [ -n "$APP_STORE_KEY_ID" ]; then
