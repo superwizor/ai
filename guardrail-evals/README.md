@@ -23,8 +23,15 @@ thresholds.yaml           progi 8.2 w postaci maszynowej (konsumowane przez runn
   niemutowalne (rozszerzenia = nowe id, docelowo nowa wersja katalogu).
 - `label_status` — `proposed` (seed, etykieta zaproponowana) → `adjudicated`
   (po uzgodnieniu dwóch anotatorów) → `disputed` (spór do rozstrzygnięcia).
-  **Runner CI liczy metryki wyłącznie na `adjudicated`**; do czasu adjudykacji
-  dopuszcza się przebiegi diagnostyczne na `proposed` (nie bramkują builda).
+  **Bramkowanie dwupoziomowe (decyzja PO 2026-08-20):**
+  - *development* — pierwsza iteracja implementacyjna liczy metryki na
+    `proposed`; progi 8.2 działają jako brama regresyjna (runner:
+    `--labels proposed`, domyślne do czasu zamrożenia adjudykacji);
+  - *GA* — warunek §9 bez zmian: wyłącznie `adjudicated`. Wynik na
+    `proposed` nie stanowi materiału dowodowego.
+  Zastrzeżenie metodyczne: etykiety `proposed` pochodzą z tej samej rodziny
+  modeli co klasyfikator — zbieżność uprzedzeń może zawyżać poziomy metryk;
+  na tej podstawie interpretuj **regresje i trendy**, nie wartości bezwzględne.
 - `tags` — informacyjne: `jargon:ppt|cbt|psychodyn|system`, `indirect`,
   `bypass`, `mixed`, `boundary:p1-a8`, `boundary:a4-a8`, `boundary:a1-r`,
   `paraphrase`, `terse`, `typo`, `colloquial`.

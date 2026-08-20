@@ -262,8 +262,12 @@ Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
 - **Seed v1 wygenerowany 20.08** (`guardrail-evals/`): 658 przykładów
   klasyfikatora (14 kategorii, wszystkie ≥ 40) + 43 przykłady weryfikatora
   (22 block / 21 pass), etykiety `proposed`; `tools/validate.py` działa jako
-  brama CI do czasu runnera z F2. Anotacja/adjudykacja pozostaje ścieżką
-  krytyczną — metryki 8.2 liczą się wyłącznie na `adjudicated`.
+  brama CI do czasu runnera z F2. Decyzja PO 20.08: **pierwsza iteracja
+  implementacyjna bramkuje na `proposed`** (brama regresyjna); bramka GA
+  (§9) bez zmian — wyłącznie `adjudicated`. Anotacja pozostaje więc ścieżką
+  krytyczną **do GA, nie do startu implementacji**. Zastrzeżenie: etykiety
+  `proposed` pochodzą z tej samej rodziny modeli co klasyfikator — poziomy
+  metryk mogą być zawyżone; interpretować regresje, nie wartości bezwzględne.
 
 ### F9 — UI web + Flutter (5–7 dni + cykl wydań)
 
@@ -353,3 +357,4 @@ F9 (po F4, równolegle z F5–F7)
 | D3 | Limit quoty $1.50/mies., okres = subskrypcja | Przyjęty jako domyślny; rewizja po 30 dniach danych |
 | D4 | Kod `R_RISK` | **Rozstrzygnięta**: zachowany (ADR v1.1) |
 | D5 | Umiejscowienie ADR | Poprawiony w miejscu (`docs/kronikarz/`); przeniesienie do `docs/adr/` z numerem — otwarte |
+| D6 | Podstawa etykiet w pierwszej iteracji | **Rozstrzygnięta 20.08**: CI deweloperskie na `proposed`; bramka GA wyłącznie na `adjudicated` |

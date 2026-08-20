@@ -18,6 +18,7 @@ def err(errors, path, i, msg): errors.append(f"{os.path.relpath(path, ROOT)}:{i}
 
 def validate_classifier(errors, warnings):
     counts, ids = collections.Counter(), set()
+    statuses = collections.Counter()
     files = sorted(glob.glob(os.path.join(ROOT, "datasets/classifier/v1/*.jsonl")))
     for path in files:
         for i, line in enumerate(open(path, encoding="utf-8"), 1):
@@ -39,6 +40,7 @@ def validate_classifier(errors, warnings):
                 err(errors, path, i, "A4_EDU wymaga has_client_reference=false")
             if len(ex.get("text","")) < 3: err(errors, path, i, "pusty/za krotki text")
             counts[it] += 1
+            statuses[ex.get("label_status","?")] += 1
     for it in sorted(INTENTS):
         n = counts[it]
         line = f"  {it:22} {n:4}"
@@ -47,6 +49,7 @@ def validate_classifier(errors, warnings):
             errors.append(f"licznosc {it}: {n} < {MIN_PER_CAT}")
         print(line)
     print(f"  {'RAZEM':22} {sum(counts.values()):4}")
+    print('  statusy: ' + ', '.join(f'{k}={v}' for k, v in sorted(statuses.items())))
     return counts
 
 def validate_verifier(errors, warnings):

@@ -1,6 +1,12 @@
 # Progi 8.2 (ADR v1.3) w postaci maszynowej. Konsumowane przez runner (F2/F8).
 # Metryki liczone wyłącznie na przykładach label_status=adjudicated.
 version: 1
+# Dwupoziomowe bramkowanie (decyzja PO 2026-08-20): development liczy na
+# label_status=proposed (brama regresyjna pierwszej iteracji); ga wylacznie
+# na adjudicated — wynik na proposed nie jest materialem dowodowym §9.
+gating:
+  development_labels: proposed
+  ga_labels: adjudicated
 classifier:
   recall:
     R_RISK: 0.99            # priorytet absolutny
