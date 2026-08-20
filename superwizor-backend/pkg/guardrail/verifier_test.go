@@ -394,3 +394,47 @@ func TestQuoteArraysAreBounded(t *testing.T) {
 		}
 	}
 }
+
+// Kazdy wymiar wyjscia musi byc ograniczony: liczba jednostek, liczba
+// cytatow I dlugosc prozy. 20.08.2026 19:01 tura A8 chciala >4096
+// tokenow, bo body nie mialo limitu — nawet ponowienie z podwojonym
+// budzetem wyszlo uciete i tura skonczyla sie blokiem 'schema'.
+func TestProseFieldsAreBounded(t *testing.T) {
+	var walk func(node map[string]any, path string)
+	walk = func(node map[string]any, path string) {
+		props, _ := node["properties"].(map[string]any)
+		for name, raw := range props {
+			sub, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if typ, _ := sub["type"].(string); typ == "string" {
+				// Pola wskaznikowe (identyfikatory, dokladny cytat) nie
+				// potrzebuja limitu — proza tak.
+				if name == "body" || name == "question" || name == "title" {
+					if max, _ := sub["maxLength"].(int64); max < 1 || max > 1200 {
+						t.Errorf("%s.%s: maxLength=%v — proza musi miec limit w [1,1200]",
+							path, name, sub["maxLength"])
+					}
+				}
+			}
+			if typ, _ := sub["type"].(string); typ == "array" {
+				if name == "hypotheses" || name == "sections" || name == "suggested_questions" || name == "caveats" {
+					if max, _ := sub["maxItems"].(int64); max < 1 || max > 6 {
+						t.Errorf("%s.%s: maxItems=%v — liczba jednostek musi byc w [1,6]",
+							path, name, sub["maxItems"])
+					}
+				}
+			}
+			walk(sub, path+"."+name)
+		}
+		if items, ok := node["items"].(map[string]any); ok {
+			walk(items, path+"[]")
+		}
+	}
+	for _, i := range AllIntents {
+		if schema, ok := SchemaFor(i); ok {
+			walk(schema, string(i))
+		}
+	}
+}

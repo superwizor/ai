@@ -205,6 +205,15 @@ func toGenaiSchema(m map[string]any) (*genai.Schema, error) {
 		if e := toStringSlice(m["enum"]); len(e) > 0 {
 			s.Enum = e
 		}
+		// maxLength to kontrola rozmiaru wyjscia — bez przeniesienia jej
+		// tutaj limit w schemacie guardraila bylby deklaracja bez skutku
+		// i eseje dalej ucinalyby JSON na MaxTokens (incydent 20.08 19:01).
+		if v, ok := toInt64(m["maxLength"]); ok {
+			s.MaxLength = genai.Ptr(v)
+		}
+		if v, ok := toInt64(m["minLength"]); ok {
+			s.MinLength = genai.Ptr(v)
+		}
 	case "integer":
 		s.Type = genai.TypeInteger
 	case "number":

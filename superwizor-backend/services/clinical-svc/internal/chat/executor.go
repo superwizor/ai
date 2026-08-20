@@ -188,7 +188,8 @@ ZASADY:
 - Formułuj warunkowo: "może", "jedną z możliwości jest", "wygląda, jakby".
 - NIE nazywaj jednostek chorobowych i NIE stwierdzaj, że klient je ma.
 - NIE wspominaj o lekach. NIE oceniaj ryzyka.
-- To materiał do weryfikacji przez terapeutę, nie rozstrzygnięcie.`,
+- To materiał do weryfikacji przez terapeutę, nie rozstrzygnięcie.
+- Zwięźle: każda hipoteza to tytuł i 3-6 zdań, nie esej.`,
 
 	guardrail.A9Progress: `Oceń zmianę w czasie na podstawie fragmentów i danych.
 
@@ -196,7 +197,8 @@ ZASADY:
 - Każda obserwacja MUSI mieć co najmniej jeden dosłowny cytat.
 - Wszystko, co dotyczy przyszłości, formułuj WARUNKOWO.
 - Pole caveats jest obowiązkowe: wypisz ograniczenia tego wnioskowania.
-- NIE diagnozuj, NIE wspominaj o lekach, NIE oceniaj ryzyka.`,
+- NIE diagnozuj, NIE wspominaj o lekach, NIE oceniaj ryzyka.
+- Zwięźle: każda obserwacja to 3-6 zdań.`,
 
 	guardrail.A10Intervention: `Zaproponuj kierunki pracy do rozważenia przez terapeutę.
 
@@ -204,7 +206,8 @@ ZASADY:
 - Każda propozycja MUSI mieć co najmniej jeden dosłowny cytat uzasadniający.
 - Formułuj jako propozycje, nie zalecenia.
 - NIE proponuj farmakoterapii. NIE oceniaj ryzyka. NIE diagnozuj.
-- Decyzja należy do terapeuty.`,
+- Decyzja należy do terapeuty.
+- Zwięźle: każda propozycja to 3-6 zdań.`,
 }
 
 // executeGrounded handles every intent that works from client material.
@@ -320,6 +323,13 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 		costs = append(costs, ModelCost{Model: GeneratorModel,
 			InputTokens: retry.Usage.InputTokens, OutputTokens: retry.Usage.OutputTokens})
 		if rerr == nil {
+			if retry.Truncated {
+				// Odpowiedz nie miesci sie nawet w podwojonym budzecie —
+				// to sygnal o ROZMIARZE tresci, nie o infrastrukturze.
+				// 20.08 19:01: nieograniczone body razy 5 hipotez.
+				slog.WarnContext(ctx, "chat.generation_truncated_twice",
+					"intent", string(d.Intent), "retry_max_tokens", retryGenerationTokens)
+			}
 			resp = retry
 		}
 	}

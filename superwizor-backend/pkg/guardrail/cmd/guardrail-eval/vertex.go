@@ -122,6 +122,12 @@ func toSchema(m map[string]any) (*genai.Schema, error) {
 				}
 			}
 		}
+		if v, ok := m["maxLength"].(int64); ok {
+			s.MaxLength = &v
+		}
+		if v, ok := m["minLength"].(int64); ok {
+			s.MinLength = &v
+		}
 	case "number":
 		s.Type = genai.TypeNumber
 	case "integer":

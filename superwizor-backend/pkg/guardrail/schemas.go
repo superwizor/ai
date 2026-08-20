@@ -72,10 +72,16 @@ func quotesArray(min int64) map[string]any {
 var hypothesisSchema = map[string]any{
 	"type": "object",
 	"properties": map[string]any{
-		"title": map[string]any{"type": "string"},
+		// maxLength na polach prozy to kontrola rozmiaru wyjscia, ta sama
+		// klasa co maxItems na cytatach. 20.08.2026 19:01 tura A8 chciala
+		// >4096 tokenow wyjscia (nieograniczone body x 5 hipotez, soczewka
+		// PPT zapraszala do glebi) — nawet ponowienie z podwojonym
+		// budzetem wyszlo uciete i tura skonczyla sie blokiem 'schema'.
+		"title": map[string]any{"type": "string", "maxLength": int64(120)},
 		"body": map[string]any{
 			"type":        "string",
-			"description": "Hipoteza sformułowana warunkowo. Bez etykiet diagnostycznych, bez leków, bez oceny ryzyka.",
+			"maxLength":   int64(900),
+			"description": "Hipoteza sformułowana warunkowo, 3-6 zdań. Bez etykiet diagnostycznych, bez leków, bez oceny ryzyka.",
 		},
 		// minItems 1: this is the grounding requirement.
 		"quotes": quotesArray(1),
@@ -85,12 +91,13 @@ var hypothesisSchema = map[string]any{
 
 func sectionsSchema(minQuotesPerSection int64) map[string]any {
 	return map[string]any{
-		"type": "array",
+		"type":     "array",
+		"maxItems": int64(6),
 		"items": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"title":  map[string]any{"type": "string"},
-				"body":   map[string]any{"type": "string"},
+				"title":  map[string]any{"type": "string", "maxLength": int64(120)},
+				"body":   map[string]any{"type": "string", "maxLength": int64(900)},
 				"quotes": quotesArray(minQuotesPerSection),
 			},
 			"required": []any{"title", "body", "quotes"},
@@ -134,11 +141,12 @@ var schemas = map[Intent]map[string]any{
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"title": map[string]any{"type": "string"},
-						"body":  map[string]any{"type": "string"},
+						"title": map[string]any{"type": "string", "maxLength": int64(120)},
+						"body":  map[string]any{"type": "string", "maxLength": int64(900)},
 					},
 					"required": []any{"title", "body"},
 				},
+				"maxItems": int64(6),
 			},
 		},
 		"required": []any{"sections"},
@@ -159,13 +167,14 @@ var schemas = map[Intent]map[string]any{
 					"properties": map[string]any{
 						"question": map[string]any{
 							"type":        "string",
+							"maxLength":   int64(200),
 							"description": "Pytanie do rozważenia. Nie może zawierać etykiety diagnostycznej, leku ani oceny ryzyka.",
 						},
 						"quotes": quotesArray(1),
 					},
 					"required": []any{"question", "quotes"},
 				},
-				"maxItems": 5,
+				"maxItems": int64(3),
 			},
 		},
 		"required": []any{"sections"},
@@ -183,7 +192,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(5),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
 			},
 		},
 		"required": []any{"hypotheses"},
@@ -193,7 +202,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(5),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
 			},
 			// Required, not optional: A9 is the intent most likely to be
 			// read as a prediction, and the ADR requires forward-looking
@@ -201,8 +210,9 @@ var schemas = map[Intent]map[string]any{
 			// is cheaper than hoping the prose stays hedged.
 			"caveats": map[string]any{
 				"type":        "array",
-				"items":       map[string]any{"type": "string"},
+				"items":       map[string]any{"type": "string", "maxLength": int64(200)},
 				"minItems":    int64(1),
+				"maxItems":    int64(4),
 				"description": "Ograniczenia wnioskowania. Wymagane.",
 			},
 		},
@@ -213,7 +223,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(5),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
 			},
 		},
 		"required": []any{"hypotheses"},
