@@ -26,6 +26,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
+	"github.com/superwizor-ai/backend/pkg/llmcost"
 	"github.com/superwizor-ai/backend/pkg/logging"
 	"github.com/superwizor-ai/backend/pkg/rag"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
@@ -59,9 +60,11 @@ var (
 	// array of speaker_groups with nested chunk index arrays) is
 	// exactly the shape that struggles. Flash's structured output is
 	// "plugged directly into a downstream parser without cleaning in
-	// most cases." Cost increases from $0.0375/M+$0.15/M to
-	// $0.075/M+$0.30/M input/output — roughly $0.002/session at
-	// typical 40-min volumes (vs $0.0007). Negligible at our scale.
+	// most cases." Rates are NOT quoted here any more: this comment
+	// carried gemini-1.5-flash numbers ($0.075/M+$0.30/M) long after
+	// the workload moved to 2.5-flash ($0.30/M+$2.50/M), understating
+	// input 4x and output 8.3x. The authoritative table is
+	// pkg/llmcost; a duplicated rate in a comment only rots.
 	//
 	// Available in europe-west4 since the 2.5 GA rollout. When
 	// gemini-3-flash lands in europe-west4 we'll evaluate the swap
@@ -2550,7 +2553,18 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	costUSD := float64(tokenStats.InputTokens)*0.00000125 + float64(tokenStats.OutputTokens)*0.000005
+	// Priced through pkg/llmcost, the single versioned rate table. Until
+	// 2026-08-20 this line used gemini-2.5-pro rates ($1.25/$5.00 per
+	// million) for a gemini-2.5-flash workload, overstating every row it
+	// ever wrote. Historical rows are NOT corrected here (plan section 6).
+	costUSD, costErr := llmcost.CostUSD(geminiModel,
+		int64(tokenStats.InputTokens), int64(tokenStats.OutputTokens), time.Now())
+	if costErr != nil {
+		// An unpriced model must not silently record $0 — that would make
+		// the spend dashboards quietly wrong. Store NULL and shout.
+		slog.ErrorContext(ctx, "llm cost: model not in price table — storing NULL cost",
+			"error", costErr, "model", geminiModel)
+	}
 
 	roleInferenceJSON, _ := json.Marshal(report.SpeakerRoleInference)
 
@@ -2566,7 +2580,7 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		nil, nil, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
-		int(processingTime.Seconds()), costUSD)
+		int(processingTime.Seconds()), nullableCost(costUSD, costErr))
 	if err != nil {
 		return "", err
 	}
@@ -2799,4 +2813,16 @@ func debugLogChunked(logger *slog.Logger, msg string, kvs ...any) {
 		)
 		logger.Info(msg, fields...)
 	}
+}
+
+// nullableCost renders a computed cost for the reports.llm_total_cost_usd
+// column. A pricing failure stores NULL rather than 0: a zero would be
+// indistinguishable from a genuinely free call and would quietly drag the
+// spend dashboards down, which is how the previous mispricing survived
+// for months without anyone noticing.
+func nullableCost(costUSD float64, err error) any {
+	if err != nil {
+		return nil
+	}
+	return costUSD
 }
