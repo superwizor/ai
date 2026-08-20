@@ -1,342 +1,255 @@
-# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.0_2)
+# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.1)
 
 | Pole | Wartość |
 |---|---|
-| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` (zmiana w 5.1/5.2 względem v1.0_1) |
-| Data | 2026-08-20 |
+| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.1** (2026-08-20) |
+| Data | 2026-08-20 (aktualizacja po rozstrzygnięciu D1) |
 | Gałąź robocza | `feat/chat-window` |
-| Status | Projekt planu — czeka na decyzje D1–D5 (sekcja 8) |
+| Status | Gotowy do startu F0 — blokery pozakodowe w sekcji 4 |
 
 Plan zakłada architekturę backendową (faza 2 z `ai_assistant.go`) — ADR §6
 przesądza: „identyczny guardrail po stronie serwera (żadnej logiki
 klasyfikacji w kliencie)", a §4.1 odrzuca kontrolę przez system prompt.
 Obecna implementacja czatu (wywołanie Vertex z urządzenia przez Firebase
-AI Logic) nie jest w stanie zrealizować żadnego punktu ADR i podlega
-wymianie, nie rozbudowie.
+AI Logic) podlega wymianie, nie rozbudowie.
 
 ---
 
-## 0. Interpretacja zmiany 5.1/5.2 (decyzja D1 — do potwierdzenia)
+## 0. Rozstrzygnięcia (stan na 20.08.2026)
 
-v1.0_2 przenosi trzy kategorie z ZABRONIONYCH do DOZWOLONYCH:
-
-| v1 (PROHIBITED) | v2 (ALLOWED) | kolumna „Schemat wyjścia" w v2 |
+| # | Decyzja | Rozstrzygnięcie |
 |---|---|---|
-| `P2_CONCEPT` | `A8_CONCEPT` | „`A7_TEMPLATE_MAP` (terapeuta wybiera kategorię, system podpina cytaty)" |
-| `P3_PROGRESS` | `A9_PROGRESS` | „`A2_FACTS` (częstotliwość tematów, status zadań)" |
-| `P4_TREAT` | `A10_TREAT` | „biblioteka protokołów (rozdz. 4.3) — terapeuta wybiera" |
+| D1 | Charakter A8–A10 | **Pełne operacje generatywne** (PO, 20.08): konceptualizacja, ocena postępu i propozycje interwencji są generowane jako hipotezy z wymuszonym uziemieniem cytatowym; granice pozostają na P1_DIAG / P2_MED / R_RISK. Ekstraktywne odpowiedniki (A7/A2) stają się ścieżką **degradacji** przy `conf < τ` i w trybie `defined_ops` |
+| D4 | Kod kategorii ryzyka | `R_RISK` zachowany (wraz z `X_OTHER`) — zastosowane w ADR v1.1 |
+| — | Umiejscowienie | `pkg/guardrail` w `clinical-svc` — budżet p95 ≤ 1,5 s nie mieści osobnego przeskoku |
+| — | Transport | RPC **unary** — weryfikator wymaga kompletnej odpowiedzi; wyjątek dopuszczalny tylko dla A4_EDU |
+| — | Flagi | tabela `app_config`, cache ≤ 30 s — env-vary wykluczone (deploy), ADR żąda < 1 h |
+| — | Weryfikator | dwutrybowy: deterministyczny dla cytatów (pewność 1,0 > próg 0,95), LLM dla pól wolnotekstowych |
+| — | Quota | mikrodolary (liczby całkowite), rezerwacja **przed pierwszym wywołaniem modelu**, commit wg `UsageMetadata` |
+| — | Log dowodowy | `guardrail_decisions`, 24 miesiące, **jawnie wyłączony z GDPR-purgera** + test negatywny (bez tego pakiet dowodowy na art. 94 MDR wygasa po 90 dniach) |
 
-Nowe wiersze niosą w kolumnie schematu treść kolumny „Przekierowanie"
-ze starej tabeli. Plan przyjmuje **jedyną wewnętrznie spójną
-interpretację**: A8–A10 są *dozwolone przez przekierowanie wykonania* —
-klasyfikator rozpoznaje je jako odrębne intencje, ale router wykonuje od
-razu ekstraktywny odpowiednik (A8 → przepływ A7, A9 → przepływ A2, A10 →
-biblioteka protokołów), **bez ściany odmowy** i bez generowania wolnego
-tekstu wnioskującego.
+Konsekwencja D1 nazwana w §9 ADR v1.1: moduł generuje nową informację
+kliniczną o konkretnym pacjencie — linia obrony to „ograniczone,
+uziemione, oznaczone, mierzone i wyłączalne", nie „odmawiane". Opinia
+regulacyjna przed GA jest warunkiem krytycznym; §9 wymaga ponownego
+podpisu.
 
-Uzasadnienie: każda inna interpretacja (pełna generatywna
-konceptualizacja/prognoza/zalecenia) stoi w sprzeczności z niezmienionymi
-w v2 sekcjami — 5.3 („`has_client_reference=true` + treść wnioskująca →
-PROHIBITED"), 5.5 (prompt: „NIE konceptualizuje przypadków, NIE ocenia
-stanu, NIE zaleca interwencji"), §2 pkt 5 i §9 (ryzyko rezydualne oparte
-na tym, że użycie kliniczne jest „wykrywane, odmawiane i mierzone").
+## 1. Stan dokumentu źródłowego
 
-Różnica w praktyce względem v1: użytkownik pytający „która sfera
-równowagi jest naruszona" nie dostaje odmowy z przyciskami, tylko od razu
-wchodzi w przepływ szablonu (wybór kategorii + podpięte cytaty), z
-komunikatem UI wyjaśniającym transformację. Kryterium „wytwarzanie nowej
-informacji klinicznej" pozostaje nieprzekroczone przez generację.
+Niespójności v1.0_2 (enum 5.4, prompt 5.5, progi 8.2, kody R_RISK,
+artefakt w §3, kolumny schematów A8–A10, changelog) — **naprawione w ADR
+v1.1** (ten sam plik, commit razem z tym planem). Otwarte pozostają:
 
-**Konsekwencja dowodowa (do świadomej akceptacji):** dla A8–A10 znika
-zdarzenie `ai_chat_refused` — argument z §9 „odmawiane i mierzone" słabnie
-dokładnie w kategoriach, o które chodziło. Plan kompensuje to zdarzeniem
-`ai_chat_rerouted` z oryginalnym kodem intencji (sekcja F7), tak by próg
-przeglądu 8.3 („udział zapytań o funkcje wyrobu > 25%") dalej działał —
-liczony jako `P1 + P2 + rerouted(A8..A10)`.
+- **podpis §9** w brzmieniu v1.1 (zmiana merytoryczna → ponowna akceptacja),
+- przeniesienie ADR z `docs/kronikarz/` do rejestru `docs/adr/` z nadaniem numeru.
 
 ---
 
-## 1. Niespójności ADR do naprawy przed implementacją
-
-Zmiana objęła tylko tabele 5.1/5.2; pozostałe sekcje odwołują się do
-kodów, które już nie istnieją. Implementacja według dokumentu w obecnym
-stanie jest niemożliwa — schemat 5.4 odrzuciłby kody z tabeli 5.1.
-
-| # | Miejsce | Problem | Proponowana naprawa |
-|---|---|---|---|
-| 1 | 5.4 enum | zawiera `P2_CONCEPT…R_RISK,X_OTHER`; brak `A8–A10`, `P2_MED`, `P3_RISK`, `P4_OTHER` | zaktualizować enum do v2 (wzorzec w sekcji F2 niżej) |
-| 2 | 5.3, 8.2, §9, diagram 4.2 | używają `R_RISK` | rekomendacja: **zachować kod `R_RISK`** zamiast `P3_RISK` — semantyka „własny, niższy próg, absolutny priorytet" jest częścią identyfikatora; przemianowanie niczego nie kupuje, a psuje spójność czterech sekcji (D4) |
-| 3 | 5.1 wiersze A8–A10 | kolumna „Schemat wyjścia" zawiera treść przekierowania | wpisać: A8 → schemat A7 `template{}`, A9 → schemat A2 `stats{}`, A10 → operacja aplikacyjna (biblioteka protokołów) |
-| 4 | 8.2 „Recall PROHIBITED (P1–P5)" | zbiór P skurczył się do P1_DIAG + P2_MED | rozbić metrykę: recall P1+P2 ≥ 0,97 **oraz nowa**: poprawność routingu A8–A10 ≥ 0,95 (błędny routing = wnioskowanie wychodzi ścieżką generatywną) |
-| 5 | Nagłówek §3 | doklejony obcy fragment tekstu („…opcjeTo i gadasz? Gówno.") — wygląda na przypadkowe wklejenie | usunąć |
-| 6 | Changelog / wersja | treść zmieniona merytorycznie, metryczka nadal „1.0 / Pierwsza wersja" | podbić do 1.1 z wpisem o zmianie 5.1/5.2 |
-| 7 | §9 podpis | zmiana taksonomii jest zmianą merytoryczną w dokumencie o statusie „Zaakceptowany" z niepodpisaną linią akceptacji | ponowna akceptacja PO po naprawie 1–6 |
-
-Naprawy 1–4 są warunkiem startu F2 (klasyfikator koduje enum i progi
-wprost z ADR). Mogę przygotować tę korektę jako osobny commit do decyzji.
-
----
-
-## 2. Architektura docelowa (ustalenia z 19–20.08, skrót)
+## 2. Architektura docelowa (skrót)
 
 ```
-[Flutter / web — wyłącznie UI, zero logiki klasyfikacji]
-        │ unary RPC AskPatientQuestion / defined-op RPC
+[Flutter / web — wyłącznie UI]
+        │ unary RPC
         ▼
 [clinical-svc]
-  0. wyłącznik: app_config (AI_CHAT_ENABLED, AI_CHAT_MODE; global + org)
-  1. quota: rezerwacja mikrodolarów (F6) — odmowa PRZED pierwszym wywołaniem modelu
+  0. app_config: AI_CHAT_ENABLED, AI_CHAT_MODE (global + org, cache ≤30 s)
+  1. quota: rezerwacja µUSD PRZED klasyfikatorem (najtańsza odmowa: 0 wywołań)
   2. pkg/guardrail: klasyfikator (gemini-2.5-flash, T=0, structured output)
-  3. router: R_RISK → odmowa bez generacji │ P1,P2 → odmowa+przekierowanie
-             conf<τ → degradacja │ A1–A7 → ścieżka intencji │ A8–A10 → reroute
+  3. router: risk_flag → odmowa R │ P1/P2 → odmowa+przekierowanie
+             conf<τ → degradacja (A8→A7, A9→A2, reszta→defined_ops)
+             A1–A10 → ścieżka intencji
   4. pobieranie per intencja:
-       A1/A7/A8 → transcript_segments (cytaty verbatim, znaczniki czasu)
-       A2/A9    → agregacja SQL, bez modelu
-       A5       → notatki terapeuty + cytaty
-       A4       → bez kontekstu klienta (wymuszone)
-       A10      → biblioteka protokołów (poza zakresem — patrz sekcja 7)
-  5. generator ze schematem wymuszonym per intencja
-       (pola wnioskowe NIEOBECNE w schemacie — egzekucja przez nieobecność)
-  6. weryfikator warunkowy:
-       deterministyczny (A1/A7/A8: cytat ⊂ transcript_segments — pewność 1,0)
-       LLM drugi przebieg (A3/A5: wolny tekst przy kontekście klienta)
-       brak (A2/A9: same liczby; A4: brak osoby w kontekście)
-       zapis decyzji ZAWSZE (ślad dowodowy ciągły)
-  7. zapis: chat_interactions (notatnik roboczy)
-            guardrail_decisions (bez treści, 24 mies., POZA gdpr-purgerem)
-  8. commit quoty wg UsageMetadata; zwolnienie nadwyżki rezerwacji
+       A1/A7      → transcript_segments (cytaty verbatim + ts)
+       A2         → agregacja SQL, bez modelu
+       A5         → notatki terapeuty + cytaty
+       A4         → BEZ kontekstu klienta (wymuszone w kodzie)
+       A8         → cytaty tematyczne + raporty (+ rag_memories jako preselekcja)
+       A9         → agregaty A2 + raporty + cytaty trendu
+       A10        → cytaty + raporty (biblioteka protokołów: przyszłe wzbogacenie)
+  5. generator ze schematem per intencja
+       — pola decyzji terapeuty NIE ISTNIEJĄ w schemacie modelu
+       — A8–A10: hipoteza bez tablicy cytatów jest niereprezentowalna
+  6. weryfikator dwutrybowy (decyzja logowana ZAWSZE):
+       deterministyczny: cytaty ⊂ transcript_segments (1,0) + uziemienie A8–A10
+       LLM T=0:  A1–A7 → „czy zawiera wnioskowanie kliniczne o osobie"
+                 A8–A10 → „czy zawiera diagnozę / farmakoterapię / ocenę ryzyka"
+       brak: A2 (same liczby), A4 (brak osoby)
+  7. zapis: chat_interactions + guardrail_decisions (24 mies., poza purgerem)
+  8. commit quoty wg UsageMetadata (wycena: pkg/llmcost)
 ```
 
-Rozstrzygnięcia zamrożone wcześniej, przenoszone do planu bez zmian:
+Koszt i latencja (kalibracja zmierzona 3,61 znaku/token; stawki 0,30/2,50 USD):
 
-- **`pkg/guardrail` w `clinical-svc`, nie osobny serwis** — budżet p95 ≤ 1,5 s
-  nie mieści dodatkowego przeskoku przy trzech szeregowych wywołaniach;
-  `pkg/svcauth` wciąż niepodpięty, więc nowy publiczny serwis to nowa
-  ekspozycja. Czysty interfejs pakietu = tanie wydzielenie później.
-- **Unary zamiast strumienia** — weryfikator wymaga kompletnej odpowiedzi;
-  schematy to obiekty JSON, strumieniowanie ich nic nie daje. Wyjątek
-  dopuszczalny później: A4_EDU (wolny tekst bez klienta). `connect_adapter_stream.go`
-  zostaje dla zgodności proto, ścieżki A1–A10 idą unary.
-- **Flagi w tabeli konfiguracji, nie w env** — env-vary na Cloud Run wymagają
-  deployu; ADR żąda przełączenia < 1 h. Tabela + cache 30 s = `UPDATE` działa
-  w minutę, zakres per org naturalny, historia audytowalna.
-- **Klasyfikator i weryfikator na `gemini-2.5-flash`, nie `flash-lite`** —
-  udokumentowana słabość lite przy wyjściu strukturalnym (komentarz w
-  `llm-worker/main.go`), a tu wszystko jest strukturalne. Do tego lite ma
-  sygnalizowane wycofanie 16.10.2026 (do potwierdzenia w konsoli).
+| tura | koszt | latencja szac. |
+|---|---|---|
+| ekstraktywna (A1–A7) | ≈ $0.0030 | 0,7–1,3 s |
+| generatywna (A8–A10; dłuższe wyjście + cytaty w kontekście) | ≈ $0.0035–0.0045 | 0,9–1,4 s |
 
-Koszt i latencja (kalibracja zmierzona: 3,61 znaku/token; stawki 0,30/2,50 USD):
-
-| tura | wejście | koszt | latencja szac. |
-|---|---|---|---|
-| klasyfikator | ~650 tok. | $0.0003 | 200–400 ms |
-| generator (kontekst ≤ 8 000 znaków) | ~2 700 tok. | $0.0023 | 300–500 ms |
-| weryfikator (gdy LLM) | ~900 tok. | $0.0004 | 200–400 ms |
-| **razem** | | **≈ $0.0030** | **0,7–1,3 s** |
-
-Budżet 8.2 (p95 ≤ 1,5 s) jest osiągalny bez zapasu — stąd A2/A9 bez modelu
-i weryfikator deterministyczny wszędzie, gdzie się da.
+Budżet 8.2 (p95 ≤ 1,5 s) osiągalny bez zapasu — stąd A2 bez modelu,
+weryfikacja deterministyczna wszędzie, gdzie się da, i klasyfikator/
+weryfikator na `flash` (udokumentowana słabość `flash-lite` przy wyjściu
+strukturalnym; sygnalizowane wycofanie lite 16.10.2026).
 
 ---
 
 ## 3. Fazy implementacji
 
-Konwencja: każda faza = osobna gałąź z `feat/chat-window`, testy przed
-scaleniem, DoD wg §13 ADR. Szacunki dla jednej osoby.
+Każda faza = gałąź z `feat/chat-window`, testy przed scaleniem, DoD wg
+§13 ADR v1.1. Szacunki dla jednej osoby.
 
 ### F0 — Fundamenty (2–3 dni) ⚠ warunek wszystkiego dalej
 
-1. **`pkg/llmcost`** — jedna tabela cen (model → stawki wej/wyj, wersjonowana
-   datą). Naprawia dwa istniejące błędy: komentarz w `llm-worker` (zaniża
-   6,5×) i naliczanie `reports.llm_total_cost_usd` (zawyża 2,6× — liczy po
-   stawkach 2.5-pro dla raportów z 2.5-flash). Korekta danych historycznych
-   osobną decyzją; od wdrożenia liczy się poprawnie.
-2. **Tabela `app_config`** (migracja 000084): `key`, `value`, `organization_id
-   NULL=global`, `updated_at`, `updated_by`; czytana z cache 30 s w
-   `clinical-svc`. Zasila `AI_CHAT_ENABLED`, `AI_CHAT_MODE`, później progi τ.
-3. **Poprawka ADR** wg sekcji 1 (jeśli D4/D5 zatwierdzone).
-
-DoD: `llm-eval` liczy po nowych stawkach; test jednostkowy cache'a
-konfiguracji; runbook wyłączenia czatu (UPDATE + czas propagacji) opisany.
+1. **`pkg/llmcost`** — jedna wersjonowana tabela cen. Naprawia dwa błędy:
+   komentarz w `llm-worker` (zaniża 6,5×) i naliczanie
+   `reports.llm_total_cost_usd` (zawyża 2,6× — stawki 2.5-pro dla raportów
+   z 2.5-flash). Korekta danych historycznych osobną decyzją.
+2. **Migracja 000084: `app_config`** (`key`, `value`, `organization_id
+   NULL=global`, `updated_at`, `updated_by`) + czytnik z cache 30 s.
+3. DoD: `llm-eval` liczy po nowych stawkach; test cache'a; runbook
+   wyłączenia czatu (UPDATE + pomiar propagacji) opisany i wykonany na stagingu.
 
 ### F1 — Szkielet backendowy czatu (3–4 dni)
 
-„Krok 4" z TODO `ai_assistant.go`: wpięcie `pgxpool` + `cryptobox` (już
-istnieją w `clinical-svc`) i nowego klienta Vertex (`cloud.google.com/go/aiplatform`,
-generacja + embeddingi, `europe-west4` z env — NIE z kodu klienta);
-rejestracja w `connect_adapter.go`; `AskPatientQuestion` unary zwracający
-odpowiedź bez guardraili (za flagą, tylko staging); zapis do
-`chat_interactions` z `UsageMetadata` (input/output tokenów per
-wywołanie); logi `input_tokens`/`output_tokens` jak w `llm-worker`.
+„Krok 4" z TODO `ai_assistant.go`: wpięcie `pgxpool` + `cryptobox` (już są
+w `clinical-svc`) i klienta Vertex (`cloud.google.com/go/aiplatform`,
+generacja + embeddingi; **region z env, nie z kodu klienta**); rejestracja
+w `connect_adapter.go`; `AskPatientQuestion` unary bez guardraili (flaga,
+tylko staging); zapis `chat_interactions` z `UsageMetadata` per wywołanie.
 
-DoD: rozmowa działa na stagingu end-to-end; wiersz w `chat_interactions`
-po każdej turze; koszt tury widoczny w logach.
+DoD: rozmowa działa na stagingu; wiersz w `chat_interactions` po każdej
+turze; koszt tury w logach; pomiar p95 od pierwszego dnia.
 
 ### F2 — `pkg/guardrail`: klasyfikator + router (3–4 dni)
 
-- Schemat wyjścia klasyfikatora (5.4 po korekcie):
+- Enum 5.4 v1.1 (A1–A10, P1_DIAG, P2_MED, R_RISK, X_OTHER); prompt
+  `classifier_v2.txt` wersjonowany w repo.
+- Router: `risk_flag` honorowany niezależnie od intencji i pewności;
+  P1/P2 → odmowa + przekierowanie (P1 wskazuje też A8 jako legalną
+  alternatywę — „konceptualizacja zamiast diagnozy"); `conf < τ=0.85`
+  (z `app_config`) → degradacja A8→A7, A9→A2, reszta → defined_ops.
+- `rationale_short` nigdy w logach produkcyjnych.
 
-```json
-{"intent": {"enum": ["A1_SEARCH","A2_FACTS","A3_FORMAT","A4_EDU",
-  "A5_SUPERVISION_PACK","A6_ADMIN","A7_TEMPLATE_MAP",
-  "A8_CONCEPT","A9_PROGRESS","A10_TREAT",
-  "P1_DIAG","P2_MED","R_RISK","X_OTHER"]},
- "has_client_reference": {"type":"boolean"},
- "risk_flag": {"type":"boolean"},
- "confidence": {"type":"number"},
- "rationale_short": {"type":"string","maxLength":200}}
-```
+DoD: stół decyzyjny w testach jednostkowych (intent × risk_flag ×
+confidence × tryb); klasyfikator za interfejsem (mock w unit, Vertex w
+integracyjnych).
 
-  (kody `R_RISK`/`X_OTHER` zachowane wg rekomendacji D4; jeśli PO wybierze
-  `P3_RISK`/`P4_OTHER`, zmiana jest mechaniczna.)
-- Prompt 5.5 wersjonowany w repo (`pkg/guardrail/prompts/classifier_v1.txt`);
-  treść bez zmian merytorycznych — pod interpretacją D1 zdania „narzędzie
-  NIE konceptualizuje…" pozostają prawdziwe (wykonanie jest ekstraktywne).
-- Router: `risk_flag` → odmowa kategorii R (próg asymetryczny — flaga
-  honorowana nawet przy niskiej pewności); P1/P2 → odmowa + przekierowanie;
-  `conf < τ=0.85` (z `app_config`, kalibrowany w F8) → degradacja do
-  defined_ops; A1–A7 → ścieżka intencji; A8–A10 → reroute z komunikatem.
-- `rationale_short` nigdy nie trafia do logów produkcyjnych (5.4).
-
-DoD: testy jednostkowe routera na stole decyzyjnym (każda kombinacja
-intent × risk_flag × confidence); klasyfikator za interfejsem — mock w
-testach, Vertex w integracyjnych.
-
-### F3 — Ścieżki pobierania per intencja (4–5 dni)
+### F3 — Ścieżki pobierania per intencja (5–6 dni)
 
 | intencja | źródło | uwagi |
 |---|---|---|
-| A1, A7, A8 | `transcript_segments` (65 MB, deszyfrowanie per segment) | zwrot: cytat + mówca + ts_start/ts_end + session_id |
-| A2, A9 | agregacje SQL | zero wywołań modelu; szablon metryk z listy A2/A9 |
-| A5 | notatki terapeuty + cytaty | pola `open_questions` wyłącznie user-authored |
-| A4 | **brak kontekstu klienta** | wymuszone w kodzie: kontekst nie jest ładowany, nie „proszony o pominięcie" |
-| A6 | operacje aplikacyjne | istniejące RPC |
-| A10 | biblioteka protokołów | POZA ZAKRESEM planu — nie istnieje w produkcie (grep: zero trafień); do jej powstania A10 zachowuje się jak v1 P4_TREAT: konstruktywna odmowa. Flaga `A10_ENABLED` w `app_config`. |
+| A1, A7 | `transcript_segments` | cytat + mówca + ts + session_id |
+| A2 | agregacje SQL | zero wywołań modelu |
+| A5 | notatki + cytaty | `open_questions` wyłącznie user-authored |
+| A4 | **brak kontekstu klienta** | wymuszone w kodzie, test negatywny |
+| A6 | istniejące RPC | |
+| **A8** | cytaty tematyczne (`transcript_segments`) + raporty; `rag_memories` jako preselekcja sesji kandydackich | kontekst ograniczony do ~8 000 znaków; selekcja cytatów pod kategorie modelu |
+| **A9** | agregaty jak A2 + skróty raportów + cytaty ilustrujące trend | prognozy wyłącznie warunkowe (schemat wymusza `caveats`) |
+| **A10** | cytaty + raporty | biblioteka protokołów = przyszłe wzbogacenie, nie zależność |
 
-⚠ **Zależy od decyzji D2**: transkrypcja kanoniczna jest od 2026-07-20
-zredagowana at-rest — cytaty „verbatim" będą zawierały tokeny
-(`[MIEJSCOWOŚĆ-A]`, `[PRACODAWCA]`). Terapeuta zna te dane; zobaczy tokeny
-tam, gdzie pamięta treść. Opcje: (a) zaakceptować i opisać w UI,
-(b) zmienić zakres redakcji — poza zakresem tego planu i z konsekwencjami
-dla `docs/compliance/06`. Plan zakłada (a) do odwołania.
+⚠ **Decyzja D2 (otwarta) nabiera wagi**: transkrypcja jest zredagowana
+at-rest (od 2026-07-20), a uziemienie A8–A10 pokazuje cytaty przy **każdej
+hipotezie** — tokeny `[MIEJSCOWOŚĆ-A]`, `[PRACODAWCA]` będą widoczne w
+samym sercu funkcji, nie na jej obrzeżu. Warianty: (a) zaakceptować +
+komunikat w UI, (b) zmienić zakres redakcji (konsekwencje dla
+`docs/compliance/06`). Plan zakłada (a) do odwołania.
 
-DoD: każda ścieżka z testem integracyjnym na prawdziwym Postgresie
-(konwencja repo); A4 z testem negatywnym „kontekst klienta nieobecny w
-promptcie".
+DoD: każda ścieżka z testem integracyjnym na prawdziwym Postgresie;
+A4 z testem „kontekst nieobecny w promptcie".
 
-### F4 — Schematy wyjścia + generator + weryfikator (4–5 dni)
+### F4 — Schematy + generator + weryfikator dwutrybowy (5–6 dni)
 
-- Schematy JSON per intencja (§13 t.2) w `pkg/guardrail/schemas/`;
-  walidacja serwerowa PO stronie odpowiedzi modelu (nie ufamy samemu
-  structured output). **Pola wnioskowe nie istnieją w schemacie
-  przekazywanym modelowi** — serwer dokleja treść `filled_by=user` po
-  walidacji; test negatywny: próba modelu wypełnienia pola user-only jest
-  niemożliwa strukturalnie.
-- Weryfikator warunkowy:
-  - deterministyczny dla cytatów: każdy `quotes[].text` musi być dosłownym
-    podłańcuchem odszyfrowanego segmentu, `speaker`/`ts` zgodne — pewność
-    1,0, koszt 0, latencja ~0 (silniejsze niż próg 0,95 z 8.2);
-  - LLM (T=0, pytanie zamknięte z 4.3) dla A3/A5 oraz — decyzja
-    konserwatywna — dla wszystkiego, co zawiera pole tekstowe dłuższe niż
-    cytat;
-  - `verifier_block=true` → odpowiedź zastąpiona wersją ekstraktywną albo
-    odmowa (4.2) + zdarzenie telemetryczne.
-- `guardrail_decisions` (migracja 000085): `id, chat_hash, intent,
-  has_client_reference, risk_flag, confidence_bucket, decision, verifier_result,
-  classifier_version, verifier_version, platform, occurred_at` — **bez treści**;
-  retencja 24 miesiące; **jawne wyłączenie z gdpr-purgera + test negatywny**
-  (purger z `analytics_events` kasuje po 90 dniach — bez wyłączenia pakiet
-  dowodowy na art. 94 MDR wyparowałby po kwartale).
+- Schematy A1–A10 w `pkg/guardrail/schemas/`; walidacja serwerowa PO
+  odpowiedzi modelu. Pola decyzji terapeuty (`conclusion`, `decision`,
+  `filled_by=user`) **nieobecne w schemacie modelu** — serwer dokleja po
+  walidacji. A8–A10: `hypotheses[].quotes` z `minItems: 1` — hipoteza bez
+  cytatu jest niereprezentowalna strukturalnie.
+- Weryfikator:
+  - **deterministyczny** (koszt 0, pewność 1,0): każdy cytat dosłownym
+    podłańcuchem odszyfrowanego segmentu; mówca/ts zgodne; A8–A10 —
+    kompletność uziemienia;
+  - **LLM** (T=0, pytanie zamknięte per intencja): A1/A3/A5/A7 —
+    wnioskowanie kliniczne o osobie; A8–A10 — diagnoza nozologiczna /
+    farmakoterapia / ocena ryzyka w treści hipotez;
+  - `verifier_block` → zastąpienie wersją ekstraktywną albo odmowa + log.
+- **Migracja 000085: `guardrail_decisions`** (bez treści; hash sesji
+  czatu; intent, risk_flag, confidence_bucket, decision, verifier_result,
+  block_reason, wersje promptów, platforma) — retencja 24 mies., **jawne
+  wyłączenie z gdpr-purgera + test negatywny w CI**.
 
-DoD: zestaw adversarialny wstępny (50 przykładów, rozszerzany w F8);
-catch-rate mierzony; test purgera potwierdza nietykalność
-`guardrail_decisions`.
+DoD: zestaw adversarialny wstępny (50 przykładów, w tym wstrzyknięta
+diagnoza w A8 i ocena ryzyka w A9); catch-rate mierzony; test purgera
+zielony.
 
 ### F5 — Kill switch + plan B (2 dni)
 
-- `AI_CHAT_ENABLED` (global/org) i `AI_CHAT_MODE ∈ {chat, defined_ops}` z
-  `app_config`; zmiana bez deployu; propagacja ≤ 60 s (TTL cache 30 s ×2).
-- Tryb `defined_ops` (§11): to samo pole tekstowe staje się parametrem
-  operacji; klasyfikator działa jako router (nie bramka generatora);
-  komunikat w `.arb`.
-- Zdarzenie `ai_chat_kill_switch_changed` + wpis w `audit_events`.
-- Runbook: decyzja → UPDATE → weryfikacja; test na stagingu z pomiarem
-  czasu (§9 wymaga < 1 h; realnie minuty).
+`AI_CHAT_ENABLED` / `AI_CHAT_MODE` z `app_config`; tryb `defined_ops`
+(§11: A8–A10 niedostępne, zastępują je A7/A2); zdarzenie
+`ai_chat_kill_switch_changed` + `audit_events`; runbook z pomiarem czasu
+(cel < 5 min, wymóg < 1 h).
 
 ### F6 — Quota per terapeuta (3 dni)
 
-- Migracja 000086: `chat_usage_counters(therapist_id, period_start,
-  period_end, micro_usd_used, micro_usd_reserved, micro_usd_limit)` —
-  liczby całkowite w mikrodolarach; okres = okres subskrypcji (jeden zegar).
-- Protokół identyczny z tokenowym: **rezerwacja górnego oszacowania przed
-  klasyfikatorem** (najtańsze miejsce odmowy — zero wywołań modelu) →
-  commit rzeczywistego kosztu z `UsageMetadata` (suma 1–3 wywołań, wycena
-  przez `pkg/llmcost`) → zwolnienie nadwyżki.
-- Limit domyślny $1.50/mies. = `1_500_000` µUSD w `app_config`
-  (per org nadpisywalny); ostrzeżenie w UI przy 80%.
-- Wyczerpanie → **degradacja do `defined_ops`**, nie ściana błędu: A2/A9
-  (czysty SQL) i A6 działają dalej za darmo; informacja o procedurach
-  kryzysowych zawsze widoczna bez modelu. Własny kod błędu
-  `CHAT_QUOTA_EXHAUSTED` — odrębny od `SUBSCRIPTION_INACTIVE`.
-- Reset administracyjny tą samą ścieżką co `AdminResetTokens`.
+Migracja 000086: `chat_usage_counters(therapist_id, period_start,
+period_end, micro_usd_used, micro_usd_reserved, micro_usd_limit)`;
+protokół rezerwuj → zatwierdź → zwolnij; rezerwacja górnego oszacowania
+**przed klasyfikatorem**; commit wg `UsageMetadata` × `pkg/llmcost`;
+limit domyślny $1.50/mies. = `1_500_000` µUSD w `app_config` (per org
+nadpisywalny); ostrzeżenie 80%; wyczerpanie → degradacja do defined_ops
+(A2/A6 dalej działają; informacja kryzysowa zawsze widoczna); kod błędu
+`CHAT_QUOTA_EXHAUSTED`; reset ścieżką `AdminResetTokens`.
 
-DoD: test wyścigu dwóch równoległych tur przy prawie wyczerpanym limicie;
-test degradacji; przy $0.0030/turę limit $1.50 ≈ 500 tur/mies. — do
-walidacji po pierwszych danych z F7.
+Przy $0.003–0.0045/turę limit $1.50 ≈ **330–500 tur/mies.** — do rewizji
+po 30 dniach danych (D3).
+
+DoD: test wyścigu dwóch równoległych tur przy prawie wyczerpanym
+limicie; test degradacji.
 
 ### F7 — Telemetria + dashboard (2–3 dni)
 
-Zdarzenia 7.1 (bez PII, bez treści) + korekta pod D1:
+Zdarzenia 7.1 ADR v1.1: `ai_chat_query_classified`, `ai_chat_refused`
+(P1/P2/R), `ai_chat_degraded` (low_conf | uncertain | quota),
+**`ai_chat_clinical_generated`** (A8–A10: grounding_quote_count,
+verifier_result), `ai_chat_verifier_block` (block_reason ∈ {inference,
+diag_med_risk, ungrounded}), `ai_chat_template_field_filled`,
+`ai_chat_kill_switch_changed`.
 
-| zdarzenie | zmiana względem ADR |
-|---|---|
-| `ai_chat_query_classified` | bez zmian |
-| `ai_chat_refused` | tylko P1, P2, R |
-| **`ai_chat_rerouted`** *(nowe)* | `original_intent ∈ {A8,A9,A10}`, `target`, `accepted` — utrzymuje sygnał dryfu 8.3 |
-| `ai_chat_degraded`, `ai_chat_verifier_block`, `ai_chat_template_field_filled`, `ai_chat_kill_switch_changed` | bez zmian |
+Dashboard progów 8.3 w panelu admina: udział P1+P2+R (25%); **udział
+A8–A10 (raport miesięczny, próg miękki 60% — dryf mierzony użyciem)**;
+verifier_block (3%); `grounding_quote_count=0` (0% — alarm); pola extract
+w polach user-only (0%); przekierowania przyjęte (30%).
 
-Dashboard progów 8.3 w panelu admina (rozszerzenie istniejącej strony
-analytics): udział P1+P2+rerouted (próg 25%), verifier_block/dozwolone
-(3%), pola extract w polach wnioskowych (0% — alarm natychmiastowy),
-przekierowania przyjęte (30%).
-
-Uwaga techniczna z pomiarów 20.08: zdarzenia `*_finished` gubią ~40%
-sesji czytania (brak flush przy `AppLifecycleState.paused`) — telemetrię
-czatu od początku wysyłać także przy pauzie cyklu życia.
+Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
+— telemetrię czatu wysyłać także przy `AppLifecycleState.paused`.
 
 ### F8 — `guardrail-evals/` + bramka CI (5–8 dni, ścieżka krytyczna)
 
-- ≥ 600 zapytań PL, ≥ 40/kategorię (14 kategorii × 40 = 560 minimum,
-  celujemy w 700), w tym parafrazy, pytania pośrednie, mieszane
-  (reguła 5.3: część PROHIBITED → całość w trybie odmowy), żargon PPT/CBT/
-  psychodynamiczna/systemowa, próby obejścia („hipotetycznie…", „gdyby ktoś
-  taki jak…", „dla celów edukacyjnych oceń…").
-- Dwóch anotatorów, w tym klinicysta (⚠ jedyny zasób spoza zespołu —
-  zamówić NAJPIERW, reszta F8 czeka na etykiety).
-- Progi CI (po korekcie 8.2): recall R ≥ 0,99 · recall P1+P2 ≥ 0,97 ·
-  routing A8–A10 ≥ 0,95 · FP na ALLOWED ≤ 0,08 · verifier catch ≥ 0,95
-  (zestaw adversarialny: dozwolone intencje z wstrzykniętym wnioskowaniem) ·
-  p95 klasyfikator+weryfikator ≤ 1,5 s.
-- Koszt pełnego przebiegu ≈ $0.22 (600 × ~850 tok.) — bramka może chodzić
-  na każdym PR dotykającym `pkg/guardrail`; wywołania zrównoleglone.
-- Kalibracja τ na krzywej precision/recall z zestawu; zapis do `app_config`.
+- ≥ 600 zapytań PL (celujemy w 700), ≥ 40/kategorię × 14 kategorii;
+  parafrazy, pytania pośrednie, mieszane (reguła 5.3), żargon modalności,
+  próby obejścia; **pary graniczne P1↔A8** (diagnoza przebrana za
+  konceptualizację i odwrotnie) — nowa, najważniejsza klasa przykładów.
+- Dwóch anotatorów, w tym klinicysta — **zamówić natychmiast**, reszta F8
+  czeka na etykiety.
+- Progi CI (8.2 v1.1): recall R ≥ 0,99 · recall P1+P2 ≥ 0,97 ·
+  **konfuzja P1→A8 ≤ 0,02** · FP na ALLOWED ≤ 0,08 · verifier catch
+  ≥ 0,95 (zestaw dwuczęściowy) · **uziemienie: 0 hipotez bez cytatu** ·
+  p95 ≤ 1,5 s.
+- Koszt pełnego przebiegu ≈ $0.25 — bramka na każdym PR dotykającym
+  `pkg/guardrail`; wywołania równoległe.
+- Kalibracja τ na krzywej precision/recall; zapis do `app_config`.
 
-### F9 — UI web + Flutter (4–6 dni + cykl wydań)
+### F9 — UI web + Flutter (5–7 dni + cykl wydań)
 
-- Defined ops jako widoczne funkcje (§9: „nie tylko fallback") — 5 operacji,
-  teksty w `.arb` z opisami dla tłumacza.
-- Odmowa konstruktywna: 1 zdanie + 1–3 przyciski; bez moralizowania i bez
-  powtarzania odmowy w kolejnych turach (stan konwersacji pamięta odmowę).
-- Art. 50 AI Act: informacja przy pierwszym użyciu + w ustawieniach;
-  oznaczenie treści AI; cytaty oznaczone jako verbatim ze źródłem.
-- Reroute A8–A10: komunikat transformacji („Zamiast oceny postępu — oto
-  zestawienie faktów…") — projekt tekstów z klinicystą.
-- Historia czatu = notatnik roboczy: osobna retencja, technicznie odcięta
-  od funkcji superwizyjnych (test negatywny — §13 t.9).
-- ⚠ Mobile: parytet web/mobile na GA wymaga wydania Fluttera; **Google Play
-  stoi na 1.0.3 z 23.07** (blokada: keystore + autoryzacja `androidpublisher`
-  — czeka po stronie PO od 16.08). Bez odblokowania Play GA czatu na
-  Androidzie jest niemożliwe niezależnie od tego planu.
+- Defined ops jako widoczne funkcje (§9), teksty w `.arb`.
+- Odmowa konstruktywna (1 zdanie + 1–3 przyciski; bez powtarzania odmowy).
+- Art. 50 AI Act: informacja przy pierwszym użyciu + ustawienia; oznaczenie
+  treści AI; **prezentacja A8–A10**: hipotezy oznaczone jako AI do
+  weryfikacji klinicysty, rozwijalne cytaty przy każdej hipotezie, pola
+  decyzji wizualnie odrębne i edytowalne tylko przez terapeutę.
+- Historia czatu = notatnik roboczy (osobna retencja, odcięta technicznie
+  od funkcji superwizyjnych — test negatywny).
+- ⚠ Mobile: parytet web/mobile na GA wymaga wydania Fluttera; **Google
+  Play stoi na 1.0.3 z 23.07** (keystore + autoryzacja `androidpublisher`
+  po stronie PO od 16.08).
 
 ---
 
@@ -351,53 +264,55 @@ F8: anotacja (start NATYCHMIAST) ──────┘
 F9 (po F4, równolegle z F5–F7)
 ```
 
-- Kod: ~25–33 dni robocze jednoosobowo; z równoległością F6/F7/F9 realnie
+- Kod: ~27–36 dni roboczych jednoosobowo; z równoległością realnie
   5–6 tygodni kalendarzowych.
-- **Ścieżka krytyczna nie jest w kodzie**: anotacja zestawu (klinicysta,
-  dwóch anotatorów, rozstrzyganie sporów) i **zewnętrzna opinia regulacyjna
-  (§9, przed GA)** — oba procesy startować dziś, równolegle z F0.
-- Drugi bloker pozakodowy: **podpis §9 po zmianie 5.1/5.2** (sekcja 1 p.7).
+- **Ścieżka krytyczna poza kodem**: (1) anotacja zestawu z klinicystą,
+  (2) **zewnętrzna opinia regulacyjna obejmująca wprost generatywne
+  A8–A10** — po D1 to najdłuższy i najważniejszy element; oba startować
+  dziś, równolegle z F0. (3) **Podpis §9 w brzmieniu v1.1.**
 
-## 5. Mapowanie na warunki GA (§9 ADR)
+## 5. Mapowanie na warunki GA (§9 ADR v1.1)
 
-| Warunek §9 | Pokrycie |
+| Warunek | Pokrycie |
 |---|---|
 | Guardrail trójwarstwowy + progi 8.2 | F2+F4+F8 |
-| R blokowane bez wyjątków, adversarialnie | F2 (risk_flag priorytet) + F8 |
-| Kill switch global+tenant, runbook < 1 h | F0+F5 |
+| R blokowane bez wyjątków, adversarialnie | F2+F8 |
+| Uziemienie A8–A10 + catch diag/med/risk ≥ 0,95 | F4+F8 |
+| Kill switch + runbook | F0+F5 |
 | Defined ops w UI | F9 |
-| Rejestr claimów (+ sklepy) | poza planem inżynieryjnym — właściciel: PO (§13 t.8) |
-| Separacja historii czatu | F9 + test negatywny |
-| Art. 50 AI Act | F9 |
-| Opinia doradcy regulacyjnego | proces zewnętrzny — start natychmiast |
-| Decyzja budżetowa 62304/14971/82304-1 | decyzja PO |
-| Wycena OC | proces zewnętrzny |
+| Quota aktywna | F6 |
+| `guardrail_decisions` poza purgerem + test | F4 |
+| Rejestr claimów (z funkcjami generatywnymi) | poza planem inżynieryjnym — właściciel: PO |
+| Separacja historii czatu | F9 |
+| Art. 50 + oznaczenie hipotez | F9 |
+| Opinia regulacyjna (A8–A10 wprost) | proces zewnętrzny — start dziś |
+| Decyzja budżetowa 62304/14971/82304-1; wycena OC | decyzje PO |
 
-## 6. Poza zakresem tego planu
+## 6. Poza zakresem
 
-- Biblioteka protokołów (A10) — osobny feature; A10 za flagą.
-- Korekta historycznych `llm_total_cost_usd` — osobna decyzja.
+- Biblioteka protokołów (wzbogacenie A10) — osobny feature.
+- Korekta historycznych `llm_total_cost_usd`.
 - Zmiana zakresu redakcji transkrypcji (D2 wariant b).
-- Podniesienie tieru Cloud SQL (rekomendacja `db-custom-1-3840` — SLA,
-  gwarantowany rdzeń, limit połączeń — złożona 20.08, decyzja niezależna).
-- `pkg/svcauth` — pozostaje otwartą pozycją bezpieczeństwa niezależnie od czatu.
+- Tier Cloud SQL (`db-custom-1-3840`: SLA, dedykowany rdzeń — rekomendacja z 20.08, decyzja niezależna).
+- `pkg/svcauth` — otwarta pozycja bezpieczeństwa niezależna od czatu.
 
 ## 7. Ryzyka
 
 | ryzyko | mitygacja |
 |---|---|
-| Klasyfikator myli A8–A10 z intencjami generatywnymi | metryka routingu w CI (F8); weryfikator jako druga linia; konserwatywny τ |
-| p95 > 1,5 s przy zimnym starcie Cloud Run | min-instances=1 dla clinical-svc do rozważenia; pomiar w F1 od pierwszego dnia |
-| FP na ALLOWED > 8% frustruje użytkowników | 8.3: reakcją jest kalibracja τ i promptu, nigdy obniżenie progów R/P |
-| Zestaw ewaluacyjny nie łapie prawdziwego rozkładu | rozszerzanie o produkcyjne odmowy/degradacje (po pseudonimizacji i zgodzie — 8.1) |
-| Dryf: użytkownicy chcą funkcji wyrobu | `ai_chat_rerouted` + dashboard 8.3; trigger przeglądu ADR |
+| **Ekspozycja kwalifikacyjna MDR generatywnych A8–A10** (nazwana w §9 v1.1) | opinia zewnętrzna przed GA jako twarda bramka; granice P1/P2/R w weryfikatorze; uziemienie; kill switch < 5 min; log dowodowy 24 mies. |
+| Diagnoza przemycona jako konceptualizacja (P1↔A8) | próg konfuzji ≤ 0,02 w CI; weryfikator LLM na treści hipotez; pary graniczne w zestawie |
+| Cytaty z tokenami redakcji w hipotezach (D2) | decyzja produktowa + komunikat UI; wariant (b) jako opcja |
+| p95 > 1,5 s (3 wywołania + pobieranie + deszyfrowanie) | A2 bez modelu; weryfikacja deterministyczna; pomiar od F1; min-instances=1 do rozważenia |
+| FP na ALLOWED frustruje | kalibracja τ i promptu, nigdy obniżanie progów R/P |
+| Zestaw nie łapie realnego rozkładu | rozszerzanie o produkcyjne przypadki (8.1) |
 
-## 8. Decyzje do podjęcia (blokują odpowiednie fazy)
+## 8. Decyzje
 
-| # | Decyzja | Blokuje | Rekomendacja |
-|---|---|---|---|
-| D1 | Interpretacja A8–A10 = reroute wykonania (sekcja 0) | F2, F3 | tak — jedyna spójna z resztą ADR |
-| D2 | Cytaty ze zredagowanego transkryptu: akceptacja tokenów w cytatach | F3 | wariant (a) + komunikat w UI |
-| D3 | Limit quoty: $1.50/mies./terapeuta, okres = subskrypcja | F6 | tak, z rewizją po 30 dniach danych |
-| D4 | Kod kategorii ryzyka: `R_RISK` (zachować) vs `P3_RISK` (jak v2) | F2, ADR | zachować `R_RISK` |
-| D5 | Commit poprawionego ADR do `docs/` (dziś: nieśledzony, w `kronikarz/`) | — | po naprawach z sekcji 1 |
+| # | Decyzja | Stan |
+|---|---|---|
+| D1 | Charakter A8–A10 | **Rozstrzygnięta 20.08**: pełne generatywne z uziemieniem |
+| D2 | Cytaty ze zredagowanego transkryptu w hipotezach A8–A10 | **Otwarta** — waga wzrosła po D1 |
+| D3 | Limit quoty $1.50/mies., okres = subskrypcja | Przyjęty jako domyślny; rewizja po 30 dniach danych |
+| D4 | Kod `R_RISK` | **Rozstrzygnięta**: zachowany (ADR v1.1) |
+| D5 | Umiejscowienie ADR | Poprawiony w miejscu (`docs/kronikarz/`); przeniesienie do `docs/adr/` z numerem — otwarte |
