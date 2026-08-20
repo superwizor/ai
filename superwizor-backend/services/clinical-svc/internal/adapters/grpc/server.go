@@ -25,6 +25,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/chat"
 )
 
 // SessionEventPublisher is the publish-side dependency clinical-svc
@@ -115,6 +116,20 @@ type Server struct {
 	pubsub    SessionEventPublisher
 	version   string
 	collector *analytics.Collector
+	// chat runs the guardrailed AI chat. nil = the feature is not
+	// wired in this build, and AskPatientQuestion returns
+	// FEATURE_DISABLED. Every existing test constructor leaves it nil,
+	// which is the correct default: a chat that answers must be
+	// deliberately switched on.
+	chat *chat.Service
+}
+
+// WithChat injects the AI chat service. Post-construction option rather
+// than a NewServer parameter so every existing test constructor keeps
+// compiling with the chat absent — which is also the safe default.
+func (s *Server) WithChat(c *chat.Service) *Server {
+	s.chat = c
+	return s
 }
 
 // WithNotification injects the notification-svc client. Kept as a

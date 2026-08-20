@@ -463,3 +463,16 @@ func (a *ConnectAdapter) SplitTranscriptSegment(ctx context.Context, req *connec
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// AskPatientQuestion is unary since ADR 62 section 4.2 — the verifier
+// needs the complete response before any of it is shown. The bridge that
+// used to adapt a Connect server-stream onto a gRPC stream handler
+// (connect_adapter_stream.go) existed only for this RPC and was deleted
+// with the streaming signature.
+func (a *ConnectAdapter) AskPatientQuestion(ctx context.Context, req *connect.Request[clinicalv1.AskPatientQuestionRequest]) (*connect.Response[clinicalv1.AskPatientQuestionResponse], error) {
+	resp, err := a.s.AskPatientQuestion(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

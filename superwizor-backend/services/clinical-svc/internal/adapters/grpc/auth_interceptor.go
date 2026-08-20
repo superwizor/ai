@@ -19,6 +19,11 @@ const (
 	UserIDKey         contextKey = "user_id"
 	UserRoleKey       contextKey = "user_role"
 	OrganizationIDKey contextKey = "organization_id"
+	// PlatformKey carries the x-client-platform header ("web"|"ios"
+	// |"android") for chat telemetry. Every custom gRPC metadata key
+	// needs a matching CORS allowlist entry in pkg/cors — see the
+	// x-client-platform incident of 2026-07-24.
+	PlatformKey contextKey = "client_platform"
 )
 
 // protoRoleName mirrors billing-svc's helper: turn the proto UserRole
@@ -90,6 +95,7 @@ func UnaryAuthInterceptor(identityClient identityv1.IdentityServiceClient) grpc.
 		newCtx := context.WithValue(ctx, UserIDKey, res.UserId)
 		newCtx = context.WithValue(newCtx, UserRoleKey, protoRoleName(res.Role))
 		newCtx = context.WithValue(newCtx, OrganizationIDKey, res.OrganizationId)
+		newCtx = context.WithValue(newCtx, PlatformKey, platformFromMD(md))
 		return handler(newCtx, req)
 	}
 }
@@ -132,7 +138,32 @@ func ConnectAuthInterceptor(identityClient identityv1.IdentityServiceClient) con
 			newCtx := context.WithValue(ctx, UserIDKey, res.UserId)
 			newCtx = context.WithValue(newCtx, UserRoleKey, protoRoleName(res.Role))
 			newCtx = context.WithValue(newCtx, OrganizationIDKey, res.OrganizationId)
+			newCtx = context.WithValue(newCtx, PlatformKey, normalizePlatform(req.Header().Get("X-Client-Platform")))
 			return next(newCtx, req)
 		}
 	}
+}
+
+// platformFromMD reads the client platform marker from gRPC metadata.
+func platformFromMD(md metadata.MD) string {
+	vals := md.Get("x-client-platform")
+	if len(vals) == 0 {
+		return ""
+	}
+	return normalizePlatform(vals[0])
+}
+
+// normalizePlatform maps a client-supplied platform marker onto the
+// closed set the platform records.
+//
+// Unknown values become "" rather than passing through. The value lands
+// in telemetry and in guardrail_decisions, and an unbounded string from a
+// client would be a free-text field in a table that is specified to have
+// none.
+func normalizePlatform(raw string) string {
+	switch p := strings.ToLower(strings.TrimSpace(raw)); p {
+	case "web", "ios", "android":
+		return p
+	}
+	return ""
 }

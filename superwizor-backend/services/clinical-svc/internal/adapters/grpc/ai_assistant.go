@@ -1,228 +1,247 @@
-// ai_assistant.go — AI assistant handlers (GenerateSessionBrief +
-// AskPatientQuestion). Uses pkg/rag for ranking and Vertex AI for
-// generation.
+// ai_assistant.go — the AI chat RPC handler.
 //
-// Faza 1: GenerateSessionBrief — one-shot briefing with RAG context.
-// Faza 2: AskPatientQuestion — multi-turn server-streaming chat.
-//
-// These handlers are NOT wired into the gRPC server yet. They require:
-//   1. pgxpool.Pool for RAG memory queries (pgvector cosine search)
-//   2. Vertex AI generative model client (Gemini Flash)
-//   3. Vertex AI embedding client (text-embedding-005, 768-dim)
-//   4. cryptobox.CryptoBox for decrypting RAG memory ciphertext
-//
-// TODO(Krok 4): Wire these deps into Server struct + NewServer constructor
-// TODO(Krok 4): Add go.mod deps: cloud.google.com/go/aiplatform
-// TODO(Krok 4): Register handlers in connect_adapter.go
-//
-// See: docs/critical_analysis — rationale for backend-side AI.
+// This file is deliberately thin. Everything that decides what the system
+// is allowed to do lives in internal/chat and pkg/guardrail; the handler
+// authenticates the caller, translates to and from protobuf, and maps
+// errors to status codes. Putting policy here would put it somewhere the
+// eval suite cannot reach.
 
 package grpc
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
-	"github.com/superwizor-ai/backend/pkg/rag"
+	"github.com/superwizor-ai/backend/pkg/guardrail"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/chat"
 )
 
-// ── Constants ─────────────────────────────────────────────────────────
+// AskPatientQuestion answers one chat turn.
+//
+// Unary, not streaming: the verifier inspects the complete response
+// before any of it is shown, and a token already on the wire cannot be
+// withdrawn (ADR section 4.2).
+func (s *Server) AskPatientQuestion(ctx context.Context, req *clinicalv1.AskPatientQuestionRequest) (*clinicalv1.AskPatientQuestionResponse, error) {
+	if s.chat == nil {
+		return nil, status.Error(codes.Unavailable, "FEATURE_DISABLED")
+	}
 
-const (
-	// embeddingModel is the Vertex AI embedding model used to vectorize
-	// the therapist's question for RAG retrieval.
-	embeddingModel = "text-embedding-005"
-
-	// embeddingDims must match the pgvector column: vector(768).
-	embeddingDims = 768
-
-	// generativeModel is the Gemini model used for brief/chat generation.
-	generativeModel = "gemini-2.0-flash"
-
-	// generativeRegion is the Vertex AI region — europe-west4 per P3.
-	generativeRegion = "europe-west4"
-
-	// briefDefaultQuery is the embedding query when no focus_hint is given.
-	briefDefaultQuery = "przygotowanie do sesji terapeutycznej, podsumowanie kluczowych wątków i wzorców"
-)
-
-// ── System Prompt ─────────────────────────────────────────────────────
-
-const briefSystemPrompt = `Jesteś poznawczym partnerem w gabinecie dla psychoterapeuty.
-Twoim zadaniem jest przygotować zwięzły briefing przed kolejną sesją z klientem.
-
-ZASADY:
-- Odpowiadaj ZAWSZE po polsku, chyba że terapeuta wyraźnie poprosi o inny język.
-- ZAWSZE używaj określenia "klient" zamiast "pacjent".
-- NIE używaj słów zakazanych z ramy marki: "pacjent", "kliniczny", "diagnoza", "asystent", "asystent kliniczny", "copilot".
-- NIE stawiaj diagnoz. Możesz wskazywać wzorce, ale decyzje merytoryczne należą do terapeuty.
-- Bądź konkretny i odwołuj się do treści raportów z sesji.
-- Jeśli terapeuta zada pytanie niezwiązane z pracą z klientem lub przebiegiem sesji, odpowiedz uprzejmie:
-  "Jako partner w gabinecie wspieram Cię wyłącznie w analizie pracy z klientem i przebiegu sesji."
-- Jeśli nie masz wystarczających informacji, powiedz o tym wprost.
-- NIE wymyślaj informacji, których nie ma w raportach.
-
-FORMAT BRIEFINGU:
-1. **Podsumowanie ostatniej sesji** — kluczowe wątki, emocje, dynamika
-2. **Powtarzające się wzorce** — tematy, które pojawiały się w kilku sesjach
-3. **Otwarte kwestie** — co zostało nierozwiązane, co wymaga uwagi
-4. **Sugestie** — kierunki, pytania, techniki do rozważenia
-
-KONTEKST SESJI:
-%s`
-
-// ── GenerateSessionBrief ──────────────────────────────────────────────
-
-func (s *Server) GenerateSessionBrief(ctx context.Context, req *clinicalv1.GenerateSessionBriefRequest) (*clinicalv1.GenerateSessionBriefResponse, error) {
-	// 1. Validate input.
 	patientFileID, err := uuid.Parse(req.GetPatientFileId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid patient_file_id: %v", err)
 	}
+	if req.GetQuestion() == "" {
+		return nil, status.Error(codes.InvalidArgument, "question is required")
+	}
 
-	// 2. Auth: look up patient file → verify caller owns it.
 	pf, err := s.queries.GetPatientFile(ctx, patientFileID)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "patient file not found")
+		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
-	// PatientFile.TherapistID jest juz uuid.UUID — gałąź czatu pisana
-	// byla pod starszy wygenerowany model, gdzie siedzial tam
-	// pgtype.UUID z polem .Bytes. Konwersja przestala byc potrzebna.
-	therapistID := pf.TherapistID
-	if err := s.requireTherapistDataAccess(ctx, therapistID); err != nil {
-		return nil, err // already a gRPC status
+	if err := s.requireTherapistDataAccess(ctx, pf.TherapistID); err != nil {
+		return nil, err
 	}
 
-	// 3. Generate conversation ID for audit trail and follow-up chat.
+	// A new conversation gets a fresh ID; a continuing one keeps its own.
 	convID := uuid.New()
-
-	// 4. Determine query text for RAG retrieval.
-	queryText := briefDefaultQuery
-	if hint := strings.TrimSpace(req.GetFocusHint()); hint != "" {
-		queryText = hint
-	}
-
-	slog.InfoContext(ctx, "ai_assistant.brief_requested",
-		"patient_file_id", patientFileID.String(),
-		"therapist_id", therapistID.String(),
-		"conversation_id", convID.String(),
-		"has_focus_hint", req.GetFocusHint() != "",
-	)
-
-	// ──────────────────────────────────────────────────────────
-	// TODO: Wire the following steps when Vertex AI deps are added
-	// to clinical-svc. The rag.SelectHits algorithm is ready in
-	// pkg/rag — what's missing is:
-	//   a) RAG pool loader (pgxpool query against rag_memories)
-	//   b) Embedding client (Vertex AI text-embedding-005)
-	//   c) Generative model client (Vertex AI Gemini Flash)
-	//   d) Decrypt RAG hits (cryptobox.Decrypt)
-	//   e) Persist audit row to chat_interactions
-	//
-	// Until wired, return Unimplemented.
-	// ──────────────────────────────────────────────────────────
-
-	_ = queryText     // will be used for embedding
-	_ = therapistID   // will be used for audit
-	_ = patientFileID // will be used for RAG pool query
-
-	// Placeholder: The full flow is documented in implementation_plan.md.
-	// Steps 4-9 will call:
-	//   embedQuery  → generateEmbedding(ctx, queryText)
-	//   pool, anchor  ← loadRAGPool(ctx, patientFileID, uuid.Nil)
-	//   hits       := rag.SelectHits(pool, queryVecs, anchor, time.Now())
-	//   ragContext  ← assembleContext(ctx, hits, anchor) // decrypt + format
-	//   prompt     := fmt.Sprintf(briefSystemPrompt, ragContext)
-	//   brief      ← gemini.GenerateContent(ctx, prompt)
-	//   audit      → INSERT INTO chat_interactions(...)
-
-	return nil, status.Errorf(codes.Unimplemented,
-		"GenerateSessionBrief not yet wired — Vertex AI deps pending (see ai_assistant.go TODOs)")
-}
-
-// ── AskPatientQuestion ────────────────────────────────────────────────
-
-func (s *Server) AskPatientQuestion(req *clinicalv1.AskPatientQuestionRequest, stream clinicalv1.ClinicalService_AskPatientQuestionServer) error {
-	ctx := stream.Context()
-
-	// 1. Validate input.
-	_, err := uuid.Parse(req.GetPatientFileId())
-	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "invalid patient_file_id: %v", err)
-	}
-	if strings.TrimSpace(req.GetQuestion()) == "" {
-		return status.Errorf(codes.InvalidArgument, "question is required")
-	}
-
-	slog.InfoContext(ctx, "ai_assistant.question_requested",
-		"patient_file_id", req.GetPatientFileId(),
-		"has_conversation_id", req.GetConversationId() != "",
-	)
-
-	// TODO(Faza 2): Implement server-streaming chat.
-	// This is deferred until Faza 1 (briefing) is validated.
-	return status.Errorf(codes.Unimplemented,
-		"AskPatientQuestion not yet implemented — Faza 2, pending briefing validation")
-}
-
-// ── RAG Helpers (to be fully implemented when Vertex AI is wired) ─────
-
-// loadRAGPool will query rag_memories for the candidate pool.
-// This mirrors llm-worker/main.go:loadRAGPool but uses the Server's
-// pool/queries rather than a package-level global.
-//
-// Query shape (from ai-pipeline-svc):
-//
-//	WITH recent_sessions AS (
-//	  SELECT source_session_id, max(created_at) AS session_at
-//	  FROM rag_memories
-//	  WHERE patient_file_id = $1 AND NOT is_compacted
-//	    AND source_session_id IS NOT NULL
-//	  GROUP BY source_session_id
-//	  ORDER BY session_at DESC
-//	  LIMIT $2  -- rag.LookbackSessions (36)
-//	)
-//	SELECT m.id, m.source_session_id, m.chunk_type, m.created_at, m.embedding::text
-//	FROM rag_memories m
-//	JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
-//	WHERE m.patient_file_id = $1 AND NOT m.is_compacted
-//
-// Returns the pool and the anchor ID (most recent summary row).
-func loadRAGPoolDoc() {
-	// Placeholder — documents the query for future implementation.
-	// Will use s.pool.Query(ctx, ...) when pgxpool is available.
-}
-
-// parseEmbedding parses pgvector's text form "[f1,f2,...]" into []float32.
-// Identical to llm-worker's version — could also be extracted to pkg/rag
-// if a second consumer appears.
-func parseEmbedding(s string) []float32 {
-	s = strings.TrimSpace(s)
-	s = strings.TrimPrefix(s, "[")
-	s = strings.TrimSuffix(s, "]")
-	if s == "" {
-		return nil
-	}
-	parts := strings.Split(s, ",")
-	v := make([]float32, 0, len(parts))
-	for _, p := range parts {
-		var f float64
-		if _, err := fmt.Sscanf(strings.TrimSpace(p), "%f", &f); err != nil {
-			return nil
+	if raw := req.GetConversationId(); raw != "" {
+		if parsed, err := uuid.Parse(raw); err == nil {
+			convID = parsed
 		}
-		v = append(v, float32(f))
 	}
-	return v
+
+	out, err := s.chat.Ask(ctx, chat.Turn{
+		TherapistID:    pf.TherapistID,
+		OrganizationID: orgIDFromContext(ctx),
+		PatientFileID:  patientFileID,
+		ConversationID: convID,
+		Question:       req.GetQuestion(),
+		Platform:       platformFromContext(ctx),
+		StarterID:      req.GetStarterId(),
+		StarterEdited:  req.GetStarterEdited(),
+	})
+	if err != nil {
+		if errors.Is(err, chat.ErrChatDisabled) {
+			return nil, status.Error(codes.Unavailable, "FEATURE_DISABLED")
+		}
+		slog.ErrorContext(ctx, "chat.turn_failed", "error", err,
+			"patient_file_id", patientFileID.String())
+		return nil, status.Error(codes.Internal, "chat turn failed")
+	}
+
+	return toProto(convID, out), nil
 }
 
-// Ensure rag package is used (will be used in full implementation).
-var _ = rag.SelectHits
-var _ = time.Now
+func toProto(convID uuid.UUID, out chat.Outcome) *clinicalv1.AskPatientQuestionResponse {
+	resp := &clinicalv1.AskPatientQuestionResponse{
+		ConversationId: convID.String(),
+		Outcome:        outcomeToProto(out.Kind),
+		Meta: &clinicalv1.ChatMeta{
+			Intent:                 intentToProto(out.Meta.Intent),
+			ConfidenceBucket:       out.Meta.ConfidenceBucket,
+			DegradeReason:          out.Meta.DegradeReason,
+			CostMicroUsd:           out.Meta.CostMicroUSD,
+			QuotaRemainingMicroUsd: out.Meta.QuotaRemaining,
+			RagHitsUsed:            int32(out.Meta.RagHitsUsed),
+			LatencyMs:              int32(out.Meta.LatencyMs),
+		},
+	}
+
+	if out.Refusal != nil {
+		r := &clinicalv1.ChatRefusal{
+			Message:               out.Refusal.MessageKey,
+			ShowCrisisInformation: out.Refusal.ShowCrisisInformation,
+		}
+		for _, alt := range out.Refusal.Alternatives {
+			r.Alternatives = append(r.Alternatives, &clinicalv1.RefusalAlternative{
+				Intent:  intentToProto(alt.Intent),
+				Label:   alt.LabelKey,
+				Prefill: alt.PrefillKey,
+			})
+		}
+		resp.Payload = &clinicalv1.AskPatientQuestionResponse_Refusal{Refusal: r}
+		return resp
+	}
+
+	if out.Answer != nil {
+		a := &clinicalv1.ChatAnswer{}
+		for _, sec := range out.Answer.Sections {
+			a.Sections = append(a.Sections, &clinicalv1.AnswerSection{
+				Title:        sec.Title,
+				Body:         sec.Body,
+				Kind:         sectionKindToProto(sec.Kind),
+				UserAuthored: sec.UserAuthored,
+				Quotes:       quotesToProto(sec.Quotes),
+			})
+		}
+		for _, sq := range out.Answer.SuggestedQuestions {
+			a.SuggestedQuestions = append(a.SuggestedQuestions, &clinicalv1.SuggestedQuestion{
+				Question: sq.Question,
+				Quotes:   quotesToProto(sq.Quotes),
+			})
+		}
+		resp.Payload = &clinicalv1.AskPatientQuestionResponse_Answer{Answer: a}
+	}
+	return resp
+}
+
+func quotesToProto(qs []chat.Quote) []*clinicalv1.Quote {
+	out := make([]*clinicalv1.Quote, 0, len(qs))
+	for _, q := range qs {
+		pq := &clinicalv1.Quote{
+			SessionId: q.SessionID,
+			SegmentId: q.SegmentID,
+			Text:      q.Text,
+			Speaker:   q.Speaker,
+			TsStartMs: q.TsStartMs,
+			TsEndMs:   q.TsEndMs,
+		}
+		if !q.SessionAt.IsZero() {
+			pq.SessionAt = timestamppb.New(q.SessionAt)
+		}
+		out = append(out, pq)
+	}
+	return out
+}
+
+func outcomeToProto(k chat.OutcomeKind) clinicalv1.ChatOutcome {
+	switch k {
+	case chat.OutcomeAnswered:
+		return clinicalv1.ChatOutcome_CHAT_OUTCOME_ANSWERED
+	case chat.OutcomeDegraded:
+		return clinicalv1.ChatOutcome_CHAT_OUTCOME_DEGRADED
+	case chat.OutcomeRefused:
+		return clinicalv1.ChatOutcome_CHAT_OUTCOME_REFUSED
+	case chat.OutcomeVerifierBlocked:
+		return clinicalv1.ChatOutcome_CHAT_OUTCOME_VERIFIER_BLOCKED
+	case chat.OutcomeUnavailable:
+		return clinicalv1.ChatOutcome_CHAT_OUTCOME_UNAVAILABLE
+	}
+	return clinicalv1.ChatOutcome_CHAT_OUTCOME_UNSPECIFIED
+}
+
+// intentToProtoTable maps the guardrail taxonomy onto the wire enum.
+//
+// An explicit table rather than an arithmetic cast: the two enumerations
+// are independently versioned, and a silent off-by-one here would
+// mislabel a refusal as an allowed intent in the UI.
+var intentToProtoTable = map[guardrail.Intent]clinicalv1.ChatIntent{
+	guardrail.A1Search:        clinicalv1.ChatIntent_CHAT_INTENT_A1_SEARCH,
+	guardrail.A2Stats:         clinicalv1.ChatIntent_CHAT_INTENT_A2_STATS,
+	guardrail.A3Format:        clinicalv1.ChatIntent_CHAT_INTENT_A3_FORMAT,
+	guardrail.A4Edu:           clinicalv1.ChatIntent_CHAT_INTENT_A4_EDU,
+	guardrail.A5Prep:          clinicalv1.ChatIntent_CHAT_INTENT_A5_PREP,
+	guardrail.A6Admin:         clinicalv1.ChatIntent_CHAT_INTENT_A6_ADMIN,
+	guardrail.A7Template:      clinicalv1.ChatIntent_CHAT_INTENT_A7_TEMPLATE,
+	guardrail.A8Concept:       clinicalv1.ChatIntent_CHAT_INTENT_A8_CONCEPT,
+	guardrail.A9Progress:      clinicalv1.ChatIntent_CHAT_INTENT_A9_PROGRESS,
+	guardrail.A10Intervention: clinicalv1.ChatIntent_CHAT_INTENT_A10_INTERVENTION,
+	guardrail.P1Diag:          clinicalv1.ChatIntent_CHAT_INTENT_P1_DIAG,
+	guardrail.P2Med:           clinicalv1.ChatIntent_CHAT_INTENT_P2_MED,
+	guardrail.RRisk:           clinicalv1.ChatIntent_CHAT_INTENT_R_RISK,
+	guardrail.XOther:          clinicalv1.ChatIntent_CHAT_INTENT_X_OTHER,
+}
+
+func intentToProto(i guardrail.Intent) clinicalv1.ChatIntent {
+	if v, ok := intentToProtoTable[i]; ok {
+		return v
+	}
+	return clinicalv1.ChatIntent_CHAT_INTENT_UNSPECIFIED
+}
+
+func sectionKindToProto(kind string) clinicalv1.SectionKind {
+	switch kind {
+	case "extract":
+		return clinicalv1.SectionKind_SECTION_KIND_EXTRACT
+	case "summary":
+		return clinicalv1.SectionKind_SECTION_KIND_SUMMARY
+	case "stats":
+		return clinicalv1.SectionKind_SECTION_KIND_STATS
+	case "hypothesis":
+		return clinicalv1.SectionKind_SECTION_KIND_HYPOTHESIS
+	case "user_only":
+		return clinicalv1.SectionKind_SECTION_KIND_USER_ONLY
+	}
+	return clinicalv1.SectionKind_SECTION_KIND_UNSPECIFIED
+}
+
+// orgIDFromContext reads the caller's organization for per-org config
+// overrides. Absence is normal (a solo therapist has no organization) and
+// resolves to the global configuration.
+func orgIDFromContext(ctx context.Context) uuid.UUID {
+	raw, _ := ctx.Value(OrganizationIDKey).(string)
+	if raw == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
+}
+
+// platformFromContext reads the client platform header for telemetry.
+func platformFromContext(ctx context.Context) string {
+	p, _ := ctx.Value(PlatformKey).(string)
+	return p
+}
+
+// GenerateSessionBrief remains unimplemented.
+//
+// The briefing was Faza 1 of an earlier design in which it preceded the
+// chat. It is superseded: A5_PREP does the same job through the guardrail
+// pipeline, so shipping a second generative path that bypasses the
+// classifier and the verifier would undo the architecture. Kept as an
+// explicit Unimplemented rather than deleted because the RPC is in the
+// published proto and clients may still call it.
+func (s *Server) GenerateSessionBrief(ctx context.Context, req *clinicalv1.GenerateSessionBriefRequest) (*clinicalv1.GenerateSessionBriefResponse, error) {
+	return nil, status.Error(codes.Unimplemented,
+		"GenerateSessionBrief is superseded by AskPatientQuestion with intent A5_PREP")
+}

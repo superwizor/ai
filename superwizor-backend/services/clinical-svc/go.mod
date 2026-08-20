@@ -9,6 +9,8 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pgvector/pgvector-go v0.3.0
+	github.com/superwizor-ai/backend/pkg/rag v0.0.0-00010101000000-000000000000
+	github.com/superwizor-ai/backend/pkg/guardrail v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/llmcost v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/cors v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/contrib/detectors/gcp v1.43.0
@@ -78,6 +80,10 @@ replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
 replace github.com/superwizor-ai/backend/pkg/cryptobox => ../../pkg/cryptobox
 
 replace github.com/superwizor-ai/backend/pkg/llmcost => ../../pkg/llmcost
+
+replace github.com/superwizor-ai/backend/pkg/guardrail => ../../pkg/guardrail
+
+replace github.com/superwizor-ai/backend/pkg/rag => ../../pkg/rag
 
 replace github.com/superwizor-ai/backend/pkg/cors => ../../pkg/cors
 

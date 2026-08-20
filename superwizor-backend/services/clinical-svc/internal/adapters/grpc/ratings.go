@@ -536,7 +536,7 @@ func (s *Server) AdminListReportRatings(ctx context.Context, req *clinicalv1.Adm
 			Rating:            r.Rating,
 			Issues:            r.Issues,
 			Notes:             r.Notes,
-			Source:             r.Source,
+			Source:            r.Source,
 			AdminReviewStatus: r.AdminReviewStatus,
 			CreatedAt:         timestamppb.New(r.CreatedAt),
 			UpdatedAt:         timestamppb.New(r.UpdatedAt),
