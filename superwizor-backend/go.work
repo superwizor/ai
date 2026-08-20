@@ -9,6 +9,7 @@ use (
 	./pkg/cors
 	./pkg/cryptobox
 	./pkg/errors
+	./pkg/guardrail
 	./pkg/i18n
 	./pkg/idempotency
 	./pkg/llmcost
