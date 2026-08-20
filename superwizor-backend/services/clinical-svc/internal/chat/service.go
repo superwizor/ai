@@ -37,6 +37,8 @@ type Service struct {
 	Quota     Quota
 	Config    *appconfig.Reader
 	Decisions DecisionLog
+	// History to pamiec rozmowy. nil = kazda tura jest samotna.
+	History HistoryStore
 	// Telemetry receives the section 7.1 events. nil disables them.
 	Telemetry Tracker
 	Now       func() time.Time
@@ -193,7 +195,13 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 	}()
 
 	// ── 3. Classify ───────────────────────────────────────────────
-	classification, classifyCost, err := s.classify(ctx, t)
+	//
+	// Historia wczytywana PRZED klasyfikacja, bo to klasyfikator jej
+	// potrzebuje: bez niej "na ten temat" nie ma do czego sie odniesc.
+	// Generator jej nie zobaczy — patrz history.go.
+	history := s.History.Load(ctx, t.ConversationID)
+
+	classification, classifyCost, err := s.classify(ctx, t, history)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -243,6 +251,13 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 				s.Telemetry.Track(context.WithoutCancel(ctx), ev)
 			}
 		}
+		// Zapis rozmowy. Best-effort: tura juz zostala obsluzona, a
+		// utrata ciaglosci jest mniej dotkliwa niz odmowa odpowiedzi,
+		// ktora sie udala.
+		if err := s.History.Save(context.WithoutCancel(ctx), t, out, rec,
+			Usage{InputTokens: totalIn(costs), OutputTokens: totalOut(costs)}); err != nil {
+			slog.ErrorContext(ctx, "chat.history_save_failed", "error", err)
+		}
 		if s.Decisions != nil {
 			if err := s.Decisions.Record(context.WithoutCancel(ctx), rec); err != nil {
 				// The evidence row is the MDR article 94 artefact. Losing
@@ -268,7 +283,7 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 	}
 
 	// ── 5-7. Retrieve, generate, verify ───────────────────────────
-	answer, execCosts, verdict, ragHits, err := s.execute(ctx, t, decision)
+	answer, execCosts, verdict, ragHits, err := s.execute(ctx, t, decision, history)
 	costs = append(costs, execCosts...)
 	if err != nil {
 		return Outcome{}, err
@@ -310,7 +325,7 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 // constant. An EDITED starter is classified like any other text: the
 // moment a therapist changes the words, the registry no longer describes
 // what was asked.
-func (s Service) classify(ctx context.Context, t Turn) (guardrail.Classification, guardrail.Cost, error) {
+func (s Service) classify(ctx context.Context, t Turn, history []HistoryTurn) (guardrail.Classification, guardrail.Cost, error) {
 	if t.StarterID != "" && !t.StarterEdited {
 		if st, ok := StarterByID(t.StarterID); ok {
 			return guardrail.Classification{Intent: st.Intent, Confidence: 1.0, RiskFlag: false},
@@ -318,7 +333,15 @@ func (s Service) classify(ctx context.Context, t Turn) (guardrail.Classification
 		}
 	}
 	c := guardrail.LLMClassifier{Caller: modelCaller{s.LLM}, Model: ClassifierModel}
-	return c.Classify(ctx, t.Question)
+
+	// Pytanie z historia przed nim. Klasyfikator zwraca zamknieta
+	// etykiete i liczbe, wiec nie ma pola, przez ktore historia moglaby
+	// wyciec do terapeuty — a bez niej odniesienia sa nierozwiazywalne.
+	question := t.Question
+	if ctxBlock := FormatForClassifier(history); ctxBlock != "" {
+		question = ctxBlock + "\nPYTANIE BIEZACE:\n" + t.Question
+	}
+	return c.Classify(ctx, question)
 }
 
 // modelCaller adapts LLM to guardrail.ModelCaller.
@@ -403,4 +426,20 @@ func decodeModelAnswer(raw string) (modelAnswer, error) {
 		return m, fmt.Errorf("chat: decode model answer: %w", err)
 	}
 	return m, nil
+}
+
+func totalIn(costs []ModelCost) int64 {
+	var n int64
+	for _, c := range costs {
+		n += c.InputTokens
+	}
+	return n
+}
+
+func totalOut(costs []ModelCost) int64 {
+	var n int64
+	for _, c := range costs {
+		n += c.OutputTokens
+	}
+	return n
 }

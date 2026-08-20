@@ -69,6 +69,8 @@ func TestQueriesMatchLiveSchema(t *testing.T) {
 		{"sqlCommit", sqlCommit},
 		{"sqlMarkWarned", sqlMarkWarned},
 		{"sqlInsertDecision", sqlInsertDecision},
+		{"sqlLoadHistory", sqlLoadHistory},
+		{"sqlInsertInteraction", sqlInsertInteraction},
 	}
 
 	for _, q := range queries {

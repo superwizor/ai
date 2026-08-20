@@ -282,6 +282,9 @@ func main() {
 		Quota:     chat.Quota{DB: chatPool{pool}},
 		Config:    configReader,
 		Decisions: chat.PostgresDecisionLog{DB: chatPool{pool}},
+		// Pamiec rozmowy. Bez niej kazda tura jest samotna i odniesienia
+		// typu "na ten temat" nie maja do czego sie odniesc.
+		History:   chat.HistoryStore{DB: chatPool{pool}, Pool: chatPool{pool}, Crypto: crypto},
 		Telemetry: chatTracker{analyticsCollector},
 	}
 	srv = srv.WithChat(chatSvc).WithChatConfig(configReader, chatPool{pool})

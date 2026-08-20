@@ -15,7 +15,7 @@ import (
 // made HERE, in code, not by a prompt asking the model to restrain
 // itself: A4_EDU retrieves nothing, and there is no path through this
 // function that hands it client material.
-func (s Service) execute(ctx context.Context, t Turn, d guardrail.Decision) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
+func (s Service) execute(ctx context.Context, t Turn, d guardrail.Decision, history []HistoryTurn) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
 	switch d.Intent {
 	case guardrail.A2Stats, guardrail.A6Admin:
 		// No model call at all. This is why an exhausted quota still
@@ -27,7 +27,7 @@ func (s Service) execute(ctx context.Context, t Turn, d guardrail.Decision) (*An
 		return s.executeEducation(ctx, t)
 
 	default:
-		return s.executeGrounded(ctx, t, d)
+		return s.executeGrounded(ctx, t, d, history)
 	}
 }
 
@@ -179,7 +179,7 @@ ZASADY:
 }
 
 // executeGrounded handles every intent that works from client material.
-func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decision) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
+func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decision, history []HistoryTurn) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
 	schema, ok := guardrail.SchemaFor(d.Intent)
 	if !ok {
 		return nil, nil, guardrail.Verdict{}, 0, fmt.Errorf("chat: no schema for intent %s", d.Intent)
@@ -196,7 +196,7 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 	var ragHits int
 	var costs []ModelCost
 	if usesRAGPreselection(d.Intent) {
-		f, hits, embedCost := s.preselect(ctx, t)
+		f, hits, embedCost := s.preselect(ctx, t, searchQueryOrQuestion(t, history))
 		filter, ragHits = f, hits
 		if embedCost.Model != "" {
 			costs = append(costs, embedCost)
@@ -219,19 +219,22 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 	// alternative prefills "…na ten temat" but no topic travels with it:
 	// the chat holds no conversation memory, so "this topic" refers to
 	// nothing the server can see.
-	if len(SearchableTerms(t.Question)) == 0 {
-		return &Answer{Sections: []Section{{
-			Title: "Doprecyzuj pytanie",
-			Body: "Nie wiem, czego szukać — w pytaniu nie ma tematu, " +
-				"tylko słowa opisujące samą prośbę. Napisz, o czym mam " +
-				"poszukać fragmentów (np. „o pracy”, „o relacji z matką”).",
-			Kind: "summary",
-		}}}, costs, guardrail.Verdict{}, ragHits, nil
+	// Pytanie bez wlasnych terminow — na przyklad "Pokaz cytaty na ten
+	// temat" po odmowie. Temat dziedziczony z ostatniego pytania, ktore
+	// go mialo; brak tej ciaglosci wyprodukowal 20.08.2026 sekcje
+	// "Wzmianki o 'ten Janko'".
+	searchQuery := t.Question
+	if len(SearchableTerms(searchQuery)) == 0 {
+		if inherited, ok := InheritedTopic(history); ok {
+			searchQuery = inherited
+		} else {
+			return topiclessAnswer(costs, ragHits)
+		}
 	}
 
 	// Narrow to the segments that actually relate to the question, so
 	// the model's context is evidence rather than a transcript dump.
-	relevant := SearchQuotes(segments, t.Question, 40)
+	relevant := SearchQuotes(segments, searchQuery, 40)
 	if len(relevant) == 0 {
 		relevant = segments
 	}
@@ -402,8 +405,8 @@ func appendUserOnlyFields(intent guardrail.Intent, a *Answer) {
 // rather than failing the turn. RAG here decides WHICH sessions to read,
 // and reading the most recent ones is a reasonable answer to that
 // question when the vector path is unavailable.
-func (s Service) preselect(ctx context.Context, t Turn) (map[uuid.UUID]bool, int, ModelCost) {
-	vec, usage, err := s.LLM.Embed(ctx, t.Question)
+func (s Service) preselect(ctx context.Context, t Turn, query string) (map[uuid.UUID]bool, int, ModelCost) {
+	vec, usage, err := s.LLM.Embed(ctx, query)
 	cost := ModelCost{Model: EmbeddingModel, InputTokens: usage.InputTokens}
 	if err != nil {
 		return nil, 0, ModelCost{}
@@ -417,4 +420,35 @@ func (s Service) preselect(ctx context.Context, t Turn) (map[uuid.UUID]bool, int
 		filter[id] = true
 	}
 	return filter, len(ids), cost
+}
+
+// topiclessAnswer odpowiada na pytanie, ktore nie niesie tematu i nie ma
+// skad go odziedziczyc — czyli pierwsza ture rozmowy zlozona wylacznie
+// ze slow o samej prosbie.
+//
+// Prosba o doprecyzowanie bije wyszukiwanie na szumie: zapytanie z
+// samych stopwordow trafia w najkrotszy segment, a odpowiedz czyta sie
+// jak pewne ustalenie o kliencie.
+func topiclessAnswer(costs []ModelCost, ragHits int) (*Answer, []ModelCost, guardrail.Verdict, int, error) {
+	return &Answer{Sections: []Section{{
+		Title: "Doprecyzuj pytanie",
+		Body: "Nie wiem, czego szukać — w pytaniu nie ma tematu, " +
+			"tylko słowa opisujące samą prośbę. Napisz, o czym mam " +
+			"poszukać fragmentów (np. „o pracy”, „o relacji z matką”).",
+		Kind: "summary",
+	}}}, costs, guardrail.Verdict{}, ragHits, nil
+}
+
+// searchQueryOrQuestion zwraca tekst, ktorym warto odpytac RAG.
+//
+// Osobna funkcja, bo preselekcja RAG dzieje sie PRZED pobraniem
+// segmentow, a wiec przed miejscem, w ktorym liczone jest searchQuery.
+func searchQueryOrQuestion(t Turn, history []HistoryTurn) string {
+	if len(SearchableTerms(t.Question)) > 0 {
+		return t.Question
+	}
+	if inherited, ok := InheritedTopic(history); ok {
+		return inherited
+	}
+	return t.Question
 }
