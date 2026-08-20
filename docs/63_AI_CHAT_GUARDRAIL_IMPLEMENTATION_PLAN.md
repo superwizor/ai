@@ -40,7 +40,7 @@ Niespójności v1.0_2 (enum 5.4, prompt 5.5, progi 8.2, kody R_RISK,
 artefakt w §3, kolumny schematów A8–A10, changelog) — **naprawione w ADR
 v1.1** (ten sam plik, commit razem z tym planem). Otwarte pozostają:
 
-- **podpis §9** w brzmieniu v1.3 (zmiany merytoryczne → ponowna akceptacja),
+- ~~podpis §9~~ — **zaakceptowany 20.08.2026** (dyspozycja PO, odnotowana w ADR),
 - przeniesienie ADR z `docs/kronikarz/` do rejestru `docs/adr/` z nadaniem numeru.
 
 ---
@@ -286,7 +286,7 @@ F9 (po F4, równolegle z F5–F7)
 - **Ścieżka krytyczna poza kodem**: (1) anotacja zestawu z klinicystą,
   (2) **zewnętrzna opinia regulacyjna obejmująca wprost generatywne
   A8–A10** — po D1 to najdłuższy i najważniejszy element; oba startować
-  dziś, równolegle z F0. (3) **Podpis §9 w brzmieniu v1.1.**
+  dziś, równolegle z F0. (3) ~~Podpis §9~~ — **zaakceptowany 20.08.2026**.
 
 ## 5. Mapowanie na warunki GA (§9 ADR v1.1)
 

@@ -3,7 +3,7 @@
 | Pole | Wartość |
 |---|---|
 | Numer | ADR-0XX *(nadać zgodnie z rejestrem ADR w `docs/adr/`)* |
-| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(wersje 1.1–1.3 wymagają ponownego podpisu §9 — zmiany merytoryczne taksonomii i schematów)* |
+| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(§9 zaakceptowany w brzmieniu v1.3 — 20.08.2026)* |
 | Data | 18 sierpnia 2026 r. (v1.0) / 20 sierpnia 2026 r. (v1.1–v1.3) |
 | Wersja | 1.3 |
 | Decydent | Dario (Product Owner) |
@@ -18,6 +18,7 @@
 | 1.1 | 2026-08-20 | `A8_CONCEPT`, `A9_PROGRESS`, `A10_TREAT` przeniesione z PROHIBITED do ALLOWED jako **pełne operacje generatywne z wymuszonym uziemieniem cytatowym** (decyzja PO 20.08). Spójność sekcji 5.3–5.5, 8.2, 8.3 i §9 z nową taksonomią; przywrócone kody `R_RISK`/`X_OTHER` (semantyka priorytetu jest częścią identyfikatora). Architektura przypięta: `pkg/guardrail` w `clinical-svc`; RPC unary (weryfikator wymaga kompletnej odpowiedzi); flagi w tabeli `app_config` (nie env-vary); weryfikator dwutrybowy (deterministyczny dla cytatów, LLM dla pól wolnotekstowych); quota mikrodolarowa z rezerwacją przed pierwszym wywołaniem modelu; log dowodowy `guardrail_decisions` jawnie wyłączony z GDPR-purgera. Usunięty przypadkowy artefakt tekstowy w nagłówku §3. §9 i §12 zaktualizowane o podwyższoną ekspozycję kwalifikacyjną. |
 | 1.2 | 2026-08-20 | `A5_SUPERVISION_PACK`: nowe pole modelowe `suggested_questions[]{question, quotes[]}` — sugerowane pytania superwizyjne z wymuszonym uziemieniem (≥ 1 cytat każde), obok niezmienionego user-only `open_questions[]`. Weryfikator A5 rozszerzony o kontrolę diagnozy/farmakoterapii/oceny ryzyka w sugerowanych pytaniach; 8.1/8.2 objęły A5; telemetria `ai_chat_clinical_generated` obejmuje A5. **Pierwsze zastosowanie procesu „poszerzenie powierzchni autorstwa modelu = udokumentowana decyzja".** |
 | 1.3 | 2026-08-20 | §6: **zapytania startowe** przy pierwszym uruchomieniu i pustym stanie czatu — 4–6 wyselekcjonowanych przykładów z listy ALLOWED; kompozycja listy sterowana serwerowo (`app_config`), teksty w `.arb`, treści objęte rejestrem claimów; telemetria `ai_chat_starter_used`. Statyczna treść UI — celowo inna nazwa niż modelowe `A5.suggested_questions`. |
+| — | 2026-08-20 | **Akceptacja §9 w brzmieniu v1.3** — dyspozycja Product Ownera z 20.08.2026, odnotowana w miejscu podpisu. |
 
 ---
 
@@ -282,7 +283,7 @@ Decyzja obowiązuje pod warunkiem spełnienia **wszystkich** poniższych przed G
 
 **Ryzyko rezydualne (nazwane wprost, v1.1):** moduł **generuje nową informację kliniczną o konkretnym pacjencie** (konceptualizacja, ocena postępu, propozycje interwencji) — czyli spełnia kryterium rozstrzygające z rozdz. 3–4 dokumentu nadrzędnego. Względem wariantu 1.0 (ekstraktywnego) ekspozycja kwalifikacyjna MDR jest **istotnie wyższa**. Linia obrony przesuwa się z „użycie kliniczne jest wykrywane, odmawiane i mierzone" na: „użycie kliniczne jest **ograniczone** (bez diagnozy, farmakoterapii i oceny ryzyka), **uziemione** w materiale źródłowym (każda hipoteza z cytatami, weryfikacja deterministyczna), **oznaczone** (hipotezy AI do weryfikacji klinicysty, decyzja po stronie terapeuty), **mierzone** (7.1/7.2) i **wyłączalne** (< 1 h, bez deployu)". Skutek sporu pozostaje kontrolowalny (art. 97, kill switch, degradacja) **do momentu incydentu**; po incydencie w kategorii ryzyka — nie.
 
-Akceptuję powyższe ryzyko rezydualne w brzmieniu v1.2: __________________ (Product Owner), data: __________
+Akceptuję powyższe ryzyko rezydualne w brzmieniu v1.3: **Dario (Product Owner)** — akceptacja wyrażona 20.08.2026 (dyspozycja PO, odnotowana w changelogu).
 
 ## 10. Triggery ponownego przeglądu ADR
 
