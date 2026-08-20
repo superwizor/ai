@@ -34,6 +34,7 @@ import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
+import '../theme/markdown_quote_style.dart';
 import '../utils/action_plan_extractor.dart';
 import '../widgets/euphire_segmented_control.dart';
 import '../widgets/euphire_toast.dart';
@@ -50,7 +51,6 @@ class ReportScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<ReportScreen> createState() => _ReportScreenState();
 }
-
 
 class _ReportScreenState extends ConsumerState<ReportScreen> {
   bool _loading = true;
@@ -84,13 +84,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     int newActiveIndex = 0;
 
     if (_mainScrollController.hasClients &&
-        _mainScrollController.position.pixels >= _mainScrollController.position.maxScrollExtent - 20) {
+        _mainScrollController.position.pixels >=
+            _mainScrollController.position.maxScrollExtent - 20) {
       newActiveIndex = _sections!.length - 1;
     } else {
       for (int i = 0; i < _sections!.length; i++) {
         final key = _sections![i].key;
         if (key.currentContext != null) {
-          final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
+          final RenderBox box =
+              key.currentContext!.findRenderObject() as RenderBox;
           final position = box.localToGlobal(Offset.zero).dy;
           if (position <= 350) {
             newActiveIndex = i;
@@ -198,15 +200,19 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     // Mark the report as viewed — covers auto-navigation from
     // SessionStatusScreen (success cascade) and push notification
     // deep links, which previously skipped markViewed.
-    final isRevisit = ref.read(viewedReportsProvider).value?.contains(widget.sessionId) ?? false;
+    final isRevisit =
+        ref.read(viewedReportsProvider).value?.contains(widget.sessionId) ??
+        false;
     ref.read(viewedReportsProvider.notifier).markViewed(widget.sessionId);
 
     if (_screenTracker == null && fresh.reports.isNotEmpty) {
-      _screenTracker = ref.read(analyticsCollectorProvider).trackScreen(
-        fresh.reports.first.id,
-        widget.sessionId,
-        isRevisit: isRevisit,
-      );
+      _screenTracker = ref
+          .read(analyticsCollectorProvider)
+          .trackScreen(
+            fresh.reports.first.id,
+            widget.sessionId,
+            isRevisit: isRevisit,
+          );
       _screenTracker!.start();
     }
   }
@@ -254,7 +260,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               if (v == 'transcript') {
                 Navigator.of(context).pushReplacement(
                   PageRouteBuilder(
-                    pageBuilder: (context, animation1, animation2) => TranscriptScreen(sessionId: widget.sessionId),
+                    pageBuilder: (context, animation1, animation2) =>
+                        TranscriptScreen(sessionId: widget.sessionId),
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),
@@ -279,17 +286,22 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(t.session_load_error_header,
-                  style: theme.textTheme.headlineMedium,
-                  textAlign: TextAlign.center),
+              Text(
+                t.session_load_error_header,
+                style: theme.textTheme.headlineMedium,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 8),
-              Text(t.session_load_error_body,
-                  style: theme.textTheme.bodyMedium,
-                  textAlign: TextAlign.center),
+              Text(
+                t.session_load_error_body,
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
-                  onPressed: () => _refreshFromBackend(showLoaderIfEmpty: true),
-                  child: Text(t.common_retry)),
+                onPressed: () => _refreshFromBackend(showLoaderIfEmpty: true),
+                child: Text(t.common_retry),
+              ),
             ],
           ),
         ),
@@ -299,16 +311,18 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(t.session_loading,
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.center),
+          child: Text(
+            t.session_loading,
+            style: theme.textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
 
     final report = _data!.reports.first;
     final payload = _ReportPayload.parse(report);
-    
+
     _sections ??= _parseSections(payload.reportMarkdown, t);
 
     return Column(
@@ -347,8 +361,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       child: Text(
                         s.title,
                         style: TextStyle(
-                          color: isActive ? EuphireColors.ember : EuphireColors.frostWhite,
-                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                          color: isActive
+                              ? EuphireColors.ember
+                              : EuphireColors.frostWhite,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -389,7 +407,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           border: isFirstSection
                               ? Border(
                                   left: BorderSide(
-                                    color: EuphireColors.mist.withValues(alpha: 0.3),
+                                    color: EuphireColors.mist.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     width: 2,
                                   ),
                                 )
@@ -410,9 +430,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.smart_toy_outlined,
-                          size: 16,
-                          color: EuphireColors.frostWhite.withValues(alpha: 0.45)),
+                      Icon(
+                        Icons.smart_toy_outlined,
+                        size: 16,
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.45),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -421,7 +443,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             fontSize: 12,
                             height: 1.4,
                             fontStyle: FontStyle.italic,
-                            color: EuphireColors.frostWhite.withValues(alpha: 0.45),
+                            color: EuphireColors.frostWhite.withValues(
+                              alpha: 0.45,
+                            ),
                           ),
                         ),
                       ),
@@ -454,8 +478,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final l = AppLocalizations.of(context);
     final patientFileId = data.session.patientFileId;
 
-    final reportMarkdown =
-        _ReportPayload.parse(data.reports.first).reportMarkdown;
+    final reportMarkdown = _ReportPayload.parse(
+      data.reports.first,
+    ).reportMarkdown;
     final draft = extractActionPlan(
       reportMarkdown,
       sessionDate: data.session.createdAt,
@@ -487,17 +512,21 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final data = _data;
     if (data == null || data.reports.isEmpty) return;
     final t = AppLocalizations.of(context);
-    
+
     final StringBuffer buffer = StringBuffer();
     for (final report in data.reports) {
-      buffer.writeln('=== ${report.title.isNotEmpty ? report.title : t.report_tab} ===');
-      
+      buffer.writeln(
+        '=== ${report.title.isNotEmpty ? report.title : t.report_tab} ===',
+      );
+
       final payload = _ReportPayload.parse(report);
       final summaryText = _editedSummary ?? payload.summary;
       if (summaryText != null && summaryText.isNotEmpty) {
-        buffer.writeln('\n${t.report_section_summary.toUpperCase()}:\n$summaryText');
+        buffer.writeln(
+          '\n${t.report_section_summary.toUpperCase()}:\n$summaryText',
+        );
       }
-      
+
       if (payload.reportMarkdown.isNotEmpty) {
         // Include edited sections if available
         if (_sections != null && _sections!.isNotEmpty) {
@@ -506,10 +535,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             buffer.writeln('\n${section.content}');
           }
         } else {
-          buffer.writeln('\n${t.report_tab.toUpperCase()}:\n${payload.reportMarkdown}');
+          buffer.writeln(
+            '\n${t.report_tab.toUpperCase()}:\n${payload.reportMarkdown}',
+          );
         }
       }
-      
+
       buffer.writeln('\n');
     }
 
@@ -526,7 +557,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   // ── Summary card with long-press editing ──
 
   Widget _buildSummaryCard(ReportDto report, _ReportPayload payload) {
-    final summaryText = _editedSummary ?? payload.summary ?? report.summaryShort;
+    final summaryText =
+        _editedSummary ?? payload.summary ?? report.summaryShort;
     final isEdited = _editedSummary != null;
 
     return GestureDetector(
@@ -570,9 +602,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             if (report.title.isNotEmpty) ...[
               Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded,
-                      size: 18,
-                      color: EuphireColors.ember.withValues(alpha: 0.8)),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: EuphireColors.ember.withValues(alpha: 0.8),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -611,8 +645,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 
   void _showSummaryOptions(
-      BuildContext context, _ReportPayload payload, ReportDto report) {
-    final summaryText = _editedSummary ?? payload.summary ?? report.summaryShort;
+    BuildContext context,
+    _ReportPayload payload,
+    ReportDto report,
+  ) {
+    final summaryText =
+        _editedSummary ?? payload.summary ?? report.summaryShort;
     final t = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -634,8 +672,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2)),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -657,8 +696,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: summaryText));
                     Navigator.pop(ctx);
-                    EuphireToast.success(context,
-                        message: t.report_toast_summary_copied);
+                    EuphireToast.success(
+                      context,
+                      message: t.report_toast_summary_copied,
+                    );
                   },
                 ),
                 const SizedBox(height: 10),
@@ -710,8 +751,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(2)),
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -719,12 +761,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF5EEDCC)
-                                  .withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFF5EEDCC,
+                              ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.edit_note_rounded,
-                                color: Color(0xFF5EEDCC), size: 22),
+                            child: const Icon(
+                              Icons.edit_note_rounded,
+                              color: Color(0xFF5EEDCC),
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -746,8 +792,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                   style: TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 13,
-                                    color: EuphireColors.mist
-                                        .withValues(alpha: 0.7),
+                                    color: EuphireColors.mist.withValues(
+                                      alpha: 0.7,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -757,8 +804,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       Divider(
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.08)),
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ],
                   ),
                 ),
@@ -791,7 +839,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 // ── Actions ──
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                      20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 16),
+                    20,
+                    8,
+                    20,
+                    MediaQuery.of(ctx).viewInsets.bottom + 16,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -802,7 +854,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                               side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.1)),
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
                             ),
                           ),
                           child: Text(
@@ -825,23 +878,27 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                               _editedSummary = newContent;
                             });
                             Navigator.pop(ctx);
-                            EuphireToast.success(context,
-                                message: t.report_toast_summary_updated);
+                            EuphireToast.success(
+                              context,
+                              message: t.report_toast_summary_updated,
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF5EEDCC),
                             foregroundColor: EuphireColors.obsidianBlack,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5)),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
                             elevation: 0,
                           ),
                           child: Text(
                             t.editPatient_save_primary,
                             style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700),
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -905,33 +962,23 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       listIndent: 14,
       listBulletPadding: const EdgeInsets.only(right: 6),
       blockSpacing: 10,
-      blockquote: TextStyle(
-        fontFamily: 'Montserrat',
-        fontStyle: FontStyle.italic,
-        fontSize: 13.5,
-        height: 1.6,
-        color: EuphireColors.frostWhite.withValues(alpha: 0.85),
-      ),
-      blockquoteDecoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        border: Border(
-          left: BorderSide(
-            color: EuphireColors.ember.withValues(alpha: 0.5),
-            width: 3,
-          ),
-        ),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(6),
-          bottomRight: Radius.circular(6),
-        ),
-      ),
-      blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      // Cytat: wspolny styl z theme/markdown_quote_style.dart. Ten ekran
+      // byl jego zrodlem — zapis rozmowy z AI renderowal cytaty domyslnym
+      // stylem flutter_markdown (jasny blok w ciemnym motywie), wiec
+      // wartosci przeniesiono do wspolnego miejsca zamiast kopiowac.
+      blockquote: kQuoteTextStyle,
+      blockquoteDecoration: kQuoteDecoration,
+      blockquotePadding: kQuotePadding,
     );
   }
 
   // ── Long-press options for a report section ──
 
-  void _showSectionOptions(BuildContext context, _ReportSection section, int index) {
+  void _showSectionOptions(
+    BuildContext context,
+    _ReportSection section,
+    int index,
+  ) {
     final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
@@ -950,9 +997,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               children: [
                 // Drag handle
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 // Header
@@ -975,10 +1025,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   color: EuphireColors.ember,
                   onTap: () {
                     // Strip markdown headers for cleaner clipboard
-                    final clean = section.content.replaceAll(RegExp(r'^#+\s+', multiLine: true), '');
+                    final clean = section.content.replaceAll(
+                      RegExp(r'^#+\s+', multiLine: true),
+                      '',
+                    );
                     Clipboard.setData(ClipboardData(text: clean));
                     Navigator.pop(ctx);
-                    EuphireToast.success(context, message: t.report_toast_section_copied);
+                    EuphireToast.success(
+                      context,
+                      message: t.report_toast_section_copied,
+                    );
                   },
                 ),
                 const SizedBox(height: 10),
@@ -1030,9 +1086,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 40, height: 4,
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -1040,10 +1099,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF5EEDCC).withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFF5EEDCC,
+                              ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.edit_note_rounded, color: Color(0xFF5EEDCC), size: 22),
+                            child: const Icon(
+                              Icons.edit_note_rounded,
+                              color: Color(0xFF5EEDCC),
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1065,7 +1130,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                   style: TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 13,
-                                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                                    color: EuphireColors.mist.withValues(
+                                      alpha: 0.7,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1074,7 +1141,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+                      Divider(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ],
                   ),
                 ),
@@ -1106,7 +1176,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 ),
                 // ── Actions ──
                 Padding(
-                  padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 16),
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    8,
+                    20,
+                    MediaQuery.of(ctx).viewInsets.bottom + 16,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -1116,7 +1191,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
-                              side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
                             ),
                           ),
                           child: Text(
@@ -1141,18 +1218,27 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                               });
                             }
                             Navigator.pop(ctx);
-                            EuphireToast.success(context, message: t.report_toast_section_updated);
+                            EuphireToast.success(
+                              context,
+                              message: t.report_toast_section_updated,
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF5EEDCC),
                             foregroundColor: EuphireColors.obsidianBlack,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
                             elevation: 0,
                           ),
                           child: Text(
                             t.editPatient_save_primary,
-                            style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -1233,7 +1319,11 @@ class _OptionTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.4), size: 20),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: color.withValues(alpha: 0.4),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -1249,14 +1339,9 @@ class _ReportPayload {
   final String? summary;
   final String reportMarkdown;
 
-  const _ReportPayload({
-    this.summary,
-    required this.reportMarkdown,
-  });
+  const _ReportPayload({this.summary, required this.reportMarkdown});
 
-  static _ReportPayload empty() => const _ReportPayload(
-        reportMarkdown: '',
-      );
+  static _ReportPayload empty() => const _ReportPayload(reportMarkdown: '');
 
   static _ReportPayload parse(ReportDto report) {
     if (report.content.isEmpty) {
@@ -1361,41 +1446,50 @@ class _ReportSection {
   final GlobalKey key;
   final GlobalKey tabKey;
   _ReportSection({
-    required this.title, 
-    required this.content, 
-    required this.key, 
+    required this.title,
+    required this.content,
+    required this.key,
     required this.tabKey,
   });
 }
 
 List<_ReportSection> _parseSections(String md, AppLocalizations t) {
   final lines = md.split('\n');
-  
+
   // Ograniczamy parsowanie do nagłówków poziomu 1 i 2, o ile takie występują.
   // Zapobiega to łapaniu potnagłówków (###) wygenerowanych przez LLM jako osobne zakładki.
   bool hasLevel1or2 = lines.any((l) => RegExp(r'^#{1,2}\s').hasMatch(l));
-  final headerRegex = hasLevel1or2 
-      ? RegExp(r'^#{1,2}\s+(.*)') 
+  final headerRegex = hasLevel1or2
+      ? RegExp(r'^#{1,2}\s+(.*)')
       : RegExp(r'^#+\s+(.*)');
 
   if (!lines.any((l) => headerRegex.hasMatch(l))) {
-    return [_ReportSection(title: t.report_tab, content: md, key: GlobalKey(), tabKey: GlobalKey())];
+    return [
+      _ReportSection(
+        title: t.report_tab,
+        content: md,
+        key: GlobalKey(),
+        tabKey: GlobalKey(),
+      ),
+    ];
   }
-  
+
   final sections = <_ReportSection>[];
   String currentTitle = t.report_intro_title;
   StringBuffer currentContent = StringBuffer();
-  
+
   for (final line in lines) {
     final match = headerRegex.firstMatch(line);
     if (match != null) {
       if (currentContent.toString().trim().isNotEmpty) {
-         sections.add(_ReportSection(
-           title: currentTitle, 
-           content: currentContent.toString().trim(), 
-           key: GlobalKey(),
-           tabKey: GlobalKey()
-         ));
+        sections.add(
+          _ReportSection(
+            title: currentTitle,
+            content: currentContent.toString().trim(),
+            key: GlobalKey(),
+            tabKey: GlobalKey(),
+          ),
+        );
       }
       currentTitle = match.group(1)!.replaceAll(RegExp(r'\*'), '').trim();
       currentContent = StringBuffer();
@@ -1405,13 +1499,15 @@ List<_ReportSection> _parseSections(String md, AppLocalizations t) {
     }
   }
   if (currentContent.toString().trim().isNotEmpty) {
-    sections.add(_ReportSection(
-      title: currentTitle, 
-      content: currentContent.toString().trim(), 
-      key: GlobalKey(),
-      tabKey: GlobalKey()
-    ));
+    sections.add(
+      _ReportSection(
+        title: currentTitle,
+        content: currentContent.toString().trim(),
+        key: GlobalKey(),
+        tabKey: GlobalKey(),
+      ),
+    );
   }
-  
+
   return sections;
 }

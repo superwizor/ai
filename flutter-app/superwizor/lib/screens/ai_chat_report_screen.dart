@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
+import '../theme/markdown_quote_style.dart';
 import '../widgets/euphire_segmented_control.dart';
 import '../widgets/euphire_toast.dart';
 import '../utils/haptics.dart';
@@ -561,28 +562,30 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
               MarkdownBody(
                 data: activeSummary,
                 selectable: true,
-                styleSheet: MarkdownStyleSheet(
-                  h3: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                    height: 1.8,
-                  ),
-                  p: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 14,
-                    height: 1.65,
-                    color: EuphireColors.frostWhite.withValues(alpha: 0.92),
-                  ),
-                  strong: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                    color: EuphireColors.ember,
-                  ),
-                  listBullet: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: EuphireColors.ember.withValues(alpha: 0.8),
+                styleSheet: withQuoteStyle(
+                  MarkdownStyleSheet(
+                    h3: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                      height: 1.8,
+                    ),
+                    p: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      height: 1.65,
+                      color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                    ),
+                    strong: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.ember,
+                    ),
+                    listBullet: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: EuphireColors.ember.withValues(alpha: 0.8),
+                    ),
                   ),
                 ),
               )
@@ -911,41 +914,43 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                 data: msg.text,
                 selectable:
                     false, // SelectionArea wraps the entire transcript column!
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 13.5,
-                    height: 1.55,
-                    color: isUser
-                        ? EuphireColors.frostWhite
-                        : EuphireColors.frostWhite.withValues(alpha: 0.92),
-                  ),
-                  strong: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.ember,
-                  ),
-                  h1: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                  ),
-                  h2: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                  ),
-                  h3: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.ember,
-                  ),
-                  listBullet: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: isUser ? EuphireColors.ember : EuphireColors.mist,
+                styleSheet: withQuoteStyle(
+                  MarkdownStyleSheet(
+                    p: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13.5,
+                      height: 1.55,
+                      color: isUser
+                          ? EuphireColors.frostWhite
+                          : EuphireColors.frostWhite.withValues(alpha: 0.92),
+                    ),
+                    strong: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.ember,
+                    ),
+                    h1: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    h2: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    h3: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.ember,
+                    ),
+                    listBullet: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: isUser ? EuphireColors.ember : EuphireColors.mist,
+                    ),
                   ),
                 ),
               ),

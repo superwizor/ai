@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
+import '../theme/markdown_quote_style.dart';
 import '../utils/haptics.dart';
 import '../widgets/ai_chat_turn_view.dart';
 import '../widgets/euphire_toast.dart';
@@ -347,6 +348,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     }
   }
 
+  /// Podpis pod cytatem w zapisanej notatce: mowca i data sesji.
+  String _quoteAttribution(ChatQuote q) {
+    final when = q.sessionAt;
+    if (when == null) return q.speaker;
+    return '${q.speaker}, ${when.day}.${when.month}.${when.year}';
+  }
+
   /// Flattens a turn for the saved note and for copy-to-clipboard.
   ///
   /// Authorship is preserved in the text, not just in the widgets:
@@ -368,7 +376,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       buf.writeln('### ${s.title}$marker');
       if (s.body.isNotEmpty) buf.writeln(s.body);
       for (final q in s.quotes) {
-        buf.writeln('> "${q.text}" — ${q.speaker}');
+        // Cytat i podpis w osobnych liniach tego samego bloku: `>` na
+        // obu, wiec renderuja sie jako JEDEN cytat z belka, tak jak w
+        // raporcie. Wczesniej podpis wisial w tej samej linii co tekst,
+        // co przy dluzszym cytacie gubilo sie w srodku akapitu.
+        //
+        // Data dopisana, bo w zywym czacie widnieje w naglowku cytatu i
+        // notatka nie powinna jej gubic — "kiedy to padlo" bywa dla
+        // terapeuty wazniejsze niz "kto to powiedzial".
+        buf.writeln('> "${q.text}"');
+        buf.writeln('>');
+        buf.writeln('> — ${_quoteAttribution(q)}');
+        buf.writeln();
       }
       buf.writeln();
     }
@@ -1071,45 +1090,47 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                       else
                         MarkdownBody(
                           data: msg.text,
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 13.5,
-                              height: 1.55,
-                              color: isUser
-                                  ? EuphireColors.frostWhite
-                                  : EuphireColors.frostWhite.withValues(
-                                      alpha: 0.92,
-                                    ),
-                            ),
-                            strong: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.ember,
-                            ),
-                            h1: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.frostWhite,
-                            ),
-                            h2: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.frostWhite,
-                            ),
-                            h3: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.ember,
-                            ),
-                            listBullet: TextStyle(
-                              fontFamily: 'Montserrat',
-                              color: isUser
-                                  ? EuphireColors.ember
-                                  : EuphireColors.mist,
+                          styleSheet: withQuoteStyle(
+                            MarkdownStyleSheet(
+                              p: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13.5,
+                                height: 1.55,
+                                color: isUser
+                                    ? EuphireColors.frostWhite
+                                    : EuphireColors.frostWhite.withValues(
+                                        alpha: 0.92,
+                                      ),
+                              ),
+                              strong: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.ember,
+                              ),
+                              h1: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.frostWhite,
+                              ),
+                              h2: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.frostWhite,
+                              ),
+                              h3: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.ember,
+                              ),
+                              listBullet: TextStyle(
+                                fontFamily: 'Montserrat',
+                                color: isUser
+                                    ? EuphireColors.ember
+                                    : EuphireColors.mist,
+                              ),
                             ),
                           ),
                         ),
@@ -1167,23 +1188,25 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   ? _buildThinkingIndicator()
                   : MarkdownBody(
                       data: _streamingText,
-                      styleSheet: MarkdownStyleSheet(
-                        p: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 13.5,
-                          height: 1.55,
-                          color: EuphireColors.frostWhite.withValues(
-                            alpha: 0.92,
+                      styleSheet: withQuoteStyle(
+                        MarkdownStyleSheet(
+                          p: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13.5,
+                            height: 1.55,
+                            color: EuphireColors.frostWhite.withValues(
+                              alpha: 0.92,
+                            ),
                           ),
-                        ),
-                        strong: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w700,
-                          color: EuphireColors.ember,
-                        ),
-                        listBullet: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          color: EuphireColors.mist,
+                          strong: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.ember,
+                          ),
+                          listBullet: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            color: EuphireColors.mist,
+                          ),
                         ),
                       ),
                     ),
