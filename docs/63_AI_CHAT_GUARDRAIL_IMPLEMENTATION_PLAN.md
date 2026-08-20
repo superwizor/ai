@@ -155,6 +155,21 @@ samym sercu funkcji, nie na jej obrzeżu. Warianty: (a) zaakceptować +
 komunikat w UI, (b) zmienić zakres redakcji (konsekwencje dla
 `docs/compliance/06`). Plan zakłada (a) do odwołania.
 
+**Wyszukiwanie tematyczne i rola RAG (doprecyzowanie 20.08).** `rag_memories`
+(wektory tematów per sesja, 768 wym., indeks HNSW) służy w czacie wyłącznie
+do **preselekcji sesji kandydackich** — embedding zapytania → `rag.SelectHits`
+→ lista sesji (A8; opcjonalnie A1/A5 przy zapytaniach tematycznych „o pracy",
+„o matce"). Wyszukanie samych cytatów odbywa się **wewnątrz** wybranych sesji,
+na odszyfrowanych `transcript_segments`, lexykalnie (pg_trgm / FTS —
+rozszerzenia `pg_trgm` i `btree_gin` są już zainstalowane, migracja 000001).
+Segmenty nie mają dziś embeddingów i plan ich nie dodaje: per-segmentowa
+wektoryzacja to osobna decyzja (koszt backfillu i składowania), do podjęcia
+dopiero jeśli ewaluacja pokaże lukę recall w wyszukiwaniu cytatów. Pełny
+potok RAG z generowania raportów (kotwica, MMR, `ContextMaxChars`) **nie
+przenosi się do czatu wprost**, bo `rag_memories` przechowuje pseudonimizowane
+skróty bez znaczników czasu — a uziemienie A8–A10 i cytaty A1/A7 wymagają
+dokładnych segmentów z `ts_start`/`ts_end`.
+
 DoD: każda ścieżka z testem integracyjnym na prawdziwym Postgresie;
 A4 z testem „kontekst nieobecny w promptcie".
 
@@ -244,6 +259,11 @@ Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
 - Koszt pełnego przebiegu ≈ $0.25 — bramka na każdym PR dotykającym
   `pkg/guardrail`; wywołania równoległe.
 - Kalibracja τ na krzywej precision/recall; zapis do `app_config`.
+- **Seed v1 wygenerowany 20.08** (`guardrail-evals/`): 658 przykładów
+  klasyfikatora (14 kategorii, wszystkie ≥ 40) + 43 przykłady weryfikatora
+  (22 block / 21 pass), etykiety `proposed`; `tools/validate.py` działa jako
+  brama CI do czasu runnera z F2. Anotacja/adjudykacja pozostaje ścieżką
+  krytyczną — metryki 8.2 liczą się wyłącznie na `adjudicated`.
 
 ### F9 — UI web + Flutter (5–7 dni + cykl wydań)
 
