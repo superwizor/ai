@@ -76,7 +76,8 @@
       "analytics": "Analityka",
       "crm": "CRM",
       "prompts": "Prompty",
-      "stripeTest": "Testy Stripe"
+      "stripeTest": "Testy Stripe",
+      "aiChat": "AI Chat"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -681,6 +682,34 @@
       "seatPlaceholder": "— wybierz plan —",
       "seatHint": "Ta organizacja ma kilka przydziałów. Wskaż, który plan ma obciążyć terapeuta.",
       "seatRequired": "Wybierz przydział miejsc."
+    },
+    "aiChat": {
+      "metaTitle": "AI Chat — sterowanie",
+      "loading": "Wczytywanie…",
+      "switchTitle": "Przełącznik awaryjny",
+      "switchBody": "Zmiana działa bez wdrożenia — instancje podchwytują ją w ciągu 30 sekund. Każda zmiana wymaga uzasadnienia i trafia do dziennika audytu.",
+      "stateOn": "Czat włączony",
+      "stateOff": "Czat wyłączony",
+      "modeFull": "Tryb pełny",
+      "modeDefinedOps": "Tryb ograniczony",
+      "btnDisable": "Wyłącz czat",
+      "btnEnable": "Włącz czat",
+      "btnModeFull": "Przywróć tryb pełny",
+      "btnModeDefinedOps": "Ogranicz do operacji zdefiniowanych",
+      "guidance": "Ograniczenie jest tańsze operacyjnie niż wyłączenie: terapeuta zachowuje wyszukiwanie cytatów i statystyki, traci wyłącznie funkcje generatywne. Pełne wyłączenie stosuj, gdy problem może dotyczyć również ścieżek odtwórczych. Informacja kryzysowa pozostaje widoczna w obu przypadkach.",
+      "configTitle": "Konfiguracja",
+      "labelTau": "Próg pewności klasyfikatora",
+      "labelQuota": "Domyślny budżet terapeuty",
+      "perMonth": "mies.",
+      "tauNote": "Próg pewności jest kalibrowany na zestawie ewaluacyjnym. Nigdy nie obniżaj go po to, żeby zmniejszyć liczbę fałszywych odmów — to przesuwa granicę w stronę odpowiadania na pytania, które powinny zostać odrzucone.",
+      "confirmDisableTitle": "Wyłączyć czat?",
+      "confirmDisableBody": "Wszystkie zapytania będą odrzucane komunikatem o niedostępności. Informacja kryzysowa pozostaje widoczna. Podaj powód — trafi do dziennika audytu.",
+      "confirmEnableTitle": "Włączyć czat?",
+      "confirmEnableBody": "Czat zacznie odpowiadać w bieżącym trybie. Podaj powód — trafi do dziennika audytu.",
+      "confirmRestrictTitle": "Ograniczyć do operacji zdefiniowanych?",
+      "confirmRestrictBody": "Konceptualizacja, ocena postępu i propozycje kierunków pracy staną się niedostępne i zostaną zastąpione materiałem źródłowym. Reszta czatu działa bez zmian.",
+      "confirmUnrestrictTitle": "Przywrócić tryb pełny?",
+      "confirmUnrestrictBody": "Funkcje generatywne wrócą. Rób to dopiero, gdy przyczyna ograniczenia jest rozpoznana i pokryta testem w zestawie ewaluacyjnym."
     }
   },
   "errors": {
