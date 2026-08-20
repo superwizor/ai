@@ -28,9 +28,9 @@ Przeprowadzenie DPIA jest **bezwzględnie wymagane** na podstawie art. 35 ust. 3
 |---|---|
 | **Dane szczególnych kategorii** (art. 9 ust. 1) | Treść sesji terapeutycznych = dane dotyczące zdrowia psychicznego |
 | **Przetwarzanie na dużą skalę** | Planowane wdrożenie komercyjne (SaaS) dla wielu terapeutów z wieloma pacjentami |
-| **Nowe technologie** | Sztuczna inteligencja (LLM — Gemini 2.5 Pro), automatyczna transkrypcja mowy (Chirp 3), wektorowa baza pamięci (pgvector RAG) |
-| **Automatyczne podejmowanie decyzji** | Automatyczna diaryzacja (przypisanie wypowiedzi do mówców), automatyczna klasyfikacja HiTOP (wymiarowa psychopatologia) |
-| **Profilowanie** | Budowanie pamięci kontekstowej (RAG) — longitudinalny profil tematyczny pacjenta na podstawie wielu sesji |
+| **Nowe technologie** | Sztuczna inteligencja (LLM na Vertex AI EOG), automatyczna transkrypcja mowy (ElevenLabs Scribe v2 EU residency), wektorowa baza pamięci (pgvector RAG) |
+| **Automatyczne podejmowanie decyzji** | Automatyczna diaryzacja (przypisanie wypowiedzi do ról mówców), automatyczna klasyfikacja HiTOP (wymiarowa psychopatologia) |
+| **Profilowanie** | Budowanie pamięci kontekstowej (RAG) — longitudinalny profil tematyczny na podstawie zredagowanych podsumowań sesji |
 
 Dodatkowo, przetwarzanie figuruje na **liście czynności wymagających DPIA** opublikowanej przez Prezesa UODO (pkt 1, 2, 3, 4, 8, 9, 10).
 
@@ -43,11 +43,12 @@ Dodatkowo, przetwarzanie figuruje na **liście czynności wymagających DPIA** o
 SuperWizor AI jest narzędziem SaaS wspierającym Użytkowników Profesjonalnych (terapeutów, coachów, psychologów) w ich praktyce zawodowej. Główne funkcjonalności:
 
 1. **Nagrywanie lub przesyłanie** nagrań audio sesji terapeutycznych
-2. **Automatyczna transkrypcja** nagrań z identyfikacją mówców (diaryzacja)
-3. **Generowanie raportów z sesji** przez sztuczną inteligencję
-4. **Pomiary wymiarowe HiTOP** (Hierarchiczna Taksonomia Psychopatologii)
-5. **Budowanie pamięci kontekstowej** (pseudonimizowane podsumowania sesji na potrzeby ciągłości terapeutycznej)
-6. **Zarządzanie kartotekami pacjentów** i historią sesji
+2. **Automatyczna transkrypcja** nagrań z identyfikacją ról mówców (diaryzacja) na dedykowanej infrastrukturze EU
+3. **3-warstwowa pseudonimizacja** (minimalizacja u źródła, praca na roboczych aliasach, redakcja PII w locie)
+4. **Generowanie raportów z sesji** przez sztuczną inteligencję (Vertex AI EOG)
+5. **Pomiary wymiarowe HiTOP** (Hierarchiczna Taksonomia Psychopatologii)
+6. **Budowanie pamięci kontekstowej** (pseudonimizowane podsumowania sesji na potrzeby ciągłości terapeutycznej)
+7. **Zarządzanie kartotekami pacjentów** i historią sesji (z 2FA aktywacją)
 
 **Charakter:**
 - Usługodawca (Euphire sp. z o.o.) jest **Podmiotem Przetwarzającym** danych Klientów (pacjentów)
@@ -80,21 +81,23 @@ SuperWizor AI jest narzędziem SaaS wspierającym Użytkowników Profesjonalnych
 │  │         ▼ (audio.uploaded)                     │ nagranie (tymczasowo)│  │
 │  └────────────────────────────────────────────────┼──────────────────────┘  │
 │                                                    │                         │
-│  ┌─── 2. TRANSKRYPCJA ────────────────────────────┼──────────────────────┐  │
+│  ┌─── 2. TRANSKRYPCJA (EU RESIDENCY) ──────────────┼──────────────────────┐  │
 │  │                                                 │                      │  │
-│  │  ┌──────────────┐  BatchRecognize  ┌───────────▼──────────────────┐   │  │
-│  │  │ stt-worker   ├────────────────►│ Vertex AI Speech-to-Text      │   │  │
-│  │  │ (Cloud Func) │                 │ Chirp 3 (eu-speech endpoint)  │   │  │
-│  │  └──────┬───────┘  ◄─────────────│ europe-west4 (Holandia, EOG)  │   │  │
-│  │         │ transkrypcja            └───────────────────────────────┘   │  │
-│  │         │ + diaryzacja                                                │  │
+│  │  ┌──────────────┐  HTTPS / REST    ┌───────────▼──────────────────┐   │  │
+│  │  │ stt-worker   ├─────────────────►│ ElevenLabs Scribe v2         │   │  │
+│  │  │ (Cloud Run / │                  │ api.eu.residency.elevenlabs  │   │  │
+│  │  │  Functions)  │  ◄───────────────│ Zero Retention / EOG         │   │  │
+│  │  └──────┬───────┘  transkrypcja    │ (Fallback: Google STT EU)    │   │  │
+│  │         │          + diaryzacja    └──────────────────────────────┘   │  │
+│  │         │                                                             │  │
+│  │         ▼ 3-warstwowa pseudonimizacja & PII redaction w locie         │  │
 │  │         │ Pub/Sub (stt.completed)                                     │  │
 │  └─────────┼────────────────────────────────────────────────────────────┘  │
 │            │                                                                │
-│  ┌─── 3. ANALIZA AI ──────────────────────────────────────────────────┐    │
+│  ┌─── 3. ANALIZA AI (VERTEX AI EOG) ──────────────────────────────────┐    │
 │  │         ▼                                                          │    │
 │  │  ┌──────────────┐  prompt       ┌─────────────────────────────┐   │    │
-│  │  │ llm-worker   ├─────────────►│ Vertex AI Gemini 2.5 Pro     │   │    │
+│  │  │ llm-worker   ├─────────────►│ Vertex AI LLM (Zero Ret.)   │   │    │
 │  │  │ (Cloud Func) │   ◄──────────│ europe-west4 (Holandia, EOG) │   │    │
 │  │  └──────┬───────┘  raport      └─────────────────────────────┘   │    │
 │  │         │ + HiTOP                                                  │    │
@@ -186,12 +189,15 @@ SuperWizor AI jest narzędziem SaaS wspierającym Użytkowników Profesjonalnych
 
 | Środek minimalizacji | Implementacja |
 |---|---|
+| Minimalizacja w kartotece | Brak imion i nazwisk pacjentów w kartotece klinicznej — operowanie na roboczym aliasie; e-mail przetwarzany wyłącznie w domenie tożsamości |
+| 3-warstwowa pseudonimizacja | Deterministyczna redakcja w locie PII (nazwiska, PESEL, telefony, adresy, placówki, miejscowości) w transkrypcjach i raportach |
+| 2-składnikowa autoryzacja | Kod parowania (hash) przekazywany na sesji, blokada po 5 próbach, zapobiega pomyłkowemu przypisaniu pacjenta |
 | Audio usuwane natychmiast po transkrypcji | OLM 48h backstop — w praktyce usuwane w sekundach po STT |
 | Neutralne etykiety mówców | "Osoba 1", "Osoba 2" — bez imion i nazwisk w etykietach |
 | Pseudonimizacja pamięci RAG | Brak bezpośrednich identyfikatorów (imion, nazwisk, nazw miejsc) |
 | Embeddingi z zredagowanym tekstem | `chunk_text_redacted` — „no PHI" |
 | Raporty read-only | Terapeuta nie może edytować treści wygenerowanej przez AI (P4) |
-| Brak trenowania na danych | Dane Klientów NIE są wykorzystywane do trenowania modeli AI |
+| Brak trenowania na danych | Dane Klientów NIE są wykorzystywane do trenowania modeli AI (Zero Retention Guarantee) |
 | Firestore = lustro statusów | Firestore przechowuje wyłącznie UUIDs i statusy — żadnych treści sesji (ADR-006) |
 
 ### 3.3. Gwarancje praw podmiotów danych

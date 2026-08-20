@@ -1,0 +1,28 @@
+[
+ {
+  "case": "s7-liczenie",
+  "provider": "speechmatics",
+  "audio_duration_s": 62.07,
+  "expected_speakers": 1,
+  "eu_residency": "asr.api.speechmatics.com w UE; hosty per-jurysdykcja na zyczenie",
+  "error": "HTTP 400: {'code': 400, 'error': 'Job rejected due to invalid audio'}",
+  "latency_s": 0.8
+ },
+ {
+  "case": "s7-converted",
+  "provider": "speechmatics",
+  "audio_duration_s": 62.07,
+  "expected_speakers": 1,
+  "eu_residency": "asr.api.speechmatics.com w UE; hosty per-jurysdykcja na zyczenie",
+  "word_count": 60,
+  "last_word_end_s": 61.97,
+  "coverage_pct": 99.8,
+  "speaker_count": 1,
+  "words_per_speaker": {
+   "S1": 60
+  },
+  "latency_s": 14.5,
+  "raw": "raw/speechmatics_s7-converted.json",
+  "diarization_ok": true
+ }
+]

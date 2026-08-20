@@ -1,0 +1,11 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(gcloud secrets versions access:*)",
+            "Bash(psql:*)",
+            "Bash(go run:*)",
+            "Bash(./cloud-sql-proxy:*)",
+            "Bash(curl -o cloud-sql-proxy:*)"
+        ]
+    }
+}

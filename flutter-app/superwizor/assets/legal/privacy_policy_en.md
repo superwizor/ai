@@ -76,14 +76,22 @@ The Service Provider applies advanced security measures appropriate to the high 
 
 **Data residency and region control:**
 * The infrastructure processing session data (recordings, transcriptions, reports, contextual memory) is located in the **europe-central2 (Warsaw, Poland)** region of the Google Cloud Platform. Resource locations are defined in infrastructure-as-code configuration, subject to version control and reviews.
-* The only exception is the Vertex AI service (used for generating reports and embeddings), located in the **europe-west4 (Netherlands)** region — still within the European Economic Area (EEA). The Speech-to-Text service uses a dedicated European endpoint (`eu-speech.googleapis.com`).
+* AI analytical services operate in the certified **europe-west4 (Netherlands)** region within the European Economic Area (EEA). Speech-to-Text transcription is executed on dedicated EU data residency infrastructure (ElevenLabs EU residency endpoint: `api.eu.residency.elevenlabs.io` with fallback to European endpoint `eu-speech.googleapis.com`).
+
+**3-layer pseudonymization and minimalization at source:**
+* **Minimalization in records:** The system does not collect Client first or last names in clinical records. The file operates strictly on a working alias, and the only direct account identifier is the email address processed within the identity domain.
+* **On-the-fly PII redaction:** Before persistent storage of transcriptions and reports, content is processed through a deterministic redaction engine. Surnames, national identification numbers (PESEL), phone numbers, email addresses, residential addresses, employer names, school names, and all locality names are detected and replaced with neutral tokens.
+* **Long-term memory:** Contextual RAG memory and vector embeddings are generated and stored exclusively on redacted, pseudonymized text.
+
+**Two-factor Client invitation authorization:**
+* Client account activation requires two independent factors: an activation email link and a 6-digit pairing code handed in person by the therapist (during a session or by phone). The code is never transmitted via email, only its cryptographic hash is stored, and 5 failed attempts permanently lock the invitation.
 
 **Encryption of data at rest:**
 * **CMEK (Customer-Managed Encryption Keys):** Key infrastructure services (Cloud Storage, Cloud SQL, Secret Manager) use encryption keys managed by the Service Provider in Cloud KMS (keyring `superwizor-keyring`), with automatic rotation every 90 days.
-* **Envelope Encryption:** All special categories of data (transcriptions, session reports, HiTOP measurements, RAG contextual memory) are encrypted at the application level using an AEAD algorithm. Each record has a unique data encryption key (DEK), which is encrypted with a master key (KEK) managed in Cloud KMS. This means that even if database access were obtained, the data remains unreadable without access to Cloud KMS.
+* **Envelope Encryption:** All special categories of data (transcriptions, session reports, HiTOP measurements, RAG contextual memory) are encrypted at the application level using an AEAD algorithm (AES-256-GCM). Each record has a unique data encryption key (DEK), which is encrypted with a master key (KEK) managed in Cloud KMS. This means that even if database access were obtained, the data remains unreadable without access to Cloud KMS.
 
 **Encryption of data in transit:**
-* All connections use the TLS/SSL protocol.
+* All connections use the TLS/SSL protocol (TLS 1.3).
 * Inter-service communication occurs via gRPC (HTTP/2) with encryption.
 
 **Network isolation:**
@@ -104,7 +112,7 @@ The Service Provider applies advanced security measures appropriate to the high 
 * Every significant data operation is recorded in the audit events table.
 
 **Monitoring and testing:**
-* Continuous monitoring of logs and metrics via Google Cloud Logging and Cloud Monitoring.
+* Continuous monitoring of logs and metrics via Google Cloud Logging and Cloud Monitoring (with strict enforcement of the No-PHI logging invariant).
 * Regular security reviews of infrastructure and code.
 
 ### 6. Data Recipients, Data Transfer, and Sub-processors
@@ -114,7 +122,8 @@ In providing the services, we use the following trusted providers (data recipien
 | Provider | Service | Data processed | Location / transfer basis |
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Backend processing and data storage | europe-central2 (Warsaw, Poland) |
-| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (report generation), Text Embeddings (RAG memory) | Audio transcription, session report generation, memory embeddings | europe-west4 (Netherlands) for Vertex AI; eu-speech.googleapis.com for STT |
+| **Google Cloud — Vertex AI** | AI report generation, Text Embeddings (RAG memory), Speech-to-Text (fallback) | Analytical report generation, memory embeddings | europe-west4 (Netherlands) for Vertex AI; eu-speech.googleapis.com for STT |
+| **ElevenLabs, Inc.** | Speech-to-Text (Scribe v2) | Synchronous speech-to-text processing (zero audio retention, no model training) | Dedicated EU residency endpoint (api.eu.residency.elevenlabs.io) — EEA |
 | **Google Firebase** | Authentication, Cloud Firestore (status synchronization only — not the source of truth), Cloud Storage (profile photos), FCM (push notifications) | Authentication tokens, mirrored session statuses (no session content), profile photos, push tokens | Firestore and Storage: europe-central2. Authentication and FCM are global Google services — authentication data and push tokens may be processed outside the EEA; Google LLC is certified under the EU-US Data Privacy Framework (DPF) |
 | **Stripe** (Stripe Payments Europe, Ltd. — Ireland; Stripe, Inc. — USA) | Payment processing, subscription management | Payment data, invoicing data | EU (Ireland); transfers to Stripe, Inc. (USA) based on the EU-US DPF and standard contractual clauses (PCI DSS Level 1 certified) |
 | **Resend, Inc.** (USA) | Sending transactional e-mails (welcome, verification, subscription notifications) and — upon consent — marketing messages | E-mail address, first name, content of system messages | USA; transfer based on standard contractual clauses (Art. 46(2)(c) GDPR) |

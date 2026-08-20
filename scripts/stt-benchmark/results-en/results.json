@@ -1,0 +1,56 @@
+[
+ {
+  "case": "gabriela-cbt",
+  "provider": "deepgram",
+  "audio_duration_s": 820.26,
+  "expected_speakers": 2,
+  "eu_residency": "api.eu.deepgram.com — endpoint EU",
+  "word_count": 2332,
+  "last_word_end_s": 812.21,
+  "coverage_pct": 99.0,
+  "speaker_count": 2,
+  "words_per_speaker": {
+   "0": 1060,
+   "1": 1272
+  },
+  "latency_s": 12.0,
+  "raw": "raw/deepgram_gabriela-cbt.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "gabriela-cbt",
+  "provider": "speechmatics",
+  "audio_duration_s": 820.26,
+  "expected_speakers": 2,
+  "eu_residency": "asr.api.speechmatics.com w UE; hosty per-jurysdykcja na zyczenie",
+  "word_count": 2342,
+  "last_word_end_s": 812.34,
+  "coverage_pct": 99.0,
+  "speaker_count": 2,
+  "words_per_speaker": {
+   "S1": 1091,
+   "S2": 1251
+  },
+  "latency_s": 38.0,
+  "raw": "raw/speechmatics_gabriela-cbt.json",
+  "diarization_ok": true
+ },
+ {
+  "case": "gabriela-cbt",
+  "provider": "elevenlabs",
+  "audio_duration_s": 820.26,
+  "expected_speakers": 2,
+  "eu_residency": "wymaga planu z EU data residency (api.eu.residency.elevenlabs.io)",
+  "word_count": 2408,
+  "last_word_end_s": 812.16,
+  "coverage_pct": 99.0,
+  "speaker_count": 2,
+  "words_per_speaker": {
+   "speaker_0": 1130,
+   "speaker_1": 1278
+  },
+  "latency_s": 21.8,
+  "raw": "raw/elevenlabs_gabriela-cbt.json",
+  "diarization_ok": true
+ }
+]
