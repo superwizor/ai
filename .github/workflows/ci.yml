@@ -254,13 +254,6 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
-            # GOOGLE_CLOUD_PROJECT + VERTEX_LOCATION — czat AI (klient Vertex w
-            # internal/chat; bez projektu backend modelu to Nop i kazda tura
-            # generatywna pada). GCP_PROJECT_ID — publisher session.deleted
-            # (lustro Firestore). Musza byc TUTAJ, bo --set-env-vars ZASTEPUJE
-            # caly blok: pierwszy deploy z CI po ich recznym dodaniu (20.08,
-            # rewizja 00411) wymazal je i czat zwracal INTERNAL, dokladnie tak
-            # jak wczesniej BILLING_SVC_URL na ingestion — patrz komentarz nizej.
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="ENV=staging,BILLING_SVC_URL=${BILLING_URL}"
           # --set-secrets/--set-env-vars REPLACE their whole blocks. The
@@ -328,6 +321,13 @@ jobs:
           # exists; resolve its URL. Without it the send path returns Unavailable
           # and the note is saved-only.
           NOTIFICATION_URL=$(gcloud run services describe notification-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+            # GOOGLE_CLOUD_PROJECT + VERTEX_LOCATION — czat AI (klient Vertex w
+            # internal/chat; bez projektu backend modelu to Nop i kazda tura
+            # generatywna pada). GCP_PROJECT_ID — publisher session.deleted
+            # (lustro Firestore). Musza byc TUTAJ, bo --set-env-vars ZASTEPUJE
+            # caly blok: pierwszy deploy z CI po ich recznym dodaniu (20.08,
+            # rewizja 00411) wymazal je i czat zwracal INTERNAL, dokladnie tak
+            # jak wczesniej BILLING_SVC_URL na ingestion — patrz komentarz nizej.
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
