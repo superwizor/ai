@@ -85,3 +85,13 @@ services/ai-pipeline-svc/testdata/
 # Temporary feature-branch build config — deleted on merge to main
 # per the file's own comment block.
 cloudbuild-feature-branch.yaml
+
+# Skompilowane binaria pakietow (go test -c / przypadkowe buildy w katalogu
+# pakietu). 20.08.2026 szesc takich binariow (po 1,7 MB) wjechalo do
+# historii przez `git add -A` — plik bez rozszerzenia o nazwie katalogu.
+pkg/authz/authz
+pkg/errors/errors
+pkg/idempotency/idempotency
+pkg/observability/observability
+pkg/pubsubx/pubsubx
+pkg/testutil/testutil
