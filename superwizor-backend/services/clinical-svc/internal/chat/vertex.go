@@ -65,6 +65,17 @@ func (v *vertexLLM) Generate(ctx context.Context, req GenerateRequest) (Generate
 
 	cfg := &genai.GenerateContentConfig{
 		Temperature: genai.Ptr(req.Temperature),
+		// Thinking WYLACZONE. gemini-2.5-flash mysli domyslnie, a tokeny
+		// myslenia licza sie do MaxOutputTokens — sonda z 20.08 21:50
+		// pokazala odpowiedz ucieta po 70 tokenach TRESCI przy limicie
+		// 2048: reszte zjadlo rozmyslanie nad bogatym kontekstem. Stad
+		// losowosc calodziennych awarii (schema/truncated mimo maxLength):
+		// budzet zjadala zmienna, ktorej nie widzielismy. Zadania czatu
+		// sa strukturalne i uziemione cytatami — nie potrzebuja lancucha
+		// mysli, potrzebuja przewidywalnego budzetu.
+		ThinkingConfig: &genai.ThinkingConfig{
+			ThinkingBudget: genai.Ptr(int32(0)),
+		},
 	}
 	if req.MaxTokens > 0 {
 		cfg.MaxOutputTokens = req.MaxTokens
@@ -90,8 +101,14 @@ func (v *vertexLLM) Generate(ctx context.Context, req GenerateRequest) (Generate
 	out := GenerateResponse{Model: req.Model}
 	if resp.UsageMetadata != nil {
 		out.Usage = Usage{
-			InputTokens:  int64(resp.UsageMetadata.PromptTokenCount),
-			OutputTokens: int64(resp.UsageMetadata.CandidatesTokenCount),
+			InputTokens: int64(resp.UsageMetadata.PromptTokenCount),
+			// Tokeny myslenia sa BILINGOWANE jak wyjscie — bez nich
+			// quota naliczalaby mniej, niz schodzi z karty. Przy
+			// ThinkingBudget=0 skladnik jest zerowy, ale liczymy go
+			// zawsze, zeby ewentualny powrot myslenia nie otworzyl
+			// cichej dziury w suficie.
+			OutputTokens: int64(resp.UsageMetadata.CandidatesTokenCount) +
+				int64(resp.UsageMetadata.ThoughtsTokenCount),
 		}
 	}
 	var sb strings.Builder

@@ -501,6 +501,17 @@ modelu, z których jedno pisze prozę kliniczną, nie zmieszczą się w 1,5 s.
 Streaming to ukrywa, ale weryfikator go zabrania z założenia (§4.2) — i
 ten kompromis jest słuszny, tylko liczba w ADR mu nie odpowiada.
 
+**Aktualizacja 20.08 wieczorem — znaleziony właściwy winowajca.** Sonda
+wykazała, że gemini-2.5-flash **myśli domyślnie**, a tokeny myślenia
+liczą się do `MaxOutputTokens`: odpowiedź ucinała się po 70 tokenach
+treści przy limicie 2048, bo resztę zjadało rozmyślanie. To tłumaczy
+losowość całodziennych bloków `schema` i większość latencji. Po
+`ThinkingBudget=0` (zadania czatu są strukturalne i uziemione — nie
+potrzebują łańcucha myśli): klasyfikator 0,99 s, generator 4,71 s,
+weryfikator 0,53 s — **suma wywołań 6,4 s** (było ~11,5 s), obcięcia
+zniknęły przy pełnym kontekście. Próg 1,5 s dalej nieosiągalny (4,3×),
+ale rewizja progu może celować niżej niż zakładano wczoraj.
+
 Warianty do rozstrzygnięcia przez PO:
 1. **Zrewidować próg** do wartości osiągalnej (np. p95 ≤ 15 s) i przenieść
    ciężar na komunikat w UI („przygotowuję odpowiedź…"). Guardrail bez zmian.
