@@ -107,8 +107,15 @@ func NopLLM() LLM { return nopLLM{} }
 // the turn anyway. Measurement on 2026-08-20 showed that assumption was
 // wrong: a real A5 generation over an 8000-character context takes 7-13 s,
 // and a slow one crossed 20 s and hard-failed in front of a therapist
-// ("chat turn failed"). 45 s leaves room for the tail without hanging a
-// request indefinitely.
+// ("chat turn failed"). Raised to 45 s, then to 75 s for the tail.
+//
+// The Flutter client must wait LONGER than this, not shorter. If it gives
+// up first, the therapist sees a transport abort instead of the server's
+// own message, and the turn is still billed against the quota with
+// nothing to show. The client is set to 90 s — see
+// flutter-app/superwizor/lib/services/grpc_client.dart, whose interceptor
+// used to force 30 s onto every call and would have made this constant
+// decorative.
 //
 // This is a ceiling for pathological cases, NOT a latency target. The
 // measured breakdown of one turn is roughly:
@@ -124,7 +131,7 @@ func NopLLM() LLM { return nopLLM{} }
 // clinical prose — streaming is what would hide it, and the verifier
 // forbids streaming by design. The number needs a product decision, not
 // more tuning; see docs/63 section 9.
-const callTimeout = 45 * time.Second
+const callTimeout = 75 * time.Second
 
 // withTimeout applies callTimeout unless the caller's deadline is sooner.
 func withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {

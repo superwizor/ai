@@ -208,6 +208,27 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 		return nil, costs, guardrail.Verdict{}, ragHits, err
 	}
 
+	// A question made entirely of function and meta words has nothing to
+	// search for. Say so instead of matching noise: a query of pure
+	// stopwords lands on whatever segment is shortest, and the answer
+	// reads as a confident finding about an arbitrary fragment. That is
+	// what produced "Wzmianki o 'ten Janko'" on 2026-08-20 — a real,
+	// verifier-approved quote answering a question that asked nothing.
+	//
+	// This is most likely right after a refusal, where the offered
+	// alternative prefills "…na ten temat" but no topic travels with it:
+	// the chat holds no conversation memory, so "this topic" refers to
+	// nothing the server can see.
+	if len(SearchableTerms(t.Question)) == 0 {
+		return &Answer{Sections: []Section{{
+			Title: "Doprecyzuj pytanie",
+			Body: "Nie wiem, czego szukać — w pytaniu nie ma tematu, " +
+				"tylko słowa opisujące samą prośbę. Napisz, o czym mam " +
+				"poszukać fragmentów (np. „o pracy”, „o relacji z matką”).",
+			Kind: "summary",
+		}}}, costs, guardrail.Verdict{}, ragHits, nil
+	}
+
 	// Narrow to the segments that actually relate to the question, so
 	// the model's context is evidence rather than a transcript dump.
 	relevant := SearchQuotes(segments, t.Question, 40)

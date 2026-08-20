@@ -64,13 +64,13 @@ class ChatQuote {
   final DateTime? sessionAt;
 
   static ChatQuote fromProto(pb.Quote q) => ChatQuote(
-        sessionId: q.sessionId,
-        segmentId: q.segmentId,
-        text: q.text,
-        speaker: q.speaker,
-        tsStartMs: q.tsStartMs,
-        sessionAt: q.hasSessionAt() ? q.sessionAt.toDateTime() : null,
-      );
+    sessionId: q.sessionId,
+    segmentId: q.segmentId,
+    text: q.text,
+    speaker: q.speaker,
+    tsStartMs: q.tsStartMs,
+    sessionAt: q.hasSessionAt() ? q.sessionAt.toDateTime() : null,
+  );
 }
 
 /// How a section must be presented.
@@ -115,12 +115,12 @@ class ChatSection {
   bool get needsAiMarking => kind == ChatSectionKind.hypothesis;
 
   static ChatSection fromProto(pb.AnswerSection s) => ChatSection(
-        title: s.title,
-        body: s.body,
-        quotes: s.quotes.map(ChatQuote.fromProto).toList(),
-        kind: _kindFromProto(s.kind),
-        userAuthored: s.userAuthored,
-      );
+    title: s.title,
+    body: s.body,
+    quotes: s.quotes.map(ChatQuote.fromProto).toList(),
+    kind: _kindFromProto(s.kind),
+    userAuthored: s.userAuthored,
+  );
 
   static ChatSectionKind _kindFromProto(pb.SectionKind k) {
     switch (k) {
@@ -182,7 +182,13 @@ class ChatRefusal {
   final bool showCrisisInformation;
 }
 
-enum ChatOutcomeKind { answered, degraded, refused, verifierBlocked, unavailable }
+enum ChatOutcomeKind {
+  answered,
+  degraded,
+  refused,
+  verifierBlocked,
+  unavailable,
+}
 
 @immutable
 class ChatTurnResult {
@@ -211,7 +217,8 @@ class ChatTurnResult {
   final int latencyMs;
 
   bool get isRefusal =>
-      outcome == ChatOutcomeKind.refused || outcome == ChatOutcomeKind.verifierBlocked;
+      outcome == ChatOutcomeKind.refused ||
+      outcome == ChatOutcomeKind.verifierBlocked;
 
   /// True when the turn was answered with a reduced operation. The UI
   /// says so: a therapist who asked for a conceptualization and silently
@@ -224,25 +231,36 @@ class ChatTurnResult {
     return ChatTurnResult(
       conversationId: r.conversationId,
       outcome: _outcomeFromProto(r.outcome),
-      sections: answer?.sections.map(ChatSection.fromProto).toList() ?? const [],
-      suggestedQuestions: answer?.suggestedQuestions
-              .map((q) => ChatSuggestedQuestion(
-                    question: q.question,
-                    quotes: q.quotes.map(ChatQuote.fromProto).toList(),
-                  ))
+      sections:
+          answer?.sections.map(ChatSection.fromProto).toList() ?? const [],
+      suggestedQuestions:
+          answer?.suggestedQuestions
+              .map(
+                (q) => ChatSuggestedQuestion(
+                  question: q.question,
+                  quotes: q.quotes.map(ChatQuote.fromProto).toList(),
+                ),
+              )
               .toList() ??
           const [],
       refusal: r.hasRefusal()
           ? ChatRefusal(
               messageKey: r.refusal.message,
               alternatives: r.refusal.alternatives
-                  .map((a) => ChatAlternative(labelKey: a.label, prefillKey: a.prefill))
+                  .map(
+                    (a) => ChatAlternative(
+                      labelKey: a.label,
+                      prefillKey: a.prefill,
+                    ),
+                  )
                   .toList(),
               showCrisisInformation: r.refusal.showCrisisInformation,
             )
           : null,
       degradeReason: r.hasMeta() ? r.meta.degradeReason : '',
-      quotaRemainingMicroUsd: r.hasMeta() ? r.meta.quotaRemainingMicroUsd.toInt() : 0,
+      quotaRemainingMicroUsd: r.hasMeta()
+          ? r.meta.quotaRemainingMicroUsd.toInt()
+          : 0,
       latencyMs: r.hasMeta() ? r.meta.latencyMs : 0,
     );
   }
@@ -277,10 +295,7 @@ class ChatUnavailableException implements Exception {
 // ── Service ────────────────────────────────────────────────────────────
 
 class AiChatService {
-  AiChatService({
-    required this.patientFileId,
-    required Ref ref,
-  }) : _ref = ref;
+  AiChatService({required this.patientFileId, required Ref ref}) : _ref = ref;
 
   final String patientFileId;
   final Ref _ref;
@@ -311,11 +326,23 @@ class AiChatService {
           starterId: starterId,
           starterEdited: starterEdited,
         ),
+        // Dluzej niz serwerowy callTimeout (75 s), zeby to serwer zdazyl
+        // odpowiedziec wlasnym bledem. Gdyby klient rezygnowal pierwszy,
+        // terapeuta widzialby zerwane polaczenie zamiast komunikatu, a
+        // tura i tak obciazylaby budzet.
+        //
+        // Tyle, bo tura jest wolna z zalozenia: trzy sekwencyjne
+        // wywolania modelu, z ktorych jedno pisze proze kliniczna.
+        // Zmierzone 20.08.2026: A1 10,4 s, A8 25,5 s. Strumieniowanie by
+        // to ukrylo, ale weryfikator go zabrania — musi zobaczyc calosc,
+        // zanim cokolwiek trafi na ekran.
+        options: CallOptions(timeout: const Duration(seconds: 90)),
       );
       _conversationId = resp.conversationId;
       return ChatTurnResult.fromProto(resp);
     } on GrpcError catch (e) {
-      if (e.code == StatusCode.unavailable && (e.message ?? '').contains('FEATURE_DISABLED')) {
+      if (e.code == StatusCode.unavailable &&
+          (e.message ?? '').contains('FEATURE_DISABLED')) {
         throw const ChatUnavailableException();
       }
       rethrow;
@@ -332,7 +359,11 @@ class AiChatService {
 /// classified normally, which is the safe failure.
 @immutable
 class ChatStarter {
-  const ChatStarter({required this.id, required this.label, required this.prefill});
+  const ChatStarter({
+    required this.id,
+    required this.label,
+    required this.prefill,
+  });
   final String id;
   final String label;
   final String prefill;
@@ -435,14 +466,25 @@ class AiChatSummaryNotifier extends Notifier<Map<String, SummaryTaskState>> {
       final body = '### Zapis rozmowy z AI\n$fullTranscript'.trim();
       final notesNotifier = ref.read(patientNotesMapProvider.notifier);
       if (noteId != null && noteId.isNotEmpty) {
-        await notesNotifier.updateNote(patientId, noteId, 'Notatka z rozmowy AI', body);
+        await notesNotifier.updateNote(
+          patientId,
+          noteId,
+          'Notatka z rozmowy AI',
+          body,
+        );
       } else {
         await notesNotifier.addNote(patientId, 'Notatka z rozmowy AI', body);
       }
-      state = {...state, key: SummaryTaskState(isGenerating: false, summaryResult: body)};
+      state = {
+        ...state,
+        key: SummaryTaskState(isGenerating: false, summaryResult: body),
+      };
       return body;
     } catch (e) {
-      state = {...state, key: SummaryTaskState(isGenerating: false, error: e.toString())};
+      state = {
+        ...state,
+        key: SummaryTaskState(isGenerating: false, error: e.toString()),
+      };
       rethrow;
     }
   }
@@ -450,5 +492,5 @@ class AiChatSummaryNotifier extends Notifier<Map<String, SummaryTaskState>> {
 
 final aiChatSummaryProvider =
     NotifierProvider<AiChatSummaryNotifier, Map<String, SummaryTaskState>>(() {
-  return AiChatSummaryNotifier();
-});
+      return AiChatSummaryNotifier();
+    });

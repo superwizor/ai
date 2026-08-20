@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -359,15 +360,54 @@ func SearchQuotes(segments []Segment, query string, limit int) []Segment {
 	return out
 }
 
-// stopwords are Polish function words that match everything and rank
-// nothing. Kept short deliberately: an aggressive list would drop terms
-// that carry meaning in a clinical question.
+// stopwords are words that match everything and rank nothing.
+//
+// Two groups, and the second one is why this list stopped being short.
+//
+// Function words: ordinary Polish grammar.
+//
+// Demonstratives and request-meta: on 2026-08-20 a therapist tapped
+// "Pokaz cytaty na ten temat" after a refusal. That text tokenized to
+// [pokaz fragmen sesji ten temat] — five terms, none of which say
+// anything about the client. The search matched "ten" against
+// "jeszcze raz ten Janko jaki ten?" (short segments score higher), and
+// the answer came back titled "Wzmianki o 'ten Janko'". The quote was
+// real and passed the verifier; the QUESTION was empty of content.
+//
+// Words describing the request itself must never be searched for in a
+// transcript. A therapist asking to "show fragments" is not asking about
+// the word "fragment".
 var stopwords = map[string]bool{
+	// funkcyjne
 	"i": true, "w": true, "z": true, "na": true, "do": true, "o": true,
 	"czy": true, "jak": true, "co": true, "to": true, "sie": true,
 	"jest": true, "byl": true, "byla": true, "nie": true, "tak": true,
 	"za": true, "od": true, "po": true, "przy": true, "the": true,
+	// wskazujace — pasuja wszedzie, nie znacza nic
+	"ten": true, "ta": true, "te": true, "tej": true, "tego": true,
+	"tym": true, "tych": true, "tam": true, "tutaj": true, "taki": true,
+	"taka": true, "takie": true,
+	// meta zapytania — mowia o prosbie, nie o kliencie
+	"pokaz": true, "poka": true, "znajdz": true, "wyszukaj": true,
+	"temat": true, "tema": true, "fragment": true, "fragmen": true,
+	"fragmenty": true, "cytat": true, "cyta": true, "cytaty": true,
+	"sesji": true, "sesja": true, "sesje": true, "klient": true,
+	"klienta": true, "klientka": true, "klientki": true,
 }
+
+// ErrNoSearchableTerms reports that a question contained nothing to
+// search for once function and meta words were removed.
+//
+// Returning this beats searching on noise. A query of pure stopwords
+// matches whatever is shortest, which reads to the therapist as a
+// confident answer about an arbitrary fragment — the exact failure of
+// 2026-08-20.
+var ErrNoSearchableTerms = errors.New("chat: question has no searchable terms")
+
+// SearchableTerms exposes what a question reduces to. The executor uses
+// it to tell "nothing relevant was found" apart from "the question said
+// nothing to look for", which need different answers.
+func SearchableTerms(query string) []string { return tokenize(query) }
 
 func tokenize(s string) []string {
 	var out []string
