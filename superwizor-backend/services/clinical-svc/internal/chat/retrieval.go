@@ -63,11 +63,13 @@ type Segment struct {
 
 // SessionStats is the A2/A6 answer shape: computed numbers, no model.
 type SessionStats struct {
-	SessionCount     int
-	FirstSessionAt   time.Time
-	LastSessionAt    time.Time
-	LongestGapDays   int
-	CancelledCount   int
+	SessionCount   int
+	FirstSessionAt time.Time
+	LastSessionAt  time.Time
+	LongestGapDays int
+	CancelledCount int
+	// Derived from sessions.duration_seconds; the column is seconds,
+	// the number a therapist wants is minutes.
 	TotalMinutes     int
 	ReportsAvailable int
 }
@@ -145,13 +147,20 @@ type blobLine struct {
 	SpeakerLabel *string `json:"speaker_label,omitempty"`
 }
 
+// Column names here are checked against the live schema, not assumed.
+// The first version of this file used s.scheduled_at, s.duration_minutes
+// and status 'CANCELLED' — none of which exist. The real columns are
+// session_date, duration_seconds, and the cancelled statuses are
+// 'CANCELED' (one L) and 'CANCELLED_BY_USER'. Every unit test mocked the
+// pool, so nothing caught it until a therapist hit it in production.
+// TestQueriesMatchLiveSchema now runs these against a real database.
 const sqlRecentSessions = `
-SELECT s.id, s.scheduled_at, t.id, t.transcript_ciphertext, t.transcript_encrypted_dek
+SELECT s.id, s.session_date, t.id, t.transcript_ciphertext, t.transcript_encrypted_dek
   FROM sessions s
   JOIN transcripts t ON t.session_id = s.id
  WHERE s.patient_file_id = $1
    AND s.deleted_at IS NULL
- ORDER BY s.scheduled_at DESC
+ ORDER BY s.session_date DESC
  LIMIT $2`
 
 const sqlSegmentIndex = `
@@ -409,13 +418,19 @@ func fold(s string) string {
 	return b.String()
 }
 
+// cancelledStatuses lists every enum value that means "did not happen".
+// There are two, and they differ by one letter, which is exactly the kind
+// of thing a hand-written string comparison gets wrong silently: a
+// session cancelled by the user would have counted as attended.
+const cancelledStatuses = `('CANCELED','CANCELLED_BY_USER')`
+
 const sqlStats = `
 SELECT
-    count(*) FILTER (WHERE s.status <> 'CANCELLED'),
-    min(s.scheduled_at),
-    max(s.scheduled_at),
-    count(*) FILTER (WHERE s.status = 'CANCELLED'),
-    coalesce(sum(s.duration_minutes) FILTER (WHERE s.status <> 'CANCELLED'), 0),
+    count(*) FILTER (WHERE s.status NOT IN ` + cancelledStatuses + `),
+    min(s.session_date),
+    max(s.session_date),
+    count(*) FILTER (WHERE s.status IN ` + cancelledStatuses + `),
+    coalesce(sum(s.duration_seconds) FILTER (WHERE s.status NOT IN ` + cancelledStatuses + `), 0),
     count(r.id)
   FROM sessions s
   LEFT JOIN reports r ON r.session_id = s.id
@@ -423,9 +438,10 @@ SELECT
 
 const sqlLongestGap = `
 SELECT coalesce(max(gap), 0) FROM (
-    SELECT EXTRACT(DAY FROM scheduled_at - lag(scheduled_at) OVER (ORDER BY scheduled_at))::int AS gap
+    SELECT (session_date - lag(session_date) OVER (ORDER BY session_date))::int AS gap
       FROM sessions
-     WHERE patient_file_id = $1 AND deleted_at IS NULL AND status <> 'CANCELLED'
+     WHERE patient_file_id = $1 AND deleted_at IS NULL
+       AND status NOT IN ` + cancelledStatuses + `
 ) g`
 
 // Stats answers A2/A6 entirely from SQL.
@@ -437,11 +453,13 @@ SELECT coalesce(max(gap), 0) FROM (
 func (r Retriever) Stats(ctx context.Context, patientFileID uuid.UUID) (SessionStats, error) {
 	var st SessionStats
 	var first, last *time.Time
+	var totalSeconds int
 	err := r.Pool.QueryRow(ctx, sqlStats, patientFileID).Scan(
-		&st.SessionCount, &first, &last, &st.CancelledCount, &st.TotalMinutes, &st.ReportsAvailable)
+		&st.SessionCount, &first, &last, &st.CancelledCount, &totalSeconds, &st.ReportsAvailable)
 	if err != nil {
 		return st, fmt.Errorf("chat: stats: %w", err)
 	}
+	st.TotalMinutes = totalSeconds / 60
 	if first != nil {
 		st.FirstSessionAt = *first
 	}
@@ -456,11 +474,11 @@ func (r Retriever) Stats(ctx context.Context, patientFileID uuid.UUID) (SessionS
 }
 
 const sqlReportDigests = `
-SELECT r.session_id, s.scheduled_at, r.title, r.summary_short
+SELECT r.session_id, s.session_date, r.title, r.summary_short
   FROM reports r
   JOIN sessions s ON s.id = r.session_id
  WHERE s.patient_file_id = $1 AND s.deleted_at IS NULL
- ORDER BY s.scheduled_at DESC
+ ORDER BY s.session_date DESC
  LIMIT $2`
 
 // ReportDigests loads report titles and short summaries.
