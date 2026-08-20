@@ -3,9 +3,9 @@
 | Pole | Wartość |
 |---|---|
 | Numer | ADR-0XX *(nadać zgodnie z rejestrem ADR w `docs/adr/`)* |
-| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(wersje 1.1–1.2 wymagają ponownego podpisu §9 — zmiany merytoryczne taksonomii i schematów)* |
-| Data | 18 sierpnia 2026 r. (v1.0) / 20 sierpnia 2026 r. (v1.1, v1.2) |
-| Wersja | 1.2 |
+| Status | **Zaakceptowany — z jawną akceptacją ryzyka regulacyjnego** *(wersje 1.1–1.3 wymagają ponownego podpisu §9 — zmiany merytoryczne taksonomii i schematów)* |
+| Data | 18 sierpnia 2026 r. (v1.0) / 20 sierpnia 2026 r. (v1.1–v1.3) |
+| Wersja | 1.3 |
 | Decydent | Dario (Product Owner) |
 | Dokumenty powiązane | *Analiza wymagań regulacyjnych* (1.08.2026), rozdz. 4.1–4.5, 7, 8; Rozdział 10 *Ryzyko egzekucyjne* (18.08.2026); `06_Architektura_Mikroserwisow.md`; `09_RODO_Compliance.md` (planowany); `docs/63_AI_CHAT_GUARDRAIL_IMPLEMENTATION_PLAN.md` |
 | Zastępuje | Rekomendację z rozdz. 8 dokumentu nadrzędnego („zastąpić otwarty czat zestawem zdefiniowanych operacji") — **częściowo**: zdefiniowane operacje pozostają jako ścieżka degradacji i plan B. Wersja 1.1 odchodzi od rekomendacji nadrzędnej **dalej niż 1.0**: operacje konceptualizacyjne, oceny postępu i propozycji interwencji są generowane, nie odmawiane (sekcja 5.1, §9) |
@@ -17,6 +17,7 @@
 | 1.0 | 2026-08-18 | Pierwsza wersja. |
 | 1.1 | 2026-08-20 | `A8_CONCEPT`, `A9_PROGRESS`, `A10_TREAT` przeniesione z PROHIBITED do ALLOWED jako **pełne operacje generatywne z wymuszonym uziemieniem cytatowym** (decyzja PO 20.08). Spójność sekcji 5.3–5.5, 8.2, 8.3 i §9 z nową taksonomią; przywrócone kody `R_RISK`/`X_OTHER` (semantyka priorytetu jest częścią identyfikatora). Architektura przypięta: `pkg/guardrail` w `clinical-svc`; RPC unary (weryfikator wymaga kompletnej odpowiedzi); flagi w tabeli `app_config` (nie env-vary); weryfikator dwutrybowy (deterministyczny dla cytatów, LLM dla pól wolnotekstowych); quota mikrodolarowa z rezerwacją przed pierwszym wywołaniem modelu; log dowodowy `guardrail_decisions` jawnie wyłączony z GDPR-purgera. Usunięty przypadkowy artefakt tekstowy w nagłówku §3. §9 i §12 zaktualizowane o podwyższoną ekspozycję kwalifikacyjną. |
 | 1.2 | 2026-08-20 | `A5_SUPERVISION_PACK`: nowe pole modelowe `suggested_questions[]{question, quotes[]}` — sugerowane pytania superwizyjne z wymuszonym uziemieniem (≥ 1 cytat każde), obok niezmienionego user-only `open_questions[]`. Weryfikator A5 rozszerzony o kontrolę diagnozy/farmakoterapii/oceny ryzyka w sugerowanych pytaniach; 8.1/8.2 objęły A5; telemetria `ai_chat_clinical_generated` obejmuje A5. **Pierwsze zastosowanie procesu „poszerzenie powierzchni autorstwa modelu = udokumentowana decyzja".** |
+| 1.3 | 2026-08-20 | §6: **zapytania startowe** przy pierwszym uruchomieniu i pustym stanie czatu — 4–6 wyselekcjonowanych przykładów z listy ALLOWED; kompozycja listy sterowana serwerowo (`app_config`), teksty w `.arb`, treści objęte rejestrem claimów; telemetria `ai_chat_starter_used`. Statyczna treść UI — celowo inna nazwa niż modelowe `A5.suggested_questions`. |
 
 ---
 
@@ -203,6 +204,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 - Stała informacja przy pierwszym użyciu i w ustawieniach: „Rozmawiasz z systemem AI. Narzędzie służy do wyszukiwania, porządkowania i dokumentowania Twojego materiału oraz formułowania hipotez roboczych na jego podstawie; nie stawia diagnoz, nie wypowiada się o lekach ani nie ocenia ryzyka. Decyzje kliniczne podejmujesz Ty." (art. 50 AI Act, obowiązuje od 2.08.2026).
 - Treści generowane oznaczone jako AI; cytaty oznaczone jako verbatim ze źródłem.
 - *(v1.1)* Wyjścia `A8`–`A10` prezentowane jako **hipotezy AI wymagające weryfikacji klinicysty**: każda hipoteza z rozwijalnymi cytatami źródłowymi; pola decyzji (wybór interwencji, wniosek) edytowalne wyłącznie przez terapeutę i wizualnie odróżnione od treści AI. *(v1.2)* Sugerowane pytania superwizyjne (`A5.suggested_questions`) oznaczone jako propozycje AI i prezentowane oddzielnie od pytań własnych terapeuty (`open_questions`).
+- *(v1.3)* **Zapytania startowe**: przy pierwszym uruchomieniu czatu i przy pustym stanie rozmowy UI pokazuje 4–6 wyselekcjonowanych przykładów z listy ALLOWED, np. „Pokaż wypowiedzi klienta o pracy” (A1), „W ilu sesjach pojawił się temat rodziny?” (A2), „Zaproponuj konceptualizację w modelu PPT” (A8), „Podsumuj postęp od początku terapii” (A9), „Zaproponuj kierunki pracy na kolejną sesję” (A10); przy braku wybranej kartoteki — warianty bez klienta (A4). Dotknięcie **wstawia edytowalny tekst do pola**, nie wysyła automatycznie (zapytanie autoryzuje terapeuta). Cel podwójny: onboarding możliwości i **sterowanie ku przeznaczeniu** — oczekiwany spadek udziału PROHIBITED (8.3). Kompozycja listy (ID, kolejność, włączenie) sterowana serwerowo przez `app_config` — zmiana bez wydania aplikacji; teksty w `.arb`; treści startowe podlegają rejestrowi claimów (7.2). **Nazewnictwo:** zapytania startowe to statyczna, kuratorowana treść UI — nie mylić z `A5.suggested_questions` (pole generowane przez model).
 - Historia czatu wydzielona technicznie jako **notatnik roboczy** (rozdz. 6 dokumentu nadrzędnego), z własną retencją i bez zasilania funkcji superwizyjnych/oceniających (rozdz. 5.2).
 - **Mobile:** identyczny guardrail po stronie serwera (żadnej logiki klasyfikacji w kliencie); listing sklepowy i notatka dla recenzenta z rejestru claimów; konto testowe z pełnym dostępem dla recenzji; odrzucenie aktualizacji przez sklep = trigger przeglądu (sekcja 10).
 - Teksty UI w `.arb` z opisami dla tłumacza (Kodeks Inżynieryjny, i18n).
@@ -220,6 +222,7 @@ Zwróć wyłącznie obiekt JSON zgodny ze schematem.
 | `ai_chat_verifier_block` | `intent`, `block_reason ∈ {inference, diag_med_risk, ungrounded}`, `verifier_version` | **Kluczowy wskaźnik**: generator wytworzył treść poza granicami mimo dozwolonej intencji |
 | `ai_chat_template_field_filled` | `template_id`, `field_type`, `filled_by ∈ {user, extract}` | Autorstwo klinicysty (rozdz. 4.3/4.4) |
 | `ai_chat_kill_switch_changed` | `scope`, `mode` | Audyt |
+| `ai_chat_starter_used` *(v1.3)* | `starter_id`, `intent`, `position`, `platform` | Skuteczność onboardingu; sterowanie ku przeznaczeniu |
 
 ### 7.2. Log dowodowy
 

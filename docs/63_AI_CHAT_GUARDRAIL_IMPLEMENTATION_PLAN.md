@@ -1,8 +1,8 @@
-# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.2)
+# Plan implementacji: AI Chat z warstwą guardrail (wg ADR v1.3)
 
 | Pole | Wartość |
 |---|---|
-| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.2** (2026-08-20) |
+| Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.3** (2026-08-20) |
 | Data | 2026-08-20 (aktualizacja po rozstrzygnięciu D1) |
 | Gałąź robocza | `feat/chat-window` |
 | Status | Gotowy do startu F0 — blokery pozakodowe w sekcji 4 |
@@ -40,7 +40,7 @@ Niespójności v1.0_2 (enum 5.4, prompt 5.5, progi 8.2, kody R_RISK,
 artefakt w §3, kolumny schematów A8–A10, changelog) — **naprawione w ADR
 v1.1** (ten sam plik, commit razem z tym planem). Otwarte pozostają:
 
-- **podpis §9** w brzmieniu v1.2 (zmiany merytoryczne → ponowna akceptacja),
+- **podpis §9** w brzmieniu v1.3 (zmiany merytoryczne → ponowna akceptacja),
 - przeniesienie ADR z `docs/kronikarz/` do rejestru `docs/adr/` z nadaniem numeru.
 
 ---
@@ -217,7 +217,8 @@ Zdarzenia 7.1 ADR v1.1: `ai_chat_query_classified`, `ai_chat_refused`
 **`ai_chat_clinical_generated`** (A5/A8–A10: grounding_quote_count,
 verifier_result), `ai_chat_verifier_block` (block_reason ∈ {inference,
 diag_med_risk, ungrounded}), `ai_chat_template_field_filled`,
-`ai_chat_kill_switch_changed`.
+`ai_chat_kill_switch_changed`, **`ai_chat_starter_used`** (starter_id,
+intent, position — ADR v1.3).
 
 Dashboard progów 8.3 w panelu admina: udział P1+P2+R (25%); **udział
 A8–A10 (raport miesięczny, próg miękki 60% — dryf mierzony użyciem)**;
@@ -252,6 +253,15 @@ Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
   treści AI; **prezentacja A8–A10**: hipotezy oznaczone jako AI do
   weryfikacji klinicysty, rozwijalne cytaty przy każdej hipotezie, pola
   decyzji wizualnie odrębne i edytowalne tylko przez terapeutę.
+- *(ADR v1.3)* **Zapytania startowe** przy pierwszym uruchomieniu i pustym
+  stanie: rejestr starterów (`starter_id` → intencja → klucz `.arb`);
+  kompozycja (włączone/kolejność) z `app_config` — zmiana bez wydania
+  aplikacji (lekcja z Google Play 1.0.3); dotknięcie wstawia edytowalny
+  tekst do pola. Optymalizacja opcjonalna: **niezmieniony** tekst startera
+  może ominąć klasyfikator (intencja znana z rejestru, treść kuratorowana
+  ⇒ `risk_flag=false` z konstrukcji) — oszczędza ~$0.0003 i 200–400 ms;
+  tekst edytowany zawsze przez klasyfikator. Teksty starterów w rejestrze
+  claimów; nazwa celowo różna od `A5.suggested_questions`.
 - Historia czatu = notatnik roboczy (osobna retencja, odcięta technicznie
   od funkcji superwizyjnych — test negatywny).
 - ⚠ Mobile: parytet web/mobile na GA wymaga wydania Fluttera; **Google
