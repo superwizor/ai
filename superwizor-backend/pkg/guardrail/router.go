@@ -232,13 +232,18 @@ func (r Router) Route(c Classification) Decision {
 func alternativesFor(i Intent) []Alternative {
 	switch i {
 	case P1Diag:
+		// Tylko konceptualizacja. "Pokaz cytaty na ten temat" bylo tu
+		// mylace (decyzja PO 20.08): po odmowie swiezej rozmowy nie ma
+		// tematu do odziedziczenia, wiec przycisk prowadzil do "doprecyzuj
+		// pytanie" — a sama oferta czytala sie jak obejscie odmowy,
+		// nie jak alternatywa.
 		return []Alternative{
 			{Intent: A8Concept, LabelKey: "chat.alt.conceptualization", PrefillKey: "chat.prefill.conceptualization"},
-			{Intent: A1Search, LabelKey: "chat.alt.find_quotes", PrefillKey: "chat.prefill.find_quotes"},
 		}
 	case P2Med:
+		// Ta sama wada tej samej oferty — zostaje przekierowanie do
+		// czlowieka, ktore jest wlasciwa odpowiedzia na pytanie o leki.
 		return []Alternative{
-			{Intent: A1Search, LabelKey: "chat.alt.find_quotes", PrefillKey: "chat.prefill.find_quotes"},
 			{LabelKey: "chat.alt.consult_physician"},
 		}
 	case RRisk:

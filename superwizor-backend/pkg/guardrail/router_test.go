@@ -307,3 +307,24 @@ func TestBucket(t *testing.T) {
 		}
 	}
 }
+
+// Decyzja PO 20.08: odmowa P1/P2 NIE oferuje "pokaz cytaty na ten temat".
+// Po odmowie swiezej rozmowy nie ma tematu do odziedziczenia, wiec
+// przycisk prowadzil do "doprecyzuj pytanie", a sama oferta czytala sie
+// jak obejscie odmowy.
+func TestProhibitedRefusalsDoNotOfferQuoteSearch(t *testing.T) {
+	for _, i := range []Intent{P1Diag, P2Med} {
+		d := full().Route(Classification{Intent: i, Confidence: 0.95})
+		for _, alt := range d.Alternatives {
+			if alt.Intent == A1Search {
+				t.Errorf("%s oferuje wyszukiwanie cytatow — usuniete decyzja PO 20.08", i)
+			}
+		}
+	}
+	// P1 nadal musi oferowac konceptualizacje — to jest wlasciwa
+	// alternatywa i mierzony prog przekierowan (8.3).
+	d := full().Route(Classification{Intent: P1Diag, Confidence: 0.95})
+	if len(d.Alternatives) == 0 || d.Alternatives[0].Intent != A8Concept {
+		t.Error("P1 stracil oferte konceptualizacji")
+	}
+}
