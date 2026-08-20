@@ -20,6 +20,7 @@ import '../l10n/app_localizations.dart';
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
 import '../utils/haptics.dart';
+import '../widgets/ai_chat_turn_view.dart';
 import '../widgets/euphire_toast.dart';
 import '../providers/patient_notes_provider.dart';
 import '../widgets/report_preferences_section.dart';
@@ -53,11 +54,28 @@ class _ChatMessage {
   final String text;
   final DateTime timestamp;
 
+  /// The structured turn, for AI messages that came back from the
+  /// guardrailed backend. Present means: render it through
+  /// AiChatTurnView, which applies the article 50 marking, the
+  /// expandable grounding and the therapist-owned fields.
+  ///
+  /// Absent means legacy plain text (a system notice, or a conversation
+  /// restored from a saved note). Those render as before — they carry no
+  /// generated clinical claim to mark.
+  final ChatTurnResult? turn;
+
+  /// Therapist input into this turn's user-only fields, keyed by section
+  /// title. Held here so it survives a rebuild and lands in the note.
+  final Map<String, String> userFields;
+
   _ChatMessage({
     required this.role,
     required this.text,
+    this.turn,
+    Map<String, String>? userFields,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
+  }) : userFields = userFields ?? <String, String>{},
+       timestamp = timestamp ?? DateTime.now();
 }
 
 // ── Screen ─────────────────────────────────────────────────
@@ -94,14 +112,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   bool _isGenerating = false; // AI is streaming a response
   bool _isLastResponseTruncated = false; // AI response was cut off / truncated
   String _streamingText = ''; // partial response text
-  StreamSubscription<AiChatStreamEvent>? _streamSub;
   bool _isUserScrolledUp = false; // smart scroll-lock (Gemini/ChatGPT pattern)
+  /// The starter the therapist tapped, if any, and the text it inserted.
+  /// Comparing the two at send time decides whether the classifier can be
+  /// skipped — see AiChatService.send.
+  String _pendingStarterId = '';
+  String _pendingStarterText = '';
+
   String _thinkingPhrase = _kThinkingPhrases[0];
   Timer? _thinkingTimer;
 
   // ── Persist-and-continue state ───────────────────────────
-  String? _savedNoteId;           // null = not saved yet
-  String? _savedNoteText;         // full note text at last save
+  String? _savedNoteId; // null = not saved yet
+  String? _savedNoteText; // full note text at last save
   int _lastSavedMessageCount = 0; // messages count at last save
 
   // ── Copy feedback state ──────────────────────────────────
@@ -125,21 +148,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   Future<void> _initChat() async {
     try {
       final factory = ref.read(aiChatServiceFactoryProvider);
-      await ref.read(patientNotesMapProvider.notifier).refreshNotes(widget.patientId);
-      final service = await factory.create(
-        patientId: widget.patientId,
-        patientAlias: widget.patientAlias,
-        therapistId: widget.therapistId,
-      );
+      await ref
+          .read(patientNotesMapProvider.notifier)
+          .refreshNotes(widget.patientId);
+      final service = factory.create(patientFileId: widget.patientId);
       if (!mounted) return;
       final l = AppLocalizations.of(context);
       setState(() {
         _chatService = service;
         _isLoading = false;
-        _messages.add(_ChatMessage(
-          role: _MessageRole.system,
-          text: l.ai_chat_system_intro,
-        ));
+        _messages.add(
+          _ChatMessage(role: _MessageRole.system, text: l.ai_chat_system_intro),
+        );
 
         if (widget.initialNoteId != null && widget.initialNoteId!.isNotEmpty) {
           _savedNoteId = widget.initialNoteId;
@@ -160,10 +180,12 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       final l = AppLocalizations.of(context);
       setState(() {
         _isLoading = false;
-        _messages.add(_ChatMessage(
-          role: _MessageRole.system,
-          text: '${l.ai_chat_error_init}\n$e',
-        ));
+        _messages.add(
+          _ChatMessage(
+            role: _MessageRole.system,
+            text: '${l.ai_chat_error_init}\n$e',
+          ),
+        );
       });
     }
   }
@@ -171,7 +193,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _streamSub?.cancel();
     _thinkingTimer?.cancel();
     _copiedTimer?.cancel();
     _textCtrl.dispose();
@@ -193,21 +214,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   // ── Stop / Thinking Phrases ──────────────────────────────
 
+  /// Abandons the wait for an in-flight turn.
+  ///
+  /// The request itself is not cancelled — it is unary and already in
+  /// flight on the server, where it will finish, be verified, and be
+  /// billed against the quota whether or not anyone is still looking.
+  /// Pretending otherwise by showing partial text would show text the
+  /// verifier never approved.
   void _stopGenerating() {
-    _streamSub?.cancel();
     _stopThinkingPhraseRotation();
     if (!mounted) return;
-    final finalText = _streamingText.trim();
     setState(() {
-      if (finalText.isNotEmpty) {
-        _messages.add(_ChatMessage(role: _MessageRole.ai, text: finalText));
-      }
-      _streamingText = '';
       _isGenerating = false;
-      _isLastResponseTruncated = false;
+      _streamingText = '';
     });
-    _scrollToBottom();
-    AppHapticFeedback.lightImpact();
   }
 
   void _startThinkingPhraseRotation() {
@@ -230,7 +250,37 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   // ── Send Message ─────────────────────────────────────────
 
-  void _sendMessage([String? overrideText]) {
+  /// Sends whatever is in the composer, reporting starter provenance.
+  ///
+  /// The edited flag is computed by comparing the current text with what
+  /// the starter inserted. It must be right: claiming unedited text lets
+  /// the server skip classification on the strength of a curated prompt
+  /// that is no longer what was asked.
+  void _sendFromComposer() {
+    final text = _textCtrl.text.trim();
+    final starterId = _pendingStarterId;
+    final edited = starterId.isNotEmpty && text != _pendingStarterText.trim();
+    _pendingStarterId = '';
+    _pendingStarterText = '';
+    unawaited(_sendMessage(null, starterId, edited));
+  }
+
+  /// Sends one turn.
+  ///
+  /// One await, not a stream. The verifier on the server inspects the
+  /// complete response before any of it is returned, so there is nothing
+  /// to stream: partial text would be text the verifier has not finished
+  /// judging, and a token already on screen cannot be taken back.
+  ///
+  /// [starterId] is set when the therapist tapped a curated starter.
+  /// [starterEdited] must be honest — reporting edited text as unedited
+  /// would send arbitrary input down a path that assumes curated wording
+  /// and skips the classifier.
+  Future<void> _sendMessage([
+    String? overrideText,
+    String starterId = '',
+    bool starterEdited = false,
+  ]) async {
     final text = (overrideText ?? _textCtrl.text).trim();
     if (text.isEmpty || _chatService == null || _isGenerating) return;
 
@@ -241,7 +291,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       _isGenerating = true;
       _isLastResponseTruncated = false;
       _streamingText = '';
-      _isUserScrolledUp = false; // user sent a message → re-engage auto-scroll
+      _isUserScrolledUp = false;
     });
     if (overrideText == null) {
       _textCtrl.clear();
@@ -249,58 +299,93 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     _scrollToBottom(force: true);
     _startThinkingPhraseRotation();
 
-    bool lastWasTruncated = false;
-    _streamSub?.cancel();
-    _streamSub = _chatService!.sendMessage(text).listen(
-      (event) {
-        if (!mounted) return;
-        lastWasTruncated = event.isTruncated;
-        setState(() => _streamingText = event.text);
-        _scrollToBottom();
-      },
-      onDone: () {
-        if (!mounted) return;
-        _stopThinkingPhraseRotation();
-        final finalText = _streamingText.trim();
-        final endsWithSentencePunctuation =
-            RegExp(r'[\.\!\?\:\)\"”\*]$').hasMatch(finalText);
-        final isGrammaticallyCutOff =
-            !endsWithSentencePunctuation && finalText.length > 200;
-
-        setState(() {
-          if (_streamingText.isNotEmpty) {
-            _messages.add(
-                _ChatMessage(role: _MessageRole.ai, text: _streamingText));
-          }
-          _isLastResponseTruncated =
-              lastWasTruncated || isGrammaticallyCutOff;
-          _streamingText = '';
-          _isGenerating = false;
-        });
-        _scrollToBottom();
-        _saveAsNote(silent: true);
-      },
-      onError: (e) {
-        if (!mounted) return;
-        _stopThinkingPhraseRotation();
-        setState(() {
-          _messages.add(_ChatMessage(
+    try {
+      final result = await _chatService!.send(
+        text,
+        starterId: starterId,
+        starterEdited: starterEdited,
+      );
+      if (!mounted) return;
+      _stopThinkingPhraseRotation();
+      setState(() {
+        _messages.add(
+          _ChatMessage(
+            role: _MessageRole.ai,
+            text: _plainTextOf(result),
+            turn: result,
+          ),
+        );
+        _isGenerating = false;
+      });
+      _scrollToBottom();
+      _saveAsNote(silent: true);
+    } on ChatUnavailableException {
+      if (!mounted) return;
+      _stopThinkingPhraseRotation();
+      setState(() {
+        _messages.add(
+          _ChatMessage(
             role: _MessageRole.system,
-            text: 'Wystąpił błąd: $e',
-          ));
-          _streamingText = '';
-          _isGenerating = false;
-          _isLastResponseTruncated = false;
-        });
-        _scrollToBottom();
-      },
-    );
+            // TODO(i18n): move to .arb before release.
+            text:
+                'Rozmowa jest chwilowo niedostępna. Spróbuj ponownie później.',
+          ),
+        );
+        _isGenerating = false;
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      _stopThinkingPhraseRotation();
+      setState(() {
+        _messages.add(
+          _ChatMessage(role: _MessageRole.system, text: 'Wystąpił błąd: $e'),
+        );
+        _isGenerating = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  /// Flattens a turn for the saved note and for copy-to-clipboard.
+  ///
+  /// Authorship is preserved in the text, not just in the widgets:
+  /// hypotheses are labelled, and the therapist's own fields are marked
+  /// as theirs. A note that lost that distinction would be a clinical
+  /// record in which nobody can tell afterwards who concluded what.
+  String _plainTextOf(ChatTurnResult r) {
+    if (r.isRefusal) {
+      return r.refusal == null ? '' : '(odmowa)';
+    }
+    final buf = StringBuffer();
+    for (final s in r.sections) {
+      if (s.kind == ChatSectionKind.userOnly) {
+        continue; // appended at save time with whatever the therapist wrote
+      }
+      final marker = s.needsAiMarking
+          ? ' _(hipoteza AI — do weryfikacji)_'
+          : '';
+      buf.writeln('### ${s.title}$marker');
+      if (s.body.isNotEmpty) buf.writeln(s.body);
+      for (final q in s.quotes) {
+        buf.writeln('> "${q.text}" — ${q.speaker}');
+      }
+      buf.writeln();
+    }
+    if (r.suggestedQuestions.isNotEmpty) {
+      buf.writeln('### Pytania do rozważenia _(propozycje AI)_');
+      for (final q in r.suggestedQuestions) {
+        buf.writeln('- ${q.question}');
+      }
+    }
+    return buf.toString().trim();
   }
 
   // ── Auto Save & Close ──────────────────────────────────
 
   Future<void> _autoSaveAndClose() async {
-    final hasUnsaved = _messages.length > _lastSavedMessageCount &&
+    final hasUnsaved =
+        _messages.length > _lastSavedMessageCount &&
         _messages.any((m) => m.role != _MessageRole.system);
     if (hasUnsaved) {
       await _saveAsNote(silent: true);
@@ -308,22 +393,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   }
 
   /// Builds the full transcript markdown from all non-system messages.
-  String _buildTranscript({
-    int fromIndex = 0,
-    bool includeHeader = true,
-  }) {
+  String _buildTranscript({int fromIndex = 0, bool includeHeader = true}) {
     final chatMessages = _messages
         .skip(fromIndex)
         .where((m) => m.role != _MessageRole.system);
     if (_streamingText.trim().isNotEmpty) {
       // include any partial streaming text
     }
-    final transcript = chatMessages.map((m) {
-      final role = m.role == _MessageRole.user
-          ? '**Terapeuta:**'
-          : '**Superwizor AI:**';
-      return '$role\n${m.text}';
-    }).join('\n\n---\n\n');
+    final transcript = chatMessages
+        .map((m) {
+          final role = m.role == _MessageRole.user
+              ? '**Terapeuta:**'
+              : '**Superwizor AI:**';
+          return '$role\n${m.text}';
+        })
+        .join('\n\n---\n\n');
     if (includeHeader) {
       return '### Zapis rozmowy z AI\n$transcript';
     }
@@ -354,8 +438,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       final roleName = match.group(1);
 
       final startPos = match.end;
-      final endPos =
-          (i + 1 < matches.length) ? matches[i + 1].start : transcript.length;
+      final endPos = (i + 1 < matches.length)
+          ? matches[i + 1].start
+          : transcript.length;
 
       var text = transcript.substring(startPos, endPos).trim();
       text = text.replaceFirst(RegExp(r'\n*\s*---+\s*$'), '').trim();
@@ -402,11 +487,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           includeHeader: false,
         );
 
-        final baseText = _savedNoteText ??
+        final baseText =
+            _savedNoteText ??
             _buildTranscript(fromIndex: 0, includeHeader: true);
         final fullText = '${baseText.trim()}\n\n---\n\n${newPart.trim()}';
 
-        await ref.read(patientNotesMapProvider.notifier).updateNote(
+        await ref
+            .read(patientNotesMapProvider.notifier)
+            .updateNote(
               widget.patientId,
               _savedNoteId!,
               l.ai_chat_note_title,
@@ -422,7 +510,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     } catch (e) {
       if (!silent && mounted) {
         EuphireToast.error(
-            context, message: 'Wystąpił błąd podczas zapisywania notatki: $e');
+          context,
+          message: 'Wystąpił błąd podczas zapisywania notatki: $e',
+        );
       }
     }
   }
@@ -553,10 +643,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF002024),
-                Color(0xFF001214),
-              ],
+              colors: [Color(0xFF002024), Color(0xFF001214)],
             ),
           ),
           child: SafeArea(
@@ -595,8 +682,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: EuphireColors.mist, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: EuphireColors.mist,
+              size: 20,
+            ),
             onPressed: () async {
               await _autoSaveAndClose();
               if (mounted) {
@@ -626,7 +716,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: EuphireColors.ember.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -690,6 +782,83 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                 fontSize: 14,
                 color: EuphireColors.mist,
               ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Starter prompts, shown while the conversation is still empty
+    // (ADR v1.3 section 6). Tapping one inserts EDITABLE text rather than
+    // sending immediately: the therapist stays the author of what they
+    // ask, and an edited starter is classified like any other input.
+    final hasConversation = _messages.any(
+      (m) => m.role == _MessageRole.user || m.turn != null,
+    );
+    if (!hasConversation) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final msg in _messages)
+              if (msg.role == _MessageRole.system)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Text(
+                    msg.text,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13.5,
+                      height: 1.55,
+                      color: EuphireColors.mist,
+                    ),
+                  ),
+                ),
+            const SizedBox(height: 4),
+            Text(
+              // TODO(i18n): move to .arb before release.
+              'Od czego zacząć?',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: EuphireColors.mist.withValues(alpha: 0.85),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final starter in kChatStarters)
+                  ActionChip(
+                    label: Text(
+                      starter.label,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12.5,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+                    backgroundColor: EuphireColors.surfaceTeal,
+                    side: BorderSide(
+                      color: EuphireColors.glassBorder.withValues(alpha: 0.7),
+                    ),
+                    onPressed: () {
+                      AppHapticFeedback.lightImpact();
+                      // Inserted, not sent. _pendingStarterId records
+                      // which one it was so an UNEDITED send can tell the
+                      // server its intent is already known.
+                      setState(() {
+                        _textCtrl.text = starter.prefill;
+                        _pendingStarterId = starter.id;
+                        _pendingStarterText = starter.prefill;
+                      });
+                      _inputFocus.requestFocus();
+                    },
+                  ),
+              ],
             ),
           ],
         ),
@@ -829,8 +998,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isUser) ...[
@@ -839,24 +1009,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
               ],
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: isUser
                         ? const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF35250E),
-                              Color(0xFF221607),
-                            ],
+                            colors: [Color(0xFF35250E), Color(0xFF221607)],
                           )
                         : const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF0D2D31),
-                              Color(0xFF071D20),
-                            ],
+                            colors: [Color(0xFF0D2D31), Color(0xFF071D20)],
                           ),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
@@ -881,48 +1048,71 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MarkdownBody(
-                        data: msg.text,
-                        styleSheet: MarkdownStyleSheet(
-                          p: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 13.5,
-                            height: 1.55,
-                            color: isUser
-                                ? EuphireColors.frostWhite
-                                : EuphireColors.frostWhite.withValues(alpha: 0.92),
-                          ),
-                          strong: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.w700,
-                            color: EuphireColors.ember,
-                          ),
-                          h1: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: EuphireColors.frostWhite,
-                          ),
-                          h2: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: EuphireColors.frostWhite,
-                          ),
-                          h3: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: EuphireColors.ember,
-                          ),
-                          listBullet: TextStyle(
-                            fontFamily: 'Montserrat',
-                            color: isUser
-                                ? EuphireColors.ember
-                                : EuphireColors.mist,
+                      // A turn that came back from the guardrailed backend
+                      // renders structurally: the article 50 marking, the
+                      // expandable grounding and the therapist-owned
+                      // fields are all load-bearing and cannot survive a
+                      // trip through markdown. Plain text (system notices,
+                      // conversations restored from a saved note) keeps
+                      // the old renderer — it carries no generated
+                      // clinical claim to mark.
+                      if (msg.turn != null)
+                        AiChatTurnView(
+                          turn: msg.turn!,
+                          userFieldValues: msg.userFields,
+                          onAlternativeTap: (prefill) {
+                            _textCtrl.text = prefill;
+                            _inputFocus.requestFocus();
+                          },
+                          onUserFieldChanged: (title, value) {
+                            msg.userFields[title] = value;
+                          },
+                        )
+                      else
+                        MarkdownBody(
+                          data: msg.text,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13.5,
+                              height: 1.55,
+                              color: isUser
+                                  ? EuphireColors.frostWhite
+                                  : EuphireColors.frostWhite.withValues(
+                                      alpha: 0.92,
+                                    ),
+                            ),
+                            strong: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.ember,
+                            ),
+                            h1: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.frostWhite,
+                            ),
+                            h2: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.frostWhite,
+                            ),
+                            h3: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.ember,
+                            ),
+                            listBullet: TextStyle(
+                              fontFamily: 'Montserrat',
+                              color: isUser
+                                  ? EuphireColors.ember
+                                  : EuphireColors.mist,
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 6),
                       Align(
                         alignment: Alignment.bottomRight,
@@ -982,7 +1172,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                           fontFamily: 'Montserrat',
                           fontSize: 13.5,
                           height: 1.55,
-                          color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                          color: EuphireColors.frostWhite.withValues(
+                            alpha: 0.92,
+                          ),
                         ),
                         strong: const TextStyle(
                           fontFamily: 'Montserrat',
@@ -1086,7 +1278,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             onTap: () {
               Clipboard.setData(ClipboardData(text: msg.text));
               AppHapticFeedback.mediumImpact();
-              EuphireToast.info(context, message: 'Skopiowano treść odpowiedzi');
+              EuphireToast.info(
+                context,
+                message: 'Skopiowano treść odpowiedzi',
+              );
               _copiedTimer?.cancel();
               setState(() => _copiedIndex = index);
               _copiedTimer = Timer(const Duration(milliseconds: 2000), () {
@@ -1133,13 +1328,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             padding: const EdgeInsets.all(6),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-              child: Icon(
-                icon,
-                key: ValueKey(icon),
-                size: 16,
-                color: color,
-              ),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
+              child: Icon(icon, key: ValueKey(icon), size: 16, color: color),
             ),
           ),
         ),
@@ -1185,7 +1376,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome, color: EuphireColors.ember, size: 20),
+                  const Icon(
+                    Icons.auto_awesome,
+                    color: EuphireColors.ember,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Gotowe polecenia',
@@ -1230,15 +1425,24 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   _showReportPreferences(context);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: EuphireColors.obsidianBlack.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: EuphireColors.glassBorder.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: EuphireColors.glassBorder.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.settings_outlined, color: EuphireColors.frostWhite, size: 20),
+                      const Icon(
+                        Icons.settings_outlined,
+                        color: EuphireColors.frostWhite,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
@@ -1251,7 +1455,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                           ),
                         ),
                       ),
-                      Icon(Icons.chevron_right, color: EuphireColors.mist.withValues(alpha: 0.5)),
+                      Icon(
+                        Icons.chevron_right,
+                        color: EuphireColors.mist.withValues(alpha: 0.5),
+                      ),
                     ],
                   ),
                 ),
@@ -1294,7 +1501,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                 const Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 8.0,
+                      ),
                       child: ReportPreferencesSection(),
                     ),
                   ),
@@ -1314,7 +1524,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           AppHapticFeedback.selectionClick();
-          final cleanText = text.replaceFirst(RegExp(r'^[^\w\s\u00C0-\u024F]+'), '').trim();
+          final cleanText = text
+              .replaceFirst(RegExp(r'^[^\w\s\u00C0-\u024F]+'), '')
+              .trim();
           _sendMessage(cleanText);
           Navigator.of(context).pop();
         },
@@ -1323,7 +1535,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           decoration: BoxDecoration(
             color: const Color(0xFF0B2D31).withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: EuphireColors.glassBorder.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: EuphireColors.glassBorder.withValues(alpha: 0.3),
+            ),
           ),
           child: Text(
             text,
@@ -1351,7 +1565,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       child: Align(
         alignment: Alignment.centerLeft,
         child: ActionChip(
-          avatar: const Icon(Icons.play_arrow_rounded, size: 16, color: EuphireColors.ember),
+          avatar: const Icon(
+            Icons.play_arrow_rounded,
+            size: 16,
+            color: EuphireColors.ember,
+          ),
           label: const Text(
             'Kontynuuj wypowiedź',
             style: TextStyle(
@@ -1378,9 +1596,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   }
 
   Widget _buildInputBar() {
-    final canSend = !_isLoading &&
-        !_isGenerating &&
-        _chatService != null;
+    final canSend = !_isLoading && !_isGenerating && _chatService != null;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1404,7 +1620,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
                 child: IconButton(
-                  icon: const Icon(Icons.add_circle_outline, color: EuphireColors.mist),
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    color: EuphireColors.mist,
+                  ),
                   onPressed: () => _showAssistantMenu(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1448,7 +1667,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                       ),
                     ),
                     enabled: canSend,
-                    onSubmitted: (_) => _sendMessage(),
+                    onSubmitted: (_) => _sendFromComposer(),
                   ),
                 ),
               ),
@@ -1478,7 +1697,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                         borderRadius: BorderRadius.circular(22),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(22),
-                          onTap: canSend ? () => _sendMessage() : null,
+                          onTap: canSend ? _sendFromComposer : null,
                           child: Icon(
                             Icons.send_rounded,
                             size: 20,

@@ -53,7 +53,8 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
     super.initState();
 
     final rawSummary = widget.initialSummary.trim();
-    final isTranscriptText = rawSummary.startsWith('**System:**') ||
+    final isTranscriptText =
+        rawSummary.startsWith('**System:**') ||
         rawSummary.startsWith('**Terapeuta:**') ||
         rawSummary.startsWith('**Superwizor AI:**') ||
         rawSummary.startsWith('**AI:**') ||
@@ -76,26 +77,27 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
   Future<void> _saveNote({bool popOnSuccess = false}) async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
-    
+
     final l = AppLocalizations.of(context);
     try {
       final combinedText = _summary.isNotEmpty
-          ? '$_summary\n\n---\n### Zapis rozmowy z AI\n${widget.fullTranscript}'.trim()
+          ? '$_summary\n\n---\n### Zapis rozmowy z AI\n${widget.fullTranscript}'
+                .trim()
           : '### Zapis rozmowy z AI\n${widget.fullTranscript}'.trim();
 
       if (widget.noteId != null && widget.noteId!.isNotEmpty) {
-        await ref.read(patientNotesMapProvider.notifier).updateNote(
-          widget.patientId,
-          widget.noteId!,
-          l.ai_chat_note_title,
-          combinedText,
-        );
+        await ref
+            .read(patientNotesMapProvider.notifier)
+            .updateNote(
+              widget.patientId,
+              widget.noteId!,
+              l.ai_chat_note_title,
+              combinedText,
+            );
       } else {
-        await ref.read(patientNotesMapProvider.notifier).addNote(
-          widget.patientId,
-          l.ai_chat_note_title,
-          combinedText,
-        );
+        await ref
+            .read(patientNotesMapProvider.notifier)
+            .addNote(widget.patientId, l.ai_chat_note_title, combinedText);
       }
 
       if (mounted) {
@@ -144,8 +146,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(2)),
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -153,11 +156,16 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00B37E).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFF00B37E,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.edit_note_rounded,
-                                color: Color(0xFF00B37E), size: 22),
+                            child: const Icon(
+                              Icons.edit_note_rounded,
+                              color: Color(0xFF00B37E),
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -179,7 +187,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                                   style: TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 13,
-                                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                                    color: EuphireColors.mist.withValues(
+                                      alpha: 0.7,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -189,8 +199,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       Divider(
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.08)),
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ],
                   ),
                 ),
@@ -223,7 +234,11 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                 // ── Actions ──
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                      20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 16),
+                    20,
+                    8,
+                    20,
+                    MediaQuery.of(ctx).viewInsets.bottom + 16,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -232,14 +247,16 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
                             t.common_cancel,
                             style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                color: EuphireColors.mist,
-                                fontWeight: FontWeight.w600),
+                              fontFamily: 'Montserrat',
+                              color: EuphireColors.mist,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -260,13 +277,15 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
                             t.common_save,
                             style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontWeight: FontWeight.w700),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -302,8 +321,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2)),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -318,20 +338,51 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.copy_rounded, color: Color(0xFF00B37E)),
-                  title: Text(t.report_btn_copy_summary, style: const TextStyle(color: EuphireColors.frostWhite, fontWeight: FontWeight.w600)),
-                  subtitle: Text(t.report_copy_desc, style: TextStyle(color: EuphireColors.mist.withValues(alpha: 0.7))),
+                  leading: const Icon(
+                    Icons.copy_rounded,
+                    color: Color(0xFF00B37E),
+                  ),
+                  title: Text(
+                    t.report_btn_copy_summary,
+                    style: const TextStyle(
+                      color: EuphireColors.frostWhite,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    t.report_copy_desc,
+                    style: TextStyle(
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                    ),
+                  ),
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: _summary));
                     Navigator.pop(ctx);
-                    EuphireToast.success(context, message: 'Skopiowano podsumowanie rozmowy z AI');
+                    EuphireToast.success(
+                      context,
+                      message: 'Skopiowano podsumowanie rozmowy z AI',
+                    );
                   },
                 ),
                 const SizedBox(height: 10),
                 ListTile(
-                  leading: const Icon(Icons.edit_note_rounded, color: Color(0xFF00B37E)),
-                  title: Text(t.report_btn_edit_summary, style: const TextStyle(color: EuphireColors.frostWhite, fontWeight: FontWeight.w600)),
-                  subtitle: Text(t.report_edit_summary_desc, style: TextStyle(color: EuphireColors.mist.withValues(alpha: 0.7))),
+                  leading: const Icon(
+                    Icons.edit_note_rounded,
+                    color: Color(0xFF00B37E),
+                  ),
+                  title: Text(
+                    t.report_btn_edit_summary,
+                    style: const TextStyle(
+                      color: EuphireColors.frostWhite,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    t.report_edit_summary_desc,
+                    style: TextStyle(
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                    ),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _showEditSummarySheet();
@@ -339,9 +390,23 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                 ),
                 const SizedBox(height: 10),
                 ListTile(
-                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF00B37E)),
-                  title: const Text('Wygeneruj ponownie podsumowanie', style: TextStyle(color: EuphireColors.frostWhite, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Utwórz nowe podsumowanie tej rozmowy za pomocą AI', style: TextStyle(color: EuphireColors.mist.withValues(alpha: 0.7))),
+                  leading: const Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFF00B37E),
+                  ),
+                  title: const Text(
+                    'Wygeneruj ponownie podsumowanie',
+                    style: TextStyle(
+                      color: EuphireColors.frostWhite,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Utwórz nowe podsumowanie tej rozmowy za pomocą AI',
+                    style: TextStyle(
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                    ),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _generateSummary();
@@ -380,11 +445,16 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
   }
 
   String _extractSummaryFromNoteText(String text) {
-    final headerPattern = RegExp(r'###\s*(Zapis rozmowy z AI|Transkrypcja)[^\n]*\n?');
+    final headerPattern = RegExp(
+      r'###\s*(Zapis rozmowy z AI|Transkrypcja)[^\n]*\n?',
+    );
     if (text.contains(headerPattern)) {
       final splitParts = text.split(headerPattern);
-      final rawSummary = splitParts[0].replaceFirst(RegExp(r'\n*---+\s*$'), '').trim();
-      final isRoleHeader = rawSummary.startsWith('**System:**') ||
+      final rawSummary = splitParts[0]
+          .replaceFirst(RegExp(r'\n*---+\s*$'), '')
+          .trim();
+      final isRoleHeader =
+          rawSummary.startsWith('**System:**') ||
           rawSummary.startsWith('**Terapeuta:**') ||
           rawSummary.startsWith('**Superwizor AI:**') ||
           rawSummary.startsWith('**AI:**') ||
@@ -520,7 +590,10 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
               (() {
                 if (isGenerating) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 8,
+                    ),
                     child: Column(
                       children: [
                         _buildSuperwizorAvatar(size: 32),
@@ -588,7 +661,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                color: const Color(0xFF00B37E).withValues(alpha: 0.6),
+                                color: const Color(
+                                  0xFF00B37E,
+                                ).withValues(alpha: 0.6),
                               ),
                             ),
                           ),
@@ -614,22 +689,37 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
     );
   }
 
+  /// Saves the conversation as a patient note.
+  ///
+  /// This used to call a SECOND, unguarded model to "summarize" the
+  /// conversation — generating fresh clinical text about a specific
+  /// client outside the classifier, the schema and the verifier. That is
+  /// precisely the bypass the guardrail architecture exists to close
+  /// (ADR docs/kronikarz/62 section 4.1), so the summarization is gone
+  /// and the conversation is saved as it stands.
+  ///
+  /// If a generated summary is wanted again, it has to come back through
+  /// AskPatientQuestion like every other piece of generated clinical
+  /// material.
   Future<void> _generateSummary() async {
     if (_isGeneratingSummary) return;
     setState(() => _isGeneratingSummary = true);
-    
+
     try {
-      final summary = await ref.read(aiChatSummaryProvider.notifier).generateSummaryInBackground(
+      final saved = await ref
+          .read(aiChatSummaryProvider.notifier)
+          .saveConversationAsNote(
             patientId: widget.patientId,
             noteId: widget.noteId,
             fullTranscript: widget.fullTranscript,
           );
       if (!mounted) return;
-      setState(() => _summary = summary);
-      EuphireToast.success(context, message: 'Wygenerowano podsumowanie rozmowy z AI');
+      setState(() => _summary = saved);
+      // TODO(i18n): move to .arb before release.
+      EuphireToast.success(context, message: 'Zapisano rozmowę jako notatkę');
     } catch (e) {
       if (mounted) {
-        EuphireToast.error(context, message: 'Błąd generowania: $e');
+        EuphireToast.error(context, message: 'Błąd zapisu: $e');
       }
     } finally {
       if (mounted) {
@@ -642,15 +732,20 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
 
   List<_ReportChatMessage> _parseTranscriptToMessages(String raw) {
     final List<_ReportChatMessage> result = [];
-    
-    String cleaned = raw.replaceFirst(RegExp(r'^###\s*(Transkrypcja|Zapis rozmowy z AI)[^\n]*\n?'), '').trim();
-    
+
+    String cleaned = raw
+        .replaceFirst(
+          RegExp(r'^###\s*(Transkrypcja|Zapis rozmowy z AI)[^\n]*\n?'),
+          '',
+        )
+        .trim();
+
     final blocks = cleaned.split(RegExp(r'\n---+\n|\n\n---\n\n'));
-    
+
     for (final block in blocks) {
       final trimmed = block.trim();
       if (trimmed.isEmpty) continue;
-      
+
       String role = 'ai';
       String content = trimmed;
 
@@ -678,7 +773,7 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
 
       result.add(_ReportChatMessage(role: role, text: content));
     }
-    
+
     return result;
   }
 
@@ -702,8 +797,11 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 16, color: EuphireColors.ember),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: EuphireColors.ember,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -765,8 +863,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -781,18 +880,12 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                     ? const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF35250E),
-                          Color(0xFF221607),
-                        ],
+                        colors: [Color(0xFF35250E), Color(0xFF221607)],
                       )
                     : const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF0D2D31),
-                          Color(0xFF071D20),
-                        ],
+                        colors: [Color(0xFF0D2D31), Color(0xFF071D20)],
                       ),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
@@ -816,7 +909,8 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
               ),
               child: MarkdownBody(
                 data: msg.text,
-                selectable: false, // SelectionArea wraps the entire transcript column!
+                selectable:
+                    false, // SelectionArea wraps the entire transcript column!
                 styleSheet: MarkdownStyleSheet(
                   p: TextStyle(
                     fontFamily: 'Montserrat',
@@ -851,9 +945,7 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                   ),
                   listBullet: TextStyle(
                     fontFamily: 'Montserrat',
-                    color: isUser
-                        ? EuphireColors.ember
-                        : EuphireColors.mist,
+                    color: isUser ? EuphireColors.ember : EuphireColors.mist,
                   ),
                 ),
               ),
@@ -869,7 +961,7 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -881,23 +973,40 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
           // ── Top Copy Button (1:1 with report screen) ──
           IconButton(
             icon: const Icon(Icons.copy_rounded, color: EuphireColors.mist),
-            tooltip: _activeTab == 'report' ? 'Kopiuj podsumowanie' : 'Kopiuj zapis rozmowy',
+            tooltip: _activeTab == 'report'
+                ? 'Kopiuj podsumowanie'
+                : 'Kopiuj zapis rozmowy',
             onPressed: () {
               if (_activeTab == 'report' && _summary.isNotEmpty) {
                 Clipboard.setData(ClipboardData(text: _summary));
                 AppHapticFeedback.selectionClick();
-                EuphireToast.success(context, message: 'Skopiowano podsumowanie rozmowy z AI');
+                EuphireToast.success(
+                  context,
+                  message: 'Skopiowano podsumowanie rozmowy z AI',
+                );
               } else {
                 Clipboard.setData(ClipboardData(text: widget.fullTranscript));
                 AppHapticFeedback.selectionClick();
-                EuphireToast.success(context, message: 'Skopiowano zapis rozmowy z AI');
+                EuphireToast.success(
+                  context,
+                  message: 'Skopiowano zapis rozmowy z AI',
+                );
               }
             },
           ),
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.only(right: 16.0),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00B37E)))),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF00B37E),
+                  ),
+                ),
+              ),
             ),
         ],
         bottom: PreferredSize(
@@ -929,9 +1038,11 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.smart_toy_outlined,
-                      size: 16,
-                      color: EuphireColors.frostWhite.withValues(alpha: 0.45)),
+                  Icon(
+                    Icons.smart_toy_outlined,
+                    size: 16,
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.45),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -975,7 +1086,9 @@ class _AiChatReportScreenState extends ConsumerState<AiChatReportScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: const Color(0xFF00B37E).withValues(alpha: 0.6),
+                              color: const Color(
+                                0xFF00B37E,
+                              ).withValues(alpha: 0.6),
                             ),
                           ),
                           elevation: 2,

@@ -1,307 +1,429 @@
-// AiChatService — wraps Firebase AI Logic (Vertex AI backend) to provide
-// a streaming conversational interface for therapists. Builds patient
-// context from cached session reports and feeds it as system instruction
-// to Gemini.
+// AiChatService — the therapist-facing AI chat.
 //
-// Model: patrz _kModel. Region przetwarzania: patrz _kLocation.
+// ── What changed and why ───────────────────────────────────────────────
 //
-// PHI: do modelu ida skroty raportow (surowe transkrypcje NIE), a te niosa
-// dane szczegolnej kategorii. Dlatego region musi byc podany JAWNIE.
-// Domyslne wartosci wyprowadzaja przetwarzanie poza EOG: wycofane
-// `vertexAI()` szlo na 'us-central1', a `agentPlatform()` bez `location`
-// idzie na 'global'. Region jest czescia sciezki zadania
-// (/projects/…/locations/<region>/…), wiec jego pominiecie to nie
-// kosmetyka, tylko zmiana miejsca przetwarzania danych zdrowotnych —
-// sprzeczna z docs/compliance/06 §3, ktora deklaruje europe-west4.
+// This file used to call Vertex AI DIRECTLY FROM THE DEVICE through
+// Firebase AI Logic, building its own system prompt out of session
+// reports. That is the architecture ADR docs/kronikarz/62 section 6
+// rejects in as many words: "identyczny guardrail po stronie serwera
+// (żadnej logiki klasyfikacji w kliencie)".
 //
-// Usage: created per-patient via AiChatServiceFactory; holds ChatSession
-// state for the lifetime of the chat screen.
+// The reason is not tidiness. A guardrail that lives in the client is a
+// guardrail that ships on the app store's schedule — and Google Play has
+// been stuck on 1.0.3 since 2026-07-23. A classifier bug found on a
+// Tuesday would sit in production for weeks. Worse, a client-side prompt
+// is advisory: nothing structurally prevents the model from answering a
+// diagnostic question, because the schema, the router and the verifier
+// are all on the other side of a network call that never happened.
+//
+// So the chat now makes ONE unary RPC. The backend classifies, routes,
+// retrieves, generates, validates and verifies; the client renders what
+// comes back and enforces nothing. That division is the point: the app
+// cannot weaken a rule it does not implement.
+//
+// Unary, not streaming, for the same reason the RPC is: the verifier must
+// see the complete response before the therapist sees any of it, and a
+// token already painted on screen cannot be recalled.
 
-import 'dart:async';
-
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart';
 
-import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
-import '../generated/clinical/v1/clinical.pbgrpc.dart' as clinical_grpc;
-import '../models/session.dart';
+import '../generated/clinical/v1/clinical.pb.dart' as pb;
 import '../providers/grpc_provider.dart';
 import '../providers/patient_notes_provider.dart';
-import '../providers/patient_provider.dart';
 
-// ── Constants ──────────────────────────────────────────────
+// ── Result model ───────────────────────────────────────────────────────
 
-/// Maximum number of full reports to include verbatim in context.
-const int _kMaxFullReports = 3;
+/// One resolved citation. Every field except [text] is filled in by the
+/// server from the database; the model only ever supplied pointers.
+@immutable
+class ChatQuote {
+  const ChatQuote({
+    required this.sessionId,
+    required this.segmentId,
+    required this.text,
+    required this.speaker,
+    required this.tsStartMs,
+    this.sessionAt,
+  });
 
-/// Maximum number of older sessions to include as summaryShort.
-const int _kMaxSummaryOnlyReports = 20;
+  final String sessionId;
+  final String segmentId;
 
-/// The Gemini model to use for chat (user requested gemini-2.5-flash).
-const String _kModel = 'gemini-2.5-flash';
-
-/// Region przetwarzania Vertex AI. Musi pozostac w EOG i zgadzac sie z
-/// reszta stosu klinicznego (analiza sesji tez chodzi w europe-west4).
-const String _kLocation = 'europe-west4';
-
-// ── System Prompt ──────────────────────────────────────────
-
-String _buildSystemPrompt(String patientAlias, String contextBlock) => '''
-Jesteś poznawczym partnerem w gabinecie dla psychoterapeuty. Twoje zadanie to pomagać terapeucie w analizie i refleksji nad sesjami z klientem.
-
-ZASADY:
-- Odpowiadaj ZAWSZE po polsku, chyba że terapeuta wyraźnie poprosi o inny język.
-- Bądź rówieśnikiem w rozmowie (peer-to-peer), mów bezpośrednio do terapeuty, zachowaj spokój, uważność i merytoryczny ton.
-- ZAWSZE używaj określenia "klient" zamiast "pacjent".
-- NIGDY NIE używaj słów zakazanych z ramy marki: "pacjent", "kliniczny", "diagnoza", "asystent", "asystent kliniczny", "copilot", "scribe", "chatbot".
-- NIE stawiaj diagnoz. Możesz wskazywać wzorce i obserwacje z sesji, ale decyzje merytoryczne należą do terapeuty.
-- Bądź konkretny i odwołuj się do treści raportów z sesji.
-- Jeśli terapeuta zada pytanie niezwiązane z pracą z klientem lub przebiegiem sesji (np. pytania o wiedzę ogólną, geografię jak wysokość Giewontu, matematykę itp.), odpowiedz uprzejmie w 1 zdaniu:
-  "Jako partner w gabinecie wspieram Cię wyłącznie w analizie pracy z klientem i przebiegu sesji."
-- Jeśli nie masz wystarczających informacji, powiedz o tym wprost.
-- NIE wymyślaj informacji, których nie ma w raportach.
-
-KLIENT: $patientAlias
-
-KONTEKST — RAPORTY Z SESJI:
-$contextBlock
-''';
-
-// ── Service ────────────────────────────────────────────────
-
-class AiChatStreamEvent {
+  /// Verbatim transcript text. May contain pseudonymization tokens such
+  /// as `[MIEJSCOWOSC-A]` — the transcript is redacted at rest, and
+  /// decision D2 on whether to change that for this surface is open. The
+  /// UI shows them as-is rather than hiding them: a quote the therapist
+  /// cannot fully read is better than one they wrongly believe is
+  /// complete.
   final String text;
-  final bool isTruncated;
-  const AiChatStreamEvent({required this.text, this.isTruncated = false});
+
+  final String speaker;
+  final int tsStartMs;
+  final DateTime? sessionAt;
+
+  static ChatQuote fromProto(pb.Quote q) => ChatQuote(
+        sessionId: q.sessionId,
+        segmentId: q.segmentId,
+        text: q.text,
+        speaker: q.speaker,
+        tsStartMs: q.tsStartMs,
+        sessionAt: q.hasSessionAt() ? q.sessionAt.toDateTime() : null,
+      );
 }
 
-// ── Service ────────────────────────────────────────────────
+/// How a section must be presented.
+enum ChatSectionKind {
+  /// Quoted material with minimal prose.
+  extract,
+
+  /// Summarized session material.
+  summary,
+
+  /// Computed numbers; no model was involved.
+  stats,
+
+  /// Generated clinical material. MUST be visibly marked as AI-produced
+  /// and awaiting the therapist's judgement (AI Act article 50).
+  hypothesis,
+
+  /// The therapist's own field. Arrives empty and stays theirs.
+  userOnly,
+
+  unknown,
+}
+
+@immutable
+class ChatSection {
+  const ChatSection({
+    required this.title,
+    required this.body,
+    required this.quotes,
+    required this.kind,
+    required this.userAuthored,
+  });
+
+  final String title;
+  final String body;
+  final List<ChatQuote> quotes;
+  final ChatSectionKind kind;
+  final bool userAuthored;
+
+  /// Whether this section carries model-generated clinical material and
+  /// therefore needs the AI marking and the expandable evidence.
+  bool get needsAiMarking => kind == ChatSectionKind.hypothesis;
+
+  static ChatSection fromProto(pb.AnswerSection s) => ChatSection(
+        title: s.title,
+        body: s.body,
+        quotes: s.quotes.map(ChatQuote.fromProto).toList(),
+        kind: _kindFromProto(s.kind),
+        userAuthored: s.userAuthored,
+      );
+
+  static ChatSectionKind _kindFromProto(pb.SectionKind k) {
+    switch (k) {
+      case pb.SectionKind.SECTION_KIND_EXTRACT:
+        return ChatSectionKind.extract;
+      case pb.SectionKind.SECTION_KIND_SUMMARY:
+        return ChatSectionKind.summary;
+      case pb.SectionKind.SECTION_KIND_STATS:
+        return ChatSectionKind.stats;
+      case pb.SectionKind.SECTION_KIND_HYPOTHESIS:
+        return ChatSectionKind.hypothesis;
+      case pb.SectionKind.SECTION_KIND_USER_ONLY:
+        return ChatSectionKind.userOnly;
+      default:
+        // An unrecognized kind is rendered as a plain summary WITHOUT AI
+        // marking privileges. A newer server sending a kind this build
+        // does not know must not have its content silently presented as
+        // something the therapist can rely on.
+        return ChatSectionKind.unknown;
+    }
+  }
+}
+
+/// An AI-proposed question for the therapist to consider (ADR v1.2).
+/// Distinct from the curated starter prompts: these are model-authored,
+/// grounded, and were checked by the verifier.
+@immutable
+class ChatSuggestedQuestion {
+  const ChatSuggestedQuestion({required this.question, required this.quotes});
+  final String question;
+  final List<ChatQuote> quotes;
+}
+
+/// An offer made alongside a refusal.
+@immutable
+class ChatAlternative {
+  const ChatAlternative({required this.labelKey, required this.prefillKey});
+
+  /// i18n key, not display text — the server does not decide what
+  /// language the therapist reads.
+  final String labelKey;
+  final String prefillKey;
+}
+
+@immutable
+class ChatRefusal {
+  const ChatRefusal({
+    required this.messageKey,
+    required this.alternatives,
+    required this.showCrisisInformation,
+  });
+
+  final String messageKey;
+  final List<ChatAlternative> alternatives;
+
+  /// Crisis information is shown independently of anything the chat did.
+  /// It is never routed through the model and never depends on the chat
+  /// working.
+  final bool showCrisisInformation;
+}
+
+enum ChatOutcomeKind { answered, degraded, refused, verifierBlocked, unavailable }
+
+@immutable
+class ChatTurnResult {
+  const ChatTurnResult({
+    required this.conversationId,
+    required this.outcome,
+    required this.sections,
+    required this.suggestedQuestions,
+    required this.refusal,
+    required this.degradeReason,
+    required this.quotaRemainingMicroUsd,
+    required this.latencyMs,
+  });
+
+  final String conversationId;
+  final ChatOutcomeKind outcome;
+  final List<ChatSection> sections;
+  final List<ChatSuggestedQuestion> suggestedQuestions;
+  final ChatRefusal? refusal;
+
+  /// Why the answer was reduced, when it was: "low_conf", "defined_ops",
+  /// "quota", "verifier_block".
+  final String degradeReason;
+
+  final int quotaRemainingMicroUsd;
+  final int latencyMs;
+
+  bool get isRefusal =>
+      outcome == ChatOutcomeKind.refused || outcome == ChatOutcomeKind.verifierBlocked;
+
+  /// True when the turn was answered with a reduced operation. The UI
+  /// says so: a therapist who asked for a conceptualization and silently
+  /// got quotes would reasonably conclude the feature is bad rather than
+  /// restricted.
+  bool get wasDegraded => outcome == ChatOutcomeKind.degraded;
+
+  static ChatTurnResult fromProto(pb.AskPatientQuestionResponse r) {
+    final answer = r.hasAnswer() ? r.answer : null;
+    return ChatTurnResult(
+      conversationId: r.conversationId,
+      outcome: _outcomeFromProto(r.outcome),
+      sections: answer?.sections.map(ChatSection.fromProto).toList() ?? const [],
+      suggestedQuestions: answer?.suggestedQuestions
+              .map((q) => ChatSuggestedQuestion(
+                    question: q.question,
+                    quotes: q.quotes.map(ChatQuote.fromProto).toList(),
+                  ))
+              .toList() ??
+          const [],
+      refusal: r.hasRefusal()
+          ? ChatRefusal(
+              messageKey: r.refusal.message,
+              alternatives: r.refusal.alternatives
+                  .map((a) => ChatAlternative(labelKey: a.label, prefillKey: a.prefill))
+                  .toList(),
+              showCrisisInformation: r.refusal.showCrisisInformation,
+            )
+          : null,
+      degradeReason: r.hasMeta() ? r.meta.degradeReason : '',
+      quotaRemainingMicroUsd: r.hasMeta() ? r.meta.quotaRemainingMicroUsd.toInt() : 0,
+      latencyMs: r.hasMeta() ? r.meta.latencyMs : 0,
+    );
+  }
+
+  static ChatOutcomeKind _outcomeFromProto(pb.ChatOutcome o) {
+    switch (o) {
+      case pb.ChatOutcome.CHAT_OUTCOME_ANSWERED:
+        return ChatOutcomeKind.answered;
+      case pb.ChatOutcome.CHAT_OUTCOME_DEGRADED:
+        return ChatOutcomeKind.degraded;
+      case pb.ChatOutcome.CHAT_OUTCOME_REFUSED:
+        return ChatOutcomeKind.refused;
+      case pb.ChatOutcome.CHAT_OUTCOME_VERIFIER_BLOCKED:
+        return ChatOutcomeKind.verifierBlocked;
+      default:
+        // An outcome this build does not recognize is treated as
+        // unavailable, not as an answer. Rendering unknown-shaped content
+        // as a normal reply is how a client turns a server-side refusal
+        // into a visible answer.
+        return ChatOutcomeKind.unavailable;
+    }
+  }
+}
+
+/// Raised when the chat is switched off for this caller.
+class ChatUnavailableException implements Exception {
+  const ChatUnavailableException();
+  @override
+  String toString() => 'ChatUnavailableException';
+}
+
+// ── Service ────────────────────────────────────────────────────────────
 
 class AiChatService {
-  AiChatService._({
-    required this.patientAlias,
-    required ChatSession chatSession,
-  }) : _chat = chatSession;
+  AiChatService({
+    required this.patientFileId,
+    required Ref ref,
+  }) : _ref = ref;
 
-  final String patientAlias;
-  final ChatSession _chat;
-
-  /// Sends a user message and returns a stream of partial response events.
-  /// Each emission is the FULL accumulated text so far and truncation state.
-  Stream<AiChatStreamEvent> sendMessage(String userMessage) async* {
-    final stream = _chat.sendMessageStream(Content.text(userMessage));
-    final buffer = StringBuffer();
-    bool isTruncated = false;
-    await for (final chunk in stream) {
-      final text = chunk.text;
-      if (text != null && text.isNotEmpty) {
-        buffer.write(text);
-      }
-      if (chunk.candidates.isNotEmpty &&
-          chunk.candidates.first.finishReason == FinishReason.maxTokens) {
-        isTruncated = true;
-      }
-      yield AiChatStreamEvent(
-        text: buffer.toString(),
-        isTruncated: isTruncated,
-      );
-    }
-  }
-
-  /// Summarizes the entire conversation into a concise note.
-  /// Returns the summary text suitable for saving as a PatientNote.
-  Future<String> summarizeConversation() async {
-    final response = await _chat.sendMessage(Content.text(
-      'Stwórz faktograficzne, wysoce szczegółowe podsumowanie naszej rozmowy '
-      'w formie ustrukturyzowanej notatki z sesji. Skup się na przekazaniu maksymalnej ilości '
-      'przydatnych detali i szczegółów, które pojawiły się w trakcie rozmowy, '
-      'aby wesprzeć proces psychoterapii. Zignoruj ogólniki, skup się na faktach, '
-      'odkryciach i konkretach. Używaj pojęcia "klient" zamiast "pacjent" i unikaj słowa "kliniczny". '
-      'Format: krótka notatka, maksymalnie 3-4 akapity. Nie używaj nagłówków markdown.',
-    ));
-    return response.text ?? 'Nie udało się wygenerować podsumowania.';
-  }
-
-  /// Generates a structured summary for a transcript using Gemini 2.5 Flash.
-  static Future<String> generateSummaryForTranscript(String transcript) async {
-    final model = FirebaseAI.agentPlatform(location: _kLocation).generativeModel(
-      model: _kModel,
-      generationConfig: GenerationConfig(
-        temperature: 0.2,
-      ),
-    );
-    final response = await model.generateContent([
-      Content.text(
-        'Jesteś poznawczym partnerem dla psychoterapeuty. Twój cel to stworzyć przejrzyste, ustrukturyzowane i odciążające poznawczo podsumowanie rozmowy.\n\n'
-        'ZASADY FORMATOWANIA I TYPOGRAFII (UWOLNIENIE POZNAWCZE):\n'
-        '1. Podziel wypowiedź na 2-3 główne sekcje z nagłówkami Markdown H3 (np. `### Główny problem klienta:`, `### Propozycje interwencji na kolejną sesję:`).\n'
-        '2. Wewnątrz sekcji stosuj zwięzłe punkty z pogrubioną nazwą pojęciową na początku (np. `• **Wzorce relacyjne:** Opis...`).\n'
-        '3. Wewnątrz treści punktów NIE pogrubiaj pojedynczych słów, cytatów ani zwrotów (pogrubiaj WYŁĄCZNIE nazwę pojęciową punktu po znaku `• **Nazwa:**`). Cytaty klienta podawaj w zwykłym tekście w cudzysłowie `"..."`.\n'
-        '4. ZAWSZE używaj określenia "klient" zamiast "pacjent".\n'
-        '5. BEZWZGLĘDNIE NIE używaj słów zakazanych: "pacjent", "kliniczny", "diagnoza", "asystent", "copilot", "scribe", "chatbot".\n'
-        '6. Zachowaj merytoryczny, spokojny i wspierający ton rówieśnika (peer-to-peer).\n\n'
-        'ROZMOWA DO PODSUMOWANIA:\n$transcript'
-      ),
-    ]);
-    return response.text ?? 'Nie udało się wygenerować podsumowania.';
-  }
-}
-
-// ── Factory ────────────────────────────────────────────────
-
-class AiChatServiceFactory {
-  AiChatServiceFactory(this._ref);
+  final String patientFileId;
   final Ref _ref;
 
-  /// Creates an [AiChatService] for the given patient.
+  /// Conversation identity, assigned by the server on the first turn.
+  String _conversationId = '';
+  String get conversationId => _conversationId;
+
+  /// Sends one turn.
   ///
-  /// Loads completed session reports directly via gRPC (bypassing the
-  /// cache layer to avoid coupling to CacheManager lifecycle) and
-  /// builds a context string. If there are ≤ 3 sessions, all full
-  /// reports are included. For > 3 sessions, the 3 most recent get
-  /// full reports and older ones contribute only summaryShort.
-  Future<AiChatService> create({
-    required String patientId,
-    required String patientAlias,
-    required String therapistId,
+  /// [starterId] and [starterEdited] describe a curated starter prompt.
+  /// An UNEDITED starter has a known intent, so the server may skip the
+  /// classifier for it. The flag must be honest: reporting an edited
+  /// starter as unedited would route arbitrary user text down a path that
+  /// assumes curated wording.
+  Future<ChatTurnResult> send(
+    String question, {
+    String starterId = '',
+    bool starterEdited = false,
   }) async {
-    // 1. Get completed sessions for this patient
-    final sessionsMap =
-        _ref.read(sessionsProvider).asData?.value ?? {};
-    final allSessions = (sessionsMap[patientId] ?? <Session>[])
-        .where((s) => s.status == SessionStatus.completed)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date)); // newest first
-
-    // 2. Fetch report details directly via gRPC for each session
     final client = _ref.read(grpcClientsProvider).clinical;
-
-    final contextParts = <String>[];
-    for (var i = 0;
-        i < allSessions.length &&
-            i < _kMaxFullReports + _kMaxSummaryOnlyReports;
-        i++) {
-      final session = allSessions[i];
-      try {
-        final details = await _fetchSessionDetails(client, session.id);
-        if (details == null) continue;
-
-        final report = details.reports.isNotEmpty ? details.reports.first : null;
-        if (report == null) continue;
-
-        if (i < _kMaxFullReports) {
-          // Full report for recent sessions
-          contextParts.add(
-            '--- Sesja ${session.sessionNumber} '
-            '(${_formatDate(session.date)}, ${_formatDuration(session.duration)}) ---\n'
-            '${report.content.isNotEmpty ? report.content : report.summaryShort}',
-          );
-        } else {
-          // Summary only for older sessions
-          if (report.summaryShort.isNotEmpty) {
-            contextParts.add(
-              '--- Sesja ${session.sessionNumber} '
-              '(${_formatDate(session.date)}) [skrót] ---\n'
-              '${report.summaryShort}',
-            );
-          }
-        }
-      } catch (e) {
-        // Skip sessions that can't be fetched — non-blocking.
-        debugPrint('[ai-chat] Failed to fetch session ${session.id}: $e');
-        continue;
-      }
-    }
-
-    final contextBlock = contextParts.isEmpty
-        ? 'Brak dostępnych raportów z sesji.'
-        : contextParts.join('\n\n');
-
-    // 3. Create the Gemini model + chat session
-    final model = FirebaseAI.agentPlatform(location: _kLocation).generativeModel(
-      model: _kModel,
-      systemInstruction: Content.system(
-        _buildSystemPrompt(patientAlias, contextBlock),
-      ),
-      generationConfig: GenerationConfig(
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 6144,
-      ),
-    );
-
-    final chat = model.startChat();
-
-    return AiChatService._(
-      patientAlias: patientAlias,
-      chatSession: chat,
-    );
-  }
-
-  /// Directly fetches session details via gRPC, returning a lightweight
-  /// record with report data. Returns null on failure.
-  static Future<_SessionReport?> _fetchSessionDetails(
-    clinical_grpc.ClinicalServiceClient client,
-    String sessionId,
-  ) async {
-    final res = await client.getSessionDetails(
-      clinical_pb.GetSessionDetailsRequest(sessionId: sessionId),
-    );
-    if (res.reports.isEmpty) return null;
-    return _SessionReport(reports: res.reports.map(_ReportSlim.fromProto).toList());
-  }
-
-  static String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
-
-  static String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
-    if (minutes < 60) return '$minutes min';
-    final hours = minutes ~/ 60;
-    final remaining = minutes % 60;
-    return '${hours}h ${remaining}min';
-  }
-}
-
-/// Lightweight report data extracted from the gRPC response.
-class _ReportSlim {
-  final String content;
-  final String summaryShort;
-
-  const _ReportSlim({required this.content, required this.summaryShort});
-
-  factory _ReportSlim.fromProto(clinical_pb.Report r) => _ReportSlim(
-        content: r.content,
-        summaryShort: r.summaryShort,
+    try {
+      final resp = await client.askPatientQuestion(
+        pb.AskPatientQuestionRequest(
+          patientFileId: patientFileId,
+          question: question,
+          conversationId: _conversationId,
+          starterId: starterId,
+          starterEdited: starterEdited,
+        ),
       );
+      _conversationId = resp.conversationId;
+      return ChatTurnResult.fromProto(resp);
+    } on GrpcError catch (e) {
+      if (e.code == StatusCode.unavailable && (e.message ?? '').contains('FEATURE_DISABLED')) {
+        throw const ChatUnavailableException();
+      }
+      rethrow;
+    }
+  }
 }
 
-class _SessionReport {
-  final List<_ReportSlim> reports;
-  const _SessionReport({required this.reports});
+/// Starter prompts shown on first open and on an empty chat (ADR v1.3
+/// section 6).
+///
+/// The IDs must match the server registry in
+/// clinical-svc/internal/chat/starters.go — that is what lets an unedited
+/// starter skip the classifier. An ID this list invents would simply be
+/// classified normally, which is the safe failure.
+@immutable
+class ChatStarter {
+  const ChatStarter({required this.id, required this.label, required this.prefill});
+  final String id;
+  final String label;
+  final String prefill;
 }
 
-// ── Riverpod Provider ──────────────────────────────────────
+// TODO(i18n): these strings belong in the .arb pipeline before release —
+// the project rule is that no Polish is hard-coded in widgets. They are
+// inline here only so the composition (which starters, in what order)
+// stays reviewable in one place while the .arb keys are added.
+const List<ChatStarter> kChatStarters = [
+  ChatStarter(
+    id: 'recent_themes',
+    label: 'Ostatnie wątki',
+    prefill: 'Jakie wątki wracały w ostatnich sesjach?',
+  ),
+  ChatStarter(
+    id: 'session_prep',
+    label: 'Przygotuj mnie na sesję',
+    prefill: 'Przygotuj mnie na najbliższą sesję — do czego warto wrócić?',
+  ),
+  ChatStarter(
+    id: 'attendance',
+    label: 'Frekwencja i przerwy',
+    prefill: 'Ile mieliśmy sesji i jakie były przerwy?',
+  ),
+  ChatStarter(
+    id: 'conceptualization',
+    label: 'Konceptualizacja',
+    prefill: 'Jak można rozumieć to, co dzieje się z klientem?',
+  ),
+  ChatStarter(
+    id: 'progress',
+    label: 'Co się zmieniło',
+    prefill: 'Co zmieniło się w pracy z klientem przez ostatnie miesiące?',
+  ),
+  ChatStarter(
+    id: 'directions',
+    label: 'Kierunki pracy',
+    prefill: 'Jakie kierunki pracy warto rozważyć?',
+  ),
+];
+
+// ── Providers ──────────────────────────────────────────────────────────
 
 final aiChatServiceFactoryProvider = Provider<AiChatServiceFactory>((ref) {
   return AiChatServiceFactory(ref);
 });
 
-// ── Background Summary Generation Notifier ─────────────────
+class AiChatServiceFactory {
+  AiChatServiceFactory(this._ref);
+  final Ref _ref;
 
+  /// Creates a service for one patient file.
+  ///
+  /// Note how little this does now. Building the model context — loading
+  /// reports, assembling a prompt, deciding what the model may see — all
+  /// moved to the server, where it is subject to the guardrail. The
+  /// client no longer knows what goes into a prompt, which is precisely
+  /// the property that makes the guardrail unavoidable.
+  AiChatService create({required String patientFileId}) {
+    return AiChatService(patientFileId: patientFileId, ref: _ref);
+  }
+}
+
+// ── Conversation notes ─────────────────────────────────────────────────
+
+@immutable
 class SummaryTaskState {
+  const SummaryTaskState({
+    this.isGenerating = false,
+    this.summaryResult,
+    this.error,
+  });
   final bool isGenerating;
   final String? summaryResult;
   final String? error;
-  const SummaryTaskState({this.isGenerating = false, this.summaryResult, this.error});
 }
 
+/// Saves a chat conversation as a patient note.
+///
+/// The conversation is saved VERBATIM. It used to be run through a
+/// second, unguarded model call that "summarized" it — which would now
+/// mean generating fresh clinical text about a client outside the
+/// classifier, the schema and the verifier: exactly the bypass this
+/// rewrite exists to close. If a summary is wanted later, it has to come
+/// through AskPatientQuestion like everything else.
 class AiChatSummaryNotifier extends Notifier<Map<String, SummaryTaskState>> {
   @override
   Map<String, SummaryTaskState> build() => {};
 
-  Future<String> generateSummaryInBackground({
+  Future<String> saveConversationAsNote({
     required String patientId,
     required String? noteId,
     required String fullTranscript,
@@ -310,18 +432,15 @@ class AiChatSummaryNotifier extends Notifier<Map<String, SummaryTaskState>> {
     state = {...state, key: const SummaryTaskState(isGenerating: true)};
 
     try {
-      final summary = await AiChatService.generateSummaryForTranscript(fullTranscript);
-      final combinedText = '$summary\n\n---\n### Zapis rozmowy z AI\n$fullTranscript'.trim();
-
+      final body = '### Zapis rozmowy z AI\n$fullTranscript'.trim();
       final notesNotifier = ref.read(patientNotesMapProvider.notifier);
       if (noteId != null && noteId.isNotEmpty) {
-        await notesNotifier.updateNote(patientId, noteId, 'Notatka z rozmowy AI', combinedText);
+        await notesNotifier.updateNote(patientId, noteId, 'Notatka z rozmowy AI', body);
       } else {
-        await notesNotifier.addNote(patientId, 'Notatka z rozmowy AI', combinedText);
+        await notesNotifier.addNote(patientId, 'Notatka z rozmowy AI', body);
       }
-
-      state = {...state, key: SummaryTaskState(isGenerating: false, summaryResult: summary)};
-      return summary;
+      state = {...state, key: SummaryTaskState(isGenerating: false, summaryResult: body)};
+      return body;
     } catch (e) {
       state = {...state, key: SummaryTaskState(isGenerating: false, error: e.toString())};
       rethrow;

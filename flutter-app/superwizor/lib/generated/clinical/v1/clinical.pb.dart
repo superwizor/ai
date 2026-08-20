@@ -5959,6 +5959,11 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
     $fixnum.Int64? kpiRatingsNegative,
     $fixnum.Int64? kpiRatingsWithNotes,
     $core.Iterable<RegisteredUserDetail>? registrationsDetail,
+    $core.Iterable<ClientSharingPoint>? clientSharingTrend,
+    ClientInvitationFunnel? clientInvitationFunnel,
+    $core.Iterable<PairingAttemptBucket>? pairingAttempts,
+    ReportReadingStats? reportReading,
+    $core.Iterable<PlatformReads>? readingPlatforms,
   }) {
     final result = create();
     if (kpiWau != null) result.kpiWau = kpiWau;
@@ -6019,6 +6024,14 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
       result.kpiRatingsWithNotes = kpiRatingsWithNotes;
     if (registrationsDetail != null)
       result.registrationsDetail.addAll(registrationsDetail);
+    if (clientSharingTrend != null)
+      result.clientSharingTrend.addAll(clientSharingTrend);
+    if (clientInvitationFunnel != null)
+      result.clientInvitationFunnel = clientInvitationFunnel;
+    if (pairingAttempts != null) result.pairingAttempts.addAll(pairingAttempts);
+    if (reportReading != null) result.reportReading = reportReading;
+    if (readingPlatforms != null)
+      result.readingPlatforms.addAll(readingPlatforms);
     return result;
   }
 
@@ -6100,6 +6113,17 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
     ..pPM<RegisteredUserDetail>(
         38, _omitFieldNames ? '' : 'registrationsDetail',
         subBuilder: RegisteredUserDetail.create)
+    ..pPM<ClientSharingPoint>(39, _omitFieldNames ? '' : 'clientSharingTrend',
+        subBuilder: ClientSharingPoint.create)
+    ..aOM<ClientInvitationFunnel>(
+        40, _omitFieldNames ? '' : 'clientInvitationFunnel',
+        subBuilder: ClientInvitationFunnel.create)
+    ..pPM<PairingAttemptBucket>(41, _omitFieldNames ? '' : 'pairingAttempts',
+        subBuilder: PairingAttemptBucket.create)
+    ..aOM<ReportReadingStats>(42, _omitFieldNames ? '' : 'reportReading',
+        subBuilder: ReportReadingStats.create)
+    ..pPM<PlatformReads>(43, _omitFieldNames ? '' : 'readingPlatforms',
+        subBuilder: PlatformReads.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -6346,6 +6370,44 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
   /// Tab 1 registrations detail
   @$pb.TagNumber(38)
   $pb.PbList<RegisteredUserDetail> get registrationsDetail => $_getList(37);
+
+  /// Zakładki "Użycie" i "Pętla z klientem" (14.08.2026).
+  ///
+  /// Panel odpowiadał dotąd na "jak działa system", nie na "jak ludzie z
+  /// niego korzystają". Te pola nie wymagają ANI JEDNEGO nowego zdarzenia
+  /// — stoją na sessions, invitations i istniejących parach
+  /// report.read_started / report.read_finished.
+  @$pb.TagNumber(39)
+  $pb.PbList<ClientSharingPoint> get clientSharingTrend => $_getList(38);
+
+  @$pb.TagNumber(40)
+  ClientInvitationFunnel get clientInvitationFunnel => $_getN(39);
+  @$pb.TagNumber(40)
+  set clientInvitationFunnel(ClientInvitationFunnel value) =>
+      $_setField(40, value);
+  @$pb.TagNumber(40)
+  $core.bool hasClientInvitationFunnel() => $_has(39);
+  @$pb.TagNumber(40)
+  void clearClientInvitationFunnel() => $_clearField(40);
+  @$pb.TagNumber(40)
+  ClientInvitationFunnel ensureClientInvitationFunnel() => $_ensure(39);
+
+  @$pb.TagNumber(41)
+  $pb.PbList<PairingAttemptBucket> get pairingAttempts => $_getList(40);
+
+  @$pb.TagNumber(42)
+  ReportReadingStats get reportReading => $_getN(41);
+  @$pb.TagNumber(42)
+  set reportReading(ReportReadingStats value) => $_setField(42, value);
+  @$pb.TagNumber(42)
+  $core.bool hasReportReading() => $_has(41);
+  @$pb.TagNumber(42)
+  void clearReportReading() => $_clearField(42);
+  @$pb.TagNumber(42)
+  ReportReadingStats ensureReportReading() => $_ensure(41);
+
+  @$pb.TagNumber(43)
+  $pb.PbList<PlatformReads> get readingPlatforms => $_getList(42);
 }
 
 class RegisteredUserDetail extends $pb.GeneratedMessage {
@@ -7325,6 +7387,429 @@ class FailureRatePoint extends $pb.GeneratedMessage {
   $core.bool hasFailed() => $_has(3);
   @$pb.TagNumber(4)
   void clearFailed() => $_clearField(4);
+}
+
+/// Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
+class ClientSharingPoint extends $pb.GeneratedMessage {
+  factory ClientSharingPoint({
+    $core.String? label,
+    $fixnum.Int64? sessionsTotal,
+    $fixnum.Int64? shared,
+    $fixnum.Int64? hidden,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (sessionsTotal != null) result.sessionsTotal = sessionsTotal;
+    if (shared != null) result.shared = shared;
+    if (hidden != null) result.hidden = hidden;
+    return result;
+  }
+
+  ClientSharingPoint._();
+
+  factory ClientSharingPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientSharingPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientSharingPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aInt64(2, _omitFieldNames ? '' : 'sessionsTotal')
+    ..aInt64(3, _omitFieldNames ? '' : 'shared')
+    ..aInt64(4, _omitFieldNames ? '' : 'hidden')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientSharingPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientSharingPoint copyWith(void Function(ClientSharingPoint) updates) =>
+      super.copyWith((message) => updates(message as ClientSharingPoint))
+          as ClientSharingPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientSharingPoint create() => ClientSharingPoint._();
+  @$core.override
+  ClientSharingPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientSharingPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientSharingPoint>(create);
+  static ClientSharingPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get sessionsTotal => $_getI64(1);
+  @$pb.TagNumber(2)
+  set sessionsTotal($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSessionsTotal() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSessionsTotal() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get shared => $_getI64(2);
+  @$pb.TagNumber(3)
+  set shared($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasShared() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearShared() => $_clearField(3);
+
+  /// Raport dotarł, ale klient go schował — sygnał odbioru, nie wysyłki.
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get hidden => $_getI64(3);
+  @$pb.TagNumber(4)
+  set hidden($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHidden() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHidden() => $_clearField(4);
+}
+
+class ClientInvitationFunnel extends $pb.GeneratedMessage {
+  factory ClientInvitationFunnel({
+    $fixnum.Int64? sent,
+    $fixnum.Int64? accepted,
+    $fixnum.Int64? revoked,
+    $fixnum.Int64? expired,
+    $core.double? medianHoursToAccept,
+  }) {
+    final result = create();
+    if (sent != null) result.sent = sent;
+    if (accepted != null) result.accepted = accepted;
+    if (revoked != null) result.revoked = revoked;
+    if (expired != null) result.expired = expired;
+    if (medianHoursToAccept != null)
+      result.medianHoursToAccept = medianHoursToAccept;
+    return result;
+  }
+
+  ClientInvitationFunnel._();
+
+  factory ClientInvitationFunnel.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientInvitationFunnel.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientInvitationFunnel',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aInt64(1, _omitFieldNames ? '' : 'sent')
+    ..aInt64(2, _omitFieldNames ? '' : 'accepted')
+    ..aInt64(3, _omitFieldNames ? '' : 'revoked')
+    ..aInt64(4, _omitFieldNames ? '' : 'expired')
+    ..aD(5, _omitFieldNames ? '' : 'medianHoursToAccept')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientInvitationFunnel clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientInvitationFunnel copyWith(
+          void Function(ClientInvitationFunnel) updates) =>
+      super.copyWith((message) => updates(message as ClientInvitationFunnel))
+          as ClientInvitationFunnel;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientInvitationFunnel create() => ClientInvitationFunnel._();
+  @$core.override
+  ClientInvitationFunnel createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientInvitationFunnel getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientInvitationFunnel>(create);
+  static ClientInvitationFunnel? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get sent => $_getI64(0);
+  @$pb.TagNumber(1)
+  set sent($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSent() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSent() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get accepted => $_getI64(1);
+  @$pb.TagNumber(2)
+  set accepted($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccepted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccepted() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get revoked => $_getI64(2);
+  @$pb.TagNumber(3)
+  set revoked($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRevoked() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRevoked() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get expired => $_getI64(3);
+  @$pb.TagNumber(4)
+  set expired($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExpired() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpired() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.double get medianHoursToAccept => $_getN(4);
+  @$pb.TagNumber(5)
+  set medianHoursToAccept($core.double value) => $_setDouble(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMedianHoursToAccept() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMedianHoursToAccept() => $_clearField(5);
+}
+
+/// Rozkład, nie średnia — interesuje nas ogon, czyli klienci, którzy
+/// męczą się z kodem parowania kilka razy.
+class PairingAttemptBucket extends $pb.GeneratedMessage {
+  factory PairingAttemptBucket({
+    $core.int? attempts,
+    $fixnum.Int64? invitations,
+  }) {
+    final result = create();
+    if (attempts != null) result.attempts = attempts;
+    if (invitations != null) result.invitations = invitations;
+    return result;
+  }
+
+  PairingAttemptBucket._();
+
+  factory PairingAttemptBucket.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PairingAttemptBucket.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PairingAttemptBucket',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'attempts')
+    ..aInt64(2, _omitFieldNames ? '' : 'invitations')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PairingAttemptBucket clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PairingAttemptBucket copyWith(void Function(PairingAttemptBucket) updates) =>
+      super.copyWith((message) => updates(message as PairingAttemptBucket))
+          as PairingAttemptBucket;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PairingAttemptBucket create() => PairingAttemptBucket._();
+  @$core.override
+  PairingAttemptBucket createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PairingAttemptBucket getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PairingAttemptBucket>(create);
+  static PairingAttemptBucket? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get attempts => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set attempts($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAttempts() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAttempts() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get invitations => $_getI64(1);
+  @$pb.TagNumber(2)
+  set invitations($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasInvitations() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInvitations() => $_clearField(2);
+}
+
+/// active_read_ms mierzy klient i zatrzymuje licznik przy zejściu w tło,
+/// więc median_seconds to czas AKTYWNY, nie czas otwartego ekranu.
+/// Różnica started-finished to czytania przerwane.
+class ReportReadingStats extends $pb.GeneratedMessage {
+  factory ReportReadingStats({
+    $fixnum.Int64? started,
+    $fixnum.Int64? finished,
+    $core.double? medianSeconds,
+    $core.double? p90Seconds,
+  }) {
+    final result = create();
+    if (started != null) result.started = started;
+    if (finished != null) result.finished = finished;
+    if (medianSeconds != null) result.medianSeconds = medianSeconds;
+    if (p90Seconds != null) result.p90Seconds = p90Seconds;
+    return result;
+  }
+
+  ReportReadingStats._();
+
+  factory ReportReadingStats.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ReportReadingStats.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportReadingStats',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aInt64(1, _omitFieldNames ? '' : 'started')
+    ..aInt64(2, _omitFieldNames ? '' : 'finished')
+    ..aD(3, _omitFieldNames ? '' : 'medianSeconds')
+    ..aD(4, _omitFieldNames ? '' : 'p90Seconds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportReadingStats clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportReadingStats copyWith(void Function(ReportReadingStats) updates) =>
+      super.copyWith((message) => updates(message as ReportReadingStats))
+          as ReportReadingStats;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ReportReadingStats create() => ReportReadingStats._();
+  @$core.override
+  ReportReadingStats createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ReportReadingStats getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportReadingStats>(create);
+  static ReportReadingStats? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get started => $_getI64(0);
+  @$pb.TagNumber(1)
+  set started($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStarted() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStarted() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get finished => $_getI64(1);
+  @$pb.TagNumber(2)
+  set finished($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFinished() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFinished() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get medianSeconds => $_getN(2);
+  @$pb.TagNumber(3)
+  set medianSeconds($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMedianSeconds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMedianSeconds() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get p90Seconds => $_getN(3);
+  @$pb.TagNumber(4)
+  set p90Seconds($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasP90Seconds() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearP90Seconds() => $_clearField(4);
+}
+
+class PlatformReads extends $pb.GeneratedMessage {
+  factory PlatformReads({
+    $core.String? platform,
+    $fixnum.Int64? reads,
+  }) {
+    final result = create();
+    if (platform != null) result.platform = platform;
+    if (reads != null) result.reads = reads;
+    return result;
+  }
+
+  PlatformReads._();
+
+  factory PlatformReads.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PlatformReads.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PlatformReads',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'platform')
+    ..aInt64(2, _omitFieldNames ? '' : 'reads')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlatformReads clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlatformReads copyWith(void Function(PlatformReads) updates) =>
+      super.copyWith((message) => updates(message as PlatformReads))
+          as PlatformReads;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PlatformReads create() => PlatformReads._();
+  @$core.override
+  PlatformReads createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PlatformReads getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PlatformReads>(create);
+  static PlatformReads? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get platform => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set platform($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlatform() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlatform() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get reads => $_getI64(1);
+  @$pb.TagNumber(2)
+  set reads($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReads() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReads() => $_clearField(2);
 }
 
 class FunnelStep extends $pb.GeneratedMessage {
@@ -11207,6 +11692,1378 @@ class SplitTranscriptSegmentResponse extends $pb.GeneratedMessage {
   void clearTranscript() => $_clearField(2);
   @$pb.TagNumber(2)
   Transcript ensureTranscript() => $_ensure(1);
+}
+
+/// Faza 1: one-shot briefing. The server fetches RAG context, generates
+/// a Gemini response, and returns it in a single unary call.
+class GenerateSessionBriefRequest extends $pb.GeneratedMessage {
+  factory GenerateSessionBriefRequest({
+    $core.String? patientFileId,
+    $core.String? focusHint,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (focusHint != null) result.focusHint = focusHint;
+    return result;
+  }
+
+  GenerateSessionBriefRequest._();
+
+  factory GenerateSessionBriefRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GenerateSessionBriefRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateSessionBriefRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'focusHint')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateSessionBriefRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateSessionBriefRequest copyWith(
+          void Function(GenerateSessionBriefRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GenerateSessionBriefRequest))
+          as GenerateSessionBriefRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GenerateSessionBriefRequest create() =>
+      GenerateSessionBriefRequest._();
+  @$core.override
+  GenerateSessionBriefRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GenerateSessionBriefRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateSessionBriefRequest>(create);
+  static GenerateSessionBriefRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  /// Optional free-text focus hint: "wzorce lękowe", "cele terapii", etc.
+  /// When empty, the server uses a generic "session preparation" query.
+  @$pb.TagNumber(2)
+  $core.String get focusHint => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set focusHint($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFocusHint() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFocusHint() => $_clearField(2);
+}
+
+class GenerateSessionBriefResponse extends $pb.GeneratedMessage {
+  factory GenerateSessionBriefResponse({
+    $core.String? briefMarkdown,
+    $core.String? conversationId,
+    $core.int? ragHitsUsed,
+  }) {
+    final result = create();
+    if (briefMarkdown != null) result.briefMarkdown = briefMarkdown;
+    if (conversationId != null) result.conversationId = conversationId;
+    if (ragHitsUsed != null) result.ragHitsUsed = ragHitsUsed;
+    return result;
+  }
+
+  GenerateSessionBriefResponse._();
+
+  factory GenerateSessionBriefResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GenerateSessionBriefResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateSessionBriefResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'briefMarkdown')
+    ..aOS(2, _omitFieldNames ? '' : 'conversationId')
+    ..aI(3, _omitFieldNames ? '' : 'ragHitsUsed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateSessionBriefResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateSessionBriefResponse copyWith(
+          void Function(GenerateSessionBriefResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as GenerateSessionBriefResponse))
+          as GenerateSessionBriefResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GenerateSessionBriefResponse create() =>
+      GenerateSessionBriefResponse._();
+  @$core.override
+  GenerateSessionBriefResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GenerateSessionBriefResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateSessionBriefResponse>(create);
+  static GenerateSessionBriefResponse? _defaultInstance;
+
+  /// The generated brief in markdown format.
+  @$pb.TagNumber(1)
+  $core.String get briefMarkdown => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set briefMarkdown($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBriefMarkdown() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBriefMarkdown() => $_clearField(1);
+
+  /// Stable conversation ID. Pass this to AskPatientQuestion to continue
+  /// asking follow-up questions in the context of this brief.
+  @$pb.TagNumber(2)
+  $core.String get conversationId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set conversationId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConversationId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConversationId() => $_clearField(2);
+
+  /// Number of RAG memory hits used to build context.
+  @$pb.TagNumber(3)
+  $core.int get ragHitsUsed => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set ragHitsUsed($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRagHitsUsed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRagHitsUsed() => $_clearField(3);
+}
+
+class AdminGetChatControlsRequest extends $pb.GeneratedMessage {
+  factory AdminGetChatControlsRequest({
+    $core.String? organizationId,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    return result;
+  }
+
+  AdminGetChatControlsRequest._();
+
+  factory AdminGetChatControlsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminGetChatControlsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminGetChatControlsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetChatControlsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetChatControlsRequest copyWith(
+          void Function(AdminGetChatControlsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminGetChatControlsRequest))
+          as AdminGetChatControlsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminGetChatControlsRequest create() =>
+      AdminGetChatControlsRequest._();
+  @$core.override
+  AdminGetChatControlsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminGetChatControlsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminGetChatControlsRequest>(create);
+  static AdminGetChatControlsRequest? _defaultInstance;
+
+  /// Empty = the global defaults. Set to inspect one organization's
+  /// effective settings, including any override.
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+}
+
+class AdminChatControls extends $pb.GeneratedMessage {
+  factory AdminChatControls({
+    $core.bool? enabled,
+    $core.String? mode,
+    $core.double? classifierTau,
+    $fixnum.Int64? quotaMicroUsd,
+    $core.bool? isOrgOverride,
+    $core.String? note,
+    $3.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (enabled != null) result.enabled = enabled;
+    if (mode != null) result.mode = mode;
+    if (classifierTau != null) result.classifierTau = classifierTau;
+    if (quotaMicroUsd != null) result.quotaMicroUsd = quotaMicroUsd;
+    if (isOrgOverride != null) result.isOrgOverride = isOrgOverride;
+    if (note != null) result.note = note;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  AdminChatControls._();
+
+  factory AdminChatControls.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminChatControls.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminChatControls',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'enabled')
+    ..aOS(2, _omitFieldNames ? '' : 'mode')
+    ..aD(3, _omitFieldNames ? '' : 'classifierTau')
+    ..aInt64(4, _omitFieldNames ? '' : 'quotaMicroUsd')
+    ..aOB(5, _omitFieldNames ? '' : 'isOrgOverride')
+    ..aOS(6, _omitFieldNames ? '' : 'note')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminChatControls clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminChatControls copyWith(void Function(AdminChatControls) updates) =>
+      super.copyWith((message) => updates(message as AdminChatControls))
+          as AdminChatControls;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminChatControls create() => AdminChatControls._();
+  @$core.override
+  AdminChatControls createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminChatControls getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminChatControls>(create);
+  static AdminChatControls? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get enabled => $_getBF(0);
+  @$pb.TagNumber(1)
+  set enabled($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEnabled() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEnabled() => $_clearField(1);
+
+  /// "full" | "defined_ops"
+  @$pb.TagNumber(2)
+  $core.String get mode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set mode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get classifierTau => $_getN(2);
+  @$pb.TagNumber(3)
+  set classifierTau($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClassifierTau() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClassifierTau() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get quotaMicroUsd => $_getI64(3);
+  @$pb.TagNumber(4)
+  set quotaMicroUsd($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasQuotaMicroUsd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearQuotaMicroUsd() => $_clearField(4);
+
+  /// True when these values come from an organization override rather
+  /// than the global row.
+  @$pb.TagNumber(5)
+  $core.bool get isOrgOverride => $_getBF(4);
+  @$pb.TagNumber(5)
+  set isOrgOverride($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIsOrgOverride() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIsOrgOverride() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get note => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set note($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNote() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNote() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get updatedAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set updatedAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasUpdatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearUpdatedAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureUpdatedAt() => $_ensure(6);
+}
+
+class AdminSetChatControlsRequest extends $pb.GeneratedMessage {
+  factory AdminSetChatControlsRequest({
+    $core.String? organizationId,
+    $core.bool? enabled,
+    $core.String? mode,
+    $core.double? classifierTau,
+    $fixnum.Int64? quotaMicroUsd,
+    $core.String? note,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (enabled != null) result.enabled = enabled;
+    if (mode != null) result.mode = mode;
+    if (classifierTau != null) result.classifierTau = classifierTau;
+    if (quotaMicroUsd != null) result.quotaMicroUsd = quotaMicroUsd;
+    if (note != null) result.note = note;
+    return result;
+  }
+
+  AdminSetChatControlsRequest._();
+
+  factory AdminSetChatControlsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminSetChatControlsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminSetChatControlsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aOB(2, _omitFieldNames ? '' : 'enabled')
+    ..aOS(3, _omitFieldNames ? '' : 'mode')
+    ..aD(4, _omitFieldNames ? '' : 'classifierTau')
+    ..aInt64(5, _omitFieldNames ? '' : 'quotaMicroUsd')
+    ..aOS(6, _omitFieldNames ? '' : 'note')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetChatControlsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetChatControlsRequest copyWith(
+          void Function(AdminSetChatControlsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminSetChatControlsRequest))
+          as AdminSetChatControlsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminSetChatControlsRequest create() =>
+      AdminSetChatControlsRequest._();
+  @$core.override
+  AdminSetChatControlsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminSetChatControlsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminSetChatControlsRequest>(create);
+  static AdminSetChatControlsRequest? _defaultInstance;
+
+  /// Empty = change the global default; set = create or update an
+  /// organization override.
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  /// Only the fields present are changed. optional (not a default value)
+  /// so "leave enabled alone while switching mode" is expressible —
+  /// without it, every partial update would silently re-enable a chat
+  /// someone had just switched off.
+  @$pb.TagNumber(2)
+  $core.bool get enabled => $_getBF(1);
+  @$pb.TagNumber(2)
+  set enabled($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEnabled() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEnabled() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get mode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set mode($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get classifierTau => $_getN(3);
+  @$pb.TagNumber(4)
+  set classifierTau($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClassifierTau() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClassifierTau() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get quotaMicroUsd => $_getI64(4);
+  @$pb.TagNumber(5)
+  set quotaMicroUsd($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasQuotaMicroUsd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearQuotaMicroUsd() => $_clearField(5);
+
+  /// Why. Required for any change: the note is what the next responder
+  /// reads at 3am, and the audit event is worth little without it.
+  @$pb.TagNumber(6)
+  $core.String get note => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set note($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNote() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNote() => $_clearField(6);
+}
+
+class AskPatientQuestionRequest extends $pb.GeneratedMessage {
+  factory AskPatientQuestionRequest({
+    $core.String? patientFileId,
+    $core.String? question,
+    $core.String? conversationId,
+    $core.String? starterId,
+    $core.bool? starterEdited,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (question != null) result.question = question;
+    if (conversationId != null) result.conversationId = conversationId;
+    if (starterId != null) result.starterId = starterId;
+    if (starterEdited != null) result.starterEdited = starterEdited;
+    return result;
+  }
+
+  AskPatientQuestionRequest._();
+
+  factory AskPatientQuestionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AskPatientQuestionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AskPatientQuestionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'question')
+    ..aOS(3, _omitFieldNames ? '' : 'conversationId')
+    ..aOS(4, _omitFieldNames ? '' : 'starterId')
+    ..aOB(5, _omitFieldNames ? '' : 'starterEdited')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AskPatientQuestionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AskPatientQuestionRequest copyWith(
+          void Function(AskPatientQuestionRequest) updates) =>
+      super.copyWith((message) => updates(message as AskPatientQuestionRequest))
+          as AskPatientQuestionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AskPatientQuestionRequest create() => AskPatientQuestionRequest._();
+  @$core.override
+  AskPatientQuestionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AskPatientQuestionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AskPatientQuestionRequest>(create);
+  static AskPatientQuestionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get question => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set question($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasQuestion() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearQuestion() => $_clearField(2);
+
+  /// Conversation ID from GenerateSessionBrief or a prior
+  /// AskPatientQuestion response. Empty = new conversation.
+  @$pb.TagNumber(3)
+  $core.String get conversationId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set conversationId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasConversationId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConversationId() => $_clearField(3);
+
+  /// Starter prompt this text came from, if any (ADR v1.3 section 6).
+  /// Set only when the therapist tapped a curated starter.
+  @$pb.TagNumber(4)
+  $core.String get starterId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set starterId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStarterId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStarterId() => $_clearField(4);
+
+  /// True when the therapist edited the starter text before sending.
+  /// An UNEDITED starter has a known intent and curated wording, so the
+  /// server may skip the classifier for it; an edited one never is.
+  @$pb.TagNumber(5)
+  $core.bool get starterEdited => $_getBF(4);
+  @$pb.TagNumber(5)
+  set starterEdited($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStarterEdited() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStarterEdited() => $_clearField(5);
+}
+
+/// Quote is a verbatim span of a decrypted transcript segment. The
+/// verifier checks each one as a literal substring of its source before
+/// the response leaves the server, so a quote here is evidence, not a
+/// paraphrase the model believes it saw.
+class Quote extends $pb.GeneratedMessage {
+  factory Quote({
+    $core.String? sessionId,
+    $core.String? segmentId,
+    $core.String? text,
+    $core.String? speaker,
+    $core.int? tsStartMs,
+    $core.int? tsEndMs,
+    $3.Timestamp? sessionAt,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (segmentId != null) result.segmentId = segmentId;
+    if (text != null) result.text = text;
+    if (speaker != null) result.speaker = speaker;
+    if (tsStartMs != null) result.tsStartMs = tsStartMs;
+    if (tsEndMs != null) result.tsEndMs = tsEndMs;
+    if (sessionAt != null) result.sessionAt = sessionAt;
+    return result;
+  }
+
+  Quote._();
+
+  factory Quote.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Quote.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Quote',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'segmentId')
+    ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..aOS(4, _omitFieldNames ? '' : 'speaker')
+    ..aI(5, _omitFieldNames ? '' : 'tsStartMs')
+    ..aI(6, _omitFieldNames ? '' : 'tsEndMs')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'sessionAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Quote clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Quote copyWith(void Function(Quote) updates) =>
+      super.copyWith((message) => updates(message as Quote)) as Quote;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Quote create() => Quote._();
+  @$core.override
+  Quote createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Quote getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Quote>(create);
+  static Quote? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get segmentId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set segmentId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSegmentId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSegmentId() => $_clearField(2);
+
+  /// Verbatim text. May contain pseudonymization tokens such as
+  /// [MIEJSCOWOSC-A] — the transcript is redacted at rest (decision D2
+  /// is open on whether to change that for this surface).
+  @$pb.TagNumber(3)
+  $core.String get text => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set text($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearText() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get speaker => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set speaker($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSpeaker() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSpeaker() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get tsStartMs => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set tsStartMs($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTsStartMs() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTsStartMs() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get tsEndMs => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set tsEndMs($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTsEndMs() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTsEndMs() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get sessionAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set sessionAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSessionAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSessionAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureSessionAt() => $_ensure(6);
+}
+
+class AnswerSection extends $pb.GeneratedMessage {
+  factory AnswerSection({
+    $core.String? title,
+    $core.String? body,
+    $core.Iterable<Quote>? quotes,
+    SectionKind? kind,
+    $core.bool? userAuthored,
+  }) {
+    final result = create();
+    if (title != null) result.title = title;
+    if (body != null) result.body = body;
+    if (quotes != null) result.quotes.addAll(quotes);
+    if (kind != null) result.kind = kind;
+    if (userAuthored != null) result.userAuthored = userAuthored;
+    return result;
+  }
+
+  AnswerSection._();
+
+  factory AnswerSection.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AnswerSection.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AnswerSection',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'title')
+    ..aOS(2, _omitFieldNames ? '' : 'body')
+    ..pPM<Quote>(3, _omitFieldNames ? '' : 'quotes', subBuilder: Quote.create)
+    ..aE<SectionKind>(4, _omitFieldNames ? '' : 'kind',
+        enumValues: SectionKind.values)
+    ..aOB(5, _omitFieldNames ? '' : 'userAuthored')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnswerSection clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AnswerSection copyWith(void Function(AnswerSection) updates) =>
+      super.copyWith((message) => updates(message as AnswerSection))
+          as AnswerSection;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AnswerSection create() => AnswerSection._();
+  @$core.override
+  AnswerSection createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AnswerSection getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AnswerSection>(create);
+  static AnswerSection? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get title => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set title($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTitle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTitle() => $_clearField(1);
+
+  /// Model-authored prose. ALWAYS empty when kind is USER_ONLY.
+  @$pb.TagNumber(2)
+  $core.String get body => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set body($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBody() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBody() => $_clearField(2);
+
+  /// Grounding. For SECTION_KIND_HYPOTHESIS the server guarantees at
+  /// least one quote: the schema handed to the model makes a hypothesis
+  /// without a quote structurally unrepresentable.
+  @$pb.TagNumber(3)
+  $pb.PbList<Quote> get quotes => $_getList(2);
+
+  @$pb.TagNumber(4)
+  SectionKind get kind => $_getN(3);
+  @$pb.TagNumber(4)
+  set kind(SectionKind value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasKind() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearKind() => $_clearField(4);
+
+  /// True when this field belongs to the therapist. The schema sent to
+  /// the model has no such field at all; the server appends it empty
+  /// after validation.
+  @$pb.TagNumber(5)
+  $core.bool get userAuthored => $_getBF(4);
+  @$pb.TagNumber(5)
+  set userAuthored($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUserAuthored() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUserAuthored() => $_clearField(5);
+}
+
+/// SuggestedQuestion is an AI-proposed question for the therapist to
+/// consider asking (ADR v1.2, A5). Grounded like any hypothesis, and put
+/// through the verifier for smuggled diagnosis / medication / risk
+/// content — a question is a cheap place to hide an assertion.
+class SuggestedQuestion extends $pb.GeneratedMessage {
+  factory SuggestedQuestion({
+    $core.String? question,
+    $core.Iterable<Quote>? quotes,
+  }) {
+    final result = create();
+    if (question != null) result.question = question;
+    if (quotes != null) result.quotes.addAll(quotes);
+    return result;
+  }
+
+  SuggestedQuestion._();
+
+  factory SuggestedQuestion.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SuggestedQuestion.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SuggestedQuestion',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'question')
+    ..pPM<Quote>(2, _omitFieldNames ? '' : 'quotes', subBuilder: Quote.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SuggestedQuestion clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SuggestedQuestion copyWith(void Function(SuggestedQuestion) updates) =>
+      super.copyWith((message) => updates(message as SuggestedQuestion))
+          as SuggestedQuestion;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SuggestedQuestion create() => SuggestedQuestion._();
+  @$core.override
+  SuggestedQuestion createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SuggestedQuestion getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SuggestedQuestion>(create);
+  static SuggestedQuestion? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get question => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set question($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasQuestion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearQuestion() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<Quote> get quotes => $_getList(1);
+}
+
+class ChatAnswer extends $pb.GeneratedMessage {
+  factory ChatAnswer({
+    $core.Iterable<AnswerSection>? sections,
+    $core.Iterable<SuggestedQuestion>? suggestedQuestions,
+  }) {
+    final result = create();
+    if (sections != null) result.sections.addAll(sections);
+    if (suggestedQuestions != null)
+      result.suggestedQuestions.addAll(suggestedQuestions);
+    return result;
+  }
+
+  ChatAnswer._();
+
+  factory ChatAnswer.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChatAnswer.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChatAnswer',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<AnswerSection>(1, _omitFieldNames ? '' : 'sections',
+        subBuilder: AnswerSection.create)
+    ..pPM<SuggestedQuestion>(2, _omitFieldNames ? '' : 'suggestedQuestions',
+        subBuilder: SuggestedQuestion.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatAnswer clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatAnswer copyWith(void Function(ChatAnswer) updates) =>
+      super.copyWith((message) => updates(message as ChatAnswer)) as ChatAnswer;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChatAnswer create() => ChatAnswer._();
+  @$core.override
+  ChatAnswer createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChatAnswer getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChatAnswer>(create);
+  static ChatAnswer? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<AnswerSection> get sections => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<SuggestedQuestion> get suggestedQuestions => $_getList(1);
+}
+
+/// ChatRefusal is a constructive refusal: one sentence plus up to three
+/// offered alternatives. It never repeats the refusal text on retry.
+class ChatRefusal extends $pb.GeneratedMessage {
+  factory ChatRefusal({
+    $core.String? message,
+    $core.Iterable<RefusalAlternative>? alternatives,
+    $core.bool? showCrisisInformation,
+  }) {
+    final result = create();
+    if (message != null) result.message = message;
+    if (alternatives != null) result.alternatives.addAll(alternatives);
+    if (showCrisisInformation != null)
+      result.showCrisisInformation = showCrisisInformation;
+    return result;
+  }
+
+  ChatRefusal._();
+
+  factory ChatRefusal.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChatRefusal.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChatRefusal',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'message')
+    ..pPM<RefusalAlternative>(2, _omitFieldNames ? '' : 'alternatives',
+        subBuilder: RefusalAlternative.create)
+    ..aOB(3, _omitFieldNames ? '' : 'showCrisisInformation')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatRefusal clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatRefusal copyWith(void Function(ChatRefusal) updates) =>
+      super.copyWith((message) => updates(message as ChatRefusal))
+          as ChatRefusal;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChatRefusal create() => ChatRefusal._();
+  @$core.override
+  ChatRefusal createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChatRefusal getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChatRefusal>(create);
+  static ChatRefusal? _defaultInstance;
+
+  /// Localized single-sentence explanation.
+  @$pb.TagNumber(1)
+  $core.String get message => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set message($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMessage() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMessage() => $_clearField(1);
+
+  /// Offered alternatives, e.g. "conceptualization instead of diagnosis"
+  /// for a P1 refusal.
+  @$pb.TagNumber(2)
+  $pb.PbList<RefusalAlternative> get alternatives => $_getList(1);
+
+  /// Set for R_RISK: crisis information is always reachable and does not
+  /// depend on the chat working.
+  @$pb.TagNumber(3)
+  $core.bool get showCrisisInformation => $_getBF(2);
+  @$pb.TagNumber(3)
+  set showCrisisInformation($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasShowCrisisInformation() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearShowCrisisInformation() => $_clearField(3);
+}
+
+class RefusalAlternative extends $pb.GeneratedMessage {
+  factory RefusalAlternative({
+    ChatIntent? intent,
+    $core.String? label,
+    $core.String? prefill,
+  }) {
+    final result = create();
+    if (intent != null) result.intent = intent;
+    if (label != null) result.label = label;
+    if (prefill != null) result.prefill = prefill;
+    return result;
+  }
+
+  RefusalAlternative._();
+
+  factory RefusalAlternative.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RefusalAlternative.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RefusalAlternative',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aE<ChatIntent>(1, _omitFieldNames ? '' : 'intent',
+        enumValues: ChatIntent.values)
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOS(3, _omitFieldNames ? '' : 'prefill')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RefusalAlternative clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RefusalAlternative copyWith(void Function(RefusalAlternative) updates) =>
+      super.copyWith((message) => updates(message as RefusalAlternative))
+          as RefusalAlternative;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RefusalAlternative create() => RefusalAlternative._();
+  @$core.override
+  RefusalAlternative createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RefusalAlternative getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RefusalAlternative>(create);
+  static RefusalAlternative? _defaultInstance;
+
+  /// Intent the alternative would run as.
+  @$pb.TagNumber(1)
+  ChatIntent get intent => $_getN(0);
+  @$pb.TagNumber(1)
+  set intent(ChatIntent value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasIntent() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIntent() => $_clearField(1);
+
+  /// Localized button label.
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => $_clearField(2);
+
+  /// Pre-filled question text for the composer.
+  @$pb.TagNumber(3)
+  $core.String get prefill => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set prefill($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPrefill() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPrefill() => $_clearField(3);
+}
+
+/// ChatMeta is observability, not content. It carries nothing that could
+/// reconstruct the question or the answer.
+class ChatMeta extends $pb.GeneratedMessage {
+  factory ChatMeta({
+    ChatIntent? intent,
+    $core.String? confidenceBucket,
+    $core.String? degradeReason,
+    $fixnum.Int64? costMicroUsd,
+    $fixnum.Int64? quotaRemainingMicroUsd,
+    $core.int? ragHitsUsed,
+    $core.int? latencyMs,
+  }) {
+    final result = create();
+    if (intent != null) result.intent = intent;
+    if (confidenceBucket != null) result.confidenceBucket = confidenceBucket;
+    if (degradeReason != null) result.degradeReason = degradeReason;
+    if (costMicroUsd != null) result.costMicroUsd = costMicroUsd;
+    if (quotaRemainingMicroUsd != null)
+      result.quotaRemainingMicroUsd = quotaRemainingMicroUsd;
+    if (ragHitsUsed != null) result.ragHitsUsed = ragHitsUsed;
+    if (latencyMs != null) result.latencyMs = latencyMs;
+    return result;
+  }
+
+  ChatMeta._();
+
+  factory ChatMeta.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChatMeta.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChatMeta',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aE<ChatIntent>(1, _omitFieldNames ? '' : 'intent',
+        enumValues: ChatIntent.values)
+    ..aOS(2, _omitFieldNames ? '' : 'confidenceBucket')
+    ..aOS(3, _omitFieldNames ? '' : 'degradeReason')
+    ..aInt64(4, _omitFieldNames ? '' : 'costMicroUsd')
+    ..aInt64(5, _omitFieldNames ? '' : 'quotaRemainingMicroUsd')
+    ..aI(6, _omitFieldNames ? '' : 'ragHitsUsed')
+    ..aI(7, _omitFieldNames ? '' : 'latencyMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatMeta clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatMeta copyWith(void Function(ChatMeta) updates) =>
+      super.copyWith((message) => updates(message as ChatMeta)) as ChatMeta;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChatMeta create() => ChatMeta._();
+  @$core.override
+  ChatMeta createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChatMeta getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ChatMeta>(create);
+  static ChatMeta? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ChatIntent get intent => $_getN(0);
+  @$pb.TagNumber(1)
+  set intent(ChatIntent value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasIntent() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIntent() => $_clearField(1);
+
+  /// Bucketed, never the raw score — the raw value is a model artefact
+  /// that invites over-reading.
+  @$pb.TagNumber(2)
+  $core.String get confidenceBucket => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set confidenceBucket($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConfidenceBucket() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConfidenceBucket() => $_clearField(2);
+
+  /// Why the answer was degraded, when it was: "low_conf" | "defined_ops"
+  /// | "quota" | "verifier_block".
+  @$pb.TagNumber(3)
+  $core.String get degradeReason => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set degradeReason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDegradeReason() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDegradeReason() => $_clearField(3);
+
+  /// Micro-USD charged for this turn, and what is left this period.
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get costMicroUsd => $_getI64(3);
+  @$pb.TagNumber(4)
+  set costMicroUsd($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCostMicroUsd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCostMicroUsd() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get quotaRemainingMicroUsd => $_getI64(4);
+  @$pb.TagNumber(5)
+  set quotaRemainingMicroUsd($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasQuotaRemainingMicroUsd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearQuotaRemainingMicroUsd() => $_clearField(5);
+
+  /// Number of rag_memories rows used to preselect candidate sessions.
+  @$pb.TagNumber(6)
+  $core.int get ragHitsUsed => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set ragHitsUsed($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRagHitsUsed() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRagHitsUsed() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get latencyMs => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set latencyMs($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLatencyMs() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLatencyMs() => $_clearField(7);
+}
+
+enum AskPatientQuestionResponse_Payload { answer, refusal, notSet }
+
+class AskPatientQuestionResponse extends $pb.GeneratedMessage {
+  factory AskPatientQuestionResponse({
+    $core.String? conversationId,
+    ChatOutcome? outcome,
+    ChatAnswer? answer,
+    ChatRefusal? refusal,
+    ChatMeta? meta,
+  }) {
+    final result = create();
+    if (conversationId != null) result.conversationId = conversationId;
+    if (outcome != null) result.outcome = outcome;
+    if (answer != null) result.answer = answer;
+    if (refusal != null) result.refusal = refusal;
+    if (meta != null) result.meta = meta;
+    return result;
+  }
+
+  AskPatientQuestionResponse._();
+
+  factory AskPatientQuestionResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AskPatientQuestionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, AskPatientQuestionResponse_Payload>
+      _AskPatientQuestionResponse_PayloadByTag = {
+    3: AskPatientQuestionResponse_Payload.answer,
+    4: AskPatientQuestionResponse_Payload.refusal,
+    0: AskPatientQuestionResponse_Payload.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AskPatientQuestionResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..oo(0, [3, 4])
+    ..aOS(1, _omitFieldNames ? '' : 'conversationId')
+    ..aE<ChatOutcome>(2, _omitFieldNames ? '' : 'outcome',
+        enumValues: ChatOutcome.values)
+    ..aOM<ChatAnswer>(3, _omitFieldNames ? '' : 'answer',
+        subBuilder: ChatAnswer.create)
+    ..aOM<ChatRefusal>(4, _omitFieldNames ? '' : 'refusal',
+        subBuilder: ChatRefusal.create)
+    ..aOM<ChatMeta>(5, _omitFieldNames ? '' : 'meta',
+        subBuilder: ChatMeta.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AskPatientQuestionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AskPatientQuestionResponse copyWith(
+          void Function(AskPatientQuestionResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as AskPatientQuestionResponse))
+          as AskPatientQuestionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AskPatientQuestionResponse create() => AskPatientQuestionResponse._();
+  @$core.override
+  AskPatientQuestionResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AskPatientQuestionResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AskPatientQuestionResponse>(create);
+  static AskPatientQuestionResponse? _defaultInstance;
+
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  AskPatientQuestionResponse_Payload whichPayload() =>
+      _AskPatientQuestionResponse_PayloadByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  void clearPayload() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  $core.String get conversationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set conversationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasConversationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearConversationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  ChatOutcome get outcome => $_getN(1);
+  @$pb.TagNumber(2)
+  set outcome(ChatOutcome value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOutcome() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOutcome() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  ChatAnswer get answer => $_getN(2);
+  @$pb.TagNumber(3)
+  set answer(ChatAnswer value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAnswer() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAnswer() => $_clearField(3);
+  @$pb.TagNumber(3)
+  ChatAnswer ensureAnswer() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  ChatRefusal get refusal => $_getN(3);
+  @$pb.TagNumber(4)
+  set refusal(ChatRefusal value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRefusal() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRefusal() => $_clearField(4);
+  @$pb.TagNumber(4)
+  ChatRefusal ensureRefusal() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  ChatMeta get meta => $_getN(4);
+  @$pb.TagNumber(5)
+  set meta(ChatMeta value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMeta() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMeta() => $_clearField(5);
+  @$pb.TagNumber(5)
+  ChatMeta ensureMeta() => $_ensure(4);
 }
 
 const $core.bool _omitFieldNames =
