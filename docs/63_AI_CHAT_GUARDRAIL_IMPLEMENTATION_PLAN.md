@@ -292,6 +292,56 @@ Uwaga z pomiarów 20.08: zdarzenia `*_finished` gubią ~40% sesji czytania
   Play stoi na 1.0.3 z 23.07** (keystore + autoryzacja `androidpublisher`
   po stronie PO od 16.08).
 
+### F10 — Szablony dokumentów terapeuty (po GA; ~6–8 dni)
+
+*Nowe w planie 20.08 (D7). Wypełnia gniazdo, które ADR już przewiduje:
+A3_FORMAT niesie `document{template_id, fields[]{filled_by: user|extract}}`,
+A7 — `template{model_id, …}`. Zero nowej architektury guardraili —
+szablon komponuje istniejące executory.*
+
+- **Zasada (D7): szablon = kompozycja sekcji typowanych, nie zapisany
+  prompt.** Typy sekcji: `extract` / `quotes` (A1/A2), `summary` (A5),
+  `stats` (A6), `user_only` (`filled_by: user` — pole nieobecne w
+  schemacie przekazywanym modelowi), `generative_grounded` (A8–A10:
+  schemat z `quotes minItems: 1`, weryfikator bez zmian). Kategorie P/R
+  pozostają nieosiągalne konstrukcyjnie — szablon składa wyłącznie
+  operacje ALLOWED (§4.1: kontrola strukturalna, nie instrukcyjna).
+- Sekcja `generative_grounded` ma pole `instructions` ≤ 500 znaków w roli
+  `focus_hint`: wchodzi jako treść użytkownika (nigdy do promptu
+  systemowego). Swoboda w „o czym", zero swobody w „jakimi regułami".
+- Tabela `report_templates` (migracja — numer wg stanu w momencie
+  realizacji): `owner_therapist_id`, `organization_id NULL`, `name`,
+  `sections JSONB`, wersje **append-only** (edycja = nowa wersja).
+  Wygenerowany dokument zapisuje `(template_id, template_version)` —
+  odtwarzalność spójna z pakietem dowodowym.
+- Szablon jest **niezależny od kartoteki**: własność terapeuty, dane
+  kartoteki wchodzą dopiero w momencie generacji — to realizuje
+  „odtworzenie na dowolnej kartotece" z definicji.
+- Współdzielenie: prywatny (domyślnie) → organizacja (świadoma akcja
+  właściciela). Użycie cudzego szablonu = **fork konkretnej wersji**,
+  nie żywa referencja — edycja autora nie zmienia wstecznie cudzych
+  dokumentów.
+- **Walidacja przy zapisie** (nie przy każdym uruchomieniu): sanityzacja
+  `instructions` jak `free_text` (wzorce injection z identity-svc —
+  wydzielić do pakietu współdzielonego) + jeden przebieg klasyfikatora
+  (~$0.0002); sekcja żądająca P1/P2/R odrzucana z komunikatem już przy
+  zapisie. Nowy punkt kontroli ⇒ jednozdaniowa nota do ADR (v1.4) przy
+  realizacji.
+- Uruchomienie szablonu = zwykłe tury czatu: quota mikro-USD bez zmian,
+  `guardrail_decisions` logowane per sekcja, D2 (tokeny redakcji w
+  cytatach) obowiązuje tak samo.
+- Telemetria: `template_saved` / `template_run` / `template_shared` /
+  `template_forked`.
+- Evals: rozszerzyć `guardrail-evals/datasets/verifier` o injection przez
+  `instructions` (żądania diagnozy/leków/oceny ryzyka w treści sekcji).
+- **DoD**: CRUD + walidacja przy zapisie z testami odrzuceń (P1/P2/R w
+  `instructions` → odrzucone); test fork/share; dokument niesie wersję
+  szablonu; e2e: zapis → uruchomienie na dwóch różnych kartotekach →
+  pola `user_only` puste w wyjściu modelu.
+- Zależności: F2 (klasyfikator) + F4 (schematy/weryfikator). Poza ścieżką
+  krytyczną GA — start dopiero po GA czatu.
+
+
 ---
 
 ## 4. Sekwencja i ścieżka krytyczna
@@ -303,10 +353,12 @@ F0 ──► F1 ──► F2 ──► F3 ──► F4 ──► F5 ─┐
 F7 (po F2, równolegle) ────────────────┤
 F8: anotacja (start NATYCHMIAST) ──────┘
 F9 (po F4, równolegle z F5–F7)
+F10 (po GA — poza ścieżką krytyczną; zależy od F2+F4)
 ```
 
 - Kod: ~27–36 dni roboczych jednoosobowo; z równoległością realnie
   5–6 tygodni kalendarzowych.
+  F10 (~6–8 dni) poza tym szacunkiem — realizacja po GA.
 - **Ścieżka krytyczna poza kodem**: (1) anotacja zestawu z klinicystą,
   (2) **zewnętrzna opinia regulacyjna obejmująca wprost generatywne
   A8–A10** — po D1 to najdłuższy i najważniejszy element; oba startować
@@ -332,6 +384,10 @@ F9 (po F4, równolegle z F5–F7)
 ## 6. Poza zakresem
 
 - Biblioteka protokołów (wzbogacenie A10) — osobny feature.
+- Auto-generacja dokumentu z szablonu po każdej sesji (llm-worker) —
+  ewentualne rozszerzenie F10; F10 obejmuje wyłącznie on-demand w czacie.
+- Globalna kuratorowana biblioteka szablonów — naturalne rozszerzenie
+  Prompt Studio (docs/36); F10 kończy się na udostępnieniu w organizacji.
 - Korekta historycznych `llm_total_cost_usd`.
 - Zmiana zakresu redakcji transkrypcji (D2 wariant b).
 - Tier Cloud SQL (`db-custom-1-3840`: SLA, dedykowany rdzeń — rekomendacja z 20.08, decyzja niezależna).
@@ -358,3 +414,4 @@ F9 (po F4, równolegle z F5–F7)
 | D4 | Kod `R_RISK` | **Rozstrzygnięta**: zachowany (ADR v1.1) |
 | D5 | Umiejscowienie ADR | Poprawiony w miejscu (`docs/kronikarz/`); przeniesienie do `docs/adr/` z numerem — otwarte |
 | D6 | Podstawa etykiet w pierwszej iteracji | **Rozstrzygnięta 20.08**: CI deweloperskie na `proposed`; bramka GA wyłącznie na `adjudicated` |
+| D7 | Szablony terapeuty: struktura czy zapisany prompt | **Rozstrzygnięta 20.08**: szablon = kompozycja sekcji typowanych na executorach ALLOWED (F10); swobodny zapisywany prompt odrzucony (§4.1 ADR — omijałby warstwę schematów i tworzył powierzchnię generatywną poza klasyfikatorem) |
