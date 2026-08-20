@@ -5,7 +5,7 @@
 | Źródło | `docs/kronikarz/62_ADR_AI_Chat_Klasyfikator_Web_Mobile_v1.0_2.md` **w brzmieniu v1.3** (2026-08-20) |
 | Data | 2026-08-20 (aktualizacja po rozstrzygnięciu D1) |
 | Gałąź robocza | `feat/chat-window` |
-| Status | Gotowy do startu F0 — blokery pozakodowe w sekcji 4 |
+| Status | **F0–F10 zaimplementowane 20.08.2026** — stan wykonania w sekcji 9; blokery pozakodowe w sekcji 4 |
 
 Plan zakłada architekturę backendową (faza 2 z `ai_assistant.go`) — ADR §6
 przesądza: „identyczny guardrail po stronie serwera (żadnej logiki
@@ -415,3 +415,70 @@ F10 (po GA — poza ścieżką krytyczną; zależy od F2+F4)
 | D5 | Umiejscowienie ADR | Poprawiony w miejscu (`docs/kronikarz/`); przeniesienie do `docs/adr/` z numerem — otwarte |
 | D6 | Podstawa etykiet w pierwszej iteracji | **Rozstrzygnięta 20.08**: CI deweloperskie na `proposed`; bramka GA wyłącznie na `adjudicated` |
 | D7 | Szablony terapeuty: struktura czy zapisany prompt | **Rozstrzygnięta 20.08**: szablon = kompozycja sekcji typowanych na executorach ALLOWED (F10); swobodny zapisywany prompt odrzucony (§4.1 ADR — omijałby warstwę schematów i tworzył powierzchnię generatywną poza klasyfikatorem) |
+
+---
+
+## 9. Stan wykonania (20.08.2026)
+
+Implementacja F0–F10 wykonana w jednym przebiegu na gałęzi
+`feat/chat-window`. Kolumna „dowód" wskazuje, co potwierdza działanie —
+nie „napisano kod", tylko test, który wywraca się, gdy zachowanie zniknie.
+
+| faza | stan | dowód |
+|---|---|---|
+| F0 | gotowe | `pkg/llmcost` (test regresyjny na obu błędach cenowych, mutacja truncate wywraca), migracja 000084, `pkg/appconfig` z `-race`, runbook docs/64 |
+| F1 | gotowe (kod) | proto unary, `internal/chat` + backend Vertex; **rozmowa na stagingu niewykonana** — patrz niżej |
+| F2 | gotowe | stół decyzyjny na pełnym iloczynie intent × risk_flag × pewność × tryb; mutacja przestawiająca risk_flag za pewność wywraca `TestRiskFlagRefusesEverywhere` |
+| F3 | gotowe | ścieżki per intencja; **A4 z testem negatywnym** (mutacja wstrzykująca kontekst wywraca go); `TestRetrievalDecryptsOncePerSessionNotPerSegment` |
+| F4 | gotowe | schematy z wymuszaniem przez nieobecność, weryfikator dwutrybowy, migracja 000085 + trzy testy źródłowe (mutacje: retencja 90 dni, FK do patient_files, kolumna `question` — wszystkie wywracają CI) |
+| F5 | gotowe | `AdminGet/SetChatControls` z wpisem audytowym; SQL w runbooku jako break-glass |
+| F6 | gotowe | migracja 000086; **test wyścigu** — przy read-then-write przechodzi 11 z 32 rezerwacji zamiast jednej i licznik przekracza limit 3,4× |
+| F7 | gotowe | zdarzenia §7.1; test, że w telemetrii nie ma pytania, odpowiedzi, cytatu ani `rationale_short` |
+| F8 | gotowe (bramka strukturalna) | runner + CI; znalazł realną lukę (8 przykładów granicznych P1↔A8 → dosypane do 36) i rozjazd etykiet; **tryb `-live` świadomie poza bramką scaleń** — wymaga Workload Identity |
+| F9 | gotowe (kod) | Flutter: wywołanie Vertex z urządzenia usunięte, `firebase_ai` wypada z pubspec; web: `/admin/ai-chat`, build 77 stron, l10n parity OK |
+| F10 | gotowe (backend) | migracja 000087, `pkg/guardrail/template.go`; trzy mutacje wywracają: sekcja→intencja zakazana, instrukcje na sekcji ekstraktywnej, zakazane przy wysokiej pewności |
+
+### Odstępstwa od planu odkryte w implementacji
+
+**F3 — pg_trgm nie zadziała.** Plan zakładał wyszukiwanie leksykalne w
+`transcript_segments` przez pg_trgm. `text_ciphertext` jest zaszyfrowany;
+Postgres nie dopasuje trigramu do szyfrogramu, a deszyfrowanie
+per-segment to jeden round-trip do KMS na segment — przy 6 sesjach ×
+~200 segmentów około 1200 round-tripów wobec budżetu p95 1,5 s na całą
+turę. Zaimplementowano odczyt kanonicznego bloba
+(`transcripts.transcript_ciphertext`, źródło prawdy wg ADR-IMPL-006):
+**jeden** deszyfr KMS na sesję, sesje równolegle, `segment_id`
+domapowany z niezaszyfrowanych `(transcript_id, start_offset_ms)`, więc
+weryfikator nadal sprawdza cytaty wobec prawdziwych segmentów.
+
+**Rozjazd nazw etykiet.** Kod Go wymyślił własne wartości (`A2_STATS`,
+`A5_PREP`, `A7_TEMPLATE`, `A10_INTERVENTION`) zamiast tych z ADR §5.4
+i zestawu ewaluacyjnego. Wartości trafiają do `guardrail_decisions` na
+24 miesiące, więc rozjazd unieważniłby zapis historyczny. Wyrównane;
+bramka F8 pilnuje tego odtąd automatycznie.
+
+**Schematy uproszczone względem ADR §5.4.** ADR opisuje kształty per
+intencja (`pack{…}`, `template{model_id, fields[]}`,
+`suggestions{options[]{intervention, rationale, quotes[]}}`).
+Zaimplementowano wspólny kształt `sections[]` / `hypotheses[]` z tymi
+samymi ograniczeniami (uziemienie `minItems:1`, pola user-only
+nieobecne). Kształt jest zgodny co do gwarancji, uboższy co do
+specyficzności — do rozstrzygnięcia, czy dociągnąć przed GA.
+
+**Druga, nieosłonięta generacja w kliencie.** „Podsumuj rozmowę" wołało
+model bez klasyfikatora, schematu i weryfikatora, żeby wytworzyć nową
+treść kliniczną o kliencie. Usunięte; rozmowa zapisuje się dosłownie.
+
+### Co pozostaje przed GA
+
+| pozycja | właściciel |
+|---|---|
+| Migracje 000084–000087 zastosowane na stagingu + rozmowa end-to-end + pomiar p95 | inżynieria (wymaga deployu) |
+| Wykonanie runbooku docs/64 na stagingu i wpisanie pomiaru propagacji (§7 tego dokumentu) | inżynieria (po deployu) |
+| Tryb `-live` bramki F8 (Workload Identity do projektu Vertex) | inżynieria |
+| Anotacja zestawu przez klinicystę → `adjudicated` | PO |
+| Zewnętrzna opinia regulacyjna obejmująca wprost generatywne A8–A10 | PO |
+| Odblokowanie Google Play (parytet mobilny) | PO |
+| Decyzja D2 (tokeny redakcji w cytatach) | PO |
+| Teksty czatu do `.arb` / `messages/*.json` (obecnie `TODO(i18n)` w widgetach) | inżynieria |
+| RPC dla szablonów F10 + UI edytora | inżynieria |
