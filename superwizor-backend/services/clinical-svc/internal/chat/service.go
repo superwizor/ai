@@ -297,6 +297,21 @@ func (s Service) Ask(ctx context.Context, t Turn) (Outcome, error) {
 	if verdict.Blocked {
 		rec.VerifierResult = "block"
 		rec.BlockReason = verdict.Reason
+
+		// ADR: verifier_block -> zastapienie wersja ekstraktywna ALBO
+		// odmowa. Gdy executor mial na co spasc (material zrodlowy),
+		// terapeuta dostaje go jako odpowiedz zdegradowana; log dowodowy
+		// dalej niesie block + powod, wiec pomiar progu 8.3 (3%) nie
+		// traci ani jednego zdarzenia.
+		if answer != nil {
+			rec.GroundingQuoteCount = countQuotes(answer)
+			return finish(Outcome{
+				Kind:   OutcomeDegraded,
+				Answer: answer,
+				Meta: Meta{Intent: decision.Intent, ConfidenceBucket: decision.ConfidenceBucket,
+					DegradeReason: "verifier_block", RagHitsUsed: ragHits},
+			})
+		}
 		return finish(Outcome{
 			Kind:    OutcomeVerifierBlocked,
 			Refusal: &Refusal{MessageKey: "chat.refusal.verifier_blocked"},

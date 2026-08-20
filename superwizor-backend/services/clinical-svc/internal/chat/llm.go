@@ -70,6 +70,10 @@ type GenerateResponse struct {
 	Text  string
 	Usage Usage
 	Model string
+	// Truncated reports the model stopped at MaxTokens — for structured
+	// output that means unfinished JSON, and the right reaction is a
+	// retry with a bigger budget, not a schema block.
+	Truncated bool
 }
 
 // LLM is the model surface this package needs. It exists so the router,

@@ -26,6 +26,9 @@ type scriptedLLM struct {
 	calls     []GenerateRequest
 	embedVec  []float32
 	embedErr  error
+	// truncated marks call ordinals whose response reports a MaxTokens
+	// stop — the executor must retry those with a bigger budget.
+	truncated map[int]bool
 }
 
 func (l *scriptedLLM) Generate(_ context.Context, req GenerateRequest) (GenerateResponse, error) {
@@ -38,7 +41,8 @@ func (l *scriptedLLM) Generate(_ context.Context, req GenerateRequest) (Generate
 		text = l.responses[idx]
 	}
 	return GenerateResponse{Text: text, Model: req.Model,
-		Usage: Usage{InputTokens: 500, OutputTokens: 100}}, nil
+		Truncated: l.truncated[idx],
+		Usage:     Usage{InputTokens: 500, OutputTokens: 100}}, nil
 }
 
 func (l *scriptedLLM) Embed(_ context.Context, _ string) ([]float32, Usage, error) {
@@ -468,7 +472,11 @@ func TestRiskQuestionRefusesWithCrisisInformation(t *testing.T) {
 
 // ── Grounding and authorship ──────────────────────────────────────────
 
-// A fabricated quote must block, and the block must be recorded.
+// A fabricated quote must block the GENERATED prose — and since 20.08
+// the therapist gets the source material instead of a wall (ADR:
+// verifier_block -> zastapienie wersja ekstraktywna albo odmowa).
+// The evidence row still records the block, so the 8.3 threshold loses
+// nothing.
 func TestFabricatedQuoteBlocksTheAnswer(t *testing.T) {
 	segs := sampleSegments()
 	h := newHarness(t, enabledConfig(), []string{
@@ -483,8 +491,27 @@ func TestFabricatedQuoteBlocksTheAnswer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ask: %v", err)
 	}
-	if out.Kind != OutcomeVerifierBlocked {
-		t.Fatalf("outcome = %v, want verifier blocked", out.Kind)
+	if out.Kind != OutcomeDegraded {
+		t.Fatalf("outcome = %v, want degraded (extractive fallback)", out.Kind)
+	}
+	if out.Meta.DegradeReason != "verifier_block" {
+		t.Errorf("degrade reason = %q", out.Meta.DegradeReason)
+	}
+	if out.Answer == nil || len(out.Answer.Sections) == 0 {
+		t.Fatal("fallback answer missing")
+	}
+	// Zablokowana proza modelu NIE MOZE przeciec do fallbacku — ani
+	// tytul, ani tresc hipotezy.
+	for _, sec := range out.Answer.Sections {
+		if sec.Kind != "extract" {
+			t.Errorf("fallback section kind = %q, want extract only", sec.Kind)
+		}
+		if strings.Contains(sec.Title+sec.Body, `"H"`) || sec.Title == "H" || sec.Body == "b" {
+			t.Errorf("blocked model prose leaked into fallback: %q/%q", sec.Title, sec.Body)
+		}
+		if len(sec.Quotes) == 0 {
+			t.Error("fallback section carries no source quotes")
+		}
 	}
 	rec := h.recs.last()
 	if rec.VerifierResult != "block" || rec.BlockReason != guardrail.BlockFabricated {

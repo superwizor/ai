@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -100,8 +101,25 @@ func (s Service) executeEducation(ctx context.Context, t Turn) (*Answer, []Model
 		return nil, costs, guardrail.Verdict{}, 0, err
 	}
 
+	if resp.Truncated {
+		slog.WarnContext(ctx, "chat.generation_truncated_retry",
+			"intent", "A4_EDU", "max_tokens", 2048)
+		retry, rerr := s.LLM.Generate(ctx, GenerateRequest{
+			Model: GeneratorModel, SystemPrompt: eduPrompt,
+			UserContent: "PYTANIE:\n" + t.Question, ResponseSchema: schema,
+			Temperature: 0.2, MaxTokens: retryGenerationTokens,
+		})
+		costs = append(costs, ModelCost{Model: GeneratorModel,
+			InputTokens: retry.Usage.InputTokens, OutputTokens: retry.Usage.OutputTokens})
+		if rerr == nil {
+			resp = retry
+		}
+	}
+
 	m, err := decodeModelAnswer(resp.Text)
 	if err != nil {
+		// A4 nie ma materialu zrodlowego, na ktory moglby spasc — tu
+		// odmowa pozostaje jedyna uczciwa odpowiedzia.
 		return nil, costs, guardrail.Verdict{Blocked: true, Reason: guardrail.BlockSchema}, 0, nil
 	}
 	var answer Answer
@@ -288,9 +306,34 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 		return nil, costs, guardrail.Verdict{}, ragHits, err
 	}
 
+	// Obciecie przy MaxTokens = niedomkniety JSON. Jedno ponowienie z
+	// wiekszym budzetem: rzadka, duza odpowiedz ma byc wolniejsza, a nie
+	// zablokowana. 20.08 dwie tury na produkcji poszly kodem 'schema'
+	// wlasnie dlatego, ze tego ponowienia nie bylo.
+	if resp.Truncated {
+		slog.WarnContext(ctx, "chat.generation_truncated_retry",
+			"intent", string(d.Intent), "max_tokens", maxGenerationTokens)
+		retry, rerr := s.LLM.Generate(ctx, GenerateRequest{
+			Model: GeneratorModel, SystemPrompt: sysPrompt, UserContent: user,
+			ResponseSchema: schema, Temperature: 0.3, MaxTokens: retryGenerationTokens,
+		})
+		costs = append(costs, ModelCost{Model: GeneratorModel,
+			InputTokens: retry.Usage.InputTokens, OutputTokens: retry.Usage.OutputTokens})
+		if rerr == nil {
+			resp = retry
+		}
+	}
+
 	m, err := decodeModelAnswer(resp.Text)
 	if err != nil {
-		return nil, costs, guardrail.Verdict{Blocked: true, Reason: guardrail.BlockSchema}, ragHits, nil
+		// Niedekodowalna odpowiedz nie moze trafic do terapeuty — ale
+		// odmowa "nic" tez nie musi. ADR: verifier_block -> zastapienie
+		// wersja ekstraktywna albo odmowa. Zrodlowe fragmenty JUZ mamy.
+		slog.WarnContext(ctx, "chat.verifier_block",
+			"intent", string(d.Intent), "reason", guardrail.BlockSchema,
+			"detail", "model output did not decode")
+		return extractiveFallback(relevant),
+			costs, guardrail.Verdict{Blocked: true, Reason: guardrail.BlockSchema}, ragHits, nil
 	}
 
 	segMap := SegmentMap(relevant)
@@ -303,7 +346,12 @@ func (s Service) executeGrounded(ctx context.Context, t Turn, d guardrail.Decisi
 			InputTokens: verdict.Cost.InputTokens, OutputTokens: verdict.Cost.OutputTokens})
 	}
 	if verdict.Blocked {
-		return nil, costs, verdict, ragHits, nil
+		// Detail jest strukturalny (indeksy, identyfikatory segmentow,
+		// kod) — zero tresci klinicznej, a bez tego logu diagnoza bloku
+		// na produkcji wymagala dedukcji z samej latencji.
+		slog.WarnContext(ctx, "chat.verifier_block",
+			"intent", string(d.Intent), "reason", verdict.Reason, "detail", verdict.Detail)
+		return extractiveFallback(relevant), costs, verdict, ragHits, nil
 	}
 
 	// User-only fields are appended HERE, by the server, after
@@ -439,6 +487,54 @@ func (s Service) preselect(ctx context.Context, t Turn, query string) (map[uuid.
 		filter[id] = true
 	}
 	return filter, len(ids), cost
+}
+
+// retryGenerationTokens to budzet drugiej proby po obcieciu. Wiekszosc
+// odpowiedzi miesci sie w maxGenerationTokens i placi nizsza latencje;
+// rzadka duza dostaje drugi, wolniejszy przebieg zamiast blokady.
+const retryGenerationTokens int32 = 4096
+
+// extractiveFallback buduje odpowiedz z samego materialu zrodlowego —
+// realizacja wprost zapisu ADR o zastapieniu zablokowanej tresci wersja
+// ekstraktywna. Terapeuta widzi cytaty, na ktorych analiza miala sie
+// oprzec, zamiast sciany "nie pokaze".
+//
+// Cytaty pochodza z segmentow, ktore SAME sa zrodlem — uziemienie jest
+// tozsamosciowe, wiec zaden weryfikator nie jest tu potrzebny.
+func extractiveFallback(relevant []Segment) *Answer {
+	if len(relevant) == 0 {
+		return nil // nie ma na co spasc — wolajacy odmowi
+	}
+	const maxFallbackQuotes = 4
+	quotes := make([]Quote, 0, maxFallbackQuotes)
+	for _, seg := range relevant {
+		if seg.ID == uuid.Nil {
+			continue
+		}
+		quotes = append(quotes, Quote{
+			SessionID: seg.SessionID.String(),
+			SegmentID: seg.ID.String(),
+			Text:      seg.Text,
+			Speaker:   seg.Speaker,
+			TsStartMs: seg.TsStartMs,
+			TsEndMs:   seg.TsEndMs,
+			SessionAt: seg.SessionAt,
+		})
+		if len(quotes) == maxFallbackQuotes {
+			break
+		}
+	}
+	if len(quotes) == 0 {
+		return nil
+	}
+	return &Answer{Sections: []Section{{
+		Title: "Materiał źródłowy",
+		Body: "Pełna analiza nie przeszła kontroli jakości i nie została pokazana. " +
+			"Poniżej fragmenty sesji, na których miała się opierać — możesz " +
+			"zadać pytanie ponownie lub inaczej.",
+		Quotes: quotes,
+		Kind:   "extract",
+	}}}
 }
 
 // topiclessAnswer odpowiada na pytanie, ktore nie niesie tematu i nie ma

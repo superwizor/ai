@@ -109,9 +109,16 @@ func telemetryFor(t Turn, out Outcome, rec DecisionRecord) []TelemetryEvent {
 		events = append(events, TelemetryEvent{Name: EventDegraded, Properties: copyProps(base, map[string]any{
 			"reason": rec.DecisionReason,
 		})})
-	case OutcomeVerifierBlocked:
+	}
+
+	// Zdarzenie bloku pochodzi z REKORDU, nie z rodzaju wyniku: odkad
+	// blok z fallbackiem ekstraktywnym wychodzi jako odpowiedz
+	// zdegradowana, kluczowanie po OutcomeVerifierBlocked gubiloby te
+	// zdarzenia i prog 8.3 (3%) mierzylby fikcje.
+	if rec.VerifierResult == "block" {
 		events = append(events, TelemetryEvent{Name: EventVerifierBlock, Properties: copyProps(base, map[string]any{
-			"block_reason": rec.BlockReason,
+			"block_reason":    rec.BlockReason,
+			"served_fallback": out.Answer != nil,
 		})})
 	}
 

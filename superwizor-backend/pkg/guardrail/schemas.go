@@ -51,6 +51,13 @@ func quotesArray(min int64) map[string]any {
 	m := map[string]any{
 		"type":  "array",
 		"items": quoteRefSchema,
+		// Gorny limit to kontrola ROZMIARU wyjscia, nie kosmetyka.
+		// 20.08.2026 dwie tury na produkcji (A8 17:42, A7 18:29) zostaly
+		// zablokowane kodem 'schema': bez limitu model doklejal dlugie
+		// cytaty, az odpowiedz przekroczyla MaxTokens i JSON zostal
+		// uciety w polowie. Trzy dobre cytaty uzasadniaja hipoteze tak
+		// samo jak siedem, a mieszcza sie w budzecie.
+		"maxItems": int64(3),
 	}
 	if min > 0 {
 		m["minItems"] = min

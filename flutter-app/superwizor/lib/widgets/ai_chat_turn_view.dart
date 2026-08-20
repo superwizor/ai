@@ -81,6 +81,8 @@ class _DegradedBanner extends StatelessWidget {
         'Miesięczny budżet rozmów został wyczerpany — pokazuję materiał źródłowy zamiast analizy.',
       'defined_ops' =>
         'Funkcje analityczne są tymczasowo ograniczone — pokazuję materiał źródłowy.',
+      'verifier_block' =>
+        'Pełna analiza nie przeszła kontroli jakości — pokazuję sam materiał źródłowy. Możesz zadać pytanie ponownie.',
       'low_conf' =>
         'Nie mam pewności, o co dokładnie pytasz — pokazuję to, co znalazłem. Doprecyzuj, jeśli chodziło o coś innego.',
       _ => 'Odpowiedź została ograniczona.',
@@ -96,11 +98,21 @@ class _DegradedBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: EuphireColors.ember),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: EuphireColors.ember,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text,
-                style: const TextStyle(color: EuphireColors.mist, fontSize: 13, height: 1.4)),
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: EuphireColors.mist,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
@@ -111,7 +123,11 @@ class _DegradedBanner extends StatelessWidget {
 // ── Sections ───────────────────────────────────────────────────────────
 
 class _SectionView extends StatelessWidget {
-  const _SectionView({required this.section, required this.value, required this.onChanged});
+  const _SectionView({
+    required this.section,
+    required this.value,
+    required this.onChanged,
+  });
 
   final ChatSection section;
   final String value;
@@ -120,7 +136,11 @@ class _SectionView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (section.kind == ChatSectionKind.userOnly) {
-      return _UserOnlyField(title: section.title, value: value, onChanged: onChanged);
+      return _UserOnlyField(
+        title: section.title,
+        value: value,
+        onChanged: onChanged,
+      );
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -146,7 +166,11 @@ class _SectionView extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               section.body,
-              style: const TextStyle(color: EuphireColors.mist, fontSize: 14, height: 1.5),
+              style: const TextStyle(
+                color: EuphireColors.mist,
+                fontSize: 14,
+                height: 1.5,
+              ),
             ),
           ],
           if (section.quotes.isNotEmpty) ...[
@@ -175,7 +199,11 @@ class _AiMarker extends StatelessWidget {
       // TODO(i18n): move to .arb before release.
       child: const Text(
         'hipoteza AI — do weryfikacji',
-        style: TextStyle(color: EuphireColors.mist, fontSize: 10.5, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: EuphireColors.mist,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -210,14 +238,20 @@ class _QuotesExpanderState extends State<_QuotesExpander> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                    size: 18, color: EuphireColors.ember),
+                Icon(
+                  _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  size: 18,
+                  color: EuphireColors.ember,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   // TODO(i18n): Polish plural forms belong in .arb.
                   '${widget.quotes.length} ${_plural(widget.quotes.length)}',
                   style: const TextStyle(
-                      color: EuphireColors.ember, fontSize: 12.5, fontWeight: FontWeight.w600),
+                    color: EuphireColors.ember,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -258,27 +292,36 @@ class _QuoteCard extends StatelessWidget {
         color: EuphireColors.surfaceTeal.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(8),
         border: Border(
-          left: BorderSide(color: EuphireColors.ember.withValues(alpha: 0.6), width: 2.5),
+          left: BorderSide(
+            color: EuphireColors.ember.withValues(alpha: 0.6),
+            width: 2.5,
+          ),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(header,
-              style: TextStyle(
-                  color: EuphireColors.mist.withValues(alpha: 0.7),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500)),
+          Text(
+            header,
+            style: TextStyle(
+              color: EuphireColors.mist.withValues(alpha: 0.7),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
           // Shown verbatim, pseudonymization tokens included. Hiding them
           // would let the therapist believe they are reading the complete
           // utterance (open decision D2).
-          Text(quote.text,
-              style: const TextStyle(
-                  color: EuphireColors.frostWhite,
-                  fontSize: 13.5,
-                  height: 1.45,
-                  fontStyle: FontStyle.italic)),
+          Text(
+            quote.text,
+            style: const TextStyle(
+              color: EuphireColors.frostWhite,
+              fontSize: 13.5,
+              height: 1.45,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
         ],
       ),
     );
@@ -299,7 +342,11 @@ class _QuoteCard extends StatelessWidget {
 /// label, and a cursor — so the boundary between what the system produced
 /// and what the clinician concluded stays legible in the saved note.
 class _UserOnlyField extends StatelessWidget {
-  const _UserOnlyField({required this.title, required this.value, required this.onChanged});
+  const _UserOnlyField({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String title;
   final String value;
@@ -313,20 +360,30 @@ class _UserOnlyField extends StatelessWidget {
       decoration: BoxDecoration(
         color: EuphireColors.nocturne.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: EuphireColors.evergreen.withValues(alpha: 0.9), width: 1.2),
+        border: Border.all(
+          color: EuphireColors.evergreen.withValues(alpha: 0.9),
+          width: 1.2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.edit_note_rounded, size: 17, color: EuphireColors.mist),
+              const Icon(
+                Icons.edit_note_rounded,
+                size: 17,
+                color: EuphireColors.mist,
+              ),
               const SizedBox(width: 6),
-              Text(title,
-                  style: const TextStyle(
-                      color: EuphireColors.frostWhite,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: EuphireColors.frostWhite,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -335,15 +392,20 @@ class _UserOnlyField extends StatelessWidget {
             onChanged: onChanged,
             maxLines: null,
             minLines: 2,
-            style: const TextStyle(color: EuphireColors.frostWhite, fontSize: 14, height: 1.45),
+            style: const TextStyle(
+              color: EuphireColors.frostWhite,
+              fontSize: 14,
+              height: 1.45,
+            ),
             decoration: InputDecoration(
               isDense: true,
               // TODO(i18n): move to .arb before release.
               hintText: 'To pole należy do Ciebie — model go nie wypełnia.',
               hintStyle: TextStyle(
-                  color: EuphireColors.mist.withValues(alpha: 0.55),
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic),
+                color: EuphireColors.mist.withValues(alpha: 0.55),
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
@@ -370,11 +432,14 @@ class _SuggestedQuestionsView extends StatelessWidget {
           Row(
             children: [
               // TODO(i18n): move to .arb before release.
-              const Text('Pytania do rozważenia',
-                  style: TextStyle(
-                      color: EuphireColors.frostWhite,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
+              const Text(
+                'Pytania do rozważenia',
+                style: TextStyle(
+                  color: EuphireColors.frostWhite,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 8),
               const _AiMarker(),
             ],
@@ -386,9 +451,14 @@ class _SuggestedQuestionsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('• ${q.question}',
-                      style: const TextStyle(
-                          color: EuphireColors.mist, fontSize: 13.5, height: 1.45)),
+                  Text(
+                    '• ${q.question}',
+                    style: const TextStyle(
+                      color: EuphireColors.mist,
+                      fontSize: 13.5,
+                      height: 1.45,
+                    ),
+                  ),
                   if (q.quotes.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(left: 12),
@@ -419,7 +489,11 @@ class _RefusalView extends StatelessWidget {
       children: [
         Text(
           _message(refusal?.messageKey ?? ''),
-          style: const TextStyle(color: EuphireColors.mist, fontSize: 14, height: 1.5),
+          style: const TextStyle(
+            color: EuphireColors.mist,
+            fontSize: 14,
+            height: 1.5,
+          ),
         ),
         if (refusal != null && refusal.alternatives.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -430,10 +504,17 @@ class _RefusalView extends StatelessWidget {
               for (final alt in refusal.alternatives)
                 if (_altLabel(alt.labelKey) != null)
                   ActionChip(
-                    label: Text(_altLabel(alt.labelKey)!,
-                        style: const TextStyle(color: EuphireColors.frostWhite, fontSize: 12.5)),
+                    label: Text(
+                      _altLabel(alt.labelKey)!,
+                      style: const TextStyle(
+                        color: EuphireColors.frostWhite,
+                        fontSize: 12.5,
+                      ),
+                    ),
                     backgroundColor: EuphireColors.surfaceTeal,
-                    side: BorderSide(color: EuphireColors.glassBorder.withValues(alpha: 0.7)),
+                    side: BorderSide(
+                      color: EuphireColors.glassBorder.withValues(alpha: 0.7),
+                    ),
                     onPressed: () {
                       final prefill = _altPrefill(alt.prefillKey);
                       if (prefill != null) onAlternativeTap(prefill);
@@ -469,24 +550,23 @@ class _RefusalView extends StatelessWidget {
       'chat.refusal.verifier_blocked':
           'Przygotowana odpowiedź nie przeszła kontroli jakości i nie została pokazana. To zadziałało zgodnie z założeniem.',
     };
-    return map[key] ??
-        'Nie mogę odpowiedzieć na to pytanie w tym trybie.';
+    return map[key] ?? 'Nie mogę odpowiedzieć na to pytanie w tym trybie.';
   }
 
   static String? _altLabel(String key) => const {
-        'chat.alt.conceptualization': 'Zamiast tego: konceptualizacja',
-        'chat.alt.find_quotes': 'Pokaż cytaty na ten temat',
-        'chat.alt.consult_physician': 'Skonsultuj z lekarzem',
-        'chat.alt.consult_supervisor': 'Skonsultuj z superwizorem',
-        'chat.alt.crisis_resources': 'Informacje kryzysowe',
-        'chat.alt.scope_explainer': 'W czym mogę pomóc?',
-      }[key];
+    'chat.alt.conceptualization': 'Zamiast tego: konceptualizacja',
+    'chat.alt.find_quotes': 'Pokaż cytaty na ten temat',
+    'chat.alt.consult_physician': 'Skonsultuj z lekarzem',
+    'chat.alt.consult_supervisor': 'Skonsultuj z superwizorem',
+    'chat.alt.crisis_resources': 'Informacje kryzysowe',
+    'chat.alt.scope_explainer': 'W czym mogę pomóc?',
+  }[key];
 
   static String? _altPrefill(String key) => const {
-        'chat.prefill.conceptualization':
-            'Jak można rozumieć to, co dzieje się z klientem?',
-        'chat.prefill.find_quotes': 'Pokaż fragmenty sesji na ten temat',
-      }[key];
+    'chat.prefill.conceptualization':
+        'Jak można rozumieć to, co dzieje się z klientem?',
+    'chat.prefill.find_quotes': 'Pokaż fragmenty sesji na ten temat',
+  }[key];
 }
 
 /// Crisis information.
@@ -510,15 +590,24 @@ class _CrisisInformation extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           // TODO(i18n): move to .arb before release.
-          Text('W sytuacji kryzysowej',
-              style: TextStyle(
-                  color: EuphireColors.frostWhite, fontSize: 13.5, fontWeight: FontWeight.w700)),
+          Text(
+            'W sytuacji kryzysowej',
+            style: TextStyle(
+              color: EuphireColors.frostWhite,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 6),
           Text(
             '112 — numer alarmowy\n'
             '800 70 2222 — Centrum Wsparcia dla osób w kryzysie psychicznym (całodobowo)\n'
             '116 111 — Telefon zaufania dla dzieci i młodzieży',
-            style: TextStyle(color: EuphireColors.mist, fontSize: 13, height: 1.5),
+            style: TextStyle(
+              color: EuphireColors.mist,
+              fontSize: 13,
+              height: 1.5,
+            ),
           ),
         ],
       ),

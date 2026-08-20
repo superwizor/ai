@@ -96,6 +96,14 @@ func (v *vertexLLM) Generate(ctx context.Context, req GenerateRequest) (Generate
 	}
 	var sb strings.Builder
 	for _, cand := range resp.Candidates {
+		// MaxTokens jako powod zakonczenia = wyjscie UCIETE. Dla
+		// odpowiedzi strukturalnej to prawie na pewno niedomkniety JSON,
+		// ktory dalej wyglada jak "model zwrocil smieci" — a naprawde to
+		// my dalismy za maly limit. Flaga pozwala wywolujacemu ponowic z
+		// wiekszym budzetem zamiast blokowac ture.
+		if cand.FinishReason == genai.FinishReasonMaxTokens {
+			out.Truncated = true
+		}
 		if cand.Content == nil {
 			continue
 		}

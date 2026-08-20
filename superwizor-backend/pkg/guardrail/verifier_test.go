@@ -364,3 +364,33 @@ func TestA5SuggestedQuestionsAreGroundedAndOpenQuestionsAreNot(t *testing.T) {
 		t.Error("open_questions is in the model schema; it belongs to the therapist")
 	}
 }
+
+// Tablice cytatow musza miec gorny limit. Bez niego model dokleja dlugie
+// cytaty az do przekroczenia MaxTokens — 20.08.2026 dwie produkcyjne
+// tury wyszly jako blok 'schema' przez uciety w polowie JSON.
+func TestQuoteArraysAreBounded(t *testing.T) {
+	var walk func(node map[string]any, path string)
+	walk = func(node map[string]any, path string) {
+		props, _ := node["properties"].(map[string]any)
+		for name, raw := range props {
+			sub, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if name == "quotes" {
+				if max, _ := sub["maxItems"].(int64); max < 1 || max > 5 {
+					t.Errorf("%s.quotes: maxItems=%v — musi byc w [1,5]", path, sub["maxItems"])
+				}
+			}
+			walk(sub, path+"."+name)
+		}
+		if items, ok := node["items"].(map[string]any); ok {
+			walk(items, path+"[]")
+		}
+	}
+	for _, i := range AllIntents {
+		if schema, ok := SchemaFor(i); ok {
+			walk(schema, string(i))
+		}
+	}
+}
