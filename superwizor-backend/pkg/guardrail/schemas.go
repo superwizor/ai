@@ -93,7 +93,7 @@ func sectionsSchema(minQuotesPerSection int64) map[string]any {
 
 // schemas maps each servable intent to the schema handed to the model.
 //
-// A2_STATS and A6_ADMIN are absent on purpose: they are answered from SQL
+// A2_FACTS and A6_ADMIN are absent on purpose: they are answered from SQL
 // with no model call at all. An intent with no schema and no executor
 // must never silently fall through to a generic prose call, which is why
 // SchemaFor reports absence rather than returning a permissive default.
@@ -137,7 +137,7 @@ var schemas = map[Intent]map[string]any{
 		"required": []any{"sections"},
 	},
 
-	// A5_PREP is where the authorship boundary was first widened
+	// A5_SUPERVISION_PACK is where the authorship boundary was first widened
 	// deliberately (ADR v1.2). suggested_questions is model-authored and
 	// grounded; open_questions belongs to the therapist and is therefore
 	// ABSENT here — the server appends it empty after validation.

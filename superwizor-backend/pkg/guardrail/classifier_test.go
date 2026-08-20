@@ -112,7 +112,7 @@ func TestMalformedOutputWithRiskFlagRefuses(t *testing.T) {
 
 // Fenced JSON is common enough that rejecting it would fail live calls.
 func TestFencedJSONIsAccepted(t *testing.T) {
-	cl, err := ParseClassification("```json\n{\"intent\":\"A2_STATS\",\"confidence\":0.99,\"risk_flag\":false}\n```")
+	cl, err := ParseClassification("```json\n{\"intent\":\"A2_FACTS\",\"confidence\":0.99,\"risk_flag\":false}\n```")
 	if err != nil {
 		t.Fatalf("ParseClassification: %v", err)
 	}

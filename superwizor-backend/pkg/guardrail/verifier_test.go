@@ -210,7 +210,7 @@ func TestNoBackendBlocksGenerativeButNotExtractive(t *testing.T) {
 		t.Error("generative intent passed with no verifier backend")
 	}
 	if vd := v.VerifyContent(context.Background(), A2Stats, []Unit{{Text: "x"}}); vd.Blocked {
-		t.Error("A2_STATS blocked; it never calls a model and has no free text to check")
+		t.Error("A2_FACTS blocked; it never calls a model and has no free text to check")
 	}
 }
 

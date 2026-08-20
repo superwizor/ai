@@ -60,6 +60,31 @@ jobs:
       - name: Run Tests
         run: make test
 
+      # Guardrail evaluation gate (plan docs/63 F8, thresholds in
+      # guardrail-evals/thresholds.yaml).
+      #
+      # STRUCTURAL mode: no credentials, no cost, runs on every PR. It
+      # catches what actually goes wrong in practice — a dataset edit that
+      # drops a category, a label renamed out from under pkg/guardrail, or
+      # a whole class of adversarial example quietly disappearing while
+      # everything still reports green.
+      #
+      # The LIVE mode (-live, ~$0.25/run) measures the section 8.2 metrics
+      # against the real model. It is NOT wired here yet: it needs
+      # Workload Identity for a Vertex project, and gating merges on a
+      # paid external call before that is set up would make the pipeline
+      # fail for reasons unrelated to the change under review. Tracked as
+      # a GA condition, not a merge condition.
+      - name: Guardrail eval gate (structural)
+        run: |
+          cd pkg/guardrail
+          go run ./cmd/guardrail-eval -root ../../../guardrail-evals
+
+      - name: Validate guardrail eval dataset
+        run: |
+          cd ../guardrail-evals
+          python3 tools/validate.py
+
   build-and-deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest

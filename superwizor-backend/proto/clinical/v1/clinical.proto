@@ -1493,17 +1493,17 @@ enum ChatIntent {
 
   // ALLOWED — extractive
   CHAT_INTENT_A1_SEARCH = 1;        // find where a topic was discussed
-  CHAT_INTENT_A2_STATS = 2;         // counts, attendance, gaps (no model call)
+  CHAT_INTENT_A2_FACTS = 2;         // counts, attendance, gaps (no model call)
   CHAT_INTENT_A3_FORMAT = 3;        // format existing material into a document
   CHAT_INTENT_A4_EDU = 4;           // general education, NO client context
-  CHAT_INTENT_A5_PREP = 5;          // session preparation
+  CHAT_INTENT_A5_SUPERVISION_PACK = 5;          // session preparation
   CHAT_INTENT_A6_ADMIN = 6;         // administrative lookups
-  CHAT_INTENT_A7_TEMPLATE = 7;      // map material onto a model/template
+  CHAT_INTENT_A7_TEMPLATE_MAP = 7;      // map material onto a model/template
 
   // ALLOWED — generative, grounded (decision D1, 2026-08-20)
   CHAT_INTENT_A8_CONCEPT = 8;       // case conceptualization as hypotheses
   CHAT_INTENT_A9_PROGRESS = 9;      // progress assessment, conditional
-  CHAT_INTENT_A10_INTERVENTION = 10; // intervention proposals
+  CHAT_INTENT_A10_TREAT = 10; // intervention proposals
 
   // PROHIBITED
   CHAT_INTENT_P1_DIAG = 11;         // nosological diagnosis

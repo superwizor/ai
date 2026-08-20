@@ -153,7 +153,7 @@ func TestDefinedOpsLeavesExtractiveIntentsAlone(t *testing.T) {
 func TestExhaustedQuotaDegradesLikeDefinedOpsButSaysWhy(t *testing.T) {
 	d := exhausted().Route(Classification{Intent: A8Concept, Confidence: 1.0})
 	if d.Action != ActionDegrade || d.Intent != A7Template {
-		t.Fatalf("got %s, want degrade to A7_TEMPLATE", d)
+		t.Fatalf("got %s, want degrade to A7_TEMPLATE_MAP", d)
 	}
 	if d.Reason != ReasonQuota {
 		t.Errorf("reason = %q, want %q — the therapist needs to know it was budget, not policy", d.Reason, ReasonQuota)

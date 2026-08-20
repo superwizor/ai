@@ -36,7 +36,7 @@ const (
 	A1Search Intent = "A1_SEARCH"
 	// A2Stats answers with computed numbers: session counts,
 	// attendance, gaps. Served from SQL with no model call at all.
-	A2Stats Intent = "A2_STATS"
+	A2Stats Intent = "A2_FACTS"
 	// A3Format renders existing material into a document shape.
 	A3Format Intent = "A3_FORMAT"
 	// A4Edu answers a general professional question. The defining
@@ -46,11 +46,11 @@ const (
 	// A4, however educationally it is phrased.
 	A4Edu Intent = "A4_EDU"
 	// A5Prep prepares for an upcoming session.
-	A5Prep Intent = "A5_PREP"
+	A5Prep Intent = "A5_SUPERVISION_PACK"
 	// A6Admin covers administrative lookups.
 	A6Admin Intent = "A6_ADMIN"
 	// A7Template maps existing material onto a named model or template.
-	A7Template Intent = "A7_TEMPLATE"
+	A7Template Intent = "A7_TEMPLATE_MAP"
 
 	// ── ALLOWED, generative and grounded (decision D1) ────────────
 	// These DO produce new clinical information about a specific
@@ -68,7 +68,7 @@ const (
 	// statement must be conditional; the schema requires caveats.
 	A9Progress Intent = "A9_PROGRESS"
 	// A10Intervention proposes therapeutic directions to consider.
-	A10Intervention Intent = "A10_INTERVENTION"
+	A10Intervention Intent = "A10_TREAT"
 
 	// ── PROHIBITED ────────────────────────────────────────────────
 
