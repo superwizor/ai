@@ -13,10 +13,7 @@ import (
 
 // ── atrapa szyfrowania ────────────────────────────────────────────────
 
-type fakeCrypto struct {
-	mu   sync.Mutex
-	rows [][]byte
-}
+type fakeCrypto struct{}
 
 func (c *fakeCrypto) Encrypt(_ context.Context, p []byte) ([]byte, []byte, error) {
 	return append([]byte("enc:"), p...), []byte("dek"), nil

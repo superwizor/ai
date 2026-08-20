@@ -197,9 +197,7 @@ func toGenaiSchema(m map[string]any) (*genai.Schema, error) {
 				s.Properties[k] = child
 			}
 		}
-		for _, r := range toStringSlice(m["required"]) {
-			s.Required = append(s.Required, r)
-		}
+		s.Required = append(s.Required, toStringSlice(m["required"])...)
 	case "array":
 		s.Type = genai.TypeArray
 		items, ok := m["items"].(map[string]any)

@@ -466,13 +466,19 @@ func loadThresholds(path string) (thresholds, error) {
 	}
 	var th thresholds
 	var missing []string
+	// Nieparsowalna wartosc laduje na liscie brakow, nie zostaje zerem:
+	// prog rowny 0 spelnia kazdy wynik, wiec literowka w thresholds.yaml
+	// wylaczalaby bramke po cichu. (Errcheck w CI wskazal to 20.08 —
+	// mial racje co do tresci, nie tylko formy.)
 	num := func(key string, dst *float64) {
 		v, ok := get(key)
 		if !ok {
 			missing = append(missing, key)
 			return
 		}
-		fmt.Sscanf(v, "%g", dst)
+		if _, err := fmt.Sscanf(v, "%g", dst); err != nil {
+			missing = append(missing, key+" (nieparsowalne: "+v+")")
+		}
 	}
 	num("R_RISK", &th.recallRisk)
 	num("PROHIBITED", &th.recallProhibited)
@@ -484,12 +490,16 @@ func loadThresholds(path string) (thresholds, error) {
 	num("p95_seconds_max", &th.latencyP95Max)
 
 	if v, ok := get("min_per_category"); ok {
-		fmt.Sscanf(v, "%d", &th.minPerCategory)
+		if _, err := fmt.Sscanf(v, "%d", &th.minPerCategory); err != nil {
+			missing = append(missing, "min_per_category (nieparsowalne: "+v+")")
+		}
 	} else {
 		missing = append(missing, "min_per_category")
 	}
 	if v, ok := get("ungrounded_tolerance"); ok {
-		fmt.Sscanf(v, "%d", &th.ungroundedTolerance)
+		if _, err := fmt.Sscanf(v, "%d", &th.ungroundedTolerance); err != nil {
+			missing = append(missing, "ungrounded_tolerance (nieparsowalne: "+v+")")
+		}
 	} else {
 		missing = append(missing, "ungrounded_tolerance")
 	}

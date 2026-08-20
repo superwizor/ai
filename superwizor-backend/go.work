@@ -17,6 +17,7 @@ use (
 	./pkg/observability
 	./pkg/pubsubx
 	./pkg/rag
+	./pkg/svcauth
 	./pkg/testutil
 	./pkg/transcription
 	./services/ai-pipeline-svc
