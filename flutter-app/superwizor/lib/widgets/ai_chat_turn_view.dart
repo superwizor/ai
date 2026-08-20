@@ -56,9 +56,24 @@ class AiChatTurnView extends StatelessWidget {
           ),
         if (turn.suggestedQuestions.isNotEmpty)
           _SuggestedQuestionsView(questions: turn.suggestedQuestions),
+        // Jeden znacznik na CALA ture, na jej koncu — jak stopka.
+        // Art. 50 AI Act wymaga oznaczenia tresci generowanej; wymaga
+        // tego od TRESCI, nie od kazdego naglowka, a znacznik w wierszu
+        // tytulu zgniatal dluzsze tytuly do kolumny pojedynczych slow.
+        if (_turnCarriesAiContent)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Align(alignment: Alignment.centerRight, child: _AiMarker()),
+          ),
       ],
     );
   }
+
+  /// Czy tura niesie tresc wygenerowana (hipotezy lub sugerowane
+  /// pytania), ktora art. 50 kaze oznaczyc.
+  bool get _turnCarriesAiContent =>
+      turn.suggestedQuestions.isNotEmpty ||
+      turn.sections.any((s) => s.needsAiMarking);
 }
 
 // ── Degradation ────────────────────────────────────────────────────────
@@ -147,20 +162,18 @@ class _SectionView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  section.title,
-                  style: const TextStyle(
-                    color: EuphireColors.frostWhite,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (section.needsAiMarking) const _AiMarker(),
-            ],
+          // Tytul na pelna szerokosc. Znacznik 'hipoteza AI' stal tu w
+          // wierszu obok i przy dluzszych tytulach zgniatal je do
+          // kolumny pojedynczych slow; od 20.08 znacznik stoi RAZ, na
+          // koncu tury (AiChatTurnView.build) — art. 50 wymaga
+          // oznaczenia tresci, nie kazdego naglowka z osobna.
+          Text(
+            section.title,
+            style: const TextStyle(
+              color: EuphireColors.frostWhite,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           if (section.body.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -429,20 +442,14 @@ class _SuggestedQuestionsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              // TODO(i18n): move to .arb before release.
-              const Text(
-                'Pytania do rozważenia',
-                style: TextStyle(
-                  color: EuphireColors.frostWhite,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const _AiMarker(),
-            ],
+          // TODO(i18n): move to .arb before release.
+          const Text(
+            'Pytania do rozważenia',
+            style: TextStyle(
+              color: EuphireColors.frostWhite,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           for (final q in questions)

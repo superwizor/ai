@@ -12,6 +12,7 @@
 SELECT m.id, m.system_code, m.display_name, m.modality_type::text AS modality_type,
        m.is_supported,
        COALESCE(m.therapist_ai_general_prompt->>'system', '')::text AS system_prompt,
+       COALESCE(m.therapist_ai_general_prompt->>'chat', '')::text AS chat_prompt,
        COALESCE(v.version, 0)::int AS version,
        COALESCE(u.email, '')::text AS updated_by_email,
        -- epoch sentinel when the modality predates the 000052 backfill
@@ -52,6 +53,17 @@ SET therapist_ai_general_prompt =
               '{system}', to_jsonb(sqlc.arg(system_prompt)::text), true)
 WHERE id = $1;
 
+-- name: UpdateModalityLiveChatPrompt :exec
+-- Blizniak UpdateModalityLivePrompt dla klucza 'chat' (soczewka czatu).
+-- Ta sama zasada: jsonb_set na JEDNYM kluczu, nigdy odbudowa obiektu.
+-- Pusty tekst jest poprawny i wylacza soczewke tej modalnosci — czat
+-- wraca wtedy do golych promptow per intencja.
+UPDATE modalities
+SET therapist_ai_general_prompt =
+    jsonb_set(coalesce(therapist_ai_general_prompt, '{}'::jsonb),
+              '{chat}', to_jsonb(sqlc.arg(chat_prompt)::text), true)
+WHERE id = $1;
+
 -- name: InsertModalityPromptVersion :one
 -- Snapshot CALEJ zywej kolumny (po UPDATE w tej samej transakcji), nie
 -- odbudowa {'system': ...}: historia ma oddawac stan faktyczny, wlacznie
@@ -67,6 +79,7 @@ RETURNING id, created_at;
 -- has_more is applied by the handler.
 SELECT v.id, v.version,
        COALESCE(v.prompt->>'system', '')::text AS system_prompt,
+       COALESCE(v.prompt->>'chat', '')::text AS chat_prompt,
        v.change_note,
        COALESCE(u.email, '')::text AS created_by_email,
        v.created_at

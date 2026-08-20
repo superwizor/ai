@@ -597,7 +597,11 @@
       "restoreDialogBody": "Version {version}'s text will be saved as a NEW version of the {code} prompt (history stays intact). Suggested reason: „restore version {version}”.",
       "diffTitle": "Changes vs version {version}",
       "viewTitle": "Version {version}",
-      "compareTitle": "Version {from} → current (v{to})"
+      "compareTitle": "Version {from} → current (v{to})",
+      "tabReport": "Report",
+      "tabChat": "Chat — lens",
+      "keyTabsLabel": "Which prompt to edit",
+      "chatKeyHint": "The lens changes the chat's language and analytic ordering — the task and rules live in per-intent prompts in code, and invariants are appended by Render() regardless of this field. Empty text disables the lens for this modality. 2,500-char cap: the lens rides on every generator call."
     },
     "orgCreate": {
       "metaTitle": "New organization",

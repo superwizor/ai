@@ -479,6 +479,11 @@ type Querier interface {
 	SoftDeletePatientNotesForDSAR(ctx context.Context, patientFileID uuid.UUID) error
 	SoftDeletePatientUserForDSAR(ctx context.Context, id uuid.UUID) (int64, error)
 	SoftDeleteSessionsForDSAR(ctx context.Context, patientFileID uuid.UUID) error
+	// Blizniak UpdateModalityLivePrompt dla klucza 'chat' (soczewka czatu).
+	// Ta sama zasada: jsonb_set na JEDNYM kluczu, nigdy odbudowa obiektu.
+	// Pusty tekst jest poprawny i wylacza soczewke tej modalnosci — czat
+	// wraca wtedy do golych promptow per intencja.
+	UpdateModalityLiveChatPrompt(ctx context.Context, arg UpdateModalityLiveChatPromptParams) error
 	// jsonb_set, NIGDY jsonb_build_object: kolumna niesie od 20.08.2026 takze
 	// klucz 'chat' (soczewka modalnosci w czacie, seed z
 	// migrations/modality_prompts/chat_*.txt). Przebudowa obiektu od zera

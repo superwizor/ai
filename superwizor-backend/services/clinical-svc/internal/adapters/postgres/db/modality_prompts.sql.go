@@ -17,6 +17,7 @@ const adminListModalityPrompts = `-- name: AdminListModalityPrompts :many
 SELECT m.id, m.system_code, m.display_name, m.modality_type::text AS modality_type,
        m.is_supported,
        COALESCE(m.therapist_ai_general_prompt->>'system', '')::text AS system_prompt,
+       COALESCE(m.therapist_ai_general_prompt->>'chat', '')::text AS chat_prompt,
        COALESCE(v.version, 0)::int AS version,
        COALESCE(u.email, '')::text AS updated_by_email,
        -- epoch sentinel when the modality predates the 000052 backfill
@@ -41,6 +42,7 @@ type AdminListModalityPromptsRow struct {
 	ModalityType   string    `json:"modality_type"`
 	IsSupported    bool      `json:"is_supported"`
 	SystemPrompt   string    `json:"system_prompt"`
+	ChatPrompt     string    `json:"chat_prompt"`
 	Version        int32     `json:"version"`
 	UpdatedByEmail string    `json:"updated_by_email"`
 	UpdatedAt      time.Time `json:"updated_at"`
@@ -71,6 +73,7 @@ func (q *Queries) AdminListModalityPrompts(ctx context.Context) ([]AdminListModa
 			&i.ModalityType,
 			&i.IsSupported,
 			&i.SystemPrompt,
+			&i.ChatPrompt,
 			&i.Version,
 			&i.UpdatedByEmail,
 			&i.UpdatedAt,
@@ -142,6 +145,7 @@ func (q *Queries) InsertModalityPromptVersion(ctx context.Context, arg InsertMod
 const listModalityPromptVersions = `-- name: ListModalityPromptVersions :many
 SELECT v.id, v.version,
        COALESCE(v.prompt->>'system', '')::text AS system_prompt,
+       COALESCE(v.prompt->>'chat', '')::text AS chat_prompt,
        v.change_note,
        COALESCE(u.email, '')::text AS created_by_email,
        v.created_at
@@ -162,6 +166,7 @@ type ListModalityPromptVersionsRow struct {
 	ID             uuid.UUID `json:"id"`
 	Version        int32     `json:"version"`
 	SystemPrompt   string    `json:"system_prompt"`
+	ChatPrompt     string    `json:"chat_prompt"`
 	ChangeNote     string    `json:"change_note"`
 	CreatedByEmail string    `json:"created_by_email"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -182,6 +187,7 @@ func (q *Queries) ListModalityPromptVersions(ctx context.Context, arg ListModali
 			&i.ID,
 			&i.Version,
 			&i.SystemPrompt,
+			&i.ChatPrompt,
 			&i.ChangeNote,
 			&i.CreatedByEmail,
 			&i.CreatedAt,
@@ -194,6 +200,28 @@ func (q *Queries) ListModalityPromptVersions(ctx context.Context, arg ListModali
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateModalityLiveChatPrompt = `-- name: UpdateModalityLiveChatPrompt :exec
+UPDATE modalities
+SET therapist_ai_general_prompt =
+    jsonb_set(coalesce(therapist_ai_general_prompt, '{}'::jsonb),
+              '{chat}', to_jsonb($2::text), true)
+WHERE id = $1
+`
+
+type UpdateModalityLiveChatPromptParams struct {
+	ID         uuid.UUID `json:"id"`
+	ChatPrompt string    `json:"chat_prompt"`
+}
+
+// Blizniak UpdateModalityLivePrompt dla klucza 'chat' (soczewka czatu).
+// Ta sama zasada: jsonb_set na JEDNYM kluczu, nigdy odbudowa obiektu.
+// Pusty tekst jest poprawny i wylacza soczewke tej modalnosci — czat
+// wraca wtedy do golych promptow per intencja.
+func (q *Queries) UpdateModalityLiveChatPrompt(ctx context.Context, arg UpdateModalityLiveChatPromptParams) error {
+	_, err := q.db.Exec(ctx, updateModalityLiveChatPrompt, arg.ID, arg.ChatPrompt)
+	return err
 }
 
 const updateModalityLivePrompt = `-- name: UpdateModalityLivePrompt :exec

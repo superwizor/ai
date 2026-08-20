@@ -37,6 +37,15 @@ const (
 	// inside the model's input budget; today's largest seed is ~2k chars,
 	// so 20k is generous headroom without being abusable.
 	maxPromptChars = 20000
+
+	// maxChatPromptChars ogranicza soczewke czatu. Znacznie ciasniej niz
+	// prompt raportowy, bo soczewka jedzie na KAZDYM uziemionym wywolaniu
+	// generatora — dzien 20.08 pokazal, jak drogie sa nadmiarowe tokeny
+	// wejscia w tym torze.
+	maxChatPromptChars = 2500
+
+	promptKeySystem = "system"
+	promptKeyChat   = "chat"
 	// minChangeNoteChars matches the admin panel's ActionDialog reason
 	// minimum used by the other admin mutations.
 	minChangeNoteChars = 10
@@ -105,6 +114,7 @@ func (s *Server) AdminGetModalityPromptHistory(ctx context.Context, req *clinica
 			Id:             r.ID.String(),
 			Version:        r.Version,
 			SystemPrompt:   r.SystemPrompt,
+			ChatPrompt:     r.ChatPrompt,
 			ChangeNote:     r.ChangeNote,
 			CreatedByEmail: r.CreatedByEmail,
 			CreatedAt:      timestamppb.New(r.CreatedAt),
@@ -129,8 +139,24 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "modality_id must be a UUID")
 	}
-	if verr := validatePromptUpdate(req.GetSystemPrompt(), req.GetChangeNote()); verr != nil {
-		return nil, verr
+	// Pusty prompt_key = "system": kazdy istniejacy klient (Studio sprzed
+	// zakladki soczewek) dalej edytuje prompt raportowy bez zmian.
+	promptKey := req.GetPromptKey()
+	if promptKey == "" {
+		promptKey = promptKeySystem
+	}
+	switch promptKey {
+	case promptKeySystem:
+		if verr := validatePromptUpdate(req.GetSystemPrompt(), req.GetChangeNote()); verr != nil {
+			return nil, verr
+		}
+	case promptKeyChat:
+		if verr := validateChatPromptUpdate(req.GetSystemPrompt(), req.GetChangeNote()); verr != nil {
+			return nil, verr
+		}
+	default:
+		return nil, status.Errorf(codes.InvalidArgument,
+			"prompt_key must be %q or %q", promptKeySystem, promptKeyChat)
 	}
 	prompt := strings.TrimSpace(req.GetSystemPrompt())
 	note := strings.TrimSpace(req.GetChangeNote())
@@ -161,7 +187,15 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 	}
 
 	newVersion := latest + 1
-	if err := qtx.UpdateModalityLivePrompt(ctx, db.UpdateModalityLivePromptParams{
+	if promptKey == promptKeyChat {
+		if err := qtx.UpdateModalityLiveChatPrompt(ctx, db.UpdateModalityLiveChatPromptParams{
+			ID:         modalityID,
+			ChatPrompt: prompt,
+		}); err != nil {
+			slog.Error("UpdateModalityLiveChatPrompt", "error", err, "modality_id", modalityID)
+			return nil, status.Error(codes.Internal, "update live prompt")
+		}
+	} else if err := qtx.UpdateModalityLivePrompt(ctx, db.UpdateModalityLivePromptParams{
 		ID:           modalityID,
 		SystemPrompt: prompt,
 	}); err != nil {
@@ -194,6 +228,7 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 		"new_version":  newVersion,
 		"change_note":  note,
 		"prompt_chars": len(prompt),
+		"prompt_key":   promptKey,
 	})
 	_ = s.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
 		ActorUserID:  pgtype.UUID{Bytes: actorID, Valid: true},
@@ -221,14 +256,17 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 		}
 	}
 	// Fallback: synthesize from what we know (list re-read failed).
-	return &clinicalv1.AdminUpdateModalityPromptResponse{
-		Prompt: &clinicalv1.AdminModalityPrompt{
-			ModalityId:   modalityID.String(),
-			SystemPrompt: prompt,
-			Version:      newVersion,
-			UpdatedAt:    timestamppb.New(inserted.CreatedAt),
-		},
-	}, nil
+	fallback := &clinicalv1.AdminModalityPrompt{
+		ModalityId: modalityID.String(),
+		Version:    newVersion,
+		UpdatedAt:  timestamppb.New(inserted.CreatedAt),
+	}
+	if promptKey == promptKeyChat {
+		fallback.ChatPrompt = prompt
+	} else {
+		fallback.SystemPrompt = prompt
+	}
+	return &clinicalv1.AdminUpdateModalityPromptResponse{Prompt: fallback}, nil
 }
 
 // validatePromptUpdate enforces the docs/31 §4 rules. Returns a
@@ -252,6 +290,48 @@ func validatePromptUpdate(prompt, note string) error {
 	return nil
 }
 
+// brandBannedStems to slowa ramy marki, ktore nie moga trafic do
+// soczewki czatu. Rdzenie, nie pelne formy — polska fleksja ("pacjenta",
+// "diagnozie") nie moze byc furtka. Celowo NIE lapiemy "diagnost..."
+// (etykiety diagnostyczne to legalne slownictwo zakazow w soczewkach).
+var brandBannedStems = []string{"pacjent", "kliniczn", "diagnoz", "asystent", "copilot", "chatbot", "scribe"}
+
+// validateChatPromptUpdate to regula dla klucza 'chat'.
+//
+// Rozni sie od raportowej w trzech punktach i kazdy jest celowy:
+//   - PUSTY tekst jest poprawny — wylacza soczewke tej modalnosci
+//     (czat wraca do golych promptow per intencja);
+//   - limit 2500 znakow, bo soczewka jedzie na kazdym wywolaniu
+//     generatora;
+//   - slowa ramy marki odrzucane serwerowo: soczewka to jedyny prompt
+//     edytowalny z panelu, wiec to jedyne miejsce, gdzie taki wpis
+//     moglby ominac review kodu.
+func validateChatPromptUpdate(prompt, note string) error {
+	if len(strings.TrimSpace(note)) < minChangeNoteChars {
+		return status.Errorf(codes.InvalidArgument,
+			"change_note must be at least %d characters", minChangeNoteChars)
+	}
+	p := strings.TrimSpace(prompt)
+	if p == "" {
+		return nil // wylaczenie soczewki
+	}
+	if len(p) > maxChatPromptChars {
+		return status.Errorf(codes.InvalidArgument,
+			"chat prompt exceeds %d characters (%d)", maxChatPromptChars, len(p))
+	}
+	if !utf8.ValidString(p) {
+		return status.Error(codes.InvalidArgument, "chat prompt must be valid UTF-8")
+	}
+	low := strings.ToLower(p)
+	for _, stem := range brandBannedStems {
+		if strings.Contains(low, stem) {
+			return status.Errorf(codes.InvalidArgument,
+				"chat prompt contains brand-banned word stem %q", stem)
+		}
+	}
+	return nil
+}
+
 func toProtoAdminModalityPrompt(r db.AdminListModalityPromptsRow) *clinicalv1.AdminModalityPrompt {
 	p := &clinicalv1.AdminModalityPrompt{
 		ModalityId:     r.ID.String(),
@@ -260,6 +340,7 @@ func toProtoAdminModalityPrompt(r db.AdminListModalityPromptsRow) *clinicalv1.Ad
 		ModalityType:   r.ModalityType,
 		IsSupported:    r.IsSupported,
 		SystemPrompt:   r.SystemPrompt,
+		ChatPrompt:     r.ChatPrompt,
 		Version:        r.Version,
 		UpdatedByEmail: r.UpdatedByEmail,
 	}

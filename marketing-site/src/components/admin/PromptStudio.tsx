@@ -30,6 +30,34 @@ import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog
 import { diffLines, type DiffOp } from "@/lib/diff";
 
 const MAX_PROMPT_CHARS = 20000; // mirrors clinical-svc maxPromptChars
+const MAX_CHAT_PROMPT_CHARS = 2500; // mirrors clinical-svc maxChatPromptChars
+
+// Which JSONB key of therapist_ai_general_prompt is being edited.
+// "system" = the report prompt (llm-worker call 2); "chat" = the chat
+// modality lens. One optimistic-lock counter guards both keys — every
+// version row snapshots the whole JSONB.
+type PromptKey = "system" | "chat";
+
+const keyText = (
+  src: { systemPrompt: string; chatPrompt: string } | null | undefined,
+  key: PromptKey,
+): string => (src ? (key === "chat" ? src.chatPrompt : src.systemPrompt) : "");
+
+// Where the lens lands at runtime — shown read-only so admins see what
+// they control and what the CODE appends regardless (Render() trailer).
+// Sketch, not verbatim: the real call embeds client material.
+const CHAT_CONTEXT_SKETCH = `┌─ PROMPT GENERATORA CZATU (intencje uziemione) ────────┐
+│ <prompt intencji: zadanie + zasady — w kodzie, wygrywa>│
+│ <reguły cytowania — w kodzie>                          │
+│ ▶▶ TWOJA SOCZEWKA MODALNOŚCI (edytowalna tutaj) ◀◀     │
+│ <ogon z kodu, ZAWSZE doklejany — edycja go nie usunie:>│
+│ "Soczewka zmienia język i porządek analizy, nigdy      │
+│  zasady: hipotezy warunkowo, uziemienie cytatami,      │
+│  bez etykiet nozologicznych, farmakoterapii, ryzyka."  │
+└────────────────────────────────────────────────────────┘
+Pusty tekst = soczewka wyłączona dla tej modalności.
+Słowa ramy marki (pacjent/kliniczny/diagnoza/asystent…)
+odrzuca serwer.`;
 
 // The fixed call-2 scaffold surrounding the editable prompt, shown
 // read-only so admins see what they do / don't control. Static copy of
@@ -132,6 +160,7 @@ export function PromptStudio() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [promptKey, setPromptKey] = useState<PromptKey>("system");
   const [draft, setDraft] = useState("");
 
   const [history, setHistory] = useState<AdminModalityPromptVersion[]>([]);
@@ -146,8 +175,12 @@ export function PromptStudio() {
   const [savedFlash, setSavedFlash] = useState(false);
 
   const selected = prompts.find((p) => p.modalityId === selectedId) ?? null;
-  const dirty = !!selected && draft !== selected.systemPrompt;
-  const overLimit = draft.length > MAX_PROMPT_CHARS;
+  const liveText = keyText(selected, promptKey);
+  const charCap = promptKey === "chat" ? MAX_CHAT_PROMPT_CHARS : MAX_PROMPT_CHARS;
+  const dirty = !!selected && draft !== liveText;
+  const overLimit = draft.length > charCap;
+  // Soczewka moze byc pusta (wylacza ja); prompt raportowy nie.
+  const emptyForbidden = promptKey === "system" && draft.trim().length === 0;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,11 +228,11 @@ export function PromptStudio() {
   // Seed the editor + history whenever the selection resolves.
   useEffect(() => {
     if (selected) {
-      setDraft(selected.systemPrompt);
+      setDraft(keyText(selected, promptKey));
       void loadHistory(selected.modalityId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, loading]);
+  }, [selectedId, loading, promptKey]);
 
   const selectModality = (id: string) => {
     if (id === selectedId) return;
@@ -215,13 +248,14 @@ export function PromptStudio() {
         systemPrompt: draft,
         changeNote: reason,
         expectedVersion: selected.version,
+        promptKey,
       });
       const updated = resp.prompt;
       if (updated) {
         setPrompts((cur) =>
           cur.map((p) => (p.modalityId === updated.modalityId ? updated : p)),
         );
-        setDraft(updated.systemPrompt);
+        setDraft(keyText(updated, promptKey));
       }
       void loadHistory(selected.modalityId);
       setSavedFlash(true);
@@ -233,7 +267,7 @@ export function PromptStudio() {
   };
 
   const startRestore = (v: AdminModalityPromptVersion) => {
-    setDraft(v.systemPrompt);
+    setDraft(keyText(v, promptKey));
     setSaveIsRestore(v.version);
     setViewVersion(null);
     setCompareVersion(null);
@@ -328,6 +362,37 @@ export function PromptStudio() {
                 )}
               </div>
 
+              {/* Ktory klucz JSONB edytujemy. Wspolny licznik wersji
+                  (snapshot = caly JSONB), wiec przelaczenie zakladki nie
+                  zmienia semantyki blokady optymistycznej. */}
+              <div className="flex gap-1 mb-3" role="tablist" aria-label={t("keyTabsLabel")}>
+                {(["system", "chat"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={promptKey === k}
+                    onClick={() => {
+                      if (k === promptKey) return;
+                      if (dirty && !window.confirm(t("discardConfirm"))) return;
+                      setPromptKey(k);
+                    }}
+                    className={`rounded-button px-3.5 py-1.5 font-mono text-xs uppercase tracking-[var(--tracking-label)] transition border ${
+                      promptKey === k
+                        ? "bg-ember/15 border-ember/60 text-ember"
+                        : "border-frost/15 text-mist hover:text-frost hover:border-frost/30"
+                    }`}
+                  >
+                    {k === "system" ? t("tabReport") : t("tabChat")}
+                  </button>
+                ))}
+              </div>
+              {promptKey === "chat" && (
+                <p className="font-serif text-xs text-mist mb-2 leading-relaxed">
+                  {t("chatKeyHint")}
+                </p>
+              )}
+
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -338,7 +403,7 @@ export function PromptStudio() {
 
               <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
                 <span className={`font-mono text-[11px] ${overLimit ? "text-magma" : "text-mist"}`}>
-                  {draft.length.toLocaleString("pl-PL")} / {MAX_PROMPT_CHARS.toLocaleString("pl-PL")}
+                  {draft.length.toLocaleString("pl-PL")} / {charCap.toLocaleString("pl-PL")}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -352,14 +417,14 @@ export function PromptStudio() {
                   <button
                     type="button"
                     disabled={!dirty}
-                    onClick={() => setDraft(selected.systemPrompt)}
+                    onClick={() => setDraft(liveText)}
                     className="rounded-button border border-frost/15 px-3.5 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost hover:border-frost/30 transition disabled:opacity-40"
                   >
                     {t("discard")}
                   </button>
                   <button
                     type="button"
-                    disabled={!dirty || overLimit || draft.trim().length === 0}
+                    disabled={!dirty || overLimit || emptyForbidden}
                     onClick={() => {
                       setSaveIsRestore(null);
                       setSaveOpen(true);
@@ -377,7 +442,7 @@ export function PromptStudio() {
                 </summary>
                 <p className="font-serif text-xs text-mist mt-2 leading-relaxed">{t("contextBody")}</p>
                 <pre className="mt-3 rounded-button bg-obsidian/40 border border-frost/10 p-4 font-mono text-[11px] text-mist/80 whitespace-pre overflow-x-auto">
-                  {CALL2_CONTEXT_SKETCH}
+                  {promptKey === "chat" ? CHAT_CONTEXT_SKETCH : CALL2_CONTEXT_SKETCH}
                 </pre>
               </details>
             </div>
@@ -455,14 +520,14 @@ export function PromptStudio() {
 
       {diffOpen && selected && (
         <Overlay title={t("diffTitle", { version: selected.version })} onClose={() => setDiffOpen(false)}>
-          <DiffView ops={diffLines(selected.systemPrompt, draft)} />
+          <DiffView ops={diffLines(liveText, draft)} />
         </Overlay>
       )}
 
       {viewVersion && (
         <Overlay title={t("viewTitle", { version: viewVersion.version })} onClose={() => setViewVersion(null)}>
           <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-[55vh] overflow-y-auto rounded-button bg-obsidian/40 border border-frost/10 p-4 text-mist">
-            {viewVersion.systemPrompt}
+            {keyText(viewVersion, promptKey)}
           </pre>
         </Overlay>
       )}
@@ -472,7 +537,7 @@ export function PromptStudio() {
           title={t("compareTitle", { from: compareVersion.version, to: selected.version })}
           onClose={() => setCompareVersion(null)}
         >
-          <DiffView ops={diffLines(compareVersion.systemPrompt, selected.systemPrompt)} />
+          <DiffView ops={diffLines(keyText(compareVersion, promptKey), liveText)} />
         </Overlay>
       )}
     </div>

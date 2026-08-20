@@ -812,6 +812,12 @@ message AdminModalityPrompt {
   // migration-seeded v1 when no admin edit happened yet.
   string updated_by_email = 8;
   google.protobuf.Timestamp updated_at = 9;
+  // Chat modality lens — therapist_ai_general_prompt["chat"]. Empty =
+  // lens disabled for this modality (the chat then runs on the bare
+  // per-intent prompts). Appended to the generator's system prompt for
+  // grounded intents; invariants are re-asserted by code (Render()), so
+  // an edit here can change language and framing, never the rules.
+  string chat_prompt = 10;
 }
 
 message AdminListModalityPromptsResponse {
@@ -832,6 +838,10 @@ message AdminModalityPromptVersion {
   string change_note = 4;
   string created_by_email = 5;
   google.protobuf.Timestamp created_at = 6;
+  // Snapshot of the chat lens at this version. Versions predating the
+  // lens (before 2026-08-20) return "" here — the snapshot column holds
+  // the full JSONB, so no backfill is needed or possible.
+  string chat_prompt = 7;
 }
 
 message AdminGetModalityPromptHistoryResponse {
@@ -841,8 +851,11 @@ message AdminGetModalityPromptHistoryResponse {
 
 message AdminUpdateModalityPromptRequest {
   string modality_id = 1;
-  // Full replacement text for therapist_ai_general_prompt["system"].
-  // Trimmed non-empty, ≤ 20000 chars.
+  // Full replacement text for the key selected by prompt_key.
+  // For "system": trimmed non-empty, ≤ 20000 chars.
+  // For "chat": ≤ 2500 chars (latency budget — the lens rides on every
+  // grounded generator call); EMPTY IS VALID and disables the lens.
+  // Brand-frame banned words are rejected server-side for "chat".
   string system_prompt = 2;
   // Mandatory reason (≥ 10 chars) — stored on the version row and the
   // audit_log entry.
@@ -850,7 +863,17 @@ message AdminUpdateModalityPromptRequest {
   // Optimistic lock: must equal the current latest version for this
   // modality or the call fails FailedPrecondition (someone else saved
   // in between — reload before retrying).
+  //
+  // ONE counter guards BOTH keys on purpose: every version row snapshots
+  // the whole JSONB, so two admins editing "system" and "chat"
+  // concurrently would still silently overwrite each other's snapshot if
+  // the locks were separate.
   int32 expected_version = 4;
+  // Which key this save targets: "system" (default, report prompt) or
+  // "chat" (modality lens for the chat). A string, not an enum, because
+  // the storage is a JSONB key and inventing a parallel enum would just
+  // add a translation layer to drift.
+  string prompt_key = 5;
 }
 
 message AdminUpdateModalityPromptResponse {

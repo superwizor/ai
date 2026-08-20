@@ -597,7 +597,11 @@
       "restoreDialogBody": "Treść wersji {version} zostanie zapisana jako NOWA wersja promptu modalności {code} (historia pozostaje nienaruszona). Sugerowany powód: „przywrócenie wersji {version}”.",
       "diffTitle": "Zmiany względem wersji {version}",
       "viewTitle": "Wersja {version}",
-      "compareTitle": "Wersja {from} → bieżąca (v{to})"
+      "compareTitle": "Wersja {from} → bieżąca (v{to})",
+      "tabReport": "Raport",
+      "tabChat": "Czat — soczewka",
+      "keyTabsLabel": "Wybór edytowanego promptu",
+      "chatKeyHint": "Soczewka zmienia język i porządek analizy w czacie — zadanie i zasady definiują prompty intencji w kodzie, a inwarianty dokleja Render() niezależnie od tego pola. Pusty tekst wyłącza soczewkę tej modalności. Limit 2 500 znaków, bo soczewka jedzie na każdym wywołaniu generatora."
     },
     "orgCreate": {
       "metaTitle": "Nowa organizacja",

@@ -70,6 +70,7 @@ type fakeQuerier struct {
 	adminListModalityPromptsFn       func(ctx context.Context) ([]db.AdminListModalityPromptsRow, error)
 	getLatestModalityPromptVersionFn func(ctx context.Context, id uuid.UUID) (int32, error)
 	updateModalityLivePromptFn       func(ctx context.Context, arg db.UpdateModalityLivePromptParams) error
+	updateModalityLiveChatPromptFn   func(ctx context.Context, arg db.UpdateModalityLiveChatPromptParams) error
 	insertModalityPromptVersionFn    func(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error)
 	listModalityPromptVersionsFn     func(ctx context.Context, arg db.ListModalityPromptVersionsParams) ([]db.ListModalityPromptVersionsRow, error)
 
@@ -335,6 +336,13 @@ func (f *fakeQuerier) AdminListModalityPrompts(ctx context.Context) ([]db.AdminL
 
 func (f *fakeQuerier) GetLatestModalityPromptVersion(ctx context.Context, id uuid.UUID) (int32, error) {
 	return f.getLatestModalityPromptVersionFn(ctx, id)
+}
+
+func (f *fakeQuerier) UpdateModalityLiveChatPrompt(ctx context.Context, arg db.UpdateModalityLiveChatPromptParams) error {
+	if f.updateModalityLiveChatPromptFn != nil {
+		return f.updateModalityLiveChatPromptFn(ctx, arg)
+	}
+	return nil
 }
 
 func (f *fakeQuerier) UpdateModalityLivePrompt(ctx context.Context, arg db.UpdateModalityLivePromptParams) error {

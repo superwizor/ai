@@ -227,3 +227,119 @@ func TestAdminListModalityPrompts_VersionZeroOmitsTimestamp(t *testing.T) {
 		t.Errorf("version-0 row must omit updated_at, got %v", resp.Prompts[0].GetUpdatedAt())
 	}
 }
+
+// ── Klucz 'chat' (soczewka modalnosci) ────────────────────────────────
+
+func chatUpdateReq(modalityID uuid.UUID, expected int32, text string) *clinicalv1.AdminUpdateModalityPromptRequest {
+	return &clinicalv1.AdminUpdateModalityPromptRequest{
+		ModalityId:      modalityID.String(),
+		SystemPrompt:    text,
+		ChangeNote:      "aktualizacja soczewki czatu",
+		ExpectedVersion: expected,
+		PromptKey:       "chat",
+	}
+}
+
+// Zapis soczewki idzie WYLACZNIE przez UpdateModalityLiveChatPrompt —
+// dotkniecie promptu raportowego przy edycji soczewki byloby ta sama
+// klasa bledu, co skasowanie soczewki przy edycji raportu.
+func TestAdminUpdateChatPromptWritesOnlyTheChatKey(t *testing.T) {
+	modalityID := uuid.New()
+	actorID := uuid.New()
+
+	var chatWrites, systemWrites int
+	var gotChat db.UpdateModalityLiveChatPromptParams
+	q := &fakeQuerier{
+		getLatestModalityPromptVersionFn: func(ctx context.Context, id uuid.UUID) (int32, error) {
+			return 3, nil
+		},
+		updateModalityLiveChatPromptFn: func(ctx context.Context, arg db.UpdateModalityLiveChatPromptParams) error {
+			chatWrites++
+			gotChat = arg
+			return nil
+		},
+		updateModalityLivePromptFn: func(ctx context.Context, arg db.UpdateModalityLivePromptParams) error {
+			systemWrites++
+			return nil
+		},
+		insertModalityPromptVersionFn: func(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error) {
+			return db.InsertModalityPromptVersionRow{ID: uuid.New(), CreatedAt: time.Now()}, nil
+		},
+		createAuditEventFn: func(ctx context.Context, arg db.CreateAuditEventParams) error { return nil },
+		adminListModalityPromptsFn: func(ctx context.Context) ([]db.AdminListModalityPromptsRow, error) {
+			// Pusta lista wymusza sciezke fallbacku odpowiedzi — te sama,
+			// ktora weryfikuje mapowanie ChatPrompt bez reread-u.
+			return nil, nil
+		},
+	}
+	opener := &fakeTxOpener{q: q}
+	s := NewServerWithDeps(q, opener, nil, nil, nil, nil, "test", nil)
+
+	resp, err := s.AdminUpdateModalityPrompt(adminPromptCtx(actorID),
+		chatUpdateReq(modalityID, 3, "Prowadzisz analizę w ujęciu testowym."))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if chatWrites != 1 || systemWrites != 0 {
+		t.Errorf("zapisy: chat=%d system=%d — soczewka nie moze dotykac raportu", chatWrites, systemWrites)
+	}
+	if gotChat.ChatPrompt == "" || gotChat.ID != modalityID {
+		t.Errorf("parametry zapisu: %+v", gotChat)
+	}
+	if resp.GetPrompt().GetVersion() != 4 {
+		t.Errorf("wersja: want 4, got %d", resp.GetPrompt().GetVersion())
+	}
+	if resp.GetPrompt().GetChatPrompt() == "" || resp.GetPrompt().GetSystemPrompt() != "" {
+		t.Errorf("fallback odpowiedzi pomylil klucze: chat=%q system=%q",
+			resp.GetPrompt().GetChatPrompt(), resp.GetPrompt().GetSystemPrompt())
+	}
+}
+
+// Pusty tekst soczewki jest POPRAWNY: wylacza soczewke tej modalnosci.
+// Prompt raportowy pusty byc nie moze — te dwie reguly musza sie roznic.
+func TestChatPromptMayBeEmptySystemMayNot(t *testing.T) {
+	if err := validateChatPromptUpdate("   ", "wylaczenie soczewki na czas testow"); err != nil {
+		t.Errorf("pusta soczewka odrzucona: %v", err)
+	}
+	if err := validatePromptUpdate("   ", "notatka odpowiednio dluga tutaj"); err == nil {
+		t.Error("pusty prompt raportowy przeszedl")
+	}
+}
+
+// Soczewka to jedyny prompt edytowalny z panelu — slowa ramy marki musza
+// byc odrzucane serwerowo, bo to jedyne miejsce, gdzie ominelyby review.
+func TestChatPromptRejectsBrandBannedStems(t *testing.T) {
+	for _, txt := range []string{
+		"Jesteś zaawansowanym asystentem AI.",
+		"Analizuj objawy Pacjenta uważnie.",
+		"Postaw wstępną diagnozę na bazie cytatów.",
+		"Kliniczny obraz ma pierwszeństwo.",
+	} {
+		if err := validateChatPromptUpdate(txt, "notatka odpowiednio dluga"); err == nil {
+			t.Errorf("przeszlo mimo slowa zakazanego: %q", txt)
+		}
+	}
+	// Legalne slownictwo zakazow NIE moze wpadac w filtr.
+	if err := validateChatPromptUpdate(
+		"Bez etykiet diagnostycznych; opisuj wzorce.", "notatka odpowiednio dluga"); err != nil {
+		t.Errorf("legalny tekst odrzucony: %v", err)
+	}
+}
+
+func TestChatPromptLengthCap(t *testing.T) {
+	long := strings.Repeat("a", maxChatPromptChars+1)
+	if err := validateChatPromptUpdate(long, "notatka odpowiednio dluga"); err == nil {
+		t.Error("soczewka ponad limit przeszla")
+	}
+}
+
+func TestUnknownPromptKeyIsRejected(t *testing.T) {
+	modalityID := uuid.New()
+	q := &fakeQuerier{}
+	s := NewServerWithDeps(q, &fakeTxOpener{q: q}, nil, nil, nil, nil, "test", nil)
+	req := chatUpdateReq(modalityID, 1, "x")
+	req.PromptKey = "verifier" // proba dobrania sie do warstwy kontroli
+	if _, err := s.AdminUpdateModalityPrompt(adminPromptCtx(uuid.New()), req); err == nil {
+		t.Fatal("nieznany prompt_key przeszedl")
+	}
+}
