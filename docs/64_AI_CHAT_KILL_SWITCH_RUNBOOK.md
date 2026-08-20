@@ -99,15 +99,37 @@ tydzień.
 Wszystkie cztery zachowania są pokryte testami w
 `pkg/appconfig/appconfig_test.go`.
 
-## 7. Status wykonania na stagingu
+## 7. Status wykonania
 
-| krok | stan |
-|---|---|
-| Migracja 000084 zastosowana | ⏳ czeka na deploy F1 |
-| Próba wyłączenia + pomiar propagacji | ⏳ do wykonania po deployu |
-| Wpis pomiaru w tym dokumencie | ⏳ |
+⚠ **Nie ma osobnego stagingu.** Projekt `superwizor-ai-25ecd` zawiera
+jedną instancję Cloud SQL (`superwizor-db-bc4c27de`) obsługującą żywą
+aplikację z App Store. „Staging" w nomenklaturze zespołu oznacza to samo
+środowisko co produkcja. Każda zmiana opisana w tym runbooku dotyczy
+danych produkcyjnych.
 
-⚠ Do czasu uzupełnienia tej tabeli DoD fazy F0 jest **niekompletne** —
-runbook jest opisany i pokryty testami jednostkowymi, ale nie wykonany na
-żywym środowisku. Czat startuje wyłączony (`AI_CHAT_ENABLED='false'`
-w seedzie migracji), więc brak wykonanej próby nie tworzy ekspozycji.
+| krok | stan | szczegóły |
+|---|---|---|
+| Migracje 000084–000087 | ✅ 20.08.2026 12:0x UTC | schemat na 87, `dirty=false`; backup przed zmianą: `1787226644410` |
+| Seed `app_config` | ✅ | `AI_CHAT_ENABLED=false`, `AI_CHAT_MODE=full`, `TAU=0.85`, quota 1 500 000 µUSD |
+| Deploy clinical-svc | ✅ 20.08.2026 | rewizja `clinical-svc-00396-vm6`, 100% ruchu; odwrót: `clinical-svc-00395-8zx` |
+| Próba wyłączenia + pomiar propagacji | ⏳ **niewykonana** | wymaga sesji z rolą SUPERWIZOR_ADMIN albo tokenu terapeuty; z linii poleceń bez uwierzytelnienia nie da się zaobserwować efektu |
+| Wpis pomiaru | ⏳ | do uzupełnienia po powyższym |
+
+### Blokada włączenia czatu
+
+Konto usługi `clinical-svc@superwizor-ai-25ecd.iam.gserviceaccount.com`
+ma **wyłącznie** `roles/cloudsql.client` (plus
+`cloudkms.cryptoKeyEncrypterDecrypter` na samym kluczu). Nie ma
+`roles/aiplatform.user` — jedynym kontem, które je posiada, jest
+`llm-worker`.
+
+Skutek: po przestawieniu `AI_CHAT_ENABLED` na `true` **każde wywołanie
+modelu zakończy się błędem uprawnień**. Czat jest wyłączony, więc nic
+się teraz nie psuje, ale bez tego nadania go nie da się włączyć.
+
+Nadanie roli to zmiana uprawnień bezpieczeństwa i celowo nie zostało
+wykonane automatycznie — decyzja należy do właściciela projektu:
+
+```bash
+gcloud projects add-iam-policy-binding superwizor-ai-25ecd --member=serviceAccount:clinical-svc@superwizor-ai-25ecd.iam.gserviceaccount.com --role=roles/aiplatform.user
+```

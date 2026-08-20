@@ -35,12 +35,16 @@ build:  ## Build all service binaries
 	@go build -o bin/purger ./services/clinical-svc/cmd/purger
 
 migrate-up:  ## Run database migrations (staging)
-	migrate -path migrations \
+	@# The @ prefix is load-bearing: without it make echoes the recipe,
+	@# and the recipe contains the production database password. On
+	@# 2026-08-20 a migration run printed the full DSN to stdout, where it
+	@# landed in terminal scrollback and CI logs. Do not remove.
+	@migrate -path migrations \
 	  -database "postgres://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:5432/superwizor?sslmode=disable" \
 	  up
 
 migrate-down:  ## Rollback last migration
-	migrate -path migrations \
+	@migrate -path migrations \
 	  -database "postgres://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:5432/superwizor?sslmode=disable" \
 	  down 1
 
