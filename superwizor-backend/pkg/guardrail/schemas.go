@@ -119,6 +119,25 @@ func sectionsSchema(minQuotesPerSection int64) map[string]any {
 // with no model call at all. An intent with no schema and no executor
 // must never silently fall through to a generic prose call, which is why
 // SchemaFor reports absence rather than returning a permissive default.
+// maxHypotheses ogranicza liczbe hipotez w jednej odpowiedzi.
+//
+// 2, nie 3. Powod jest najpierw epistemiczny, dopiero potem kosztowy:
+// zasada "przestrzen hipotez" w soczewkach wymaga DWOCH konkurencyjnych
+// odczytan (Hipoteza A / Hipoteza B, dane za, dane przeciw). Trzecia byla
+// nadmiarem, a nie realizacja tej zasady — i w praktyce rozcienczala
+// odpowiedz zamiast ja poglebiac.
+//
+// Skutek kosztowy zmierzony 21.08 na soczewce 9000 znakow, 5 pytan A8:
+// wyjscie 659 -> 427 tokenow (-35%), koszt tury 3473 -> 2893 uUSD (-17%).
+// To dokladnie oplaca soczewke rozszerzona z ~1000 do 9000 znakow:
+// ontologia modalnosci wychodzi kosztowo na zero.
+//
+// Cytaty CELOWO zostaja przy 3. Zmierzone osobno: caly efekt pochodzi z
+// hipotez, wiec nie ma powodu oszczedzac na uziemieniu — a
+// grounding_quote_count jest monitorowana metryka bezpieczenstwa
+// (ADR sekcja 8.3).
+const maxHypotheses = int64(2)
+
 var schemas = map[Intent]map[string]any{
 	A1Search: {
 		"type": "object",
@@ -200,7 +219,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": maxHypotheses,
 			},
 		},
 		"required": []any{"hypotheses"},
@@ -210,7 +229,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": maxHypotheses,
 			},
 			// Required, not optional: A9 is the intent most likely to be
 			// read as a prediction, and the ADR requires forward-looking
@@ -231,7 +250,7 @@ var schemas = map[Intent]map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"hypotheses": map[string]any{
-				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": int64(3),
+				"type": "array", "items": hypothesisSchema, "minItems": int64(1), "maxItems": maxHypotheses,
 			},
 		},
 		"required": []any{"hypotheses"},

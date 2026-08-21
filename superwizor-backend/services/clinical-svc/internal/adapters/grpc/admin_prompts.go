@@ -40,20 +40,23 @@ const (
 
 	// maxChatPromptChars ogranicza soczewke czatu.
 	//
-	// 5500. Pierwotne 2500 bylo ostrozne, bo soczewka jedzie na KAZDYM
-	// uziemionym wywolaniu generatora, a 20.08 tokeny wejscia wygladaly
-	// na drogie. Pomiar 21.08 pokazal cene wprost: soczewka 5500 zamiast
-	// ~1000 to +1884 tokeny wejscia i ~0,9 s, a odpowiedz wychodzi
-	// bogatsza (2 hipotezy zamiast 1 na tym samym materiale).
+	// 10000. Soczewka musi pomiescic ONTOLOGIE modalnosci — zamkniete
+	// katalogi pojec, notacje, listy antybledowe ("to NIE sa
+	// znieksztalcenia"). To wlasnie te zamkniete listy powstrzymuja model
+	// przed wymyslaniem wlasnej terminologii, wiec sciecie ich do 5500
+	// znakow odbiera soczewce funkcje, dla ktorej istnieje. Referencyjna
+	// soczewka PPT potrzebuje ~9000 znakow; 10000 daje zapas.
 	//
-	// Powod produktowy jest mocniejszy niz ta cena: soczewka bez miejsca
-	// na konkretne instrukcje — zamknieta liste etykiet, regule kalibracji
-	// pewnosci, zakaz opisywania mimiki — degeneruje sie do ogolnikow, a
-	// wtedy nie robi tego, po co istnieje.
+	// Cena jest realna — soczewka jedzie na KAZDYM uziemionym wywolaniu
+	// generatora, a 9000 znakow zamiast ~1000 to ok. +1900 tokenow
+	// wejscia na ture. Placi za nia zacisk maxHypotheses w
+	// pkg/guardrail/schemas.go: pomiar 21.08 dal 3473 -> 2893 uUSD, czyli
+	// mniej niz tura sprzed rozszerzenia soczewki. Te dwie zmiany naleza
+	// do siebie i nie powinny byc rozdzielane.
 	//
 	// Nadal ciasniej niz prompt raportowy (20000), bo tamten idzie raz na
 	// raport, a ten na kazde pytanie.
-	maxChatPromptChars = 5500
+	maxChatPromptChars = 10000
 
 	promptKeySystem = "system"
 	promptKeyChat   = "chat"
