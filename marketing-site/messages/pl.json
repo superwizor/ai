@@ -601,7 +601,7 @@
       "tabReport": "Raport",
       "tabChat": "Czat — soczewka",
       "keyTabsLabel": "Wybór edytowanego promptu",
-      "chatKeyHint": "Soczewka zmienia język i porządek analizy w czacie — zadanie i zasady definiują prompty intencji w kodzie, a inwarianty dokleja Render() niezależnie od tego pola. Pusty tekst wyłącza soczewkę tej modalności. Limit 5 500 znaków: dość na konkretne instrukcje (zamknięte listy, reguły kalibracji), a wciąż znacznie ciaśniej niż prompt raportowy, bo soczewka jedzie na każdym pytaniu, nie raz na raport."
+      "chatKeyHint": "Soczewka zmienia język i porządek analizy w czacie — zadanie i zasady definiują prompty intencji w kodzie, a inwarianty dokleja Render() niezależnie od tego pola. Pusty tekst wyłącza soczewkę tej modalności. Limit {max, number} znaków: dość na konkretne instrukcje (zamknięte listy, reguły kalibracji), a wciąż znacznie ciaśniej niż prompt raportowy, bo soczewka jedzie na każdym pytaniu, nie raz na raport."
     },
     "orgCreate": {
       "metaTitle": "Nowa organizacja",

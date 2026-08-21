@@ -389,7 +389,7 @@ export function PromptStudio() {
               </div>
               {promptKey === "chat" && (
                 <p className="font-serif text-xs text-mist mb-2 leading-relaxed">
-                  {t("chatKeyHint")}
+                  {t("chatKeyHint", { max: MAX_CHAT_PROMPT_CHARS })}
                 </p>
               )}
 
