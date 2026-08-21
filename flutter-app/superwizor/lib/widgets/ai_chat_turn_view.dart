@@ -15,9 +15,11 @@
 //     refusal people learn to route around.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../services/ai_chat_service.dart';
 import '../theme/euphire_theme.dart';
+import '../theme/markdown_quote_style.dart';
 
 class AiChatTurnView extends StatelessWidget {
   const AiChatTurnView({
@@ -177,12 +179,43 @@ class _SectionView extends StatelessWidget {
           ),
           if (section.body.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
-              section.body,
-              style: const TextStyle(
-                color: EuphireColors.mist,
-                fontSize: 14,
-                height: 1.5,
+            // Markdown, nie Text. Model pisze etykiety statusu jako
+            // **Obserwacja:** / **Hipoteza:** / **Alternatywa:** — to
+            // wymog soczewek, nie ozdoba — a serwer sklada zastrzezenia
+            // w liste "- ". Renderowane zwyklym Text-em pokazywaly sie
+            // jako surowe gwiazdki i myslniki (zgloszenie 21.08).
+            //
+            // Sciezka zapasowa (rozmowa wczytana z notatki) uzywala
+            // MarkdownBody od poczatku, wiec ta sama tura wygladala
+            // inaczej przed i po ponownym otwarciu czatu. Zrodlem prawdy
+            // jest wersja sformatowana.
+            MarkdownBody(
+              data: section.body,
+              styleSheet: withQuoteStyle(
+                MarkdownStyleSheet(
+                  p: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: EuphireColors.mist,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                  strong: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.ember,
+                  ),
+                  em: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontStyle: FontStyle.italic,
+                    color: EuphireColors.mist,
+                  ),
+                  listBullet: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: EuphireColors.mist,
+                    fontSize: 14,
+                  ),
+                  blockSpacing: 6,
+                ),
               ),
             ),
           ],
