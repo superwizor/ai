@@ -238,7 +238,7 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 		"old_version":  latest,
 		"new_version":  newVersion,
 		"change_note":  note,
-		"prompt_chars": len(prompt),
+		"prompt_chars": utf8.RuneCountInString(prompt),
 		"prompt_key":   promptKey,
 	})
 	_ = s.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
@@ -253,7 +253,7 @@ func (s *Server) AdminUpdateModalityPrompt(ctx context.Context, req *clinicalv1.
 		"ae", "admin.prompt_updated",
 		"modality_id", modalityID.String(),
 		"new_version", newVersion,
-		"prompt_chars", len(prompt))
+		"prompt_chars", utf8.RuneCountInString(prompt))
 
 	// Re-read the list row for a fresh, display-ready response.
 	rows, err := s.queries.AdminListModalityPrompts(ctx)
@@ -287,12 +287,12 @@ func validatePromptUpdate(prompt, note string) error {
 	if p == "" {
 		return status.Error(codes.InvalidArgument, "system_prompt must not be empty")
 	}
-	if len(p) > maxPromptChars {
-		return status.Errorf(codes.InvalidArgument,
-			"system_prompt exceeds %d characters (%d)", maxPromptChars, len(p))
-	}
 	if !utf8.ValidString(p) {
 		return status.Error(codes.InvalidArgument, "system_prompt must be valid UTF-8")
+	}
+	if n := utf8.RuneCountInString(p); n > maxPromptChars {
+		return status.Errorf(codes.InvalidArgument,
+			"system_prompt exceeds %d characters (%d)", maxPromptChars, n)
 	}
 	if len(strings.TrimSpace(note)) < minChangeNoteChars {
 		return status.Errorf(codes.InvalidArgument,
@@ -326,12 +326,12 @@ func validateChatPromptUpdate(prompt, note string) error {
 	if p == "" {
 		return nil // wylaczenie soczewki
 	}
-	if len(p) > maxChatPromptChars {
-		return status.Errorf(codes.InvalidArgument,
-			"chat prompt exceeds %d characters (%d)", maxChatPromptChars, len(p))
-	}
 	if !utf8.ValidString(p) {
 		return status.Error(codes.InvalidArgument, "chat prompt must be valid UTF-8")
+	}
+	if n := utf8.RuneCountInString(p); n > maxChatPromptChars {
+		return status.Errorf(codes.InvalidArgument,
+			"chat prompt exceeds %d characters (%d)", maxChatPromptChars, n)
 	}
 	low := strings.ToLower(p)
 	for _, stem := range brandBannedStems {

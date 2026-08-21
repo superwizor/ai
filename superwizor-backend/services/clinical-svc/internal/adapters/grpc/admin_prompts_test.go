@@ -343,3 +343,38 @@ func TestUnknownPromptKeyIsRejected(t *testing.T) {
 		t.Fatal("nieznany prompt_key przeszedl")
 	}
 }
+
+// TestPromptLimitsCountRunesNotBytes pilnuje, ze limit jest liczony w
+// ZNAKACH, tak jak obiecuje komunikat bledu i licznik w Prompt Studio.
+//
+// Polska soczewka to w praktyce ~5% znakow dwubajtowych (a, c, e, l, n, o, s, z).
+// Gdy serwer liczyl bajty, licznik w panelu pokazywal zielone "5256 / 5500",
+// a zapis wracal bledem "exceeds 5500 characters (5523)" — uzytkownik widzial
+// dwie rozne liczby dla tego samego tekstu i zadna nie byla do naprawienia
+// po jego stronie.
+func TestPromptLimitsCountRunesNotBytes(t *testing.T) {
+	const note = "test limitu znakow"
+
+	// Dokladnie na limicie w znakach, ale grubo ponad nim w bajtach.
+	atLimit := strings.Repeat("ą", maxChatPromptChars)
+	if got := len(atLimit); got <= maxChatPromptChars {
+		t.Fatalf("test bezuzyteczny: %d bajtow nie przekracza limitu %d", got, maxChatPromptChars)
+	}
+	if err := validateChatPromptUpdate(atLimit, note); err != nil {
+		t.Errorf("soczewka o dlugosci dokladnie %d znakow odrzucona: %v", maxChatPromptChars, err)
+	}
+
+	// Jeden znak za duzo musi nadal byc odrzucony.
+	if err := validateChatPromptUpdate(atLimit+"ą", note); err == nil {
+		t.Errorf("soczewka %d znakow (limit %d) przeszla", maxChatPromptChars+1, maxChatPromptChars)
+	}
+
+	// Ta sama regula dla promptu raportowego.
+	sysAtLimit := strings.Repeat("ś", maxPromptChars)
+	if err := validatePromptUpdate(sysAtLimit, note); err != nil {
+		t.Errorf("prompt systemowy o dlugosci dokladnie %d znakow odrzucony: %v", maxPromptChars, err)
+	}
+	if err := validatePromptUpdate(sysAtLimit+"ś", note); err == nil {
+		t.Errorf("prompt systemowy %d znakow (limit %d) przeszedl", maxPromptChars+1, maxPromptChars)
+	}
+}
