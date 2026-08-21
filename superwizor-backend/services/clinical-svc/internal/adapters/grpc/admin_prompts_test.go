@@ -378,3 +378,76 @@ func TestPromptLimitsCountRunesNotBytes(t *testing.T) {
 		t.Errorf("prompt systemowy %d znakow (limit %d) przeszedl", maxPromptChars+1, maxPromptChars)
 	}
 }
+
+// TestNegationExemptionForDiagnosisStem opisuje regule wprowadzona
+// 21.08: soczewka musi umiec napisac zdanie zabezpieczajace ("to nie
+// jest diagnoza"), ale nie moze twierdzic, ze diagnoze stawia.
+func TestNegationExemptionForDiagnosisStem(t *testing.T) {
+	const note = "test filtru ramy marki"
+
+	przechodzi := []struct{ opis, tekst string }{
+		{"przeczenie wprost", "Materiał do superwizji, nie diagnoza."},
+		{"przeczenie rozdzielone", "To nie jest diagnoza medyczna."},
+		{"wersalikami", "NIE diagnoza medyczna, tylko opis procesu."},
+		{"bez", "Opis procesu bez diagnozy nozologicznej."},
+		{"zamiast", "Zamiast diagnozy podaj opis zjawiska."},
+		{"nigdy", "Nigdy nie formułuj diagnozy."},
+		{"odmiana po przeczeniu", "To nie jest diagnozą ani rozpoznaniem."},
+		{"wszystkie wystapienia zaprzeczone",
+			"To nie diagnoza. Materiał do superwizji, nie diagnoza."},
+	}
+	for _, c := range przechodzi {
+		if err := validateChatPromptUpdate(c.tekst, note); err != nil {
+			t.Errorf("%s: odrzucone, a powinno przejsc: %v", c.opis, err)
+		}
+	}
+
+	odrzucane := []struct{ opis, tekst string }{
+		{"twierdzenie wprost", "Podaj diagnozę procesu w pierwszej sekcji."},
+		{"twierdzenie mimo przeczenia PO nim",
+			"To diagnoza PROCESU, nie osoby."},
+		{"przeczenie za daleko",
+			"Nie wiem, jak to ująć w tym miejscu raportu. Diagnoza jest wymagana."},
+		{"jedno z dwoch twierdzace",
+			"To nie diagnoza. Ale diagnozę i tak podaj na końcu."},
+	}
+	for _, c := range odrzucane {
+		if err := validateChatPromptUpdate(c.tekst, note); err == nil {
+			t.Errorf("%s: przeszlo, a powinno zostac odrzucone", c.opis)
+		}
+	}
+}
+
+// TestNegationDoesNotExemptBrandFrameWords pilnuje zakresu wyjatku.
+// "pacjent" i "asystent" nazywaja RAME PRODUKTU, nie czynnosc —
+// zaprzeczenie ich nie usuwa tej ramy z promptu, wiec wyjatek ich
+// nie obejmuje.
+func TestNegationDoesNotExemptBrandFrameWords(t *testing.T) {
+	const note = "test zakresu wyjatku"
+	for _, tekst := range []string{
+		"To nie jest asystent kliniczny.",
+		"Klient to nie pacjent.",
+		"Nie jesteś chatbotem.",
+		"To nie jest scribe.",
+	} {
+		if err := validateChatPromptUpdate(tekst, note); err == nil {
+			t.Errorf("%q przeszlo — wyjatek dotyczy wylacznie rdzenia diagnoz", tekst)
+		}
+	}
+}
+
+// TestBannedStemErrorPointsAtLocation — komunikat musi wskazywac
+// MIEJSCE. Przy soczewce na 10000 znakow sam rdzen nie wystarcza:
+// autor promptu szukal go dzis recznie.
+func TestBannedStemErrorPointsAtLocation(t *testing.T) {
+	prompt := strings.Repeat("Analizuj wyłącznie materiał z sesji. ", 40) +
+		"Podaj diagnozę różnicową. " +
+		strings.Repeat("Cytuj dosłownie. ", 40)
+	err := validateChatPromptUpdate(prompt, "test komunikatu")
+	if err == nil {
+		t.Fatal("oczekiwano odrzucenia")
+	}
+	if !strings.Contains(err.Error(), "diagnozę różnicową") {
+		t.Errorf("komunikat nie wskazuje miejsca: %v", err)
+	}
+}

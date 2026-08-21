@@ -17,6 +17,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -310,6 +311,57 @@ func validatePromptUpdate(prompt, note string) error {
 // (etykiety diagnostyczne to legalne slownictwo zakazow w soczewkach).
 var brandBannedStems = []string{"pacjent", "kliniczn", "diagnoz", "asystent", "copilot", "chatbot", "scribe"}
 
+// negationExemptStems to rdzenie dopuszczalne PO PRZECZENIU.
+//
+// Powod: soczewka musi umiec napisac zdanie zabezpieczajace — "to nie
+// jest diagnoza, tylko material do superwizji". Filtr rdzeniowy nie
+// odrozniał zakazu od twierdzenia i blokowal wlasnie to zdanie, ktore
+// chcemy tam miec. Zakaz i twierdzenie to przeciwienstwa, wiec traktowanie
+// ich tak samo bylo bledem filtra, nie cecha.
+//
+// WYLACZNIE "diagnoz". "pacjent" i "asystent" pozostaja bezwarunkowe:
+// one nazywaja RAME PRODUKTU, a nie czynnosc, wiec zaprzeczenie ich nie
+// oswieca ("to nie jest asystent" i tak wprowadza te rame do promptu).
+var negationExemptStems = map[string]bool{"diagnoz": true}
+
+// negationParticles to czastki, ktore czynia wystapienie zakazem.
+// "zamiast" jest tu celowo: "zamiast diagnozy podaj opis" to ta sama
+// intencja co przeczenie.
+var negationParticles = map[string]bool{"nie": true, "bez": true, "zamiast": true, "nigdy": true}
+
+// negationLookbehindWords to ile slow wstecz szukamy przeczenia.
+// Dwa, bo polskie przeczenie bywa rozdzielone jednym slowem
+// ("nie jest diagnoza", "nie ma diagnozy") — ale nie wiecej, zeby
+// odlegle "nie" z poprzedniego zdania nie usprawiedliwialo twierdzenia.
+const negationLookbehindWords = 2
+
+// negatedAt mowi, czy wystapienie rdzenia zaczynajace sie na bajcie idx
+// jest poprzedzone przeczeniem.
+func negatedAt(lower string, idx int) bool {
+	words := strings.FieldsFunc(lower[:idx], func(r rune) bool {
+		return !unicode.IsLetter(r)
+	})
+	for i := len(words) - 1; i >= 0 && i >= len(words)-negationLookbehindWords; i-- {
+		if negationParticles[words[i]] {
+			return true
+		}
+	}
+	return false
+}
+
+// snippet wycina czytelny fragment wokol wystapienia, zeby komunikat
+// bledu wskazywal MIEJSCE, a nie tylko rdzen. Bez tego autor promptu na
+// 10000 znakow szuka igly recznie.
+func snippet(s string, idx, stemLen int) string {
+	r := []rune(s)
+	// przelicz offset bajtowy na runowy
+	start := utf8.RuneCountInString(s[:idx])
+	from := max(0, start-40)
+	to := min(len(r), start+stemLen+30)
+	out := strings.ReplaceAll(string(r[from:to]), "\n", " ")
+	return strings.TrimSpace(out)
+}
+
 // validateChatPromptUpdate to regula dla klucza 'chat'.
 //
 // Rozni sie od raportowej w trzech punktach i kazdy jest celowy:
@@ -338,9 +390,23 @@ func validateChatPromptUpdate(prompt, note string) error {
 	}
 	low := strings.ToLower(p)
 	for _, stem := range brandBannedStems {
-		if strings.Contains(low, stem) {
+		exempt := negationExemptStems[stem]
+		for off := 0; ; {
+			i := strings.Index(low[off:], stem)
+			if i < 0 {
+				break
+			}
+			at := off + i
+			off = at + len(stem)
+			// Rdzen zwolniony po przeczeniu przechodzi TYLKO wtedy, gdy
+			// to konkretne wystapienie jest zaprzeczone. Jedno twierdzace
+			// wystarczy, zeby odrzucic caly prompt.
+			if exempt && negatedAt(low, at) {
+				continue
+			}
 			return status.Errorf(codes.InvalidArgument,
-				"chat prompt contains brand-banned word stem %q", stem)
+				"chat prompt contains brand-banned word stem %q: ...%s...",
+				stem, snippet(p, at, len(stem)))
 		}
 	}
 	return nil
