@@ -66,6 +66,12 @@ class _FakeIo implements UploadIo {
       EncryptResult(sizeBytes: u.sizeBytes, chunkCount: u.chunkCount);
 
   @override
+  Future<String?> materializeForOsHandOff(PendingUpload u) async =>
+      u.sourceKind == UploadSourceKind.plainFile
+          ? u.sourcePath
+          : '${u.sourcePath}/upload.flac';
+
+  @override
   Future<void> cleanupSource(PendingUpload u) async {
     cleanedLocalIds.add(u.localId);
   }

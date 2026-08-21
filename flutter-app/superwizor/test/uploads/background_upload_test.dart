@@ -27,6 +27,7 @@ class _FakeChannel extends BackgroundUploadChannel {
 
   bool handOffResult;
   int handOffCalls = 0;
+  List<String> handedFilePaths = [];
   List<String> cancelled = [];
   List<BackgroundUploadReport> journal = [];
   Set<String> alive = {};
@@ -46,6 +47,7 @@ class _FakeChannel extends BackgroundUploadChannel {
     required int totalBytes,
   }) async {
     handOffCalls++;
+    handedFilePaths.add(filePath);
     if (handOffResult) alive.add(localId);
     return handOffResult;
   }
@@ -63,6 +65,8 @@ class _FakeChannel extends BackgroundUploadChannel {
     return out;
   }
 }
+
+const _kZmaterializowany = '<materializuj>';
 
 class _FakeIo implements UploadIo {
   int putCalls = 0;
@@ -98,6 +102,23 @@ class _FakeIo implements UploadIo {
           {void Function(double)? onProgress}) async =>
       EncryptResult(sizeBytes: u.sizeBytes, chunkCount: u.chunkCount);
 
+  /// Odwzorowuje prawdziwe zachowanie: plainFile oddaje swoją ścieżkę,
+  /// encryptedChunks materializuje plik w katalogu sesji. `null` = brak
+  /// możliwości materializacji, wołający spada na ścieżkę w Darcie.
+  String? materializeResult = _kZmaterializowany;
+  int materializeCalls = 0;
+
+  @override
+  Future<String?> materializeForOsHandOff(PendingUpload u) async {
+    materializeCalls++;
+    if (materializeResult == _kZmaterializowany) {
+      return u.sourceKind == UploadSourceKind.plainFile
+          ? u.sourcePath
+          : '${u.sourcePath}/upload.flac';
+    }
+    return materializeResult;
+  }
+
   @override
   Future<void> cleanupSource(PendingUpload u) async => cleanupCalls++;
 
@@ -114,14 +135,30 @@ PendingUpload _seed(String id) => PendingUpload.initial(
       therapistId: 'th-1',
       patientFileId: 'pf-1',
       patientLanguageCode: 'pl-PL',
-      // plainFile: tylko ta ścieżka trafia do systemu — encryptedChunks
-      // wymaga odszyfrowania do tempa i zostaje w Darcie.
       sourceKind: UploadSourceKind.plainFile,
       sourcePath: '/tmp/$id.flac',
       contentType: 'audio/flac',
       sizeBytes: 1024,
       chunkCount: 1,
       actualDurationSeconds: 60,
+      needsServerSideConversion: false,
+      idempotencyKey: id,
+      now: DateTime.now().toUtc(),
+    );
+
+/// Wiersz nagrania zapisanego OFFLINE: recording_screen wybiera wtedy
+/// encryptedChunks, a sourcePath wskazuje katalog sesji, nie plik.
+PendingUpload _seedChunks(String id) => PendingUpload.initial(
+      localId: id,
+      therapistId: 'th-1',
+      patientFileId: 'pf-1',
+      patientLanguageCode: 'pl-PL',
+      sourceKind: UploadSourceKind.encryptedChunks,
+      sourcePath: '/tmp/sessions/$id',
+      contentType: 'audio/flac',
+      sizeBytes: 145 * 1024 * 1024,
+      chunkCount: 12,
+      actualDurationSeconds: 132 * 60,
       needsServerSideConversion: false,
       idempotencyKey: id,
       now: DateTime.now().toUtc(),
@@ -325,4 +362,80 @@ void main() {
 
     await runner.dispose();
   });
+
+  // ── Regresja 21.08.2026: nagranie zapisane OFFLINE też jedzie systemem ──
+  //
+  // Gałąź handOff wymagała `sourceKind == plainFile`. O rodzaju decyduje
+  // jedna gałąź na końcu nagrywania (online → plainFile, offline →
+  // encryptedChunks), ale jej skutek zostawał z wierszem NA ZAWSZE, także
+  // po powrocie zasięgu. Taki wiersz mógł jechać wyłącznie przy aplikacji
+  // na wierzchu, więc 146 MB przy 10% baterii wpadało w pętlę
+  // "przerwane → ponowienie → uśpienie procesu".
+  test('nagranie offline (encryptedChunks) też trafia do systemu', () async {
+    late Box<Map> box;
+    final dir = await Directory.systemTemp.createTemp('bg_chunks_');
+    Hive.init(dir.path);
+    box = await Hive.openBox<Map>('c${DateTime.now().microsecondsSinceEpoch}');
+    try {
+      final queue = UploadQueue(hiveBox: box);
+      final io = _FakeIo();
+      final channel = _FakeChannel();
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, background: channel),
+        background: channel,
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seedChunks('off1'));
+
+      expect(channel.handOffCalls, 1,
+          reason: 'wiersz offline musi zostać oddany systemowi');
+      expect(io.putCalls, 0,
+          reason: 'bajty wiezie system, nie proces na wierzchu');
+      expect(io.materializeCalls, 1);
+      expect(channel.handedFilePaths.single, endsWith('/upload.flac'),
+          reason: 'systemowi oddajemy zmaterializowany PLIK, nie katalog');
+      expect(queue.getById('off1')!.nativeLeaseAt, isNotNull);
+
+      await runner.dispose();
+    } finally {
+      await Hive.close();
+      await dir.delete(recursive: true);
+    }
+  });
+
+  test('materializacja nieudana → PUT w procesie, upload nie ginie', () async {
+    final dir = await Directory.systemTemp.createTemp('bg_chunks2_');
+    Hive.init(dir.path);
+    final box =
+        await Hive.openBox<Map>('d${DateTime.now().microsecondsSinceEpoch}');
+    try {
+      final queue = UploadQueue(hiveBox: box);
+      final io = _FakeIo()..materializeResult = null; // brak miejsca / klucza
+      final channel = _FakeChannel();
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, background: channel),
+        background: channel,
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seedChunks('off2'));
+
+      expect(channel.handOffCalls, 0, reason: 'nie ma czego oddać');
+      expect(io.putCalls, 1, reason: 'spadamy na dotychczasową ścieżkę');
+      expect(queue.getById('off2')!.phase, UploadPhase.completed);
+
+      await runner.dispose();
+    } finally {
+      await Hive.close();
+      await dir.delete(recursive: true);
+    }
+  });
+
 }

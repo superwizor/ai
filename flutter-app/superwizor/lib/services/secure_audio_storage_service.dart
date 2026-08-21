@@ -173,11 +173,59 @@ class SecureAudioStorageService {
 
   // ---------- read path: decrypt for upload ----------
 
+  /// Nazwa odszyfrowanego pliku oddawanego systemowemu uploaderowi.
+  /// Leży w KATALOGU SESJI, nie w tmp/ — patrz [decryptForOsHandOff].
+  static const osHandOffFileName = 'upload.flac';
+
+  /// Odszyfrowuje chunki do pliku w katalogu sesji, gotowego do oddania
+  /// systemowemu uploaderowi (iOS background URLSession).
+  ///
+  /// Dlaczego NIE tmp/, jak [decryptToTempFile]: transfer w tle trwa po
+  /// zawieszeniu procesu, a `tmp/` jest kasowane przez system, gdy
+  /// aplikacja nie działa. Katalog sesji jest tym samym miejscem, z
+  /// którego ścieżka online oddaje `raw.flac`, więc nie wprowadzamy
+  /// nowej klasy plików ani nowego miejsca z materiałem jawnym.
+  ///
+  /// Sprzątanie jest już załatwione: `cleanupSource` dla encryptedChunks
+  /// woła `purgeSession`, a ta czyści KAŻDY plik w katalogu sesji.
+  ///
+  /// Idempotentne. Jeżeli plik już istnieje i ma niezerowy rozmiar,
+  /// zwracamy go bez ponownego odszyfrowywania — ponowienie transferu
+  /// nie może kosztować kolejnych minut CPU na baterii, bo to dokładnie
+  /// ten scenariusz, który ta ścieżka naprawia.
+  Future<File> decryptForOsHandOff({required String sessionId}) async {
+    final dir = await _sessionDir(sessionId);
+    final out = File(p.join(dir.path, osHandOffFileName));
+    if (await out.exists() && await out.length() > 0) return out;
+    return _decryptChunksTo(sessionId: sessionId, out: out);
+  }
+
   /// Decrypts every `chunk_NNNNN.enc` in the session directory in seq
   /// order and writes the joined plaintext to a single temp file
   /// returned to the caller. Caller is responsible for deleting the
   /// temp file once the upload completes.
   Future<File> decryptToTempFile({required String sessionId}) async {
+    final tempDir = await getTemporaryDirectory();
+    // On macOS, the sandboxed temp directory (Caches/<bundleId>/) may not
+    // exist yet — getTemporaryDirectory() returns the *expected* path but
+    // doesn't guarantee the directory is created.  Without this guard,
+    // File.openWrite() throws PathNotFoundException.
+    if (!await tempDir.exists()) {
+      await tempDir.create(recursive: true);
+    }
+    return _decryptChunksTo(
+      sessionId: sessionId,
+      out: File(p.join(tempDir.path, 'session_$sessionId.flac')),
+    );
+  }
+
+  /// Wspólny rdzeń obu ścieżek odszyfrowania. Różnią się WYŁĄCZNIE
+  /// miejscem zapisu, więc reguły kolejności chunków, obsługi wersji
+  /// klucza i pracy poza wątkiem UI muszą pozostać jedną implementacją.
+  Future<File> _decryptChunksTo({
+    required String sessionId,
+    required File out,
+  }) async {
     final dir = await _sessionDir(sessionId);
     if (!await dir.exists()) {
       throw StateError('no encrypted chunks for session $sessionId');
@@ -193,16 +241,6 @@ class SecureAudioStorageService {
     if (chunks.isEmpty) {
       throw StateError('no encrypted chunks found in $dir');
     }
-
-    final tempDir = await getTemporaryDirectory();
-    // On macOS, the sandboxed temp directory (Caches/<bundleId>/) may not
-    // exist yet — getTemporaryDirectory() returns the *expected* path but
-    // doesn't guarantee the directory is created.  Without this guard,
-    // File.openWrite() throws PathNotFoundException.
-    if (!await tempDir.exists()) {
-      await tempDir.create(recursive: true);
-    }
-    final out = File(p.join(tempDir.path, 'session_$sessionId.flac'));
 
     // Resolve every key version that might be referenced by these chunks
     // on the MAIN isolate (the keychain plugin is main-isolate only),

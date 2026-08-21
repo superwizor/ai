@@ -275,30 +275,47 @@ class UploadWorker {
     // current)`, więc nowy obiekt o równej treści zapętliłby tick.
     if (u.isNativeLeaseFresh) return u;
 
-    // Oddanie transferu systemowi (docs/58 §5). Warunki są wąskie i
-    // celowo: background URLSession czyta PLIK z dysku, więc wchodzi
-    // tylko ścieżka plainFile — wiersze encryptedChunks wymagają
-    // odszyfrowania do tempa i zostają w Darcie. Wymagamy też URI
-    // resumable, bo bez niego native nie ma czego wznawiać.
+    // Oddanie transferu systemowi (docs/58 §5). Background URLSession
+    // czyta PLIK z dysku, więc wiersz musi mieć postać jednego pliku.
+    //
+    // Do 21.08.2026 warunek brzmiał `sourceKind == plainFile`, co
+    // TRWALE wykluczało nagrania zapisane offline: o rodzaju decyduje
+    // jedna gałąź na końcu nagrywania (recording_screen), a jej skutek
+    // zostawał z wierszem na zawsze — także po powrocie zasięgu. Taki
+    // wiersz mógł jechać wyłącznie przy aplikacji na wierzchu, więc
+    // 146 MB przy niskiej baterii wpadało w pętlę "przerwane →
+    // ponowienie → uśpienie procesu". Teraz encryptedChunks też wchodzi:
+    // materializujemy plik i oddajemy go systemowi.
+    //
+    // Wymagamy URI resumable, bo bez niego native nie ma czego wznawiać.
     final bg = _background;
     if (bg != null &&
         bg.supportsOsHandOff &&
-        u.sourceKind == UploadSourceKind.plainFile &&
         (u.resumableSessionUri ?? '').isNotEmpty) {
-      final handed = await bg.handOff(
-        localId: u.localId,
-        uploadUri: u.resumableSessionUri!,
-        filePath: u.sourcePath,
-        contentType: u.contentType,
-        totalBytes: u.sizeBytes,
-      );
-      if (handed) {
-        debugPrint('[upload-worker] ${u.localId} oddany systemowi '
-            '(background URLSession)');
-        return u.copyWith(nativeLeaseAt: _clock());
+      // Materializacja może być kosztowna (odszyfrowanie ~150 MB), ale
+      // jest idempotentna: ponowne oddanie tego samego wiersza nie
+      // odszyfrowuje drugi raz.
+      final path = await _io.materializeForOsHandOff(u);
+      if (path != null) {
+        final handed = await bg.handOff(
+          localId: u.localId,
+          uploadUri: u.resumableSessionUri!,
+          filePath: path,
+          contentType: u.contentType,
+          // Rozmiar rozstrzyga strona natywna z atrybutów pliku; to
+          // tylko wartość informacyjna. Dla encryptedChunks u.sizeBytes
+          // opisuje materiał źródłowy, nie zmaterializowany plik.
+          totalBytes: u.sizeBytes,
+        );
+        if (handed) {
+          debugPrint('[upload-worker] ${u.localId} oddany systemowi '
+              '(background URLSession, ${u.sourceKind.name})');
+          return u.copyWith(nativeLeaseAt: _clock());
+        }
       }
-      // Native odmówił (brak pliku, brak wtyczki w tym buildzie) —
-      // spadamy na PUT w procesie, czyli dotychczasowe zachowanie.
+      // Native odmówił (brak pliku, brak wtyczki w tym buildzie) albo
+      // materializacja się nie udała — spadamy na PUT w procesie, czyli
+      // dotychczasowe zachowanie.
     }
 
     try {

@@ -74,6 +74,12 @@ class FakeUploadIo implements UploadIo {
   }
 
   @override
+  Future<String?> materializeForOsHandOff(PendingUpload u) async =>
+      u.sourceKind == UploadSourceKind.plainFile
+          ? u.sourcePath
+          : '${u.sourcePath}/upload.flac';
+
+  @override
   Future<void> cleanupSource(PendingUpload u) async {
     calls.add('cleanupSource');
     if (cleanupError != null) throw cleanupError!;

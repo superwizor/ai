@@ -139,6 +139,18 @@ abstract class UploadIo {
   /// material the upload owns — encrypted chunks for the recording
   /// path. For plainFile this is a no-op (we never own the user's
   /// picked file).
+  /// Udostępnia zawartość wiersza jako POJEDYNCZY plik na dysku, gotowy
+  /// do oddania systemowemu uploaderowi, i zwraca jego ścieżkę.
+  ///
+  /// `plainFile` zwraca `sourcePath` bez pracy. `encryptedChunks` musi
+  /// najpierw odszyfrować chunki — dopóki tego nie robiliśmy, nagrania
+  /// zapisane offline były trwale wykluczone z transferu w tle i mogły
+  /// jechać wyłącznie przy aplikacji na wierzchu.
+  ///
+  /// Zwraca `null`, gdy materializacja jest niemożliwa; wołający ma
+  /// wtedy spaść na ścieżkę w Darcie, a nie wywalić uploadu.
+  Future<String?> materializeForOsHandOff(PendingUpload u);
+
   Future<void> cleanupSource(PendingUpload u);
 
   /// Startup hygiene: delete on-disk source material under the app's

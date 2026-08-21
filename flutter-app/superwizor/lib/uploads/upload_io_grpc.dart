@@ -600,6 +600,27 @@ class GrpcUploadIo implements UploadIo {
   // ── step 3 ────────────────────────────────────────────────────
 
   @override
+  Future<String?> materializeForOsHandOff(PendingUpload u) async {
+    try {
+      if (u.sourceKind == UploadSourceKind.plainFile) {
+        final f = File(u.sourcePath);
+        if (!await f.exists() || await f.length() == 0) return null;
+        return u.sourcePath;
+      }
+      final sessionId = _sessionIdFromPath(u.sourcePath);
+      final f = await _secureStorage.decryptForOsHandOff(sessionId: sessionId);
+      if (!await f.exists() || await f.length() == 0) return null;
+      return f.path;
+    } catch (e) {
+      // Brak miejsca, brak klucza, uszkodzony chunk — wołający spada na
+      // ścieżkę w Darcie, gdzie ten sam błąd przejdzie przez normalną
+      // klasyfikację zamiast wywalić transfer tutaj.
+      debugPrint('[upload-io] materializeForOsHandOff nieudane: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<void> cleanupSource(PendingUpload u) async {
     try {
       if (u.sourceKind == UploadSourceKind.encryptedChunks) {
