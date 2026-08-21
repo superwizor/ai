@@ -187,3 +187,36 @@ func TestQuoteRepairFixesUnfaithfulQuote(t *testing.T) {
 		t.Errorf("po udanej naprawie verifier_result=%q, want pass", h.recs.last().VerifierResult)
 	}
 }
+
+// Budzet ponowienia musi PRZEWYZSZAC bazowy. Przy odwrotnej relacji
+// ponowienie ucieloby sie szybciej niz pierwsze podejscie i mechanizm
+// bylby ozdoba — pulapka realna, bo 21.08 baza poszla z 2048 na 5000,
+// mijajac dotychczasowe 4096 ponowienia.
+func TestRetryBudgetExceedsBaseBudget(t *testing.T) {
+	if retryGenerationTokens <= maxGenerationTokens {
+		t.Fatalf("retry=%d nie przewyzsza bazy=%d — ponowienie po obcieciu nic nie daje",
+			retryGenerationTokens, maxGenerationTokens)
+	}
+}
+
+// Sufit wyjscia musi pomiescic maksymalna odpowiedz dopuszczana przez
+// schematy, inaczej limity prozy i limit tokenow walcza ze soba.
+// Szacunek: 3 hipotezy x (1500 znakow body + 120 tytul) + 3 x 3 cytaty
+// po ~200 znakow, przy ~3,6 znaka/token dla polskiego tekstu klinicznego.
+func TestOutputBudgetFitsSchemaMaximum(t *testing.T) {
+	const (
+		charsPerToken   = 3.6
+		maxUnits        = 3
+		bodyChars       = 1500
+		titleChars      = 120
+		quotesPerUnit   = 3
+		quoteChars      = 200
+		jsonOverheadPct = 1.25 // klucze, cudzyslowy, identyfikatory
+	)
+	worstChars := maxUnits * (bodyChars + titleChars + quotesPerUnit*quoteChars)
+	worstTokens := int32(float64(worstChars) / charsPerToken * jsonOverheadPct)
+	if maxGenerationTokens < worstTokens {
+		t.Errorf("sufit %d tokenow nie miesci najwiekszej odpowiedzi dopuszczanej schematem (~%d) — "+
+			"kazda pelna odpowiedz platilaby ponowienie", maxGenerationTokens, worstTokens)
+	}
+}

@@ -601,7 +601,7 @@
       "tabReport": "Report",
       "tabChat": "Chat — lens",
       "keyTabsLabel": "Which prompt to edit",
-      "chatKeyHint": "The lens changes the chat's language and analytic ordering — the task and rules live in per-intent prompts in code, and invariants are appended by Render() regardless of this field. Empty text disables the lens for this modality. 2,500-char cap: the lens rides on every generator call."
+      "chatKeyHint": "The lens changes the chat's language and analytic ordering — the task and rules live in per-intent prompts in code, and invariants are appended by Render() regardless of this field. Empty text disables the lens for this modality. 5,500-char cap: room for concrete instructions (closed lists, calibration rules), still far tighter than the report prompt because the lens rides on every question, not once per report."
     },
     "orgCreate": {
       "metaTitle": "New organization",

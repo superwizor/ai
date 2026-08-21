@@ -30,7 +30,7 @@ import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog
 import { diffLines, type DiffOp } from "@/lib/diff";
 
 const MAX_PROMPT_CHARS = 20000; // mirrors clinical-svc maxPromptChars
-const MAX_CHAT_PROMPT_CHARS = 2500; // mirrors clinical-svc maxChatPromptChars
+const MAX_CHAT_PROMPT_CHARS = 5500; // mirrors clinical-svc maxChatPromptChars
 
 // Which JSONB key of therapist_ai_general_prompt is being edited.
 // "system" = the report prompt (llm-worker call 2); "chat" = the chat

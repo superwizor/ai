@@ -2222,8 +2222,9 @@ export type AdminUpdateModalityPromptRequest = Message<"clinical.v1.AdminUpdateM
   /**
    * Full replacement text for the key selected by prompt_key.
    * For "system": trimmed non-empty, ≤ 20000 chars.
-   * For "chat": ≤ 2500 chars (latency budget — the lens rides on every
-   * grounded generator call); EMPTY IS VALID and disables the lens.
+   * For "chat": ≤ 5500 chars (the lens rides on every grounded
+   * generator call, so it stays far tighter than the report prompt);
+   * EMPTY IS VALID and disables the lens.
    * Brand-frame banned words are rejected server-side for "chat".
    *
    * @generated from field: string system_prompt = 2;

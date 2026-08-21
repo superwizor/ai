@@ -154,15 +154,23 @@ ZASADY CYTOWANIA (bezwzgledne):
 
 // maxGenerationTokens caps the generated answer.
 //
-// 2048, not 4096. Measured 2026-08-20 on a real A5 turn: the model
-// produced 903 output tokens at 2048 and 912 at 4096 — the same answer —
-// but took 7.4 s instead of 12.8 s. The cap changes how the model plans
-// its output, so the larger value bought five and a half seconds of
-// latency for nine tokens of content.
+// 5000. Historia tej stalej to dwa POMIARY, nie preferencje:
 //
-// Not lower: at 1024 the same call returned 139 tokens, which is a
-// truncated answer, and a truncated hypothesis is worse than a slow one.
-const maxGenerationTokens int32 = 2048
+// 20.08 rano bylo 2048, bo 4096 kosztowalo 12,8 s wobec 7,4 s przy
+// identycznej tresci. Wtedy nie wiedzielismy, ze gemini-2.5-flash mysli
+// domyslnie, a tokeny myslenia licza sie do MaxOutputTokens — to sufit
+// napedzal rozmyslanie, nie dlugosc odpowiedzi.
+//
+// 21.08, juz z ThinkingBudget=0, ten sam pomiar na dlugiej soczewce CBT:
+// budzet 2048 -> 3,52 s, budzet 5000 -> 2,23 s. Zaleznosc znikla razem z
+// myslami. Wyzszy sufit jest wiec darmowy w latencji, a usuwa ponowienia
+// po obcieciu, ktore kosztowaly 8-10 s na turach bogatych w cytaty
+// (A3_FORMAT 21,2 s i A1_SEARCH 18,5 s rano 21.08).
+//
+// Nie w nieskonczonosc: limity dlugosci prozy w schematach (maxLength na
+// body/title) trzymaja rozmiar odpowiedzi. Ten sufit jest siatka na
+// przypadki brzegowe, nie zaproszeniem do esejow.
+const maxGenerationTokens int32 = 5000
 
 // groundedSystemPrompts are the per-intent instructions for everything
 // that works from client material.
@@ -572,10 +580,14 @@ func (s Service) preselect(ctx context.Context, t Turn, query string) (map[uuid.
 	return filter, len(ids), cost
 }
 
-// retryGenerationTokens to budzet drugiej proby po obcieciu. Wiekszosc
-// odpowiedzi miesci sie w maxGenerationTokens i placi nizsza latencje;
-// rzadka duza dostaje drugi, wolniejszy przebieg zamiast blokady.
-const retryGenerationTokens int32 = 4096
+// retryGenerationTokens to budzet drugiej proby po obcieciu.
+//
+// Musi byc WIEKSZY od maxGenerationTokens, inaczej ponowienie ucielo by
+// sie szybciej niz pierwsze podejscie i mechanizm bylby ozdoba. Po
+// podniesieniu bazy do 5000 idzie na 8192 (limit modelu jest znacznie
+// wyzej). Przy dzisiejszych limitach schematow ponowienie powinno byc
+// rzadkie — zostaje jako siatka, nie jako sciezka typowa.
+const retryGenerationTokens int32 = 8192
 
 // extractiveFallback buduje odpowiedz z samego materialu zrodlowego —
 // realizacja wprost zapisu ADR o zastapieniu zablokowanej tresci wersja

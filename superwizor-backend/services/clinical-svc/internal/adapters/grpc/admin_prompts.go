@@ -38,11 +38,22 @@ const (
 	// so 20k is generous headroom without being abusable.
 	maxPromptChars = 20000
 
-	// maxChatPromptChars ogranicza soczewke czatu. Znacznie ciasniej niz
-	// prompt raportowy, bo soczewka jedzie na KAZDYM uziemionym wywolaniu
-	// generatora — dzien 20.08 pokazal, jak drogie sa nadmiarowe tokeny
-	// wejscia w tym torze.
-	maxChatPromptChars = 2500
+	// maxChatPromptChars ogranicza soczewke czatu.
+	//
+	// 5500. Pierwotne 2500 bylo ostrozne, bo soczewka jedzie na KAZDYM
+	// uziemionym wywolaniu generatora, a 20.08 tokeny wejscia wygladaly
+	// na drogie. Pomiar 21.08 pokazal cene wprost: soczewka 5500 zamiast
+	// ~1000 to +1884 tokeny wejscia i ~0,9 s, a odpowiedz wychodzi
+	// bogatsza (2 hipotezy zamiast 1 na tym samym materiale).
+	//
+	// Powod produktowy jest mocniejszy niz ta cena: soczewka bez miejsca
+	// na konkretne instrukcje — zamknieta liste etykiet, regule kalibracji
+	// pewnosci, zakaz opisywania mimiki — degeneruje sie do ogolnikow, a
+	// wtedy nie robi tego, po co istnieje.
+	//
+	// Nadal ciasniej niz prompt raportowy (20000), bo tamten idzie raz na
+	// raport, a ten na kazde pytanie.
+	maxChatPromptChars = 5500
 
 	promptKeySystem = "system"
 	promptKeyChat   = "chat"
@@ -301,7 +312,7 @@ var brandBannedStems = []string{"pacjent", "kliniczn", "diagnoz", "asystent", "c
 // Rozni sie od raportowej w trzech punktach i kazdy jest celowy:
 //   - PUSTY tekst jest poprawny — wylacza soczewke tej modalnosci
 //     (czat wraca do golych promptow per intencja);
-//   - limit 2500 znakow, bo soczewka jedzie na kazdym wywolaniu
+//   - limit 5500 znakow, bo soczewka jedzie na kazdym wywolaniu
 //     generatora;
 //   - slowa ramy marki odrzucane serwerowo: soczewka to jedyny prompt
 //     edytowalny z panelu, wiec to jedyne miejsce, gdzie taki wpis
