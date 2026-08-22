@@ -9,7 +9,8 @@
 
 modality: string                # ppt | cbt | psychodynamic | gestalt | st | sys | eft | coach | univ
 version: semver
-approved_by: [string]           # PUSTE = szkic; CI blokuje użycie w prod (REPORT_PIPELINE_* -> fallback legacy)
+approved_by: [string]           # v1.2: wypełniane przez Ontology Studio przy zatwierdzeniu (lustro statusu
+                                # approved w bazie); w plikach SEED zawsze puste — import tworzy wersję draft
 constructs:
   <construct_id>:
     label_pl: string

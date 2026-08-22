@@ -3,7 +3,7 @@
 | Pole | Wartość |
 |---|---|
 | Plik | `docs/adr/reasoning_docs/16_Plan_Implementacji_Ontologia_v1.0.md` |
-| Wersja | 1.1 |
+| Wersja | 1.2 |
 | Data | 22 sierpnia 2026 r. |
 | Status | Plan wykonawczy dla dokumentu 11 v1.4 — do akceptacji |
 | Podstawa | `11_Architektura_Wnioskowania_Ontologia_v1.4.md` (S1–S5, metaschemat, tickety T1–T36); dokumenty 12–15 przywoływane przez 11 |
@@ -15,6 +15,7 @@
 |---|---|---|
 | 1.0 | 2026-08-22 | Pierwsza wersja planu. |
 | 1.1 | 2026-08-22 | Sekcja 2.5: tryb eksperymentalny — raporty S1–S5 na szkicu ontologii przed autoryzacją; wejście główne: przełącznik w ustawieniach aplikacji (dual-run per nowa sesja), uzupełniające: akcja na żądanie (stare sesje + inna modalność); doprecyzowanie bramki fail-closed; F2-DoD. |
+| 1.2 | 2026-08-22 | DECYZJA PRODUKTOWA: ontologia przenosi się z repo (read-only, PR/CODEOWNERS) do bazy — Ontology Studio z cyklem życia draft → ready_for_review → approved, nowa rola ONTOLOGY_EDITOR, aktywacja produkcyjna wyłącznie przez SUPERWIZOR_ADMIN. Własności bezpieczeństwa dawnego D2 odtworzone innymi środkami (four-eyes, niemutowalność approved, walidacja serwerowa, audyt). Pliki ontology/ w repo degradują do seedów. |
 
 Ten dokument nie powtarza architektury — mapuje ją na repozytorium. Gdzie
 dokument 11 mówi „co i dlaczego", ten mówi „gdzie, czym i w jakiej
@@ -34,11 +35,18 @@ niezmienniki, które obowiązują każdą fazę tego planu:
    powstaje OBOK, za przełącznikiem. Powrót do starego modelu jest
    operacją konfiguracyjną (≤ 30 s propagacji), nie deployem i nie
    rollbackiem kodu.
-2. **Ontologia jest danymi w repo, read-only w runtime** (11 §3.1, D2).
-   Panel administracyjny NIE edytuje ontologii produkcyjnej — czyta ją,
-   mierzy jej jakość i produkuje PROPOZYCJE zmian (patch → PR). Autoryzacja
-   pozostaje w CODEOWNERS + CI. Inaczej collapse ontologii wraca o warstwę
-   wyżej, tylko w ładniejszym UI.
+2. **Ontologia jest danymi wersjonowanymi z wymuszonym cyklem życia**
+   (zmiana względem 11 §3.1/D2 — decyzja produktowa 22.08.2026). Treść
+   żyje w bazie i jest edytowana w **Ontology Studio** (sekcja 4), ale
+   cztery własności dawnego mechanizmu PR/CODEOWNERS są odtworzone
+   innymi środkami i są NIENEGOCJOWALNE:
+   (a) wersja `approved` jest niemutowalna — edycja to zawsze nowa
+   wersja `draft`; (b) autor wersji nie może jej sam zatwierdzić
+   (four-eyes); (c) walidacja metaschematem jest serwerowa i twarda —
+   przy zapisie, zatwierdzeniu i aktywacji; (d) **aktywacja produkcyjna
+   to osobna operacja, wyłącznie SUPERWIZOR_ADMIN**, wymagająca statusu
+   `approved` ORAZ zielonego benchmarku. Status ≠ live: zatwierdzona
+   wersja nie serwuje niczego, dopóki admin jej nie aktywuje.
 
 ---
 
@@ -65,13 +73,13 @@ Zachowanie:
 
 - `legacy` — dokładnie dzisiejsza ścieżka, bajt w bajt.
 - `ontology` — potok S1–S5. Wartość jest ignorowana z ostrzeżeniem w
-  logu, jeżeli rejestr ontologii nie ma dla modalności wersji z
-  niepustym `approved_by` ALBO ostatni benchmark tej pary
-  (ontologia, prompty) nie przeszedł bramki 8.2 — wtedy raport idzie
+  logu, jeżeli modalność nie ma AKTYWNEJ wersji ontologii (wskaźnik
+  `active_version_id`, ustawiany wyłącznie przez SUPERWIZOR_ADMIN na
+  wersji `approved` z zielonym benchmarkiem) — wtedy raport idzie
   ścieżką `legacy`, a telemetria dostaje `report_pipeline_fallback`.
   Fail-closed na `legacy`, nigdy odwrotnie.
 
-Jedynym usankcjonowanym obejściem bramki `approved_by` jest **kanał
+Jedynym usankcjonowanym obejściem bramki aktywnej wersji jest **kanał
 eksperymentalny** (sekcja 2.5): osobny artefakt, jawnie oznaczony, nigdy
 nie zastępujący raportu produkcyjnego. Bramka chroni RAPORT PRODUKCYJNY,
 nie zabrania ekspertom patrzeć na wyniki szkicu — bez tego pętla
@@ -141,8 +149,10 @@ lustro produkcyjne), nie jest materiałem klinicznym. Render z twardym
 banerem: „EKSPERYMENT — ontologia niezautoryzowana (szkic X.Y.Z).
 Nie służy do pracy klinicznej." + standardowe oznaczenie art. 50.
 
-**Co obchodzi, a czego NIE obchodzi.** Obchodzi wyłącznie dwie bramki:
-`approved_by` i benchmark. NIE obchodzi niczego z warstwy
+**Co obchodzi, a czego NIE obchodzi.** Obchodzi wyłącznie bramkę
+aktywnej wersji (może użyć KAŻDEJ wersji, także `draft` — dual-run
+bierze najnowszą, arkusz na żądanie pozwala wybrać; użyta wersja jest
+stemplowana na raporcie) oraz benchmark. NIE obchodzi niczego z warstwy
 bezpieczeństwa: walidator dziedzinowy (R1–R9), granica terapeuty (R10),
 wyłączenie spanów ryzyka (T22) i weryfikator wyjścia (V1–V6) działają w
 trybie eksperymentalnym identycznie jak w produkcyjnym — to nie jest
@@ -218,8 +228,9 @@ raporty eksperymentalne NIE są liczone — filtr po `pipeline_version`.
 
 | Komponent (11 §7) | Rozstrzygnięcie w tym repo | Uzasadnienie |
 |---|---|---|
-| `ontology-registry` (nowy serwis) LUB moduł | **`pkg/ontology` — biblioteka Go + `go:embed` plików YAML** do binarek, które jej potrzebują (llm-worker, clinical-svc); endpointy dla panelu admina serwuje clinical-svc (admin RPC) | Ontologia jest read-only w runtime i „zmiana = release" (11 §7) — embed realizuje to dosłownie: nowa wersja ontologii wchodzi z deployem, nie ma osobnego serwisu do utrzymania, nie ma zależności sieciowej w ścieżce generacji raportu |
-| Walidacja metaschematem w CI (T1) | krok w `ci.yml`: `go run ./pkg/ontology/cmd/ontology-lint ./ontology/...`; blokada pustego `approved_by` dla plików referencjonowanych przez `REPORT_PIPELINE_*` | wzorzec: istniejąca bramka guardrail-eval (F8) |
+| `ontology-registry` (nowy serwis) LUB moduł | **`pkg/ontology` — biblioteka Go czytająca AKTYWNĄ wersję z bazy** (cache TTL 30 s, wzorzec appconfig); Studio i workflow serwuje clinical-svc (RPC `OntologyStudio*`); llm-worker rozstrzyga wersję RAZ na starcie generacji i stempluje ją na raporcie | v1.2: ontologia w bazie zamiast go:embed — edycja w Studio bez release; niezmienność zapewnia status `approved` + append-only `ontology_versions`, nie system plików |
+| Migracja 000091 | `ontology_versions` (append-only: modality_id, semver, content JSONB, status draft/ready_for_review/approved, created_by, approved_by, change_note) + wskaźnik `active_version_id` na modalności + `ALTER TYPE user_role ADD VALUE 'ONTOLOGY_EDITOR'` + import seedów z `ontology/*/0.1.0.yaml` jako `draft` | wzorzec 1:1 z modality_prompt_versions (append-only + live column + FOR UPDATE); seedy z repo przestają być źródłem prawdy runtime |
+| Walidacja metaschematem (T1) | **serwerowa, w `pkg/ontology`** — twarda przy zapisie draftu, zatwierdzeniu i aktywacji (nie da się utrwalić niesparsowalnej treści); `ontology-lint` w CI zostaje wyłącznie dla plików seedowych w repo | jedna implementacja walidatora używana w obu miejscach |
 | S1/S1.5/S2/S2b/S4 (LLM + deterministyka) | `services/ai-pipeline-svc/internal/ontopipe/` — osobne pliki per etap; prompty w `ontopipe/prompts/*.txt` wersjonowane jak `pkg/guardrail/prompts/` | spójność z istniejącą konwencją promptów w repo |
 | S3/S3b/S5 (walidatory R1–R10, V1–V6) | `pkg/guardrail/ontology_rules.go` + współdzielony entailment | 11 §7 wprost: wspólny komponent raportu i czatu; `pkg/guardrail` już jest współdzielony |
 | Model danych spans/claims (T4) | migracja 000090: `report_spans`, `report_claims`, `report_relations` w clinical-svc (sqlc); spany szyfrowane jak segmenty | proweniencja span→claim→raport; kolumny nieszyfrowane: id, statusy, construct_id, liczniki |
@@ -239,20 +250,40 @@ Rozszerzenie istniejącego admina (`marketing-site/src/app/[locale]/admin/`,
 wzorce: `PromptStudio.tsx`, `ChatControls.tsx`, `ActionDialog` z wymaganą
 notatką). Wszystkie teksty przez i18n (pl/en, parytet w CI).
 
-### 4.1. `/admin/ontologies` — Rejestr ontologii (viewer)
+### 4.1. `/admin/ontologies` — Ontology Studio (edycja + cykl życia)
 
-- Lista modalności: wersja ontologii, status autoryzacji (`approved_by`
-  puste = „SZKIC — zablokowane w prod"), liczba konstruktów, data,
-  aktywny potok (legacy/ontology, globalnie i per org).
-- Szczegół konstruktu: definicja, `values` (enum), `aliases`, `is_not`,
-  `min_evidence`, `common_confusions`, `source` (work_id/strony),
-  przykłady i kontrprzykłady. Diff między wersjami semver.
-- Źródło danych: nowe RPC `AdminListOntologies` / `AdminGetOntology`
-  w clinical-svc (czytają z wkompilowanego `pkg/ontology`).
-- **Bez edycji.** Przycisk „Zaproponuj poprawkę" otwiera formularz
-  ograniczony do `common_confusions` i `aliases` (najczęstsze wnioski z
-  produkcji), który generuje gotowy patch YAML do wklejenia w PR —
-  odpowiednik `AdminUpdateModalityPrompt` NIE powstaje dla ontologii.
+Wzorzec: Prompt Studio, z twardszym workflow.
+
+- **Lista modalności** → wersje ze statusami (`draft` /
+  `ready_for_review` / `approved`) + wskaźnik AKTYWNEJ wersji prod.
+- **Edytor wersji `draft`**: v1 edytor YAML z walidacją serwerową na
+  żywo (endpoint lint — te same reguły co przy zapisie) i podglądem
+  konstruktów renderowanym strukturalnie; diff między wersjami;
+  optimistic lock jak w Prompt Studio. Edytor strukturalny per
+  konstrukt (formularze zamiast YAML) — iteracja 2, świadomie.
+- **Przejścia statusów** (każde z wymaganą notatką, ActionDialog,
+  pełny audyt):
+  - `draft → ready_for_review` — autor zgłasza;
+  - `ready_for_review → approved` — WYŁĄCZNIE ktoś inny niż autor
+    wersji (ONTOLOGY_EDITOR lub admin) — four-eyes egzekwowane
+    serwerowo, nie w UI;
+  - `ready_for_review → draft` — odrzucenie z uzasadnieniem;
+  - `approved` jest NIEMUTOWALNE — „edytuj" tworzy nową wersję `draft`
+    z podbitym semver i skopiowaną treścią.
+- **Aktywacja produkcyjna** — osobny przycisk, widoczny tylko dla
+  SUPERWIZOR_ADMIN, aktywny gdy: status `approved` ✓ + benchmark
+  zielony ✓ (checklista przy przycisku). Ustawia `active_version_id`;
+  przepięcie wstecz tą samą ścieżką. ONTOLOGY_EDITOR tego przycisku
+  NIE MA — tworzy i zatwierdza treść, nie decyduje o produkcji.
+- **Role i dostęp**: sekcja `/admin/ontologies` dostępna dla
+  ONTOLOGY_EDITOR i SUPERWIZOR_ADMIN (AdminGuard rozszerzony o wyjątek
+  sekcyjny); reszta admina pozostaje wyłącznie dla admina. Nowa rola w
+  enumie `user_role`; nadawana z panelu użytkowników przez admina.
+- RPC (clinical-svc): `OntologyStudioList / GetVersion / CreateDraft /
+  UpdateDraft / Lint / SubmitForReview / Approve / Reject /
+  ActivateVersion` — wszystkie audytowane; `ActivateVersion` za
+  `requireSuperwizorAdmin`, pozostałe za `requireOntologyEditor`
+  (dopuszcza też admina).
 
 ### 4.2. `/admin/ontologies/rollout` — Sterowanie potokiem
 
@@ -277,13 +308,17 @@ notatką). Wszystkie teksty przez i18n (pl/en, parytet w CI).
 - To jest wejście pętli eksperckiej: z tego ekranu powstają propozycje
   do `common_confusions` (przycisk z 4.1).
 
-### 4.4. Czego panele świadomie nie robią
+### 4.4. Czego Studio świadomie nie robi
 
-- Nie edytują `values`, `min_evidence`, definicji — to PR + CODEOWNERS (D2).
-- Nie pokazują treści spanów/cytatów (PII) — wyłącznie liczniki i
+- Nie zatwierdza wersji jej autorem (four-eyes serwerowo) i nie edytuje
+  wersji `approved` — niemutowalność zastępuje dawny CODEOWNERS.
+- Nie aktywuje na produkcji niczego poza `approved` z zielonym
+  benchmarkiem — i wyłącznie ręką SUPERWIZOR_ADMIN.
+- Nie pokazuje treści spanów/cytatów (PII) — wyłącznie liczniki i
   identyfikatory konstruktów, spójnie z telemetrią 8.3 „bez PII".
-- Nie przełączają potoku „na chwilę, bez notatki" — notatka obowiązkowa
-  jak w ChatControls, bo wpis audytowy czyta następny dyżurny.
+- Nie przełącza potoku ani nie aktywuje wersji „na chwilę, bez
+  notatki" — notatka obowiązkowa, bo wpis audytowy czyta następny
+  dyżurny.
 
 ---
 
@@ -295,10 +330,10 @@ bramkę wyjściową — bez jej przejścia następna nie startuje.
 | Faza | Zakres | Bramka wyjściowa |
 |---|---|---|
 | **F0 — fundament i przełącznik** (T1, T3, T4) | `pkg/ontology` (loader + lint + embed), metaschemat w CI, migracje 000089/000090, klucze `REPORT_PIPELINE_*` w appconfig (wszystkie `legacy`), rozgałęzienie w llm-worker z gałęzią `ontology` zwracającą jeszcze błąd „not implemented" → fallback | CI waliduje ontologie; przełącznik istnieje i fail-closed działa (test: ustawienie `ontology` bez implementacji NIE psuje generacji raportu) |
-| **F1 — szkielety ontologii** (T2 + przykład CBT) | `ontology/ppt/0.1.0.yaml` i `ontology/cbt/0.1.0.yaml` (sekcja 6 — pliki są JUŻ w tym PR jako szkice z `approved_by: []`), sesja autoryzacyjna z ekspertami zakontraktowana (D2), changelog decyzji | Ekspercka autoryzacja PPT rozpoczęta; rozbieżności katalogów (sekcja 6.3) rozstrzygnięte lub jawnie odroczone |
+| **F1 — szkielety ontologii** (T2 + przykład CBT) | seedy `ontology/ppt/0.1.0.yaml` i `ontology/cbt/0.1.0.yaml` zaimportowane migracją jako wersje `draft`; rola ONTOLOGY_EDITOR nadana ekspertom; praca ekspercka zakontraktowana (D2) | Eksperci pracują w Studio na draftach PPT; rozbieżności katalogów (sekcja 6.3) rozstrzygnięte lub jawnie odroczone |
 | **F2 — potok S1–S5 dla PPT** (T5–T8 + T22 + T28 + R9) | ontopipe: S1 (+weryfikacja mechaniczna cytatów), S1.5 (recurrence/co_occurrence/latency), S2 per konstrukt (schema z enumem, `insufficient_data`/`no_fit`), S3 R1–R10, S4 bez transkryptu (wymuszone sygnaturą), S5 V1–V6; spany ryzyka wyłączone (T22); zapis spans/claims + wersji na raporcie | Testy jednostkowe per reguła; R5 i R10: 0 przepuszczeń na zestawach adversarialnych; raport PPT generuje się end-to-end na kanarku (org testowa); **tryb eksperymentalny (2.5) działa z czatu Flutter dla PPT i CBT** — bo bez niego sesja autoryzacyjna F1 nie ma materiału |
 | **F3 — benchmark i bramka** (T9, T10, T32) | harness, złoty zestaw PPT (≥15 transkryptów × ≥2 ekspertów, podzbiory `no_fit`/`insufficient_data`, protokół osiągalności), bramka CI na progach 8.2 | benchmark PPT zielony → dopiero to odblokowuje przełącznik `ontology` dla PPT poza kanarkiem |
-| **F4 — panele administracyjne** (równolegle z F2/F3 po F0) | 4.1 rejestr, 4.2 rollout, 4.3 jakość; RPC-y w clinical-svc; i18n; testy | Playwright: przełączenie kanarka z panelu + zrzut; parytet l10n |
+| **F4 — Ontology Studio + panele** (rusza zaraz po F0 — Studio jest warunkiem pracy eksperckiej F1) | 4.1 Studio (edytor, statusy, four-eyes, aktywacja admina), 4.2 rollout, 4.3 jakość; RPC-y; rola w enumie + panel users; i18n; testy | Playwright: pełny cykl draft→review→approve→activate na kanarku + zrzuty; four-eyes: test serwerowy, że autor nie zatwierdzi własnej wersji |
 | **F5 — CBT i kolejne** (T19–T27 wg D3) | rozszerzenia metaschematu M1–M4 są w `pkg/ontology` od F0 (metaschemat 3.2 zawiera je w całości) — F5 to autoryzacja treści CBT, złoty zestaw CBT, benchmark, przełączenie | sekwencyjnie per D3: PPT → CBT → psychodynamiczna → ST → Gestalt |
 | **F6 — integracja czatu** (T11, T12) | picker A7 z enumów, A4 z ontologii+RAG, reguły ontologiczne w weryfikatorze czatu; soczewki czatu (Prompt Studio) pozostają bez zmian do tej fazy | latencja czatu p95 utrzymana; osobna decyzja o losie soczewek po T11 |
 
@@ -331,9 +366,12 @@ zgodnie z dokumentem 13 — nie jest warunkiem przełączenia PPT.
   `cbt_episode` (M1: epizod 5-elementowy z kwantyfikacją `stated_only`)
   i `cognitive_distortion` z `multi_label: true` (M2).
 
-Wszystkie `approved_by: []` — CI blokuje użycie w prod. Treść pochodzi z
-dokumentu 11 §3.3 oraz z soczewek czatu (PPT i CBT) autorstwa zespołu;
-każda lista i próg oznaczone jako placeholder do autoryzacji.
+Od v1.2 pliki te są SEEDAMI: migracja 000091 importuje je jako wersje
+`draft` do bazy i tam toczy się dalsze życie treści (Studio). Pliki w
+repo pozostają jako dokumentacja formatu i punkt startowy świeżego
+środowiska; nie są źródłem prawdy runtime. Treść pochodzi z dokumentu
+11 §3.3 oraz z soczewek czatu (PPT i CBT); każda lista i próg oznaczone
+jako placeholder do autoryzacji.
 
 ### 6.2. Skąd wzięta treść i co jest jej mocną stroną
 
