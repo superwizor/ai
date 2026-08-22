@@ -3,6 +3,7 @@ package appconfig
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -86,8 +87,9 @@ func TestNilQuerierYieldsDefaults(t *testing.T) {
 	if r.ChatEnabled(ctx, uuid.Nil) {
 		t.Error("nil querier must leave chat disabled")
 	}
-	if got := r.Int64(ctx, KeyAIChatQuotaMicroUSD, uuid.Nil); got != 1_500_000 {
-		t.Errorf("quota default = %d, want 1500000", got)
+	if got, want := r.Int64(ctx, KeyAIChatQuotaMicroUSD, uuid.Nil),
+		defaultInt64(t, KeyAIChatQuotaMicroUSD); got != want {
+		t.Errorf("quota default = %d, want %d", got, want)
 	}
 }
 
@@ -244,8 +246,9 @@ func TestGarbageValuesFallBackToSafeDefaults(t *testing.T) {
 	if got := r.ChatMode(ctx, uuid.Nil); got != ModeDefinedOps {
 		t.Errorf("unknown mode = %q, want %q", got, ModeDefinedOps)
 	}
-	if got := r.Int64(ctx, KeyAIChatQuotaMicroUSD, uuid.Nil); got != 1_500_000 {
-		t.Errorf("garbage quota = %d, want default 1500000", got)
+	if got, want := r.Int64(ctx, KeyAIChatQuotaMicroUSD, uuid.Nil),
+		defaultInt64(t, KeyAIChatQuotaMicroUSD); got != want {
+		t.Errorf("garbage quota = %d, want default %d", got, want)
 	}
 	if got := r.Float64(ctx, KeyAIChatClassifierTau, uuid.Nil); got != 0.85 {
 		t.Errorf("garbage tau = %v, want default 0.85", got)
@@ -295,4 +298,24 @@ func TestEveryDeclaredKeyHasADefault(t *testing.T) {
 			t.Errorf("key %q has no compiled-in default", k)
 		}
 	}
+}
+
+// defaultInt64 czyta wartosc skompilowana zamiast powtarzac ja w tescie.
+//
+// Do 22.08.2026 obie asercje mialy 1_500_000 wpisane na sztywno, wiec
+// podniesienie limitu wywalalo dwa testy, ktore o limit w ogole nie
+// pytaly — sprawdzaja, czy reader SIEGA po wartosc domyslna, a nie ile
+// ona wynosi. Sama liczba jest decyzja produktowa i jej miejsce jest w
+// defaults oraz w migracji, nie w tescie readera.
+func defaultInt64(t *testing.T, key string) int64 {
+	t.Helper()
+	raw, ok := Default(key)
+	if !ok {
+		t.Fatalf("brak wartosci domyslnej dla %q", key)
+	}
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		t.Fatalf("wartosc domyslna %q = %q, nie liczba: %v", key, raw, err)
+	}
+	return v
 }

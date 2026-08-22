@@ -62,7 +62,7 @@ var defaults = map[string]string{
 	KeyAIChatEnabled:       "false",
 	KeyAIChatMode:          ModeDefinedOps,
 	KeyAIChatClassifierTau: "0.85",
-	KeyAIChatQuotaMicroUSD: "1500000",
+	KeyAIChatQuotaMicroUSD: "4000000",
 }
 
 // DefaultTTL bounds how stale a read can be, and therefore how long a
