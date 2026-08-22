@@ -34,6 +34,7 @@ import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/session_status_screen.dart';
+import 'providers/services_provider.dart';
 import 'services/inbox_refresh_listener.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
@@ -222,6 +223,14 @@ void main() async {
   // inbox — works foreground on iOS AND web, where FCM does not. Follows
   // the signed-in user via authStateChanges; harmless before login.
   InboxRefreshListener(container).start();
+
+  // Utrzymanie rejestracji tokenu FCM. Do 22.08.2026 rejestracja odpalała
+  // się wyłącznie z ekranu konfiguracji terapeuty, czyli raz w życiu
+  // konta — reinstalacja, nowe urządzenie i rotacja tokenu (co ~30 dni)
+  // kończyły się trwałą ciszą bez śladu w UI. Tak samo jak wyżej: śledzi
+  // zalogowanego użytkownika, nieszkodliwe przed logowaniem, NIE pyta o
+  // uprawnienia (o zgodę prosi ekran konfiguracji).
+  container.read(fcmTokenServiceProvider).start();
 
   // Listen to connectivity restoration and refresh patient data
   setupConnectivityListener(container);
