@@ -3,11 +3,18 @@
 | Pole | Wartość |
 |---|---|
 | Plik | `docs/adr/reasoning_docs/16_Plan_Implementacji_Ontologia_v1.0.md` |
-| Wersja | 1.0 |
+| Wersja | 1.1 |
 | Data | 22 sierpnia 2026 r. |
 | Status | Plan wykonawczy dla dokumentu 11 v1.4 — do akceptacji |
 | Podstawa | `11_Architektura_Wnioskowania_Ontologia_v1.4.md` (S1–S5, metaschemat, tickety T1–T36); dokumenty 12–15 przywoływane przez 11 |
 | Zakres | Konkretyzacja ticketów na TEN monorepo: serwisy, pliki, migracje, klucze konfiguracji, panele administracyjne, mechanizm wdrożenia modalność-po-modalności z powrotem do obecnego potoku |
+
+### Changelog
+
+| Wersja | Data | Zmiana |
+|---|---|---|
+| 1.0 | 2026-08-22 | Pierwsza wersja planu. |
+| 1.1 | 2026-08-22 | Sekcja 2.5: tryb eksperymentalny — raporty S1–S5 na szkicu ontologii przed autoryzacją; wejście główne: przełącznik w ustawieniach aplikacji (dual-run per nowa sesja), uzupełniające: akcja na żądanie (stare sesje + inna modalność); doprecyzowanie bramki fail-closed; F2-DoD. |
 
 Ten dokument nie powtarza architektury — mapuje ją na repozytorium. Gdzie
 dokument 11 mówi „co i dlaczego", ten mówi „gdzie, czym i w jakiej
@@ -64,6 +71,12 @@ Zachowanie:
   ścieżką `legacy`, a telemetria dostaje `report_pipeline_fallback`.
   Fail-closed na `legacy`, nigdy odwrotnie.
 
+Jedynym usankcjonowanym obejściem bramki `approved_by` jest **kanał
+eksperymentalny** (sekcja 2.5): osobny artefakt, jawnie oznaczony, nigdy
+nie zastępujący raportu produkcyjnego. Bramka chroni RAPORT PRODUKCYJNY,
+nie zabrania ekspertom patrzeć na wyniki szkicu — bez tego pętla
+autoryzacyjna nie ma na czym pracować.
+
 Nadpisanie per organizacja daje kanarka: pilot na organizacji testowej
 (np. BETA z kartotekami testowymi) przed przełączeniem globalnym.
 
@@ -110,6 +123,94 @@ Każdy raport mówi, czym powstał — odtwarzalność do audytu i benchmarku
 
 Analogia operacyjna: kill-switch czatu (ADR 62 §11) — ten sam wzorzec,
 ta sama propagacja, ten sam rodzaj wpisu audytowego.
+
+### 2.5. Tryb eksperymentalny — raporty na szkicu ontologii (v1.1)
+
+**Po co.** Eksperci nie autoryzują `values` i `min_evidence` na sucho —
+kalibracja wymaga oglądania, co potok S1–S5 realnie produkuje na
+prawdziwych transkryptach, ZANIM ontologia dostanie `approved_by`.
+Tryb eksperymentalny jest więc instrumentem pętli autoryzacyjnej
+(F1→F2), nie wygodą. Drugi cel: porównanie „ta sama sesja, inna
+modalność" (raport CBT dla kartoteki prowadzonej w PPT) — dokładnie
+wzorzec „dociągnięcia modalności" znany z soczewek czatu.
+
+**Czym raport eksperymentalny NIE jest.** Nie zastępuje raportu
+produkcyjnego, nie pojawia się w panelu klienta, nie wchodzi do
+`session.status_changed` (żadnych powiadomień „Raport gotowy" — to
+lustro produkcyjne), nie jest materiałem klinicznym. Render z twardym
+banerem: „EKSPERYMENT — ontologia niezautoryzowana (szkic X.Y.Z).
+Nie służy do pracy klinicznej." + standardowe oznaczenie art. 50.
+
+**Co obchodzi, a czego NIE obchodzi.** Obchodzi wyłącznie dwie bramki:
+`approved_by` i benchmark. NIE obchodzi niczego z warstwy
+bezpieczeństwa: walidator dziedzinowy (R1–R9), granica terapeuty (R10),
+wyłączenie spanów ryzyka (T22) i weryfikator wyjścia (V1–V6) działają w
+trybie eksperymentalnym identycznie jak w produkcyjnym — to nie jest
+przedmiot eksperymentu, tylko jego warunek.
+
+**Sterowanie.** Klucz `REPORT_EXPERIMENTAL_ENABLED` w appconfig
+(domyślnie `false`; włączany per organizacja — organizacja ekspercka /
+BETA), plus dzienny limit `REPORT_EXPERIMENTAL_DAILY_LIMIT` na
+terapeutę (domyślnie 5 — potok wieloetapowy na Pro jest drogi; licznik
+jak w kwocie czatu). Oba widoczne w panelu 4.2 obok przełącznika potoku.
+
+**Backend.**
+
+```
+rpc GenerateExperimentalReport(session_id, modality_code, ontology_version?)
+    returns (job_accepted: report_id)
+```
+
+clinical-svc: `requireTherapistDataAccess` + flaga + limit → publikacja
+zdarzenia na istniejący temat `transcript.completed` z atrybutami
+`{pipeline: "experimental", modality_override: <KOD>, requested_by}`.
+llm-worker (`ProcessTranscript`): atrybut `experimental` → gałąź
+ontopipe z `allow_unapproved=true`, zapis raportu z
+`pipeline_version='ontology_s1s5_experimental'` (kolumny z migracji
+000089 wystarczają — bez nowych kolumn), koszt księgowany jak w każdym
+raporcie. Ukończenie → dokument inbox `experimental_report_ready`
+(istniejący `InboxRefreshListener`), NIE `session.status_changed`.
+Każdy przebieg zasila telemetrię R1–R10 / `no_fit` → panel Jakość
+(4.3) — to jest właściwy produkt eksperymentu.
+
+**Flutter — przełącznik w ustawieniach jako wejście główne, akcja na
+żądanie jako uzupełnienie.** Dwa wejścia, bo obsługują ROZŁĄCZNE
+przypadki; oba za tą samą flagą organizacji.
+
+1. **Ustawienia aplikacji → „Tryb eksperymentalny" (przełącznik).**
+   Semantyka: każda NOWA ukończona sesja generuje raport eksperymentalny
+   OBOK produkcyjnego (dual-run) — ekspert nagrywa normalnie i dostaje
+   oba do porównania, zero czynności per raport. Modalność = modalność
+   kartoteki. Technicznie: preferencja per terapeuta w istniejącym
+   kanale `ReportPreferences` (llm-worker już czyta je przy generacji —
+   `reportprefs`), więc bez nowego RPC w ścieżce automatycznej; sam
+   przełącznik widoczny w ustawieniach tylko, gdy organizacja ma
+   `REPORT_EXPERIMENTAL_ENABLED`. Koszt: podwójna generacja — dlatego
+   flaga org + dzienny limit obowiązują także tu (licznik wspólny z
+   wejściem 2).
+2. **Na żądanie (czat „⊕" / ekran raportu)** — dla dwóch przypadków,
+   których przełącznik nie obejmie z definicji:
+   (a) **stare sesje** — transkrypty już istnieją, nic się nie nagrywa,
+   więc dual-run nigdy nie wystartuje; kalibracja ekspercka zaczyna się
+   właśnie od istniejącego materiału;
+   (b) **inna modalność** — „raport CBT dla kartoteki PPT"; automat idzie
+   za modalnością kartoteki, więc porównanie międzymodalnościowe wymaga
+   jawnego wyboru. Arkusz: sesja (domyślnie ostatnia z transkrypcją) +
+   modalność (domyślnie kartoteki) + potwierdzenie. Wywołuje
+   `GenerateExperimentalReport`.
+
+Bez aliasu tekstowego `/eksperyment` w czacie: komenda generacji raportu
+jest operacją (side-effect, koszt, artefakt), nie pytaniem — parsowanie
+jej z pola tekstowego dodaje powierzchnię błędu, a arkusz z „⊕" robi to
+samo bez składni do zapamiętania. Klasyfikator i `guardrail_decisions`
+w ogóle jej nie widzą — log dowodowy MDR pozostaje czystym Q&A.
+Ukończenie (oba wejścia) → dokument inbox `experimental_report_ready` →
+dymek w czacie / odświeżenie listy raportów.
+
+**Retencja i porządek.** Raport eksperymentalny może być usunięty przez
+autora (istniejące ścieżki usuwania raportów); w zestawieniach
+liczników produkcyjnych (`ReportsAvailable` w statystykach czatu A2/A6)
+raporty eksperymentalne NIE są liczone — filtr po `pipeline_version`.
 
 ---
 
@@ -195,7 +296,7 @@ bramkę wyjściową — bez jej przejścia następna nie startuje.
 |---|---|---|
 | **F0 — fundament i przełącznik** (T1, T3, T4) | `pkg/ontology` (loader + lint + embed), metaschemat w CI, migracje 000089/000090, klucze `REPORT_PIPELINE_*` w appconfig (wszystkie `legacy`), rozgałęzienie w llm-worker z gałęzią `ontology` zwracającą jeszcze błąd „not implemented" → fallback | CI waliduje ontologie; przełącznik istnieje i fail-closed działa (test: ustawienie `ontology` bez implementacji NIE psuje generacji raportu) |
 | **F1 — szkielety ontologii** (T2 + przykład CBT) | `ontology/ppt/0.1.0.yaml` i `ontology/cbt/0.1.0.yaml` (sekcja 6 — pliki są JUŻ w tym PR jako szkice z `approved_by: []`), sesja autoryzacyjna z ekspertami zakontraktowana (D2), changelog decyzji | Ekspercka autoryzacja PPT rozpoczęta; rozbieżności katalogów (sekcja 6.3) rozstrzygnięte lub jawnie odroczone |
-| **F2 — potok S1–S5 dla PPT** (T5–T8 + T22 + T28 + R9) | ontopipe: S1 (+weryfikacja mechaniczna cytatów), S1.5 (recurrence/co_occurrence/latency), S2 per konstrukt (schema z enumem, `insufficient_data`/`no_fit`), S3 R1–R10, S4 bez transkryptu (wymuszone sygnaturą), S5 V1–V6; spany ryzyka wyłączone (T22); zapis spans/claims + wersji na raporcie | Testy jednostkowe per reguła; R5 i R10: 0 przepuszczeń na zestawach adversarialnych; raport PPT generuje się end-to-end na kanarku (org testowa) |
+| **F2 — potok S1–S5 dla PPT** (T5–T8 + T22 + T28 + R9) | ontopipe: S1 (+weryfikacja mechaniczna cytatów), S1.5 (recurrence/co_occurrence/latency), S2 per konstrukt (schema z enumem, `insufficient_data`/`no_fit`), S3 R1–R10, S4 bez transkryptu (wymuszone sygnaturą), S5 V1–V6; spany ryzyka wyłączone (T22); zapis spans/claims + wersji na raporcie | Testy jednostkowe per reguła; R5 i R10: 0 przepuszczeń na zestawach adversarialnych; raport PPT generuje się end-to-end na kanarku (org testowa); **tryb eksperymentalny (2.5) działa z czatu Flutter dla PPT i CBT** — bo bez niego sesja autoryzacyjna F1 nie ma materiału |
 | **F3 — benchmark i bramka** (T9, T10, T32) | harness, złoty zestaw PPT (≥15 transkryptów × ≥2 ekspertów, podzbiory `no_fit`/`insufficient_data`, protokół osiągalności), bramka CI na progach 8.2 | benchmark PPT zielony → dopiero to odblokowuje przełącznik `ontology` dla PPT poza kanarkiem |
 | **F4 — panele administracyjne** (równolegle z F2/F3 po F0) | 4.1 rejestr, 4.2 rollout, 4.3 jakość; RPC-y w clinical-svc; i18n; testy | Playwright: przełączenie kanarka z panelu + zrzut; parytet l10n |
 | **F5 — CBT i kolejne** (T19–T27 wg D3) | rozszerzenia metaschematu M1–M4 są w `pkg/ontology` od F0 (metaschemat 3.2 zawiera je w całości) — F5 to autoryzacja treści CBT, złoty zestaw CBT, benchmark, przełączenie | sekwencyjnie per D3: PPT → CBT → psychodynamiczna → ST → Gestalt |
