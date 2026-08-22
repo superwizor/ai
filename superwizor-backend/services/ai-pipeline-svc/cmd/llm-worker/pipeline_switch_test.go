@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -167,5 +169,39 @@ func TestPowodSpadkuRozroznia(t *testing.T) {
 		fallbackNoActiveOntology == fallbackUnknownModality ||
 		fallbackNotImplemented == fallbackUnknownModality {
 		t.Fatal("powody spadku musza byc rozroznialne w telemetrii")
+	}
+}
+
+// TestPrzelacznikJestWolanyWSciezceProdukcyjnej pilnuje luki, ktora
+// realnie powstala 22.08.2026.
+//
+// resolvePipeline, jego testy i implementacja odczytu z bazy istnialy —
+// ale ProcessTranscript nigdy ich nie wolal. Wszystkie testy jednostkowe
+// przechodzily, bramka F0 wygladala na zamknieta, a w produkcji
+// przelacznika nie bylo. Ujawnil to dopiero golangci-lint ("unused"),
+// czyli przypadek.
+//
+// Test czyta zrodlo, bo alternatywa (uruchomienie ProcessTranscript)
+// wymaga Pub/Suba, bazy i Vertexa. Sprawdzana jest OBECNOSC WYWOLANIA,
+// nie jego wynik — wynik pokrywaja pozostale testy w tym pliku.
+func TestPrzelacznikJestWolanyWSciezceProdukcyjnej(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("odczyt main.go: %v", err)
+	}
+	kod := string(src)
+
+	if !strings.Contains(kod, "pipelineFor(ctx, session, logger)") {
+		t.Error("ProcessTranscript nie wola pipelineFor — przelacznik, ktorego nikt nie pyta, " +
+			"nie jest przelacznikiem")
+	}
+	// Slad na raporcie: bez niego nie da sie po fakcie powiedziec, czym
+	// raport powstal (plan 16 §2.3).
+	if !strings.Contains(kod, "pipeline.Pipeline)") {
+		t.Error("wynik rozstrzygniecia nie trafia do persistReport — raport bez sladu potoku")
+	}
+	if !strings.Contains(kod, "report_pipeline_fallback") {
+		t.Error("spadek na legacy nie jest raportowany — telemetria nie zobaczy, " +
+			"ze ktos wlaczyl ontologie bez aktywnej wersji")
 	}
 }

@@ -211,4 +211,3 @@ func TestMarkdownResultToPayload_Stage2OrphanTag0Reattach(t *testing.T) {
 		t.Errorf("patient.ChunkIndices = %v; want %v", got, want)
 	}
 }
-

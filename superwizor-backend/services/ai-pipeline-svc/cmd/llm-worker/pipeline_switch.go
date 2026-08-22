@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/pkg/appconfig"
 )
@@ -122,6 +123,37 @@ func resolvePipeline(
 		"system_code", sc.SystemCode, "ontology_version", version)
 	return pipelineDecision{Pipeline: appconfig.PipelineLegacy,
 		FallbackReason: fallbackNotImplemented}
+}
+
+// pipelineConfig to czytnik konfiguracji dla przelacznika.
+//
+// Osobny od reszty workera i inicjalizowany leniwie, bo llm-worker jest
+// Cloud Function bez func main(): init() nie ma gwarancji, ze pula bazy
+// jest gotowa, a pierwszy odczyt i tak nastepuje dopiero przy pierwszym
+// raporcie.
+var pipelineConfig *appconfig.Reader
+
+// pipelineFor rozstrzyga potok dla jednej generacji i jest JEDYNYM
+// punktem, w ktorym ProcessTranscript pyta o przelacznik.
+//
+// Rozstrzygamy RAZ, na poczatku generacji: raport w locie konczy sie
+// potokiem, w ktorym wystartowal.
+func pipelineFor(ctx context.Context, sc *SessionContext, logger *slog.Logger) pipelineDecision {
+	if pipelineConfig == nil && dbPool != nil {
+		pipelineConfig = appconfig.NewReader(appconfigPool{dbPool})
+	}
+	return resolvePipeline(ctx, pipelineConfig, activeOntologyFromDB{}, sc, logger)
+}
+
+// appconfigPool adaptuje pule do waskiego interfejsu appconfig.
+type appconfigPool struct{ pool *pgxpool.Pool }
+
+func (a appconfigPool) Query(ctx context.Context, sql string, args ...any) (appconfig.Rows, error) {
+	rows, err := a.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // activeOntologyFromDB czyta wskaznik aktywnej wersji z bazy.

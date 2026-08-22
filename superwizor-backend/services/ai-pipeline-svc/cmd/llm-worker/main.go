@@ -283,6 +283,20 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
+	// Przelacznik potoku raportu (plan 16 §2.2). Rozstrzygamy RAZ i
+	// stemplujemy wynik na raporcie — bez tego nie da sie po fakcie
+	// powiedziec, czym raport powstal.
+	//
+	// Dzis kazda sciezka konczy sie na legacy (ontopipe wchodzi w F2),
+	// ale rozstrzygniecie musi byc WOLANE juz teraz: przelacznik, ktorego
+	// nikt nie pyta, nie jest przelacznikiem.
+	pipeline := pipelineFor(ctx, session, logger)
+	if pipeline.FallbackReason != "" {
+		logger.Warn("report_pipeline_fallback",
+			"system_code", session.SystemCode,
+			"reason", pipeline.FallbackReason)
+	}
+
 	// Pipeline: call-1 (metadata + themes) → RAG retrieve → call-2.
 	// Vertex AI errors from EITHER call get the same terminal/transient
 	// classification; failGen returns nil to ack a terminal failure
@@ -428,7 +442,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("parse report: %w", err)
 	}
 
-	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime))
+	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime), pipeline.Pipeline)
 	if err != nil {
 		// DB write failure — transient. NACK, retry; do not mark FAILED.
 		logger.Error("persist report (transient — pubsub will retry)", "error", err)
@@ -2553,7 +2567,12 @@ func transcriptHeadTail(chunks []transcriptfmt.Chunk, n int) string {
 	return full[:n] + " … " + full[len(full)-n:]
 }
 
-func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration) (string, error) {
+// persistReport zapisuje raport wraz ze SLADEM POTOKU, ktorym powstal.
+//
+// pipelineVersion nie jest ozdoba: bez niego nie da sie po fakcie
+// odroznic raportu ze starej sciezki od ontologicznego ani wykluczyc
+// raportow eksperymentalnych z licznika ReportsAvailable (plan 16 §2.3).
+func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration, pipelineVersion string) (string, error) {
 	transID, err := uuid.Parse(transcriptID)
 	if err != nil {
 		return "", err
@@ -2591,14 +2610,16 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			report_ciphertext, report_encrypted_dek, title, summary_short,
 			sentiment_label, risk_level, speaker_role_inference,
 			llm_model, llm_input_tokens,
-			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd,
+			pipeline_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
 		reportID, session.ID, transID, session.ModalityID,
 		ciphertext, encDEK, report.Title, report.SummaryShort,
 		nil, nil, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
-		int(processingTime.Seconds()), nullableCost(costUSD, costErr))
+		int(processingTime.Seconds()), nullableCost(costUSD, costErr),
+		pipelineVersion)
 	if err != nil {
 		return "", err
 	}
