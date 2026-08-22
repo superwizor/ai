@@ -208,6 +208,11 @@ enum UserRole {
   // sessions); to also practise they invite themselves as THERAPIST.
   USER_ROLE_ORG_ADMIN = 3;
   USER_ROLE_SUPERWIZOR_ADMIN = 4;
+  // Ekspert kliniczny pracujacy w Ontology Studio (plan 16 v1.2 §4.1).
+  // Tworzy i edytuje wersje ontologii, zatwierdza CUDZE. NIE aktywuje
+  // ich na produkcji — to zostaje przy SUPERWIZOR_ADMIN. Dostep do
+  // panelu ograniczony do sekcji /admin/ontologies.
+  USER_ROLE_ONTOLOGY_EDITOR = 5;
 }
 
 enum OrganizationType {

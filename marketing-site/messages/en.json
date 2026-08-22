@@ -77,7 +77,8 @@
       "crm": "CRM",
       "prompts": "Prompts",
       "stripeTest": "Stripe Testing",
-      "aiChat": "AI Chat"
+      "aiChat": "AI Chat",
+      "ontologies": "Ontologies"
     },
     "header": {
       "signOut": "Sign out",
@@ -714,6 +715,87 @@
       "confirmRestrictBody": "Conceptualization, progress assessment and intervention suggestions become unavailable and are replaced with source material. The rest of the chat is unaffected.",
       "confirmUnrestrictTitle": "Restore full mode?",
       "confirmUnrestrictBody": "Generative functions come back. Do this only once the cause of the restriction is understood and covered by a test in the evaluation set."
+    },
+    "ontologies": {
+      "metaTitle": "Modality ontologies",
+      "title": "Modality ontologies",
+      "intro": "Versioned ontology content: draft → in review → approved. Approval does NOT put a version into production — that is a separate decision by a Superwizor admin.",
+      "loading": "Loading…",
+      "modalitiesLabel": "Modalities",
+      "versionLabel": "Version",
+      "editorLabel": "Ontology content (YAML)",
+      "noVersions": "This modality has no ontology version yet.",
+      "activeVersion": "In production: {version}",
+      "noActiveVersion": "No version in production",
+      "pendingCounts": "Drafts: {drafts} · In review: {reviews}",
+      "activeSuffix": "in production",
+      "badgeActive": "Serving production",
+      "constructCount": "Constructs: {count}",
+      "createdBy": "Created by {email}, {date}",
+      "approvedBy": "approved by {email}",
+      "readOnlyApproved": "An approved version is immutable. To make changes, use the button that creates a new draft.",
+      "readOnlyReview": "This version is in review and frozen — otherwise the reviewer would judge different content than they approve.",
+      "linting": "Checking…",
+      "lintClean": "Content matches the metaschema.",
+      "saveBeforeSubmit": "Save your changes before submitting for review.",
+      "fourEyesHint": "A version is not approved by its author — review needs a second pair of eyes.",
+      "activateAdminOnly": "Putting a version into production requires the Superwizor admin role.",
+      "activateWarning": "From this moment reports for this modality are generated on this ontology version. The change takes effect within 30 seconds and can be reverted by pointing at another version.",
+      "noteLabel": "Reason",
+      "status": {
+        "draft": "Draft",
+        "review": "In review",
+        "approved": "Approved",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "save": "Save",
+        "submit": "Submit for review",
+        "approve": "Approve",
+        "reject": "Reject",
+        "branch": "New version from this",
+        "activate": "Put into production"
+      },
+      "flash": {
+        "save": "Draft saved.",
+        "branch": "New draft created.",
+        "submit": "Submitted for review.",
+        "approve": "Version approved.",
+        "reject": "Version rejected and returned to drafts.",
+        "activate": "Version is now serving production."
+      },
+      "dialog": {
+        "save": {
+          "title": "Save this draft?",
+          "body": "{modality} {version}",
+          "confirm": "Save"
+        },
+        "branch": {
+          "title": "Create a new draft?",
+          "body": "Content will be copied from {modality} {version}. The original stays unchanged.",
+          "confirm": "Create"
+        },
+        "submit": {
+          "title": "Submit for review?",
+          "body": "{modality} {version} will be frozen until a decision is made.",
+          "confirm": "Submit"
+        },
+        "approve": {
+          "title": "Approve this version?",
+          "body": "{modality} {version}. Approving does not put it into production.",
+          "confirm": "Approve"
+        },
+        "reject": {
+          "title": "Reject this version?",
+          "body": "{modality} {version} returns to drafts.",
+          "confirm": "Reject"
+        },
+        "activate": {
+          "title": "Put into production?",
+          "body": "Reports for {modality} will start being generated on version {version}.",
+          "confirm": "Activate"
+        }
+      }
     }
   },
   "errors": {

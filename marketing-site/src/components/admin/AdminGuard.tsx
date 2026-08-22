@@ -21,6 +21,7 @@
 
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { usePathname } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { FirebaseError } from "firebase/app";
@@ -36,6 +37,7 @@ type Status = "loading" | "signed-out" | "forbidden" | "allowed";
 export function AdminGuardAndShell({ children }: { children: ReactNode }) {
   const t = useTranslations("admin");
   const locale = useLocale();
+  const pathname = usePathname();
   const prefix = locale === "en" ? "/en" : "";
   const { status: authStatus, user: fbUser } = useAuth();
 
@@ -65,7 +67,26 @@ export function AdminGuardAndShell({ children }: { children: ReactNode }) {
           me.email?.toLowerCase() === "dar1@gmail.com" ||
           fbUser.email?.toLowerCase() === "dar1@gmail.com";
 
-        setStatus(isAdminRole || isDesignatedAdmin ? "allowed" : "forbidden");
+        // Wyjatek sekcyjny dla ONTOLOGY_EDITOR (plan 16 v1.2 §4.1).
+        //
+        // Ekspert kliniczny pracuje w Ontology Studio i NIGDZIE indziej
+        // w /admin/*. Nie jest to zlagodzenie bramki, tylko druga,
+        // wezsza bramka obok istniejacej: rola dostaje jedna sciezke, a
+        // nie caly panel.
+        //
+        // To jest wygodnosc UI, nie granica bezpieczenstwa — backend i
+        // tak sprawdza role przy kazdym RPC (requireOntologyEditor), a
+        // aktywacja na produkcji ma osobna bramke admina.
+        const isOntologyEditor =
+          (me.role as unknown) === "USER_ROLE_ONTOLOGY_EDITOR" ||
+          (me.role as unknown) === UserRole.ONTOLOGY_EDITOR;
+        const inOntologySection = pathname?.includes("/admin/ontologies") ?? false;
+
+        setStatus(
+          isAdminRole || isDesignatedAdmin || (isOntologyEditor && inOntologySection)
+            ? "allowed"
+            : "forbidden",
+        );
       } catch (err: any) {
         if (!cancelled) {
           console.error("AdminGuard: getMyProfile failed", err);
@@ -81,7 +102,7 @@ export function AdminGuardAndShell({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, fbUser]);
+  }, [authStatus, fbUser, pathname]);
 
   if (status === "loading") {
     return <CenteredMessage>{t("loading")}</CenteredMessage>;

@@ -92,6 +92,10 @@ func fromProtoRole(r identityv1.UserRole) (db.UserRole, bool) {
 		return db.UserRoleORGADMIN, true
 	case identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN:
 		return db.UserRoleSUPERWIZORADMIN, true
+	case identityv1.UserRole_USER_ROLE_ONTOLOGY_EDITOR:
+		// Literal, nie stala sqlc: kolumna users.role dostala te wartosc
+		// migracja 000091, a sqlc regeneruje stale dopiero po niej.
+		return "ONTOLOGY_EDITOR", true
 	}
 	return "", false
 }

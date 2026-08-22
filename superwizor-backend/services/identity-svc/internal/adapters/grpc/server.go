@@ -76,10 +76,12 @@ func (s *Server) WithAcceptURLBase(base string) *Server { s.acceptURLBase = base
 // Firebase's default white/blue `firebaseapp.com/__/auth/action` page.
 //
 // Firebase Admin SDK always generates links like:
-//   https://superwizor-ai-25ecd.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
+//
+//	https://superwizor-ai-25ecd.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
 //
 // We rewrite the host+path to:
-//   https://superwizor.ai/{locale}/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
+//
+//	https://superwizor.ai/{locale}/auth/action?mode=verifyEmail&oobCode=...&continueUrl=...
 //
 // The custom page (marketing-site /auth/action) calls applyActionCode()
 // client-side and renders the premium UI with confetti, sounds, and our
@@ -771,6 +773,8 @@ func toProtoRole(r db.UserRole) identityv1.UserRole {
 		return identityv1.UserRole_USER_ROLE_ORG_ADMIN
 	case db.UserRoleSUPERWIZORADMIN:
 		return identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN
+	case "ONTOLOGY_EDITOR":
+		return identityv1.UserRole_USER_ROLE_ONTOLOGY_EDITOR
 	}
 	return identityv1.UserRole_USER_ROLE_UNSPECIFIED
 }

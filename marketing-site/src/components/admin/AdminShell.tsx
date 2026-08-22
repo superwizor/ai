@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
-type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts" | "aiChat" | "stripeTest"; href: string };
+type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts" | "ontologies" | "aiChat" | "stripeTest"; href: string };
 
 function getSidebarIcon(key: string, active: boolean) {
   const colorClass = active ? "text-ember" : "text-mist group-hover:text-frost transition-colors";
@@ -108,6 +108,7 @@ export function AdminShell({
     { key: "analytics",  href: `${prefix}/admin/analytics` },
     { key: "crm",        href: `${prefix}/admin/crm` },
     { key: "prompts",    href: `${prefix}/admin/prompts` },
+    { key: "ontologies", href: `${prefix}/admin/ontologies` },
     { key: "aiChat",     href: `${prefix}/admin/ai-chat` },
     { key: "stripeTest", href: `${prefix}/admin/stripe-test` },
   ];

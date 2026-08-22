@@ -77,7 +77,8 @@
       "crm": "CRM",
       "prompts": "Prompty",
       "stripeTest": "Testy Stripe",
-      "aiChat": "AI Chat"
+      "aiChat": "AI Chat",
+      "ontologies": "Ontologie"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -714,6 +715,87 @@
       "confirmRestrictBody": "Konceptualizacja, ocena postępu i propozycje kierunków pracy staną się niedostępne i zostaną zastąpione materiałem źródłowym. Reszta czatu działa bez zmian.",
       "confirmUnrestrictTitle": "Przywrócić tryb pełny?",
       "confirmUnrestrictBody": "Funkcje generatywne wrócą. Rób to dopiero, gdy przyczyna ograniczenia jest rozpoznana i pokryta testem w zestawie ewaluacyjnym."
+    },
+    "ontologies": {
+      "metaTitle": "Ontologie modalności",
+      "title": "Ontologie modalności",
+      "intro": "Wersjonowana treść ontologii: draft → do przeglądu → zatwierdzona. Zatwierdzenie NIE uruchamia wersji na produkcji — to osobna decyzja administratora Superwizora.",
+      "loading": "Wczytywanie…",
+      "modalitiesLabel": "Modalności",
+      "versionLabel": "Wersja",
+      "editorLabel": "Treść ontologii (YAML)",
+      "noVersions": "Ta modalność nie ma jeszcze żadnej wersji ontologii.",
+      "activeVersion": "Na produkcji: {version}",
+      "noActiveVersion": "Brak wersji na produkcji",
+      "pendingCounts": "Robocze: {drafts} · Do przeglądu: {reviews}",
+      "activeSuffix": "na produkcji",
+      "badgeActive": "Serwowana na produkcji",
+      "constructCount": "Konstruktów: {count}",
+      "createdBy": "Utworzył {email}, {date}",
+      "approvedBy": "zatwierdził {email}",
+      "readOnlyApproved": "Wersja zatwierdzona jest niezmienna. Aby wprowadzić poprawki, użyj przycisku tworzącego nową wersję roboczą.",
+      "readOnlyReview": "Wersja czeka na przegląd i jest zamrożona — inaczej zatwierdzający ocenia inną treść, niż zatwierdza.",
+      "linting": "Sprawdzanie…",
+      "lintClean": "Treść zgodna z metaschematem.",
+      "saveBeforeSubmit": "Zapisz zmiany przed zgłoszeniem do przeglądu.",
+      "fourEyesHint": "Wersji nie zatwierdza jej autor — przegląd wymaga drugiej pary oczu.",
+      "activateAdminOnly": "Uruchomienie wersji na produkcji wymaga roli administratora Superwizora.",
+      "activateWarning": "Od tej chwili raporty dla tej modalności powstaną na tej wersji ontologii. Zmiana obowiązuje w ciągu 30 sekund i można ją cofnąć, wskazując inną wersję.",
+      "noteLabel": "Uzasadnienie",
+      "status": {
+        "draft": "Robocza",
+        "review": "Do przeglądu",
+        "approved": "Zatwierdzona",
+        "unknown": "Nieznany"
+      },
+      "actions": {
+        "save": "Zapisz",
+        "submit": "Zgłoś do przeglądu",
+        "approve": "Zatwierdź",
+        "reject": "Odrzuć",
+        "branch": "Nowa wersja z tej",
+        "activate": "Uruchom na produkcji"
+      },
+      "flash": {
+        "save": "Zapisano wersję roboczą.",
+        "branch": "Utworzono nową wersję roboczą.",
+        "submit": "Zgłoszono do przeglądu.",
+        "approve": "Wersja zatwierdzona.",
+        "reject": "Wersja odrzucona i wróciła do roboczych.",
+        "activate": "Wersja uruchomiona na produkcji."
+      },
+      "dialog": {
+        "save": {
+          "title": "Zapisać wersję roboczą?",
+          "body": "{modality} {version}",
+          "confirm": "Zapisz"
+        },
+        "branch": {
+          "title": "Utworzyć nową wersję roboczą?",
+          "body": "Treść zostanie skopiowana z {modality} {version}. Oryginał pozostanie niezmieniony.",
+          "confirm": "Utwórz"
+        },
+        "submit": {
+          "title": "Zgłosić do przeglądu?",
+          "body": "{modality} {version} zostanie zamrożona do czasu decyzji.",
+          "confirm": "Zgłoś"
+        },
+        "approve": {
+          "title": "Zatwierdzić wersję?",
+          "body": "{modality} {version}. Zatwierdzenie nie uruchamia wersji na produkcji.",
+          "confirm": "Zatwierdź"
+        },
+        "reject": {
+          "title": "Odrzucić wersję?",
+          "body": "{modality} {version} wróci do wersji roboczych.",
+          "confirm": "Odrzuć"
+        },
+        "activate": {
+          "title": "Uruchomić na produkcji?",
+          "body": "Raporty dla {modality} zaczną powstawać na wersji {version}.",
+          "confirm": "Uruchom"
+        }
+      }
     }
   },
   "errors": {
