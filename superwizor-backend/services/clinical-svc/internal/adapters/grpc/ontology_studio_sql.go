@@ -6,18 +6,19 @@ package grpc
 // przejsc statusow czyta sie inaczej niz SQL, a mieszanie jednego z
 // drugim utrudnia audyt obu.
 //
-// Wszedzie liczymy construct_count po stronie bazy
-// (jsonb_object_keys), zeby lista wersji nie wymagala parsowania YAML
-// dla kazdego wiersza.
+// construct_count jest KOLUMNA, nie wyrazeniem: tresc trzymamy jako
+// YAML z komentarzami (migracja 000092 — konwersja do JSON zjadalaby
+// adnotacje ekspertow), wiec baza nie ma jak policzyc konstruktow.
+// Liczbe zna Go po walidacji metaschematem, ktora i tak zachodzi przy
+// kazdym zapisie.
 
 const ontologyVersionColumns = `
-	ov.id, ov.modality_id, ov.version, ov.content #>> '{}' AS content_yaml,
+	ov.id, ov.modality_id, ov.version, ov.content,
 	ov.status::text,
 	COALESCE(cu.email, ''), ov.created_at, ov.change_note,
 	au.email, ov.approved_at, ov.approval_note,
 	(m.active_ontology_version_id = ov.id) AS is_active,
-	COALESCE((SELECT count(*) FROM jsonb_object_keys(
-		COALESCE(ov.content -> 'constructs', '{}'::jsonb))), 0)::int AS construct_count`
+	ov.construct_count`
 
 const sqlOntologyVersions = `
 SELECT` + ontologyVersionColumns + `
@@ -70,8 +71,8 @@ SELECT ov.status::text, ov.created_by, ov.modality_id, ov.version
 
 const sqlOntologyInsertDraft = `
 INSERT INTO ontology_versions
-    (modality_id, version, content, status, created_by, change_note)
-VALUES ($1, $2, $3::jsonb, 'draft', $4, $5)
+    (modality_id, version, content, status, created_by, change_note, construct_count)
+VALUES ($1, $2, $3, 'draft', $4, $5, $6)
 RETURNING id`
 
 // sqlOntologyUpdateDraft celowo ma `AND status = 'draft'` w WHERE.
@@ -82,7 +83,7 @@ RETURNING id`
 // Zero wierszy = wolajacy dostaje FailedPrecondition.
 const sqlOntologyUpdateDraft = `
 UPDATE ontology_versions
-   SET content = $2::jsonb, change_note = $3
+   SET content = $2, change_note = $3, construct_count = $4
  WHERE id = $1 AND status = 'draft'`
 
 const sqlOntologySubmit = `

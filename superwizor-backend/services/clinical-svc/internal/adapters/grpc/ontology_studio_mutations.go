@@ -72,7 +72,7 @@ func (s *Server) OntologyCreateDraft(ctx context.Context, req *clinicalv1.Ontolo
 
 	var newID uuid.UUID
 	err = s.ontologyPool.QueryRow(ctx, sqlOntologyInsertDraft,
-		modalityID, version, yamlText, actor, note).Scan(&newID)
+		modalityID, version, yamlText, actor, note, len(o.Constructs)).Scan(&newID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, status.Errorf(codes.AlreadyExists,
@@ -113,11 +113,13 @@ func (s *Server) OntologyUpdateDraft(ctx context.Context, req *clinicalv1.Ontolo
 	if err != nil {
 		return nil, err
 	}
-	if _, err := validateOntologyPayload(req.GetContentYaml()); err != nil {
+	o, err := validateOntologyPayload(req.GetContentYaml())
+	if err != nil {
 		return nil, err
 	}
 
-	n, err := s.ontologyPool.Exec(ctx, sqlOntologyUpdateDraft, id, req.GetContentYaml(), note)
+	n, err := s.ontologyPool.Exec(ctx, sqlOntologyUpdateDraft,
+		id, req.GetContentYaml(), note, len(o.Constructs))
 	if err != nil {
 		slog.ErrorContext(ctx, "ontology.update_draft", "error", err, "version_id", id)
 		return nil, status.Error(codes.Internal, "update draft")
