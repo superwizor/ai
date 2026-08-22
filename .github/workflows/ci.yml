@@ -75,6 +75,22 @@ jobs:
       # paid external call before that is set up would make the pipeline
       # fail for reasons unrelated to the change under review. Tracked as
       # a GA condition, not a merge condition.
+      # Bramka metaschematu ontologii (plan 16 F0, ticket T1).
+      #
+      # Pliki ontology/<modalnosc>/<semver>.yaml sa SEEDAMI: migracja
+      # importuje je jako wersje `draft` do Ontology Studio, gdzie toczy
+      # sie dalsza praca ekspercka. Zepsuty seed ma zatrzymac sie w PR, a
+      # nie ujawnic dopiero przy imporcie na srodowisku.
+      #
+      # Lint uzywa TEJ SAMEJ implementacji walidatora co Studio
+      # (pkg/ontology) — dwa rozjezdzajace sie walidatory bylyby gorsze
+      # niz jeden, bo tresc przechodzaca CI moglaby zostac odrzucona przy
+      # zapisie i odwrotnie.
+      - name: Ontology metaschema gate
+        run: |
+          cd pkg/ontology
+          go run ./cmd/ontology-lint ../../ontology
+
       - name: Guardrail eval gate (structural)
         run: |
           cd pkg/guardrail

@@ -60,6 +60,28 @@ constructs:
       - {input: "asertywność", correct: "język osi uprzejmość <-> otwartość/szczerość", note: "j.w. dotyczy też 'granic'"}
       - {input: "radość życia / harmonia / bezpieczeństwo / samoocena", correct: "nie są potencjalnościami", note: "z soczewki — częste błędy modelu"}
 
+  need:
+    label_pl: "Potrzeba"
+    definition: >
+      Stan pozadany opisywany przez klienta — poziom POJECIOWO INNY niz
+      potencjalnosc. Wyodrebniony, bo jest najczestszym miejscem bledu
+      kategorialnego: "spokoj", "troska o siebie", "bezpieczenstwo"
+      trafiaja tu, nie do katalogu potencjalnosci. PLACEHOLDER.
+    kind: category
+    values: null                # katalog otwarty — potrzeby nie maja taksonomii zamknietej
+    is_not: [actual_capacity_primary, actual_capacity_secondary, resource]
+    min_evidence: {spans: 1}
+
+  resource:
+    label_pl: "Zasob"
+    definition: >
+      To, co juz dziala i na czym proces moze sie oprzec. Poziom rozny od
+      potencjalnosci i od potrzeby. PLACEHOLDER.
+    kind: category
+    values: null
+    is_not: [actual_capacity_primary, actual_capacity_secondary, need]
+    min_evidence: {spans: 1}
+
   capacity_assessment:
     label_pl: "Ocena stanu potencjalności"
     definition: >

@@ -479,7 +479,14 @@ type SessionContext struct {
 	// therapy → "Terapeuta"/"Klient", coaching → "Trener"/"Klient".
 	// Unknown / NULL falls back to "therapy" (conservative; almost
 	// every modality in the catalog is clinical).
-	ModalityType        string
+	ModalityType string
+	// SystemCode to stabilny identyfikator modalnosci (PPT, CBT, ...).
+	// Rozstrzyga przelacznik potoku raportu: klucz konfiguracji nazywa
+	// sie REPORT_PIPELINE_<SystemCode> (plan 16, sekcja 2.1).
+	SystemCode string
+	// OrganizationID pozwala na nadpisanie przelacznika per organizacja,
+	// czyli na kanarka przed przelaczeniem globalnym.
+	OrganizationID      uuid.UUID
 	LanguageCode        string
 	SpeakerLabelMapping map[int32]string
 	ReportLanguage      string
@@ -2070,9 +2077,11 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 	// who haven't customized — the renderer treats that as no-op.
 	var prefsRaw []byte
 	var modalityType *string
+	var systemCode *string
+	var orgID *uuid.UUID
 	row := dbPool.QueryRow(ctx, `
 		SELECT s.patient_file_id, pf.therapist_id, pf.modality_id,
-		       m.modality_type::text,
+		       m.modality_type::text, m.system_code, u.organization_id,
 		       s.speaker_label_mapping, s.language_code, s.report_language,
 		       COALESCE(u.report_preferences, '{}'::jsonb)
 		FROM sessions s
@@ -2081,9 +2090,18 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 		LEFT JOIN modalities m ON m.id = pf.modality_id
 		WHERE s.id = $1`, id)
 	if err := row.Scan(&sc.PatientFileID, &sc.TherapistID, &sc.ModalityID,
-		&modalityType,
+		&modalityType, &systemCode, &orgID,
 		&mappingJSON, &langCode, &reportLang, &prefsRaw); err != nil {
 		return nil, err
+	}
+	// Oba pola sa NULL-owalne z tego samego powodu co modalityType
+	// (LEFT JOIN + organization_id nullable w users). Puste wartosci
+	// rozstrzygaja przelacznik na legacy — fail-closed.
+	if systemCode != nil {
+		sc.SystemCode = *systemCode
+	}
+	if orgID != nil {
+		sc.OrganizationID = *orgID
 	}
 	// LEFT JOIN guards against a patient_file with a NULL or
 	// dangling modality_id (shouldn't happen but harmless). Fall

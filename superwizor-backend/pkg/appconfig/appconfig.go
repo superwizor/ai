@@ -45,6 +45,42 @@ const (
 	KeyAIChatQuotaMicroUSD = "AI_CHAT_QUOTA_MICRO_USD"
 )
 
+// KeyReportPipeline zwraca klucz przelacznika potoku raportu dla jednej
+// modalnosci, np. REPORT_PIPELINE_PPT (plan 16, sekcja 2.1).
+//
+// Klucz per modalnosc, a nie jeden globalny: wdrozenie idzie modalnosc
+// po modalnosci, a powrot do starego potoku musi byc mozliwy dla JEDNEJ
+// z nich bez ruszania pozostalych. Nadpisanie per organizacja daje przy
+// tym kanarka przed przelaczeniem globalnym.
+//
+// systemCode to `modalities.system_code` (PPT, CBT, ...). Nieznany kod
+// zwraca klucz, ktorego nie ma w defaults — Get zaloguje undeclared_key
+// i zwroci "", co rozstrzyga sie na PipelineLegacy (fail-closed).
+func KeyReportPipeline(systemCode string) string {
+	return "REPORT_PIPELINE_" + strings.ToUpper(strings.TrimSpace(systemCode))
+}
+
+// Wartosci przelacznika potoku raportu.
+const (
+	// PipelineLegacy to dotychczasowa sciezka generacji (call-1 -> RAG
+	// -> call-2). Wartosc domyslna i jedyny cel awaryjny.
+	PipelineLegacy = "legacy"
+	// PipelineOntology to potok S1-S5 z dokumentu 11. Deklaracja tej
+	// wartosci NIE wystarcza do jej uzycia: llm-worker sprawdza jeszcze,
+	// czy modalnosc ma AKTYWNA wersje ontologii i zielony benchmark,
+	// a przy braku spada na legacy z telemetria.
+	PipelineOntology = "ontology"
+)
+
+// KnownModalityCodes to kody, dla ktorych deklarujemy klucze przelacznika.
+// Lista lustrzana wobec `modalities.system_code`; nowa modalnosc w bazie
+// wymaga dopisania tutaj, inaczej jej klucz bedzie nieznany i potok
+// pozostanie na legacy (co jest bezpieczna, ale cicha odpowiedzia —
+// stad test parytetu w clinical-svc).
+var KnownModalityCodes = []string{
+	"PPT", "CBT", "PSYCHO", "GESTALT", "ST", "SYS", "EFT", "COACH", "UNIV",
+}
+
 // Chat modes for KeyAIChatMode.
 const (
 	// ModeFull enables every ALLOWED intent, including the generative
@@ -63,6 +99,18 @@ var defaults = map[string]string{
 	KeyAIChatMode:          ModeDefinedOps,
 	KeyAIChatClassifierTau: "0.85",
 	KeyAIChatQuotaMicroUSD: "4000000",
+}
+
+// init dopisuje domyslne "legacy" dla kazdej znanej modalnosci.
+//
+// W kodzie, nie w literale mapy: lista modalnosci i ich domyslna wartosc
+// to jedna decyzja ("wszystkie startuja na starym potoku"), wiec ma jedno
+// miejsce. Recznie przepisana lista rozjechalaby sie przy pierwszej
+// nowej modalnosci.
+func init() {
+	for _, code := range KnownModalityCodes {
+		defaults[KeyReportPipeline(code)] = PipelineLegacy
+	}
 }
 
 // DefaultTTL bounds how stale a read can be, and therefore how long a

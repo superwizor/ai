@@ -319,3 +319,42 @@ func defaultInt64(t *testing.T, key string) int64 {
 	}
 	return v
 }
+
+// TestPrzelacznikPotokuDomyslnieLegacy — fail-closed jest niezmiennikiem
+// planu 16 (sekcja 2.1), nie ustawieniem startowym. Nowa modalnosc, brak
+// wiersza w bazie, nieczytelna wartosc, martwa baza: wszystko musi
+// rozstrzygnac sie na stary potok.
+func TestPrzelacznikPotokuDomyslnieLegacy(t *testing.T) {
+	ctx := context.Background()
+	r := NewReader(nil) // martwa baza — najgorszy przypadek
+
+	for _, code := range KnownModalityCodes {
+		if got := r.Get(ctx, KeyReportPipeline(code), uuid.Nil); got != PipelineLegacy {
+			t.Errorf("%s: potok = %q, oczekiwano %q", code, got, PipelineLegacy)
+		}
+	}
+}
+
+// TestNieznanaModalnoscNieWlaczaOntologii pilnuje najciszej awarii:
+// modalnosc dodana w bazie, ale nie w KnownModalityCodes. Klucz jest
+// wtedy niezadeklarowany, Get zwraca "" — i to "" nie moze przypadkiem
+// zostac uznane za wlaczenie nowego potoku.
+func TestNieznanaModalnoscNieWlaczaOntologii(t *testing.T) {
+	ctx := context.Background()
+	r := NewReader(nil)
+	if got := r.Get(ctx, KeyReportPipeline("NIEISTNIEJE"), uuid.Nil); got == PipelineOntology {
+		t.Errorf("nieznana modalnosc rozstrzygnela sie na %q", got)
+	}
+}
+
+func TestKluczPotokuJestNormalizowany(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"ppt", "REPORT_PIPELINE_PPT"},
+		{"PPT", "REPORT_PIPELINE_PPT"},
+		{" cbt ", "REPORT_PIPELINE_CBT"},
+	} {
+		if got := KeyReportPipeline(c.in); got != c.want {
+			t.Errorf("KeyReportPipeline(%q) = %q, chcialem %q", c.in, got, c.want)
+		}
+	}
+}

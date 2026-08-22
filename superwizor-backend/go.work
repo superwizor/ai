@@ -15,6 +15,7 @@ use (
 	./pkg/llmcost
 	./pkg/logging
 	./pkg/observability
+	./pkg/ontology
 	./pkg/pubsubx
 	./pkg/rag
 	./pkg/svcauth
