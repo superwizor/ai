@@ -1,0 +1,55 @@
+# Metaschemat ontologii modalności — kontrakt z dokumentu 11 v1.4 §3.2.
+#
+# Ten plik jest ŹRÓDŁEM PRAWDY o strukturze plików ontology/<mod>/<semver>.yaml.
+# Walidowany w CI (ontology-lint, ticket T1 / faza F0 planu 16). Zmiana tego
+# pliku = zmiana kontraktu = przegląd jak zmiana kodu walidatora.
+#
+# Zapis: pseudo-schemat YAML (typy w komentarzach), nie JSON Schema — zgodnie
+# z formą w dokumencie 11. ontology-lint implementuje go w Go.
+
+modality: string                # ppt | cbt | psychodynamic | gestalt | st | sys | eft | coach | univ
+version: semver
+approved_by: [string]           # PUSTE = szkic; CI blokuje użycie w prod (REPORT_PIPELINE_* -> fallback legacy)
+constructs:
+  <construct_id>:
+    label_pl: string
+    aliases: [string]           # synonimy i warianty tłumaczeń PL; rozstrzygane w wyciągach L1 (dok. 12)
+    definition: string
+    source:                     # audytowalność definicji do literatury (work_id z manifestu korpusu, dok. 12 §3)
+      work_id: string
+      edition: string
+      pages: string
+    kind: category | composite  # M1 (v1.3): composite = krotka typowanych slotów; domyślnie category
+    slots:                      # tylko dla kind: composite
+      <slot_id>:
+        type: span_ref | construct_ref(<id>) | enum_ref(<id>) | entry_ref
+        required: bool
+        kind_hint: behavioral | declarative | null
+        quantity: bool          # slot dopuszcza wartość liczbową (podlega quantities.policy)
+    min_complete_slots: int | null
+    values: "[string] | null"   # null = konstrukt bez katalogu zamkniętego
+    multi_label: bool           # M2 (v1.3): wyjście categories >= 1; benchmark F1 per etykieta
+    quantities:                 # M3 (v1.3)
+      policy: stated_only       # liczba WYŁĄCZNIE ze spanem, w którym padła (reguła R9)
+      scale: string | null
+    forced_status: epistemic_status | null   # np. core_belief CBT -> zawsze theoretical_hypothesis
+    is_not: [construct_id]
+    requires: [construct_id]
+    min_evidence:
+      spans: int
+      sessions: int | null
+      behavioral: int | null
+    common_confusions:
+      - {input: string, correct: string, note: string}
+    examples: [string]
+    counter_examples: [string]
+    fallback_rendering: string | null
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis, open_question,
+                     insufficient_data, no_fit]
+etiology_policy: strict         # twierdzenia genetyczne tylko ze spanem źródłowym (R5)
+therapist_boundary: strict      # R10 (v1.4): zero inferencji o stanach wewnętrznych terapeuty
+relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
+                 mediacja, paralela]
+report_profile:                 # M5 (v1.4, opcjonalne)
+  sections: {}                  # {<section>: {weight: high|default|low}}
+  default_tone: string | null

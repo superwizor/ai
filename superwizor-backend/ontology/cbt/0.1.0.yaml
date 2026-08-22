@@ -1,0 +1,138 @@
+# Ontologia CBT (tradycja Aarona i Judith Beck) — SZKIC 0.1.0.
+#
+# Status: DO AUTORYZACJI EKSPERCKIEJ (D2). approved_by puste = CI blokuje prod.
+#
+# Rola tego pliku w planie 16 (F1): CBT jest modalnością nr 2 wg D3, ale jej
+# szkic powstaje od razu, bo ćwiczy rozszerzenia metaschematu v1.3 na realnej
+# treści: M1 (kompozyt cbt_episode), M2 (multi_label zniekształceń),
+# M3 (quantities stated_only dla "% wiary"), forced_status (core_belief).
+# Pochodzenie treści: soczewka czatu CBT + dokument 14 (referencje w dok. 11).
+
+modality: cbt
+version: 0.1.0
+approved_by: []                 # PUSTE do autoryzacji — blokuje prod (CI)
+
+constructs:
+
+  automatic_thought:
+    label_pl: "Myśl automatyczna"
+    definition: >
+      Konkretna, sytuacyjna, dosłowna wypowiedź w pierwszej osobie.
+      Przytaczana DOSŁOWNIE ze spanu — nigdy tłumaczona na język
+      podręcznikowy. PLACEHOLDER definicji kanonicznej (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null                # brak katalogu zamkniętego — treść jest cytatem
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "parafraza podręcznikowa ('przewidywanie porażki')", correct: "cytat dosłowny", note: "notacja: sytuacja + cytat + emocja — z soczewki"}
+
+  emotion:
+    label_pl: "Emocja"
+    definition: >
+      JEDNO słowo. Konstrukcja "czuję, że..." prawie zawsze wprowadza MYŚL.
+      Kanon listy = decyzja ekspercka (dok. 14, D1/14).
+    kind: category
+    values: ["smutek", "lęk", "złość", "wstyd", "wina", "bezradność"]   # ZWERYFIKOWAĆ (kanon emocji)
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "czuję, że nikomu na mnie nie zależy", correct: "myśl automatyczna + emocja (np. smutek) osobno", note: "błąd kategorialny myśl/emocja — rozdzielać ZAWSZE; z soczewki"}
+
+  cognitive_distortion:
+    label_pl: "Zniekształcenie poznawcze"
+    definition: "Etykieta WYŁĄCZNIE z listy; zjawisko spoza listy = no_fit, nie własna nazwa."
+    kind: category
+    multi_label: true           # M2: jeden span może nieść kilka zniekształceń; benchmark F1 per etykieta
+    values: ["myślenie dychotomiczne", "katastrofizacja", "nadmierne uogólnianie",
+             "filtr mentalny", "dyskwalifikowanie pozytywów", "czytanie w myślach",
+             "przepowiadanie przyszłości", "wnioskowanie emocjonalne", "imperatywy",
+             "etykietowanie", "personalizacja i obwinianie",
+             "wyolbrzymianie i umniejszanie"]                   # ZWERYFIKOWAĆ (kanon 12 wg Beck/Burns)
+    min_evidence: {spans: 1}    # PER etykieta (M2)
+    common_confusions:
+      - {input: "prokrastynacja", correct: "ZACHOWANIE w łańcuchu (ogniwo czwarte)", note: "z soczewki — nigdy zniekształcenie"}
+      - {input: "unikanie", correct: "zachowanie / strategia kompensacyjna", note: "j.w."}
+      - {input: "perfekcjonizm", correct: "strategia kompensacyjna (zwykle nad imperatywami)", note: "j.w."}
+      - {input: "niska samoocena", correct: "obszar przekonań kluczowych (wskaż kategorię)", note: "j.w."}
+      - {input: "ruminacja / zamartwianie się", correct: "PROCES poznawczy, nie treść myśli", note: "opisywać osobno od zniekształceń"}
+      - {input: "lęk", correct: "emocja", note: "j.w."}
+      - {input: "brak asertywności / wyuczona bezradność", correct: "deficyt umiejętności lub strategia", note: "j.w."}
+
+  intermediate_belief:
+    label_pl: "Przekonanie pośredniczące"
+    definition: >
+      Reguła ponadsytuacyjna w jednej z trzech FORM; zapis w tej formie,
+      nie opisowo. Drabina: wymaga >= 2 myśli automatycznych w tym samym
+      kierunku.
+    kind: category
+    values: ["postawa", "reguła", "założenie jeśli-to"]
+    requires: [automatic_thought]
+    min_evidence: {spans: 2}
+
+  core_belief:
+    label_pl: "Przekonanie kluczowe"
+    definition: >
+      Globalne, absolutne twierdzenie o sobie/innych/świecie. Kategoria
+      OBOWIĄZKOWA — pomyłka bezradność/bezwartościowość zmienia
+      konceptualizację i dobór interwencji.
+    kind: category
+    values: ["bezradność", "niekochanie", "bezwartościowość"]   # kanon wg Beck — ZWERYFIKOWAĆ
+    requires: [intermediate_belief]
+    forced_status: theoretical_hypothesis    # dok. 11 §3.2 (M1-adjacent): zawsze hipoteza -> test spójności R4 + marker abdukcyjny
+    min_evidence: {spans: 3, sessions: 2}    # "wzorzec w wielu sytuacjach" — DECYZJA EKSPERCKA
+    fallback_rendering: "kierunek do zbadania (wstępny), nie ustalenie"
+
+  compensatory_strategy:
+    label_pl: "Strategia kompensacyjna"
+    definition: >
+      Zachowanie chroniące przed uruchomieniem przekonania kluczowego.
+      Nazywać strategią, nie "mechanizmem obronnym" (inny model teoretyczny).
+      Katalog otwarty czy zamknięty = DECYZJA EKSPERCKA.
+    kind: category
+    values: ["nadmierne przygotowywanie", "unikanie", "zadowalanie innych",
+             "kontrolowanie", "wycofanie", "odkładanie"]        # ZWERYFIKOWAĆ (otwarte?)
+    min_evidence: {spans: 2, behavioral: 1}
+    common_confusions:
+      - {input: "mechanizm obronny", correct: "strategia kompensacyjna", note: "terminologia psychodynamiczna nie miesza się z CBT"}
+
+  cbt_episode:
+    label_pl: "Epizod poznawczy (model 5-elementowy)"
+    definition: >
+      Oś każdej analizy: sytuacja -> myśl automatyczna -> emocja ->
+      zachowanie -> konsekwencja. Konsekwencja krótkoterminowa wyjaśnia,
+      dlaczego wzorzec się utrzymuje — to ona jest celem interwencji.
+    kind: composite             # M1: krotka typowanych slotów
+    slots:
+      situation:
+        type: span_ref
+        required: true
+        kind_hint: declarative
+      thought:
+        type: construct_ref(automatic_thought)
+        required: true
+      emotion:
+        type: enum_ref(emotion)
+        required: false
+      emotion_intensity:
+        type: span_ref
+        required: false
+        quantity: true          # M3: liczba tylko gdy padła na sesji (R9)
+      behavior:
+        type: span_ref
+        required: false
+        kind_hint: behavioral
+      consequence:
+        type: span_ref
+        required: false
+    min_complete_slots: 3       # sytuacja+myśl+jeden dalszy — DECYZJA EKSPERCKA
+    quantities:
+      policy: stated_only       # "% wiary" i pomiary nastroju to SAMOOCENA KLIENTA — nigdy wypełniana za niego
+      scale: "0-100"
+    min_evidence: {spans: 2}
+
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis, open_question,
+                     insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
+                 mediacja]      # paralela wyłączona dla CBT do decyzji (11 §3.2: flaga per modalność)
