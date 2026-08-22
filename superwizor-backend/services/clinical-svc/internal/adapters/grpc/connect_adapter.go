@@ -448,6 +448,91 @@ func (a *ConnectAdapter) AdminUpdateModalityPrompt(ctx context.Context, req *con
 	return connect.NewResponse(resp), nil
 }
 
+// ── Ontology Studio ──
+//
+// Adapter jest cienki celowo: autoryzacja, walidacja i reguly przejsc
+// zyja w Server, zeby sciezka gRPC i Connect nie mogly sie rozjechac.
+
+func (a *ConnectAdapter) OntologyListModalities(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[clinicalv1.OntologyListModalitiesResponse], error) {
+	resp, err := a.s.OntologyListModalities(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyListVersions(ctx context.Context, req *connect.Request[clinicalv1.OntologyListVersionsRequest]) (*connect.Response[clinicalv1.OntologyListVersionsResponse], error) {
+	resp, err := a.s.OntologyListVersions(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyGetVersion(ctx context.Context, req *connect.Request[clinicalv1.OntologyGetVersionRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyGetVersion(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyLint(ctx context.Context, req *connect.Request[clinicalv1.OntologyLintRequest]) (*connect.Response[clinicalv1.OntologyLintResponse], error) {
+	resp, err := a.s.OntologyLint(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyCreateDraft(ctx context.Context, req *connect.Request[clinicalv1.OntologyCreateDraftRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyCreateDraft(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyUpdateDraft(ctx context.Context, req *connect.Request[clinicalv1.OntologyUpdateDraftRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyUpdateDraft(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologySubmitForReview(ctx context.Context, req *connect.Request[clinicalv1.OntologyTransitionRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologySubmitForReview(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyApprove(ctx context.Context, req *connect.Request[clinicalv1.OntologyTransitionRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyApprove(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyReject(ctx context.Context, req *connect.Request[clinicalv1.OntologyTransitionRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyReject(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) OntologyActivateVersion(ctx context.Context, req *connect.Request[clinicalv1.OntologyTransitionRequest]) (*connect.Response[clinicalv1.OntologyVersion], error) {
+	resp, err := a.s.OntologyActivateVersion(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) EditTranscriptSegment(ctx context.Context, req *connect.Request[clinicalv1.EditTranscriptSegmentRequest]) (*connect.Response[clinicalv1.EditTranscriptSegmentResponse], error) {
 	resp, err := a.s.EditTranscriptSegment(ctx, req.Msg)
 	if err != nil {

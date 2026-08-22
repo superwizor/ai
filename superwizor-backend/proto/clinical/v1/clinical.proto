@@ -130,6 +130,35 @@ service ClinicalService {
     rpc AdminGetModalityPromptHistory(AdminGetModalityPromptHistoryRequest) returns (AdminGetModalityPromptHistoryResponse);
     rpc AdminUpdateModalityPrompt(AdminUpdateModalityPromptRequest) returns (AdminUpdateModalityPromptResponse);
 
+    // ── Ontology Studio (plan 16 v1.2, sekcja 4.1) ──
+    //
+    // Ontologia modalnosci przestala byc plikiem w repo pod CODEOWNERS,
+    // a stala sie wersjonowanym rekordem edytowanym w aplikacji
+    // (adnotacja do D2 w dok. 11). Cykl zycia: draft -> ready_for_review
+    // -> approved, a AKTYWACJA NA PRODUKCJI jest osobna operacja.
+    //
+    // Rozdzial rol jest sedno tego kontraktu:
+    //   ONTOLOGY_EDITOR  — tworzy, edytuje, zglasza, zatwierdza CUDZE wersje
+    //   SUPERWIZOR_ADMIN — to samo PLUS aktywacja na produkcji
+    //
+    // Ekspert odpowiada za tresc, admin za to, co generuje raporty.
+    // Dlatego OntologyActivateVersion ma wlasna bramke i nie da sie jej
+    // wywolac "przy okazji" zatwierdzania.
+    rpc OntologyListModalities(google.protobuf.Empty) returns (OntologyListModalitiesResponse);
+    rpc OntologyListVersions(OntologyListVersionsRequest) returns (OntologyListVersionsResponse);
+    rpc OntologyGetVersion(OntologyGetVersionRequest) returns (OntologyVersion);
+    // Lint bez zapisu — edytor woła to na żywo, żeby autor widział
+    // problemy przed zapisem. Ta sama implementacja co przy zapisie
+    // (pkg/ontology), więc nie da się przejść lintu i polec na Save.
+    rpc OntologyLint(OntologyLintRequest) returns (OntologyLintResponse);
+    rpc OntologyCreateDraft(OntologyCreateDraftRequest) returns (OntologyVersion);
+    rpc OntologyUpdateDraft(OntologyUpdateDraftRequest) returns (OntologyVersion);
+    rpc OntologySubmitForReview(OntologyTransitionRequest) returns (OntologyVersion);
+    rpc OntologyApprove(OntologyTransitionRequest) returns (OntologyVersion);
+    rpc OntologyReject(OntologyTransitionRequest) returns (OntologyVersion);
+    // SUPERWIZOR_ADMIN only. Wymaga statusu approved.
+    rpc OntologyActivateVersion(OntologyTransitionRequest) returns (OntologyVersion);
+
     // ─── AI chat control surface (ADR 62 section 11) ───
     // Reads and flips the chat kill switch. The runbook (docs/64) also
     // documents a direct SQL path as break-glass; this RPC is the normal
@@ -818,6 +847,112 @@ message AdminModalityPrompt {
   // grounded intents; invariants are re-asserted by code (Render()), so
   // an edit here can change language and framing, never the rules.
   string chat_prompt = 10;
+}
+
+// ── Ontology Studio ──
+
+// OntologyStatus lustrzany wobec typu ontology_status w bazie.
+enum OntologyStatus {
+  ONTOLOGY_STATUS_UNSPECIFIED = 0;
+  ONTOLOGY_STATUS_DRAFT = 1;
+  ONTOLOGY_STATUS_READY_FOR_REVIEW = 2;
+  ONTOLOGY_STATUS_APPROVED = 3;
+}
+
+message OntologyModalitySummary {
+  string modality_id = 1;
+  string system_code = 2;
+  string display_name = 3;
+  // Wersja serwowana na produkcji. Puste = potok ontologiczny
+  // niedostepny dla tej modalnosci (llm-worker spada na legacy).
+  string active_version = 4;
+  string active_version_id = 5;
+  int32  draft_count = 6;
+  int32  review_count = 7;
+  // Najnowsza wersja niezaleznie od statusu — punkt wejscia do edytora.
+  string latest_version = 8;
+}
+
+message OntologyListModalitiesResponse {
+  repeated OntologyModalitySummary modalities = 1;
+}
+
+message OntologyListVersionsRequest {
+  string modality_id = 1;
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+// OntologyVersion niesie tresc jako YAML, nie jako strukture.
+//
+// Powod: metaschemat rozwija sie szybciej niz proto (dok. 11 ma juz
+// cztery wersje w tydzien), a odwzorowanie go w komunikatach zamienia
+// kazde rozszerzenie ontologii w zmiane kontraktu API i regeneracje
+// klientow. Walidacja i tak jest serwerowa (pkg/ontology), wiec proto
+// nie musi jej powielac.
+message OntologyVersion {
+  string id = 1;
+  string modality_id = 2;
+  string version = 3;
+  string content_yaml = 4;
+  OntologyStatus status = 5;
+
+  string created_by_email = 6;
+  google.protobuf.Timestamp created_at = 7;
+  string change_note = 8;
+
+  string approved_by_email = 9;
+  google.protobuf.Timestamp approved_at = 10;
+  string approval_note = 11;
+
+  // True dla wersji serwowanej na produkcji.
+  bool is_active = 12;
+  // Liczba konstruktow — do listy, bez parsowania YAML po stronie UI.
+  int32 construct_count = 13;
+}
+
+message OntologyListVersionsResponse {
+  repeated OntologyVersion versions = 1;
+  bool has_more = 2;
+}
+
+message OntologyGetVersionRequest {
+  string version_id = 1;
+}
+
+message OntologyLintRequest {
+  string content_yaml = 1;
+}
+
+message OntologyLintResponse {
+  // Pusta lista = tresc zdatna do zapisu. Zwracamy WSZYSTKIE problemy,
+  // nie pierwszy — autor ma zobaczyc pelna liste do poprawienia.
+  repeated string problems = 1;
+  int32 construct_count = 2;
+}
+
+message OntologyCreateDraftRequest {
+  string modality_id = 1;
+  string version = 2;
+  string content_yaml = 3;
+  string change_note = 4;
+  // Opcjonalne: skopiuj tresc z istniejacej wersji. Tak dziala "edytuj"
+  // na wersji approved — nie mutujemy jej, tylko rozgalezimy.
+  string copy_from_version_id = 5;
+}
+
+message OntologyUpdateDraftRequest {
+  string version_id = 1;
+  string content_yaml = 2;
+  string change_note = 3;
+}
+
+// OntologyTransitionRequest obsluguje kazde przejscie statusu i
+// aktywacje. Notatka jest WYMAGANA wszedzie z tego samego powodu co w
+// ChatControls: wpis audytowy czyta nastepny dyzurny.
+message OntologyTransitionRequest {
+  string version_id = 1;
+  string note = 2;
 }
 
 message AdminListModalityPromptsResponse {

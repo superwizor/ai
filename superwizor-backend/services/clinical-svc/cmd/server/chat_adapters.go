@@ -9,6 +9,8 @@ import (
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/chat"
+
+	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 )
 
 // The chat and appconfig packages declare their own narrow database
@@ -51,6 +53,33 @@ func (c chatPool) Exec(ctx context.Context, sql string, args ...any) (int64, err
 		return 0, err
 	}
 	return tag.RowsAffected(), nil
+}
+
+// ontologyPool adaptuje pgxpool do waskiego interfejsu Ontology Studio.
+//
+// Osobny adapter, a nie rozszerzenie chatPool: Studio i czat maja rozne
+// powody do zmian, a wspolny typ zmusilby jeden do noszenia metod
+// drugiego.
+type ontologyPool struct{ pool *pgxpool.Pool }
+
+func (o ontologyPool) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
+	tag, err := o.pool.Exec(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (o ontologyPool) Query(ctx context.Context, sql string, args ...any) (grpcadapter.OntologyRows, error) {
+	rows, err := o.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (o ontologyPool) QueryRow(ctx context.Context, sql string, args ...any) grpcadapter.OntologyRow {
+	return o.pool.QueryRow(ctx, sql, args...)
 }
 
 // chatTracker forwards chat telemetry into the analytics collector.

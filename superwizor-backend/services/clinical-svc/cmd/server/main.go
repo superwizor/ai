@@ -287,7 +287,8 @@ func main() {
 		History:   chat.HistoryStore{DB: chatPool{pool}, Pool: chatPool{pool}, Crypto: crypto},
 		Telemetry: chatTracker{analyticsCollector},
 	}
-	srv = srv.WithChat(chatSvc).WithChatConfig(configReader, chatPool{pool})
+	srv = srv.WithChat(chatSvc).WithChatConfig(configReader, chatPool{pool}).
+		WithOntologyStudio(ontologyPool{pool})
 
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()

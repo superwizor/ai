@@ -100,10 +100,13 @@ func (t *pgxTx) Rollback(ctx context.Context) error {
 
 type Server struct {
 	clinicalv1.UnimplementedClinicalServiceServer
-	queries  db.Querier
-	tx       TxOpener
-	identity identityv1.IdentityServiceClient
-	billing  billingv1.BillingServiceClient // nil = GetMyBillingState returns Unavailable
+	queries db.Querier
+	// ontologyPool obsluguje Ontology Studio (odczyt + zapis wersji
+	// ontologii). nil = Studio niepodpiete w tym buildzie.
+	ontologyPool OntologyPool
+	tx           TxOpener
+	identity     identityv1.IdentityServiceClient
+	billing      billingv1.BillingServiceClient // nil = GetMyBillingState returns Unavailable
 	// notification is the upstream NotificationServiceClient used by
 	// SavePatientNote to e-mail an action plan to the patient. nil =
 	// NOTIFICATION_SVC_URL unset (local dev) → the send leg returns
@@ -136,6 +139,37 @@ type Server struct {
 // ConfigPool is the narrow write surface the chat admin RPCs need.
 type ConfigPool interface {
 	Exec(ctx context.Context, sql string, args ...any) (int64, error)
+}
+
+// OntologyPool to dostep do bazy dla Ontology Studio.
+//
+// Osobny od ConfigPool, bo Studio czyta i pisze, a kontrola konfiguracji
+// czatu tylko pisze. Waski interfejs zamiast *pgxpool.Pool utrzymuje
+// testowalnosc bez bazy — tak samo jak w chat.Retriever.
+type OntologyPool interface {
+	Exec(ctx context.Context, sql string, args ...any) (int64, error)
+	Query(ctx context.Context, sql string, args ...any) (OntologyRows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) OntologyRow
+}
+
+// OntologyRows to pgx.Rows zawezone do tego, czego uzywa Studio.
+type OntologyRows interface {
+	Next() bool
+	Scan(dest ...any) error
+	Err() error
+	Close()
+}
+
+// OntologyRow to pojedynczy wiersz.
+type OntologyRow interface {
+	Scan(dest ...any) error
+}
+
+// WithOntologyStudio wstrzykuje pule dla Ontology Studio. nil = Studio
+// nie jest podpiete w tym buildzie i jego RPC zwracaja Unavailable.
+func (s *Server) WithOntologyStudio(pool OntologyPool) *Server {
+	s.ontologyPool = pool
+	return s
 }
 
 // WithChatConfig injects the runtime-config reader and the write pool
