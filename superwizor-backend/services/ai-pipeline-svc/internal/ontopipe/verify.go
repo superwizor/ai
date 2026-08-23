@@ -29,6 +29,12 @@ const (
 	VRuleHierarchy VRule = "V4_hierarchia"
 	VRuleMarker    VRule = "V5_marker_abdukcyjny"
 	VRuleQuantity  VRule = "V6_liczba_bez_pokrycia"
+	// VRuleUnknownConstruct wydzielony z V4, bo prowadzi do INNEJ reakcji:
+	// konstruktu spoza przebiegu nie da sie uratowac usunieciem
+	// pojedynczego zdania, a nadmiar hipotez znika sam, gdy wadliwe
+	// zostana przyciete. Zlanie obu w jeden kod kasowalo cale sekcje,
+	// ktore wystarczylo przyciac.
+	VRuleUnknownConstruct VRule = "V4_konstrukt_spoza_przebiegu"
 )
 
 // Violation to jedno naruszenie. Detail trafia z powrotem do S4 przy
@@ -78,7 +84,7 @@ func Verify(o *ontology.Ontology, rep Report, in SynthesisInput, spans map[strin
 		// V4a: konstrukt spoza przebiegu jest wymyslony.
 		if !allowedConstructs[cr.ConstructID] {
 			out = append(out, Violation{
-				Rule: VRuleHierarchy, ConstructID: cr.ConstructID,
+				Rule: VRuleUnknownConstruct, ConstructID: cr.ConstructID,
 				Detail: "konstrukt nie wystapil w zatwierdzonych wynikach tego przebiegu",
 			})
 			continue

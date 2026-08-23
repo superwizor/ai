@@ -104,6 +104,13 @@ type Result struct {
 	// Niepuste WYLACZNIE razem z Extractive — jesli synteza sie udala,
 	// nie ma czego zglaszac.
 	Violations []Violation
+	// PrunedHypotheses to hipotezy USUNIETE po nieudanych regeneracjach.
+	//
+	// Niepuste znaczy: reszta prozy przeszla V1-V6 i zostala, a wycielismy
+	// wylacznie te zdania, ktore sie nie obronily. Sygnal jest tej samej
+	// wagi co Extractive — model nie utrzymal sie w szynach — ale koszt
+	// ponosza tylko wadliwe fragmenty, nie caly raport.
+	PrunedHypotheses []string
 	// Extractive oznacza raport zlozony z cytatow i kategorii, bez prozy.
 	// To sygnal do alertu (dok. 11: naruszenie po dwoch regeneracjach),
 	// a nie zwykly wariant renderingu.

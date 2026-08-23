@@ -183,7 +183,7 @@ func TestV4KonstruktSpozaPrzebiegu(t *testing.T) {
 		{ID: "A", Claim: "Klient ma wsparcie.", Supporting: []string{"s01"},
 			EpistemicStatus: "observation"},
 	}}}}
-	if v := Verify(testO(t), rep, in, spans); !maNaruszenie(v, VRuleHierarchy) {
+	if v := Verify(testO(t), rep, in, spans); !maNaruszenie(v, VRuleUnknownConstruct) {
 		t.Fatalf("V4 przepuscila konstrukt, ktory nie wystapil w przebiegu: %s", opis(v))
 	}
 }
@@ -561,5 +561,76 @@ func TestPromptS4NiesieRegulaEtiologii(t *testing.T) {
 			t.Errorf("prompt S4 nie zawiera %q — S4 jest sadzony regula, ktorej nie zna",
 				oczekiwane)
 		}
+	}
+}
+
+// TestPrzycinanieRatujeResztePrezy — kanarek PPT: JEDNO zdanie o genezie
+// wśród dwudziestu hipotez kasowało prozę pod wszystkimi. Przycięcie
+// usuwa wadliwą hipotezę i zostawia resztę, która przeszła V1–V6.
+func TestPrzycinanieRatujeResztePrezy(t *testing.T) {
+	f := domyslnaAtrapa(t)
+	bazowy := f.handler
+	f.handler = func(req LLMRequest) (string, error) {
+		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+			// Dwie hipotezy: druga uparcie podnosi status.
+			return `{"constructs":[{"construct_id":"konflikt","hypotheses":[` +
+				`{"id":"A","claim":"Materiał daje się czytać jako napięcie.",` +
+				`"supporting":["s01"],"contradicting":[],"epistemic_status":"interpretation","confidence":0.6},` +
+				`{"id":"B","claim":"Klient przeżywa napięcie.",` +
+				`"supporting":["s01"],"contradicting":[],"epistemic_status":"observation","confidence":0.9}` +
+				`],"unknown_yet":[],"next_session_questions":[],"pattern_notices":[]}]}`, nil
+		}
+		return bazowy(req)
+	}
+	res, err := Run(context.Background(), f, Input{
+		SessionID: "s", Transcript: testTranskrypcja, Ontology: testO(t),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Extractive {
+		t.Fatalf("caly raport poszedl w tryb ekstraktywny mimo jednej wadliwej hipotezy: %v",
+			res.Violations)
+	}
+	if len(res.PrunedHypotheses) != 1 || res.PrunedHypotheses[0] != "konflikt/B" {
+		t.Fatalf("usuniete = %v, oczekiwano [konflikt/B]", res.PrunedHypotheses)
+	}
+	// Dobra hipoteza MUSI zostac — inaczej przyciecie jest tylko drozszym
+	// trybem ekstraktywnym.
+	var zostale []string
+	for _, cr := range res.Report.Constructs {
+		for _, h := range cr.Hypotheses {
+			zostale = append(zostale, cr.ConstructID+"/"+h.ID)
+		}
+	}
+	if len(zostale) != 1 || zostale[0] != "konflikt/A" {
+		t.Fatalf("zostale hipotezy = %v, oczekiwano [konflikt/A]", zostale)
+	}
+	// Naruszenia zostaja w wyniku: sygnal alarmowy nie moze zniknac.
+	if len(res.Violations) == 0 {
+		t.Fatal("przyciecie skasowalo slad naruszen — telemetria nic nie zobaczy")
+	}
+}
+
+// TestPrzycinanieNieRatujeGdyWszystkoWadliwe — gdy nie zostaje żadna
+// proza, raport ekstraktywny jest lepszy niż same puste sekcje: niesie
+// przynajmniej cytaty i kategorie.
+func TestPrzycinanieNieRatujeGdyWszystkoWadliwe(t *testing.T) {
+	f := domyslnaAtrapa(t)
+	bazowy := f.handler
+	f.handler = func(req LLMRequest) (string, error) {
+		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+			return jsonS4("konflikt", "A", "Klient przeżywa napięcie.", "observation", "s01"), nil
+		}
+		return bazowy(req)
+	}
+	res, err := Run(context.Background(), f, Input{
+		SessionID: "s", Transcript: testTranskrypcja, Ontology: testO(t),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !res.Extractive {
+		t.Fatal("raport bez ani jednej obronionej hipotezy nie poszedl w tryb ekstraktywny")
 	}
 }

@@ -104,6 +104,30 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 			return res, nil
 		}
 		if proba >= MaxRegeneracji {
+			// PRZYCINANIE przed trybem ekstraktywnym.
+			//
+			// Dok. 11 opisuje reakcje binarnie: dwie regeneracje, potem
+			// caly raport ekstraktywny. Kanarek PPT pokazal, ile to
+			// realnie kosztuje — JEDNO zdanie o genezie wsrod dwudziestu
+			// hipotez kasowalo proze pod wszystkimi. To nie jest
+			// ostroznosc, tylko marnotrawstwo: pozostale dziewietnascie
+			// przeszlo V1-V6.
+			//
+			// Przyciecie jest scisle konserwatywne — USUWA tresc
+			// niezweryfikowana, nigdy zadnej nie dopuszcza. Sygnal
+			// alarmowy zostaje: naruszenia ida do rejestru, a Pruned
+			// zasila telemetrie tak samo jak Extractive.
+			przyciety, usuniete := pruneViolating(rep, viol)
+			if len(usuniete) > 0 {
+				if reszta := Verify(o, przyciety, si, spanByID); len(reszta) == 0 &&
+					maHipotezy(przyciety) {
+					res.Report = przyciety
+					res.Violations = viol
+					res.PrunedHypotheses = usuniete
+					return res, nil
+				}
+			}
+
 			// TRYB EKSTRAKTYWNY: cytaty i kategorie bez prozy.
 			//
 			// Raport ubozszy, ale prawdziwy. Wypuszczenie prozy, ktora
@@ -266,4 +290,69 @@ func extractiveReport(in SynthesisInput) Report {
 		rep.Constructs = append(rep.Constructs, cr)
 	}
 	return rep
+}
+
+// pruneViolating usuwa z raportu to, co nie przeszlo weryfikacji, i
+// zwraca liste usunietych hipotez.
+//
+// Naruszenia bez HypothesisID dotycza calej sekcji konstruktu (wzmianki
+// o wzorcach, zgodnosc liczby hipotez) — tam czyscimy wskazana czesc
+// zamiast kasowac konstrukt, bo hipotezy same w sobie moga byc dobre.
+func pruneViolating(rep Report, viol []Violation) (Report, []string) {
+	zleHipotezy := map[string]bool{}
+	zleWzmianki := map[string]bool{}
+	zleKonstrukty := map[string]bool{}
+	for _, v := range viol {
+		switch {
+		case v.HypothesisID != "":
+			zleHipotezy[v.ConstructID+"/"+v.HypothesisID] = true
+		case v.Rule == VRuleMarker:
+			zleWzmianki[v.ConstructID] = true
+		case v.Rule == VRuleUnknownConstruct:
+			// Konstrukt, ktorego w przebiegu nie bylo — nie ma czego
+			// ratowac na poziomie pojedynczego zdania.
+			zleKonstrukty[v.ConstructID] = true
+		}
+	}
+
+	var usuniete []string
+	out := Report{}
+	for _, cr := range rep.Constructs {
+		if zleKonstrukty[cr.ConstructID] {
+			for _, h := range cr.Hypotheses {
+				usuniete = append(usuniete, cr.ConstructID+"/"+h.ID)
+			}
+			continue
+		}
+		nowy := ConstructReport{
+			ConstructID:          cr.ConstructID,
+			UnknownYet:           cr.UnknownYet,
+			NextSessionQuestions: cr.NextSessionQuestions,
+		}
+		if !zleWzmianki[cr.ConstructID] {
+			nowy.PatternNotices = cr.PatternNotices
+		}
+		for _, h := range cr.Hypotheses {
+			if zleHipotezy[cr.ConstructID+"/"+h.ID] {
+				usuniete = append(usuniete, cr.ConstructID+"/"+h.ID)
+				continue
+			}
+			nowy.Hypotheses = append(nowy.Hypotheses, h)
+		}
+		out.Constructs = append(out.Constructs, nowy)
+	}
+	return out, usuniete
+}
+
+// maHipotezy mowi, czy po przycieciu zostalo cokolwiek prozy.
+//
+// Raport z samymi pustymi sekcjami jest gorszy niz ekstraktywny: ten
+// drugi przynajmniej niesie cytaty i kategorie.
+func maHipotezy(rep Report) bool {
+	for _, cr := range rep.Constructs {
+		if len(cr.Hypotheses) > 0 {
+			return true
+		}
+	}
+	return false
 }
