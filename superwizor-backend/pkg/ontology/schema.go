@@ -141,11 +141,20 @@ func (o *Ontology) categoryField(c *Construct) map[string]any {
 	}
 	if c.MultiLabel {
 		// M2: wyjscie jest lista etykiet, kazda z tego samego enumu.
+		//
+		// BEZ maxItems. Gorna granica dlugosci NAD ENUMEM daje liczbe
+		// kombinacji rosnaca wykladniczo z liczba wartosci i Vertex
+		// odrzuca cale zadanie ("too many states for serving") — CBT
+		// `cognitive_distortion` z 12 zniekształceniami wywracal na tym
+		// caly etap S2 (kanarek 2026-08-23).
+		//
+		// Granica i tak byla iluzoryczna: rownala sie liczbie wartosci,
+		// wiec nie ograniczala niczego poza powtorkami, ktore odsiewa
+		// dedup przy dekodowaniu.
 		return map[string]any{
 			"type":     "array",
 			"items":    field,
 			"minItems": int64(1),
-			"maxItems": int64(len(values)),
 		}
 	}
 	return field

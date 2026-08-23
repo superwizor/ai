@@ -199,9 +199,28 @@ func decodeCategories(raw json.RawMessage) []string {
 	}
 	var many []string
 	if err := json.Unmarshal(raw, &many); err == nil {
-		return many
+		return dedupCategories(many)
 	}
 	return nil
+}
+
+// dedupCategories usuwa powtorki z listy multi_label.
+//
+// Schemat nie ma juz gornej granicy dlugosci (rozsadzala automat stanow
+// Vertexa przy dwunastu zniekształceniach CBT), wiec powtorki odsiewa
+// kod. Kolejnosc pierwszego wystapienia zostaje: jest deterministyczna i
+// odpowiada temu, co model uznal za najwazniejsze.
+func dedupCategories(in []string) []string {
+	seen := make(map[string]bool, len(in))
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		out = append(out, v)
+	}
+	return out
 }
 
 func toQuoteRefs(qs []s2Quote) []ontology.QuoteRef {

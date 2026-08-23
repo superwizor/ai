@@ -439,3 +439,46 @@ func TestV2NadalLapieSasiadaZTejSamejListy(t *testing.T) {
 		t.Fatalf("V2 przepuscila niezatwierdzona kategorie TEGO SAMEGO konstruktu: %s", opis(v))
 	}
 }
+
+// TestMultiLabelBezGornejGranicy — CBT `cognitive_distortion` ma 12
+// wartości; górna granica długości NAD ENUMEM wywracała cały etap S2
+// ("too many states for serving", kanarek 2026-08-23). Powtórki odsiewa
+// teraz dedup przy dekodowaniu.
+func TestMultiLabelBezGornejGranicy(t *testing.T) {
+	o, err := ontology.Parse([]byte(`
+modality: test
+version: 1.0.0
+constructs:
+  zniekształcenie:
+    label_pl: "Zniekształcenie"
+    multi_label: true
+    values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]
+    min_evidence: {spans: 1}
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis,
+                     open_question, insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sch, err := o.SchemaForConstruct("zniekształcenie", ontology.SchemaOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kat := sch["properties"].(map[string]any)["claims"].(map[string]any)["items"].(map[string]any)["properties"].(map[string]any)["category"].(map[string]any)
+	if _, ma := kat["maxItems"]; ma {
+		t.Error("multi_label znowu ma maxItems nad enumem — Vertex odrzuci cały etap S2")
+	}
+	if _, mi := kat["minItems"]; !mi {
+		t.Error("multi_label stracil minItems — pusta lista etykiet przestala byc bledem")
+	}
+}
+
+func TestDedupEtykiet(t *testing.T) {
+	got := dedupCategories([]string{"katastrofizacja", "imperatywy", "katastrofizacja", ""})
+	if len(got) != 2 || got[0] != "katastrofizacja" || got[1] != "imperatywy" {
+		t.Fatalf("dedupCategories = %v, oczekiwano [katastrofizacja imperatywy]", got)
+	}
+}
