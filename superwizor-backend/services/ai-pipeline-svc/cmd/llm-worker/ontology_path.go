@@ -37,6 +37,19 @@ func (v vertexLLM) GenerateJSON(ctx context.Context, req ontopipe.LLMRequest) (o
 		ResponseMIMEType:  "application/json",
 		ResponseSchema:    schemaToVertexSchema(req.Schema),
 		SystemInstruction: genai.NewContentFromText(req.SystemPrompt, genai.RoleUser),
+		// MYSLENIE WYLACZONE. gemini-2.5 mysli domyslnie, a tokeny
+		// myslenia licza sie do MaxOutputTokens — pierwszy przebieg S1 na
+		// sesji z 382 chunkami zwrocil PUSTA odpowiedz, bo rozmyslanie nad
+		// dlugim transkryptem zjadlo caly budzet zanim padl pierwszy znak
+		// tresci. Ta sama diagnoza co w czacie (20.08, vertex.go).
+		//
+		// Etapy tego potoku sa strukturalne i uziemione w cytatach: S1
+		// kopiuje fragmenty, S2 wybiera z enumu, S4 przepisuje zatwierdzone
+		// byty. Zaden nie potrzebuje lancucha mysli — potrzebuja
+		// PRZEWIDYWALNEGO budzetu.
+		ThinkingConfig: &genai.ThinkingConfig{
+			ThinkingBudget: genai.Ptr(int32(0)),
+		},
 	}
 
 	resp, err := vertexClient.Models.GenerateContent(ctx, req.Model,
@@ -63,6 +76,14 @@ func (v vertexLLM) GenerateJSON(ctx context.Context, req ontopipe.LLMRequest) (o
 	// skladniowo i przeszedlby dalej z brakujacymi twierdzeniami.
 	if resp.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
 		out.Truncated = true
+		// Obciecie zglaszamy jako BLAD, nie flage do zignorowania.
+		// Wczesniej ucieta odpowiedz wracala do wolajacego i wywalala sie
+		// dopiero na json.Unmarshal jako "unexpected end of JSON input" —
+		// komunikat, ktory nie mowi nic o prawdziwej przyczynie i kosztowal
+		// osobne dochodzenie na produkcji.
+		return out, fmt.Errorf("ontopipe: model %s uciety na limicie wyjscia "+
+			"(%d tokenow) — zwiekszy limit albo skroc material",
+			req.Model, req.MaxTokens)
 	}
 	return out, nil
 }

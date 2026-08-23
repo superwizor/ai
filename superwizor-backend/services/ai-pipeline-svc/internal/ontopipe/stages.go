@@ -40,7 +40,13 @@ func ExtractSpans(ctx context.Context, llm LLM, in Input, u *Usage) ([]ontology.
 		SystemPrompt: promptS1,
 		UserContent:  "TRANSKRYPCJA SESJI:\n" + in.Transcript,
 		Schema:       schemaS1(),
-		MaxTokens:    8192,
+		// S1 na dlugiej sesji produkuje SETKI spanow, a kazdy niesie cytat
+		// doslowny. 8192 wystarczalo w testach na krotkim materiale i
+		// urwalo sie na pierwszej prawdziwej sesji (382 chunki). Limit jest
+		// tu granica bezpieczenstwa, nie narzedziem kontroli kosztu —
+		// kosztem steruje dobor modelu (Flash) i to, ze S1 jest jednym
+		// wywolaniem na sesje.
+		MaxTokens: 32768,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("ontopipe: S1: %w", err)
