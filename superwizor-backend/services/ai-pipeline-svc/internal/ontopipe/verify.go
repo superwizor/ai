@@ -45,6 +45,14 @@ type Violation struct {
 	ConstructID  string
 	HypothesisID string
 	Detail       string
+	// Tresc hipotezy, ktora naruszyla regule (migracja 000095).
+	//
+	// Bez niej rejestr mowi "V3 na balance_model_area" i nic wiecej —
+	// a strojenie promptu S4 wymaga zobaczenia ZDANIA, ktore odpadlo.
+	// Puste dla naruszen na poziomie konstruktu.
+	HypothesisText   string
+	HypothesisStatus string
+	HypothesisSpans  []string
 }
 
 func (v Violation) String() string {
@@ -104,7 +112,16 @@ func Verify(o *ontology.Ontology, rep Report, in SynthesisInput, spans map[strin
 		foreign := foreignTerms(o, cr.ConstructID, approved)
 
 		for _, h := range cr.Hypotheses {
-			out = append(out, verifyHypothesis(o, cr, h, approved, allowedSpans, spans, foreign)...)
+			naruszenia := verifyHypothesis(o, cr, h, approved, allowedSpans, spans, foreign)
+			// Tresc doklejamy TUTAJ, a nie w kazdej regule z osobna:
+			// inaczej dodanie nowej reguly cicho gubiloby material do
+			// strojenia, bo nikt by o tym nie pamietal.
+			for i := range naruszenia {
+				naruszenia[i].HypothesisText = h.Claim
+				naruszenia[i].HypothesisStatus = h.EpistemicStatus
+				naruszenia[i].HypothesisSpans = h.Supporting
+			}
+			out = append(out, naruszenia...)
 		}
 
 		// V5b: meta-obserwacja bez policzonego wzorca jest dopowiedzeniem

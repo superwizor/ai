@@ -134,11 +134,15 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		}
 	}
 
+	// Odrzucenia ida do bazy WRAZ Z TRESCIA (migracja 000095).
+	//
+	// Progi dowodowe i prompty stroi sie na przykladach, wiec przyklad
+	// musi przetrwac: sam kod reguly nie mowi, czy model sfabrykowal
+	// precyzje, czy odwolal sie do numeracji wlasnego modelu. To sa dwie
+	// przeciwstawne diagnozy i az do 000095 byly nierozroznialne.
 	for _, r := range res.Rejected {
-		if err := db.Exec(ctx, `
-			INSERT INTO report_claim_rejections (report_id, construct_id, rule, detail)
-			VALUES ($1,$2,$3,$4)`,
-			in.ReportID, r.ConstructID, string(r.Reason), r.Detail); err != nil {
+		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID,
+			r.ConstructID, string(r.Reason), r.Detail, r.Claim); err != nil {
 			return fmt.Errorf("ontopipe: zapis odrzucenia %s: %w", r.Reason, err)
 		}
 	}
@@ -147,23 +151,83 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 	// osobna tabela na kazdy rodzaj rozbilaby jedno zapytanie progowe
 	// na trzy.
 	for _, d := range res.Degraded {
-		if err := db.Exec(ctx, `
-			INSERT INTO report_claim_rejections (report_id, construct_id, rule, detail)
-			VALUES ($1,$2,$3,$4)`,
-			in.ReportID, d.ConstructID, string(ontology.ReasonRequires),
-			"degradacja -> "+d.To+"; "+d.Detail); err != nil {
+		// Degradacja dotyczy KONSTRUKTU, nie pojedynczego twierdzenia —
+		// stad brak tresci.
+		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID, d.ConstructID,
+			string(ontology.ReasonRequires),
+			"degradacja -> "+d.To+"; "+d.Detail, nil); err != nil {
 			return fmt.Errorf("ontopipe: zapis degradacji %s: %w", d.ConstructID, err)
 		}
 	}
 	for _, v := range res.Violations {
-		if err := db.Exec(ctx, `
-			INSERT INTO report_claim_rejections (report_id, construct_id, rule, detail)
-			VALUES ($1,$2,$3,$4)`,
-			in.ReportID, v.ConstructID, string(v.Rule), v.Detail); err != nil {
+		// Naruszenie S5 dotyczy PROZY, wiec tresc bierzemy z hipotezy.
+		var jakoClaim *ontology.Claim
+		if v.HypothesisText != "" {
+			jakoClaim = &ontology.Claim{
+				ConstructID: v.ConstructID,
+				Reasoning:   v.HypothesisText,
+				Status:      ontology.EpistemicStatus(v.HypothesisStatus),
+			}
+			for _, id := range v.HypothesisSpans {
+				jakoClaim.Evidence = append(jakoClaim.Evidence, ontology.QuoteRef{SpanID: id})
+			}
+		}
+		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID,
+			v.ConstructID, string(v.Rule), v.Detail, jakoClaim); err != nil {
 			return fmt.Errorf("ontopipe: zapis naruszenia %s: %w", v.Rule, err)
 		}
 	}
 	return nil
+}
+
+// zapiszOdrzucenie zapisuje jeden wpis rejestru wraz z trescia.
+//
+// Uzasadnienie szyfrowane kopertowo jak w report_claims; kolumny
+// strukturalne (kategorie, status, odnosniki) JAWNE, bo bez nich nie da
+// sie policzyc, ile razy model proponowal dana kategorie — a to jest
+// pytanie, ktore zadaje benchmark.
+func zapiszOdrzucenie(ctx context.Context, db DB, crypto Crypto, reportID uuid.UUID,
+	constructID, rule, detail string, cl *ontology.Claim) error {
+
+	var (
+		ct, dek    []byte
+		kategorie  = []string{}
+		spany      = []string{}
+		statusStr  *string
+		confidence *float64
+	)
+	if cl != nil {
+		if cl.Reasoning != "" {
+			var err error
+			ct, dek, err = crypto.Encrypt(ctx, []byte(cl.Reasoning))
+			if err != nil {
+				return fmt.Errorf("szyfrowanie uzasadnienia: %w", err)
+			}
+		}
+		if len(cl.Categories) > 0 {
+			kategorie = cl.Categories
+		}
+		for _, q := range cl.Evidence {
+			spany = append(spany, q.SpanID)
+		}
+		if cl.Status != "" {
+			s := string(cl.Status)
+			statusStr = &s
+		}
+		if cl.Confidence > 0 {
+			c := cl.Confidence
+			confidence = &c
+		}
+	}
+
+	return db.Exec(ctx, `
+		INSERT INTO report_claim_rejections
+		       (report_id, construct_id, rule, detail,
+		        reasoning_ciphertext, reasoning_encrypted_dek,
+		        proposed_categories, epistemic_status, confidence, evidence_span_refs)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		reportID, constructID, rule, detail, ct, dek,
+		kategorie, statusStr, confidence, spany)
 }
 
 func linkEvidence(ctx context.Context, db DB, claimID uuid.UUID,

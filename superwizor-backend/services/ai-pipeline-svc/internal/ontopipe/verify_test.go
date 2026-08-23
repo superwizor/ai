@@ -634,3 +634,37 @@ func TestPrzycinanieNieRatujeGdyWszystkoWadliwe(t *testing.T) {
 		t.Fatal("raport bez ani jednej obronionej hipotezy nie poszedl w tryb ekstraktywny")
 	}
 }
+
+// TestNaruszenieNiesieZdanieKtoreOdpadlo — rejestr ma powiedzieć, KTÓRE
+// zdanie naruszyło regułę, a nie tylko że naruszyło. Bez tego strojenie
+// promptu S4 opiera się na kodzie reguły i nazwie konstruktu, czyli na
+// niczym.
+//
+// Treść doklejana jest w jednym miejscu dla wszystkich reguł — inaczej
+// dodanie nowej cicho gubiłoby materiał do strojenia.
+func TestNaruszenieNiesieZdanieKtoreOdpadlo(t *testing.T) {
+	in, spans := materialS5()
+	const zdanie = "Klient przeżywa napięcie między dwiema dążnościami."
+	v := Verify(testO(t), raport(Hypothesis{
+		ID: "A", Claim: zdanie,
+		Supporting: []string{"s01"}, EpistemicStatus: "observation",
+	}), in, spans)
+
+	if len(v) == 0 {
+		t.Fatal("brak naruszenia — test nie ma czego sprawdzic")
+	}
+	for _, n := range v {
+		if n.HypothesisID == "" {
+			continue // naruszenie na poziomie konstruktu
+		}
+		if n.HypothesisText != zdanie {
+			t.Errorf("%s: tresc = %q, oczekiwano zdania, ktore odpadlo", n.Rule, n.HypothesisText)
+		}
+		if n.HypothesisStatus != "observation" {
+			t.Errorf("%s: status = %q, oczekiwano observation", n.Rule, n.HypothesisStatus)
+		}
+		if len(n.HypothesisSpans) != 1 || n.HypothesisSpans[0] != "s01" {
+			t.Errorf("%s: spany = %v, oczekiwano [s01]", n.Rule, n.HypothesisSpans)
+		}
+	}
+}

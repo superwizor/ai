@@ -49,6 +49,19 @@ type Rejection struct {
 	ConstructID string
 	Reason      RejectReason
 	Detail      string
+	// Claim to ODRZUCONA tresc.
+	//
+	// Do 2026-08-23 rejestr trzymal sam kod reguly i konstrukt, a
+	// uzasadnienie przepadalo. Kanarek CBT pokazal, czym to jest w
+	// praktyce: trzy twierdzenia odpadly na wartosci "2" bez pokrycia i
+	// NIE DALO SIE ustalic, czy model sfabrykowal precyzje, czy odwolal
+	// sie do numeracji wlasnego modelu ("ogniwo 2"). Dwie zupelnie rozne
+	// diagnozy, ta sama linijka w rejestrze.
+	//
+	// Progi dowodowe i prompty stroi sie na przykladach, wiec przyklad
+	// musi przetrwac. Nil dla odrzucen, ktore nie dotycza pojedynczego
+	// twierdzenia (konstrukt spoza ontologii, degradacja `requires`).
+	Claim *Claim
 }
 
 // Degradation to twierdzenie, ktoremu OBNIZONO range zamiast je usunac.
@@ -108,10 +121,12 @@ func (o *Ontology) Validate3(res StageResult, opts ValidateOptions) ValidationRe
 		out.NoFitConstructs = append(out.NoFitConstructs, res.ConstructID)
 		for _, cl := range res.Claims {
 			if len(cl.Categories) > 0 {
+				odrzucone := cl
 				out.Rejected = append(out.Rejected, Rejection{
 					ConstructID: res.ConstructID, Reason: ReasonNoFit,
 					Detail: "no_fit z jednoczesna kategoria — zjawisko poza taksonomia " +
 						"nie moze dostac etykiety z listy",
+					Claim: &odrzucone,
 				})
 			}
 		}
@@ -149,8 +164,11 @@ func (o *Ontology) Validate3(res StageResult, opts ValidateOptions) ValidationRe
 // a pierwszy powod jest tym, ktory autor promptu ma naprawic.
 func (o *Ontology) checkClaim(c *Construct, cl Claim, opts ValidateOptions) (Rejection, bool) {
 	rej := func(r RejectReason, format string, a ...any) (Rejection, bool) {
+		// Kopia, nie wskaznik na parametr petli: wolajacy trzyma te
+		// strukture dluzej niz trwa iteracja.
+		odrzucone := cl
 		return Rejection{ConstructID: cl.ConstructID, Reason: r,
-			Detail: fmt.Sprintf(format, a...)}, true
+			Detail: fmt.Sprintf(format, a...), Claim: &odrzucone}, true
 	}
 
 	// R10: GRANICA TERAPEUTY. Pierwsza, bo jest bezwarunkowa — zadne

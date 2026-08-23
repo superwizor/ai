@@ -31,10 +31,21 @@ func (f *fakeDB) QueryUUID(_ context.Context, sql string, args ...any) (uuid.UUI
 	return uuid.New(), nil
 }
 
+// doTabeli szuka zapisow do wskazanej tabeli.
+//
+// Dopasowanie odporne na bialy znak po nazwie: zapytania wieloliniowe
+// lamia sie zaraz za nazwa tabeli, a wersja wymagajaca spacji po cichu
+// przestawala widziec wpisy przy pierwszym przeformatowaniu SQL-a.
 func (f *fakeDB) doTabeli(nazwa string) []zapis {
 	var out []zapis
 	for _, z := range f.zapisy {
-		if strings.Contains(z.sql, "INTO "+nazwa+" ") {
+		i := strings.Index(z.sql, "INTO "+nazwa)
+		if i < 0 {
+			continue
+		}
+		reszta := z.sql[i+len("INTO "+nazwa):]
+		if reszta == "" || reszta[0] == ' ' || reszta[0] == '\n' ||
+			reszta[0] == '\t' || reszta[0] == '(' {
 			out = append(out, z)
 		}
 	}
@@ -72,11 +83,22 @@ func wynikDoZapisu() Result {
 			Topics: []string{"zwiazek"}, SpanIDs: []string{"s01"},
 			Method: "3 spany", MethodVersion: ontology.MethodVersion, Sessions: 1}},
 		Rejected: []ontology.Rejection{{ConstructID: "zasob",
-			Reason: ontology.ReasonCoverage, Detail: "spanow 0, wymagane 1"}},
+			Reason: ontology.ReasonCoverage, Detail: "spanow 0, wymagane 1",
+			Claim: &ontology.Claim{
+				ConstructID: "zasob",
+				Categories:  []string{"wsparcie"},
+				Status:      ontology.StatusObservation,
+				Confidence:  0.9,
+				Reasoning:   "Klient wspomina siostrę jako osobę wspierającą.",
+				Evidence:    []ontology.QuoteRef{{SpanID: "s01", Quote: "chcę być blisko"}},
+			}}},
 		Degraded: []ontology.Degradation{{ConstructID: "zasob",
 			To: "hipoteza robocza", Detail: "brak konfliktu"}},
 		Violations: []Violation{{Rule: VRuleQuantity, ConstructID: "konflikt",
-			Detail: "wartosc 80 bez pokrycia"}},
+			Detail: "wartosc 80 bez pokrycia", HypothesisID: "A",
+			HypothesisText:   "Klient wraca do tematu w 80% wypowiedzi.",
+			HypothesisStatus: "interpretation",
+			HypothesisSpans:  []string{"s01"}}},
 	}
 }
 
@@ -170,5 +192,56 @@ func TestWzorzecMaProweniencjeDoSpanow(t *testing.T) {
 	db := zapiszTestowo(t)
 	if n := len(db.doTabeli("report_pattern_spans")); n != 1 {
 		t.Fatalf("powiazan wzorzec-span %d, oczekiwano 1", n)
+	}
+}
+
+// TestOdrzuceniaNiosaUzasadnienie — od migracji 000095 rejestr trzyma
+// treść odrzuconego twierdzenia. Bez niej nie da się rozstrzygnąć, czy
+// reguła zadziałała słusznie: kanarek CBT odrzucił trzy twierdzenia na
+// wartości „2" i nie dało się ustalić, czy model sfabrykował precyzję,
+// czy odwołał się do numeracji własnego modelu.
+func TestOdrzuceniaNiosaUzasadnienie(t *testing.T) {
+	db := zapiszTestowo(t)
+	wpisy := db.doTabeli("report_claim_rejections")
+	if len(wpisy) == 0 {
+		t.Fatal("brak wpisow rejestru")
+	}
+
+	znalezioneS3, znalezioneS5 := false, false
+	for _, z := range wpisy {
+		rule := z.args[2].(string)
+		switch rule {
+		case string(ontology.ReasonCoverage):
+			znalezioneS3 = true
+			ct, ok := z.args[4].([]byte)
+			if !ok || !strings.HasPrefix(string(ct), "ENC:") {
+				t.Errorf("uzasadnienie odrzuconego twierdzenia nieszyfrowane: %v", z.args[4])
+			}
+			if kat, _ := z.args[6].([]string); len(kat) != 1 || kat[0] != "wsparcie" {
+				t.Errorf("zaproponowane kategorie = %v, oczekiwano [wsparcie]", z.args[6])
+			}
+			if spany, _ := z.args[9].([]string); len(spany) != 1 || spany[0] != "s01" {
+				t.Errorf("odnosniki do spanow = %v, oczekiwano [s01]", z.args[9])
+			}
+		case string(VRuleQuantity):
+			znalezioneS5 = true
+			ct, ok := z.args[4].([]byte)
+			if !ok || !strings.HasPrefix(string(ct), "ENC:") {
+				t.Errorf("tresc naruszonej hipotezy nieszyfrowana: %v", z.args[4])
+			}
+		case string(ontology.ReasonRequires):
+			// Degradacja dotyczy konstruktu — tresci byc nie moze.
+			if z.args[4] != nil {
+				if ct, ok := z.args[4].([]byte); ok && len(ct) > 0 {
+					t.Error("degradacja konstruktu dostala tresc twierdzenia")
+				}
+			}
+		}
+	}
+	if !znalezioneS3 {
+		t.Error("odrzucenie walidatora S3 nie trafilo do rejestru z trescia")
+	}
+	if !znalezioneS5 {
+		t.Error("naruszenie weryfikatora S5 nie trafilo do rejestru z trescia")
 	}
 }
