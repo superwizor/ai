@@ -15,7 +15,9 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/stretchr/testify v1.11.1
 	github.com/superwizor-ai/backend/gen/go v0.0.0-00010101000000-000000000000
+	github.com/superwizor-ai/backend/pkg/appconfig v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/i18n v0.0.0-00010101000000-000000000000
+	github.com/superwizor-ai/backend/pkg/ontology v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/transcription v0.0.0-00010101000000-000000000000
 	google.golang.org/protobuf v1.36.11
 )
@@ -115,6 +117,14 @@ require (
 )
 
 replace github.com/superwizor-ai/backend/pkg/i18n => ../../pkg/i18n
+
+// pkg/appconfig i pkg/ontology MUSZA byc tutaj, choc go.work rozwiazuje
+// je lokalnie: pakiet funkcji (infra/modules/cloud-functions/package.sh)
+// nie niesie go.work, wiec Cloud Build widzi wylacznie ten plik i probuje
+// sciagnac je z GitHuba — a repozytorium jest prywatne.
+replace github.com/superwizor-ai/backend/pkg/appconfig => ../../pkg/appconfig
+
+replace github.com/superwizor-ai/backend/pkg/ontology => ../../pkg/ontology
 
 replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
 
