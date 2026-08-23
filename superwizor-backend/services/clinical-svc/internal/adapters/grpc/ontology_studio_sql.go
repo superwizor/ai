@@ -17,7 +17,14 @@ const ontologyVersionColumns = `
 	ov.status::text,
 	COALESCE(cu.email, ''), ov.created_at, ov.change_note,
 	au.email, ov.approved_at, ov.approval_note,
-	(m.active_ontology_version_id = ov.id) AS is_active,
+	-- COALESCE, bo porownanie z NULL-em daje NULL, nie FALSE.
+	-- Dopoki zadna wersja nie jest aktywna (czyli DOKLADNIE do pierwszej
+	-- aktywacji), active_ontology_version_id jest NULL i cala kolumna
+	-- wracala jako NULL — a skan do *bool sie na tym wywracal. Panel
+	-- pokazywal "Blad serwera" komus, kto wlasnie zaczyna prace nad
+	-- pierwsza ontologia, czyli jedynemu mozliwemu uzytkownikowi na tym
+	-- etapie (2026-08-23).
+	COALESCE(m.active_ontology_version_id = ov.id, FALSE) AS is_active,
 	ov.construct_count`
 
 const sqlOntologyVersions = `
