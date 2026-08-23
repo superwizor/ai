@@ -379,3 +379,63 @@ func TestSchematyBezOgraniczenRozsadzajacychVertexa(t *testing.T) {
 		t.Error("S4: `supporting` straciło minItems — wymog proweniencji zniknal")
 	}
 }
+
+// TestOdnosnikDoSpanuToNieLiczba — regres z kanarka PPT (2026-08-23):
+// surowe dopasowanie cyfr brało "s08" za liczbę osiem i R9 odrzuciła
+// siedem poprawnych twierdzeń, bo ich uzasadnienia wskazywały spany po
+// numerze. Reguła chroniąca przed fabrykowaną precyzją kasowała dokładnie
+// te twierdzenia, które najstaranniej wskazywały źródło.
+func TestOdnosnikDoSpanuToNieLiczba(t *testing.T) {
+	for _, tc := range []struct {
+		tekst      string
+		oczekiwane []string
+	}{
+		{"wynika ze spanu s08", nil},
+		{"spany s40 i s39 mowia to samo", nil},
+		{"klient ocenia to na 7 na 10", []string{"7", "10"}},
+		{"w s12 pada 80%", []string{"80%"}},
+		{"chunk3 nie jest liczba, ale 5 juz tak", []string{"5"}},
+	} {
+		got := ProseNumbers(tc.tekst)
+		if len(got) != len(tc.oczekiwane) {
+			t.Errorf("ProseNumbers(%q) = %v, oczekiwano %v", tc.tekst, got, tc.oczekiwane)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.oczekiwane[i] {
+				t.Errorf("ProseNumbers(%q)[%d] = %q, oczekiwano %q",
+					tc.tekst, i, got[i], tc.oczekiwane[i])
+			}
+		}
+	}
+}
+
+// TestV2NieBlokujeSlownikaInnychKonstruktow — drugi regres z tego samego
+// kanarka: "nadzieja" (wartość potencjalności pierwotnej) w akapicie o
+// formie przetwarzania konfliktu wypchnęła raport w tryb ekstraktywny.
+// To najzwyklejsze polskie słowo, użyte zgodnie z sensem.
+func TestV2NieBlokujeSlownikaInnychKonstruktow(t *testing.T) {
+	in, spans := materialS5()
+	// "chwilowe" jest wartoscia konstruktu `niezdecydowanie`, nie `konflikt`.
+	v := Verify(testO(t), raport(Hypothesis{
+		ID: "A", Claim: "Napięcie ma charakter chwilowego wahania między dążnościami.",
+		Supporting: []string{"s01"}, EpistemicStatus: "interpretation",
+	}), in, spans)
+	if maNaruszenie(v, VRuleForeign) {
+		t.Fatalf("V2 zablokowala slowo z innego konstruktu: %s", opis(v))
+	}
+}
+
+// TestV2NadalLapieSasiadaZTejSamejListy — zawężenie nie może wyłączyć
+// reguły: sięgnięcie po sąsiednią kategorię TEGO SAMEGO konstruktu to
+// dokładnie ryzyko, po które V2 istnieje.
+func TestV2NadalLapieSasiadaZTejSamejListy(t *testing.T) {
+	in, spans := materialS5()
+	v := Verify(testO(t), raport(Hypothesis{
+		ID: "A", Claim: "Materiał układa się w osiagniecia-odpoczynek.",
+		Supporting: []string{"s01"}, EpistemicStatus: "interpretation",
+	}), in, spans)
+	if !maNaruszenie(v, VRuleForeign) {
+		t.Fatalf("V2 przepuscila niezatwierdzona kategorie TEGO SAMEGO konstruktu: %s", opis(v))
+	}
+}

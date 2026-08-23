@@ -192,7 +192,11 @@ func classifyClaim(cl *ontology.Claim, spans map[string]ontology.Span) {
 	// Liczba bez takiego spanu dostaje SpanID pusty i R9 ja odrzuci —
 	// to jest zamierzone: fabrykowana precyzja ma kosztowac cale
 	// twierdzenie, bo wyglada na pomiar i przekonuje mocniej niz proza.
-	for _, n := range numRe.FindAllString(cl.Reasoning, -1) {
+	// ProseNumbers, nie surowe numRe: "s08" to odnosnik do spanu, nie
+	// liczba osiem. Na kanarku PPT surowe dopasowanie kazalo R9 odrzucic
+	// SIEDEM poprawnych twierdzen — te, ktore najstaranniej powolywaly sie
+	// na zrodlo po numerze.
+	for _, n := range ProseNumbers(cl.Reasoning) {
 		q := ontology.Quantity{Raw: n}
 		for _, ev := range cl.Evidence {
 			s, ok := spans[ev.SpanID]

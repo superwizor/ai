@@ -316,21 +316,31 @@ func foreignTerms(o *ontology.Ontology, constructID string, approved []ontology.
 		seen[lt] = true
 		out = append(out, lt)
 	}
-	for id, c := range o.Constructs {
-		if c == nil {
-			continue
-		}
-		for _, v := range c.Values {
-			add(v)
-		}
-		if id == constructID {
-			for _, v := range c.IsNot {
-				add(v)
-			}
-			for _, cf := range c.CommonConfusions {
-				add(cf.Input)
-			}
-		}
+
+	// WYLACZNIE wlasny konstrukt. Do 2026-08-23 regula porownywala proze z
+	// wartosciami CALEJ ontologii i przez to blokowala raporty za zwykly
+	// jezyk: kanarek PPT odpadl, bo w akapicie o formie przetwarzania
+	// konfliktu padlo slowo "nadzieja" (wartosc potencjalnosci pierwotnej),
+	// a w akapicie o potencjalnosci — "deficyt" (wartosc stanu). Oba sa
+	// najzwyklejszymi polskimi slowami i oba padly zgodnie z sensem.
+	//
+	// Ryzyko, ktore ta regula ma lapac, jest wezsze i bylo nazwane juz w
+	// pierwszej wersji: model siega po sasiednia kategorie Z TEJ SAMEJ
+	// LISTY — pisze "unikanie", gdy zatwierdzono "zaleznosc". Slownik
+	// innych konstruktow to legalne slownictwo raportu, nie przemyt
+	// kategorii.
+	c := o.Constructs[constructID]
+	if c == nil {
+		return nil
+	}
+	for _, v := range c.Values {
+		add(v)
+	}
+	for _, v := range c.IsNot {
+		add(v)
+	}
+	for _, cf := range c.CommonConfusions {
+		add(cf.Input)
 	}
 	return out
 }
@@ -353,6 +363,30 @@ var abductiveMarkers = []string{
 
 var numRe = regexp.MustCompile(`\d+(?:[.,]\d+)?%?`)
 
+// ProseNumbers wyciaga z tekstu WARTOSCI LICZBOWE, pomijajac cyfry
+// nalezace do identyfikatorow spanow.
+//
+// "s08" to odnosnik, nie liczba osiem. Do 2026-08-23 R9 tego nie
+// rozrozniala i na kanarku PPT odrzucila SIEDEM poprawnych twierdzen,
+// bo ich uzasadnienia powolywaly sie na spany po numerze ("wynika ze
+// spanu s40"). Regula, ktora miala chronic przed fabrykowana precyzja,
+// kasowala dokladnie te twierdzenia, ktore najstaranniej wskazywaly
+// zrodlo.
+func ProseNumbers(s string) []string {
+	var out []string
+	for _, m := range numRe.FindAllStringIndex(s, -1) {
+		if m[0] > 0 && isASCIILetter(s[m[0]-1]) {
+			continue // przylepione do litery: s08, chunk3, v1
+		}
+		out = append(out, s[m[0]:m[1]])
+	}
+	return out
+}
+
+func isASCIILetter(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+}
+
 // wordNumbers to liczebniki, ktore niosa TWIERDZENIE ILOSCIOWE, a nie
 // nieostry kwantyfikator. "Trzykrotnie" to liczba zapisana slowem i
 // podlega tej samej regule co "3"; "czesto" jest nieostre i lapie je
@@ -363,7 +397,7 @@ var wordNumbers = map[string]string{
 }
 
 func numbersIn(s string) []string {
-	out := numRe.FindAllString(s, -1)
+	out := ProseNumbers(s)
 	low := strings.ToLower(s)
 	for w, d := range wordNumbers {
 		if strings.Contains(low, w) {
