@@ -103,7 +103,14 @@ rm -rf "$OUT_DIR/.tmp/notification-worker"
 mkdir -p "$OUT_DIR/.tmp/notification-worker"
 cp "$NOTIFICATION_SVC_DIR/go.mod" "$OUT_DIR/.tmp/notification-worker/"
 cp "$NOTIFICATION_SVC_DIR/go.sum" "$OUT_DIR/.tmp/notification-worker/"
-cp "$NOTIFICATION_WORKER_DIR/main.go" "$OUT_DIR/.tmp/notification-worker/"
+# WSZYSTKIE pliki .go, nie sam main.go. Kazda funkcja z tej paczki ma
+# wlasny entry_point rejestrowany przez init() w SWOIM pliku — kopiowanie
+# samego main.go sprawia, ze funkcja wskazujaca entry point z innego pliku
+# wstaje bez zarejestrowanego celu i pada na healthchecku, z komunikatem
+# o porcie 8080, ktory nie mowi nic o prawdziwej przyczynie.
+# (Wykryte przy notification-worker-on-experimental, 2026-08-23.)
+cp "$NOTIFICATION_WORKER_DIR"/*.go "$OUT_DIR/.tmp/notification-worker/"
+rm -f "$OUT_DIR/.tmp/notification-worker/"*_test.go
 cp -R "$NOTIFICATION_SVC_DIR/internal" "$OUT_DIR/.tmp/notification-worker/"
 
 cp -R "$REPO_DIR/pkg" "$OUT_DIR/.tmp/notification-worker/"
