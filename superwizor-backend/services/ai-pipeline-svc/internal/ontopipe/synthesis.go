@@ -42,6 +42,19 @@ type SynthesisInput struct {
 	// NoFit to zjawiska poza taksonomia. Do raportu ida BEZ kategorii i
 	// nigdy nie sa mapowane na najblizsza (R7).
 	NoFit []string
+	// PastSpanIDs to identyfikatory spanow mowiacych WPROST o przeszlosci.
+	//
+	// Pole przechodzi przez test refleksji SWIADOMIE. Nie niesie zadnej
+	// tresci: to sam podzbior identyfikatorow, ktore i tak sa juz w
+	// Claims. S4 nie zyskuje ani jednego znaku materialu zrodlowego,
+	// zyskuje wylacznie informacje, KTORYCH ze swoich dowodow wolno mu
+	// uzyc do zdania o genezie.
+	//
+	// Bez tego S4 byl sadzony regula V3, ktorej nie mial jak spelnic —
+	// nie wiedzial, ktory span mowi o przeszlosci. Na kanarku PPT
+	// (2026-08-23) napisal dwa zdania o genezie i raport wypadl w tryb
+	// ekstraktywny.
+	PastSpanIDs []string
 	// Corrections to naruszenia V1-V6 z poprzedniej proby. Puste przy
 	// pierwszym przebiegu.
 	Corrections []Violation
@@ -179,14 +192,22 @@ func allowedConstructIDs(in SynthesisInput) []string {
 }
 
 func renderSynthesisInput(in SynthesisInput) string {
+	past := map[string]bool{}
+	for _, id := range in.PastSpanIDs {
+		past[id] = true
+	}
 	var b strings.Builder
 	b.WriteString("ZATWIERDZONE TWIERDZENIA:\n")
+	if len(in.PastSpanIDs) > 0 {
+		fmt.Fprintf(&b, "(spany oznaczone PRZESZLOSC mowia wprost o przeszlosci — "+
+			"tylko one moga uzasadnic zdanie o genezie)\n")
+	}
 	for i, c := range in.Claims {
 		fmt.Fprintf(&b, "[c%d] konstrukt=%s kategorie=%s status=%s pewnosc=%.2f\n",
 			i, c.ConstructID, strings.Join(c.Categories, ", "), c.Status, c.Confidence)
 		fmt.Fprintf(&b, "     uzasadnienie: %s\n", c.Reasoning)
 		for _, q := range c.Evidence {
-			fmt.Fprintf(&b, "     ZA  [%s]: %q\n", q.SpanID, q.Quote)
+			fmt.Fprintf(&b, "     ZA  [%s%s]: %q\n", q.SpanID, pastMark(q.SpanID, past), q.Quote)
 		}
 		for _, q := range c.CounterEvidence {
 			fmt.Fprintf(&b, "     PRZECIW [%s]: %q\n", q.SpanID, q.Quote)
@@ -221,4 +242,12 @@ func renderSynthesisInput(in SynthesisInput) string {
 		}
 	}
 	return b.String()
+}
+
+// pastMark oznacza span mowiacy o przeszlosci.
+func pastMark(spanID string, past map[string]bool) string {
+	if past[spanID] {
+		return " PRZESZLOSC"
+	}
+	return ""
 }

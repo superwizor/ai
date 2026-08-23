@@ -20,9 +20,14 @@ import (
 // architektury. Jesli ten test pada, to nie jest usterka testu — to jest
 // decyzja do podjecia swiadomie.
 func TestS4NieMaDostepuDoTranskrypcji(t *testing.T) {
+	// Kazda pozycja tej listy to SWIADOMA decyzja, ze pole nie wnosi
+	// materialu zrodlowego. PastSpanIDs doszlo 2026-08-23: niesie sam
+	// podzbior identyfikatorow, ktore i tak sa juz w Claims, i istnieje
+	// po to, zeby S4 mogl SPELNIC regule V3 zamiast byc nia zaskakiwany.
 	dozwolone := map[string]bool{
 		"Claims": true, "Patterns": true, "Degraded": true,
 		"Insufficient": true, "NoFit": true, "Corrections": true,
+		"PastSpanIDs": true,
 	}
 	ty := reflect.TypeOf(SynthesisInput{})
 	for i := 0; i < ty.NumField(); i++ {

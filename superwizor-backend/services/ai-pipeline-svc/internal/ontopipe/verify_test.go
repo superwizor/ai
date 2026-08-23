@@ -482,3 +482,84 @@ func TestDedupEtykiet(t *testing.T) {
 		t.Fatalf("dedupCategories = %v, oczekiwano [katastrofizacja imperatywy]", got)
 	}
 }
+
+// TestV2NieBlokujeCzesciZatwierdzonejKategorii — regres z kanarka PPT:
+// zatwierdzono `otwartość/szczerość`, a rejestr pomyłek notuje „szczerość"
+// jako wariant nazwy. Raport, który napisał ZATWIERDZONĄ kategorię,
+// wypadał na V2 za słowo, które sam w niej zawiera, i szedł w tryb
+// ekstraktywny za różnicę kosmetyczną.
+func TestV2NieBlokujeCzesciZatwierdzonejKategorii(t *testing.T) {
+	o, err := ontology.Parse([]byte(`
+modality: test
+version: 1.0.0
+constructs:
+  potencjalnosc:
+    label_pl: "Potencjalność"
+    values: ["otwartość/szczerość", "punktualność"]
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "szczerość", correct: "otwartość/szczerość"}
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis,
+                     open_question, insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := SynthesisInput{Claims: []ontology.Claim{{
+		ConstructID: "potencjalnosc",
+		Categories:  []string{"otwartość/szczerość"},
+		Status:      ontology.StatusInterpretation,
+		Evidence:    []ontology.QuoteRef{{SpanID: "s01", Quote: "mówię wprost"}},
+	}}}
+	spans := map[string]ontology.Span{"s01": {ID: "s01", QuoteVerbatim: "mówię wprost"}}
+	rep := Report{Constructs: []ConstructReport{{ConstructID: "potencjalnosc",
+		Hypotheses: []Hypothesis{{ID: "A",
+			Claim:      "Materiał wskazuje na szczerość jako sposób bycia w relacji.",
+			Supporting: []string{"s01"}, EpistemicStatus: "interpretation"}}}}}
+
+	if v := Verify(o, rep, in, spans); maNaruszenie(v, VRuleForeign) {
+		t.Fatalf("V2 zablokowala slowo zawarte w ZATWIERDZONEJ kategorii: %s", opis(v))
+	}
+	// Sasiad z tej samej listy nadal ma byc lapany.
+	rep.Constructs[0].Hypotheses[0].Claim = "Materiał wskazuje na punktualność."
+	if v := Verify(o, rep, in, spans); !maNaruszenie(v, VRuleForeign) {
+		t.Fatal("V2 przestala lapac niezatwierdzona kategorie tego samego konstruktu")
+	}
+}
+
+// TestS4WieKtoreSpanyMowiaOPrzeszlosci — S4 był sądzony regułą V3, której
+// nie miał jak spełnić: nie wiedział, który span mówi o przeszłości.
+func TestS4WieKtoreSpanyMowiaOPrzeszlosci(t *testing.T) {
+	in := SynthesisInput{
+		Claims: []ontology.Claim{{
+			ConstructID: "konflikt",
+			Evidence: []ontology.QuoteRef{
+				{SpanID: "s01", Quote: "teraz mi trudno"},
+				{SpanID: "s07", Quote: "w dzieciństwie nikt nie pytał"},
+			},
+		}},
+		PastSpanIDs: []string{"s07"},
+	}
+	tekst := renderSynthesisInput(in)
+	if !strings.Contains(tekst, "[s07 PRZESZLOSC]") {
+		t.Errorf("span o przeszlosci nie jest oznaczony:\n%s", tekst)
+	}
+	if strings.Contains(tekst, "[s01 PRZESZLOSC]") {
+		t.Errorf("span BEZ przeszlosci dostal oznaczenie:\n%s", tekst)
+	}
+}
+
+// TestPromptS4NiesieRegulaEtiologii: reguła, po której raport najczęściej
+// wykłada się w tryb ekstraktywny, musi być w prompcie, a nie tylko w
+// weryfikatorze.
+func TestPromptS4NiesieRegulaEtiologii(t *testing.T) {
+	for _, oczekiwane := range []string{"GENEZIE", "PRZESZŁOŚĆ", "next_session_questions"} {
+		if !strings.Contains(promptS4Base, oczekiwane) {
+			t.Errorf("prompt S4 nie zawiera %q — S4 jest sadzony regula, ktorej nie zna",
+				oczekiwane)
+		}
+	}
+}

@@ -78,12 +78,19 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 	}
 
 	// ── S4 + S5 ── z petla regeneracji
+	var pastIDs []string
+	for _, s := range spans {
+		if s.AboutPast {
+			pastIDs = append(pastIDs, s.ID)
+		}
+	}
 	si := SynthesisInput{
 		Claims:       res.Approved,
 		Patterns:     res.Patterns,
 		Degraded:     res.Degraded,
 		Insufficient: res.Insufficient,
 		NoFit:        res.NoFit,
+		PastSpanIDs:  pastIDs,
 	}
 	for proba := 0; ; proba++ {
 		rep, err := Synthesize(ctx, llm, o, si, &res.Usage)

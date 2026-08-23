@@ -41,6 +41,17 @@ REGUŁY
    konstruktu. Termin, który nie przeszedł walidacji, nie wraca tylnymi
    drzwiami w prozie.
 
+6a. ŻADNYCH ZDAŃ O GENEZIE bez spanu oznaczonego PRZESZŁOŚĆ.
+   Dotyczy każdego sformułowania mówiącego, SKĄD coś się wzięło:
+   „ukształtowało się w dzieciństwie", „wyniósł z domu rodzinnego", „ma
+   korzenie w relacji z…", „od dziecka uczył się…", „u źródeł leży…".
+   Jeżeli wśród Twoich spanów nie ma ani jednego z oznaczeniem
+   PRZESZŁOŚĆ — opisz zjawisko W CZASIE TERAŹNIEJSZYM albo zapytaj o
+   jego genezę w `next_session_questions`.
+   To jest reguła, na której najczęściej wykłada się ten raport, i
+   powód, dla którego istnieje cała ta architektura: spekulacja o
+   dzieciństwie brzmi klinicznie, a nie ma pokrycia w materiale.
+
 7. Konstrukty bez wystarczających danych: zero hipotez, a w
    `next_session_questions` konkretne pytanie na kolejną sesję. Puste pole ma
    być ZAPROSZENIEM („to warto sprawdzić"), nie komunikatem o błędzie.

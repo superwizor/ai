@@ -41,7 +41,18 @@ func protoRoleName(r identityv1.UserRole) string {
 		return "ORG_ADMIN"
 	case identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN:
 		return "SUPERWIZOR_ADMIN"
+	case identityv1.UserRole_USER_ROLE_ONTOLOGY_EDITOR:
+		return "ONTOLOGY_EDITOR"
 	}
+	// Rola spoza tej listy staje sie PUSTYM napisem, a pusta rola to dla
+	// bramek "brak uwierzytelnienia" — nie "brak uprawnien". Dodanie roli
+	// do proto bez dopisania jej TUTAJ odcina ja od calego serwisu i
+	// wyglada w UI jak problem z logowaniem, nie z autoryzacja.
+	//
+	// Dokladnie to spotkalo ONTOLOGY_EDITOR miedzy 2026-08-22 a 08-23:
+	// panel Ontology Studio pokazywal "Musisz byc zalogowana/y" komus, kto
+	// widzial wlasny e-mail w naglowku. TestMapowanieRolJestKompletne
+	// pilnuje, zeby to sie nie powtorzylo.
 	return ""
 }
 

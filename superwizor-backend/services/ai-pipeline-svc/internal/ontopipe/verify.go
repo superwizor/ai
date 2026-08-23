@@ -342,7 +342,36 @@ func foreignTerms(o *ontology.Ontology, constructID string, approved []ontology.
 	for _, cf := range c.CommonConfusions {
 		add(cf.Input)
 	}
-	return out
+
+	// Termin ZAWARTY w zatwierdzonej kategorii nie jest przemytem.
+	//
+	// PPT ma kategorie zlozone ("otwartość/szczerość"), a rejestr pomylek
+	// notuje ich polowki jako warianty nazwy. Bez tego odsiewu raport,
+	// ktory poprawnie napisal ZATWIERDZONA kategorie, wypadal na V2 za
+	// slowo, ktore sam w niej zawiera — i szedl w tryb ekstraktywny za
+	// roznice kosmetyczna (kanarek PPT 2026-08-23).
+	//
+	// To osobny przebieg, nie warunek w `add`: kategorie moga dojsc w
+	// dowolnej kolejnosci wzgledem terminow, ktore w sobie zawieraja.
+	filtered := out[:0]
+	for _, t := range out {
+		if zawartyWZatwierdzonej(t, ok) {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	return filtered
+}
+
+// zawartyWZatwierdzonej mowi, czy termin jest fragmentem ktorejs z
+// zatwierdzonych kategorii.
+func zawartyWZatwierdzonej(term string, approved map[string]bool) bool {
+	for cat := range approved {
+		if cat != term && strings.Contains(cat, term) {
+			return true
+		}
+	}
+	return false
 }
 
 var etiologyMarkers = []string{
