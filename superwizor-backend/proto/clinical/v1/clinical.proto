@@ -185,6 +185,21 @@ service ClinicalService {
     rpc AdminGetChatControls(AdminGetChatControlsRequest) returns (AdminChatControls);
     rpc AdminSetChatControls(AdminSetChatControlsRequest) returns (AdminChatControls);
 
+    // ─── Raporty eksperymentalne — kontrola per organizacja ───
+    // Ten sam wzorzec co kontrola czatu: odczyt wartosci SKUTECZNEJ
+    // (nadpisanie organizacji albo globalna), zapis z wymagana notatka i
+    // wpisem audytowym.
+    //
+    // Osobna para RPC, nie pole w AdminSetChatControls: to sa dwa rozne
+    // przelaczniki o roznym ryzyku. Czat wylacza sie w kryzysie, tryb
+    // eksperymentalny wlacza sie na czas kalibracji ontologii — zlanie
+    // ich w jedno wywolanie oznaczaloby, ze pomylka w jednym polu rusza
+    // drugi mechanizm.
+    rpc AdminGetExperimentalControls(AdminGetExperimentalControlsRequest)
+        returns (AdminExperimentalControls);
+    rpc AdminSetExperimentalControls(AdminSetExperimentalControlsRequest)
+        returns (AdminExperimentalControls);
+
     // ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
     // Per-therapist metadata aggregates for the caller's organization.
     // HARD privacy boundary (§7.3): counts and durations ONLY — never
@@ -1636,6 +1651,44 @@ message AdminSetChatControlsRequest {
   // Why. Required for any change: the note is what the next responder
   // reads at 3am, and the audit event is worth little without it.
   string note = 6;
+}
+
+// ─── Raporty eksperymentalne — kontrola administracyjna (plan 16 §2.5) ───
+
+message AdminGetExperimentalControlsRequest {
+  // Puste = wartosci globalne. Ustawione = wartosci SKUTECZNE dla tej
+  // organizacji, wraz z informacja, czy pochodza z nadpisania.
+  string organization_id = 1;
+}
+
+message AdminExperimentalControls {
+  // Czy organizacja moze generowac raporty na ontologii BEZ autoryzacji.
+  bool enabled = 1;
+  // Dobowy limit na terapeute. Potok wieloetapowy na Pro jest drogi, a
+  // dual-run podwaja koszt kazdej sesji.
+  int64 daily_limit = 2;
+  // True, gdy wartosci pochodza z nadpisania organizacji, a nie z
+  // wiersza globalnego.
+  bool is_org_override = 3;
+  string note = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message AdminSetExperimentalControlsRequest {
+  // Puste = zmiana wartosci globalnej; ustawione = nadpisanie dla
+  // organizacji. Wlaczanie globalne jest mozliwe, ale nie jest tym, po
+  // co ten przelacznik powstal — tryb ma dzialac na organizacji
+  // eksperckiej, nie u wszystkich.
+  string organization_id = 1;
+
+  // Zmieniane sa WYLACZNIE pola obecne. optional, nie wartosc domyslna:
+  // bez tego "zmien limit, zostaw flage" cicho przestawialoby flage.
+  optional bool enabled = 2;
+  optional int64 daily_limit = 3;
+
+  // Dlaczego. Wymagane przy kazdej zmianie — wpis audytowy bez powodu
+  // nie odpowiada na zadne pytanie, ktore ktos potem zada.
+  string note = 4;
 }
 
 // ─── AI Chat with guardrails (ADR docs/kronikarz/62 v1.3) ───

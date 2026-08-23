@@ -587,3 +587,23 @@ func (a *ConnectAdapter) GenerateExperimentalReport(ctx context.Context,
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) AdminGetExperimentalControls(ctx context.Context,
+	req *connect.Request[clinicalv1.AdminGetExperimentalControlsRequest]) (
+	*connect.Response[clinicalv1.AdminExperimentalControls], error) {
+	resp, err := a.s.AdminGetExperimentalControls(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminSetExperimentalControls(ctx context.Context,
+	req *connect.Request[clinicalv1.AdminSetExperimentalControlsRequest]) (
+	*connect.Response[clinicalv1.AdminExperimentalControls], error) {
+	resp, err := a.s.AdminSetExperimentalControls(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

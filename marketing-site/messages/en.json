@@ -796,6 +796,25 @@
           "confirm": "Activate"
         }
       }
+    },
+    "experimental": {
+      "sectionTitle": "Experimental mode",
+      "description": "Reports built on an ontology experts have not yet approved — generated alongside the production report, for comparison. Not clinical material and excluded from statistics.",
+      "loading": "Loading…",
+      "statusLabel": "Status for this organization",
+      "statusOn": "On",
+      "statusOff": "Off",
+      "actionEnable": "Enable",
+      "actionDisable": "Disable",
+      "limitLabel": "Daily limit per therapist",
+      "actionSaveLimit": "Save limit",
+      "limitHint": "One experimental report is a dozen-plus Pro model calls, and the in-app toggle generates one for EVERY new session. Maximum 50.",
+      "confirmEnableTitle": "Enable experimental mode?",
+      "confirmEnableBody": "Therapists in this organization will see the toggle in report settings and can generate reports on an unapproved ontology. Every such report carries a warning banner and never reaches the client panel.",
+      "confirmDisableTitle": "Disable experimental mode?",
+      "confirmDisableBody": "The toggle disappears from settings and new requests are refused. Reports already generated remain — remove them through the normal report deletion path.",
+      "confirmLimitTitle": "Change the daily limit?",
+      "confirmLimitBody": "New limit: {value} reports per therapist per day. Failed generations count too — they cost model calls."
     }
   },
   "errors": {

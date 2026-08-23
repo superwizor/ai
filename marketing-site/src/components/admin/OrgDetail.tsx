@@ -39,6 +39,7 @@ import {
   type PlanInfo,
 } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
+import { ExperimentalControls } from "@/components/admin/ExperimentalControls";
 import {
   AddressFields,
   type AddressDraft,
@@ -52,6 +53,7 @@ import { CardSkeleton } from "./TableSkeleton";
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
 export function OrgDetail({ orgId }: { orgId: string }) {
+  const tExp = useTranslations("admin.experimental");
   const t = useTranslations("admin.orgDetail");
   const tOrgs = useTranslations("admin.orgs");
   const tA = useTranslations("admin.actions");
@@ -665,6 +667,13 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               ))}
             </ul>
           )}
+        </Card>
+
+        {/* Tryb eksperymentalny (plan 16 §2.5) — obok pozostałych decyzji
+            o TEJ organizacji, nie na osobnym ekranie: osobny wymagałby
+            wybrania organizacji z listy jeszcze raz. */}
+        <Card title={tExp("sectionTitle")}>
+          <ExperimentalControls orgId={orgId} />
         </Card>
       </section>
 

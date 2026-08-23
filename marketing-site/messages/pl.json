@@ -796,6 +796,25 @@
           "confirm": "Uruchom"
         }
       }
+    },
+    "experimental": {
+      "sectionTitle": "Tryb eksperymentalny",
+      "description": "Raporty budowane na ontologii, której eksperci jeszcze nie zatwierdzili — obok raportu produkcyjnego, do porównania. Nie są materiałem klinicznym i nie liczą się do statystyk.",
+      "loading": "Wczytywanie…",
+      "statusLabel": "Stan dla tej organizacji",
+      "statusOn": "Włączony",
+      "statusOff": "Wyłączony",
+      "actionEnable": "Włącz",
+      "actionDisable": "Wyłącz",
+      "limitLabel": "Limit dobowy na terapeutę",
+      "actionSaveLimit": "Zapisz limit",
+      "limitHint": "Jeden raport eksperymentalny to kilkanaście wywołań modelu Pro, a przełącznik w aplikacji generuje go przy KAŻDEJ nowej sesji. Maksimum 50.",
+      "confirmEnableTitle": "Włączyć tryb eksperymentalny?",
+      "confirmEnableBody": "Terapeuci tej organizacji zobaczą przełącznik w ustawieniach raportów i będą mogli generować raporty na niezatwierdzonej ontologii. Każdy taki raport nosi baner ostrzegawczy i nie trafia do panelu klienta.",
+      "confirmDisableTitle": "Wyłączyć tryb eksperymentalny?",
+      "confirmDisableBody": "Przełącznik zniknie z ustawień, a nowe zamówienia zostaną odrzucone. Raporty już wygenerowane zostają — usuwa się je normalną ścieżką usuwania raportów.",
+      "confirmLimitTitle": "Zmienić limit dobowy?",
+      "confirmLimitBody": "Nowy limit: {value} raportów na terapeutę na dobę. Nieudane generacje też się liczą — kosztowały wywołania modelu."
     }
   },
   "errors": {
