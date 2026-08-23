@@ -603,6 +603,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 	// report.generated topic + notification-worker-on-report are retired.
 	_ = publishSessionStatusChanged(ctx, ev.SessionID, "done")
 
+	// Dual-run (plan 16 §2.5): raport eksperymentalny OBOK produkcyjnego,
+	// jesli terapeuta ma wlaczony przelacznik. Po opublikowaniu "done",
+	// zeby zamowienie nie mialo szansy opoznic powiadomienia o raporcie,
+	// na ktory terapeuta faktycznie czeka.
+	maybeDualRun(ctx, logger, session, ev.TranscriptID)
+
 	logger.Info("done",
 		"report_id", reportID,
 		"duration_ms", time.Since(startTime).Milliseconds(),

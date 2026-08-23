@@ -24,6 +24,7 @@ const UserRole$json = {
     {'1': 'USER_ROLE_PATIENT', '2': 2},
     {'1': 'USER_ROLE_ORG_ADMIN', '2': 3},
     {'1': 'USER_ROLE_SUPERWIZOR_ADMIN', '2': 4},
+    {'1': 'USER_ROLE_ONTOLOGY_EDITOR', '2': 5},
   ],
 };
 
@@ -31,7 +32,8 @@ const UserRole$json = {
 final $typed_data.Uint8List userRoleDescriptor = $convert.base64Decode(
     'CghVc2VyUm9sZRIZChVVU0VSX1JPTEVfVU5TUEVDSUZJRUQQABIXChNVU0VSX1JPTEVfVEhFUk'
     'FQSVNUEAESFQoRVVNFUl9ST0xFX1BBVElFTlQQAhIXChNVU0VSX1JPTEVfT1JHX0FETUlOEAMS'
-    'HgoaVVNFUl9ST0xFX1NVUEVSV0laT1JfQURNSU4QBA==');
+    'HgoaVVNFUl9ST0xFX1NVUEVSV0laT1JfQURNSU4QBBIdChlVU0VSX1JPTEVfT05UT0xPR1lfRU'
+    'RJVE9SEAU=');
 
 @$core.Deprecated('Use organizationTypeDescriptor instead')
 const OrganizationType$json = {
@@ -49,6 +51,26 @@ final $typed_data.Uint8List organizationTypeDescriptor = $convert.base64Decode(
     'ChBPcmdhbml6YXRpb25UeXBlEiEKHU9SR0FOSVpBVElPTl9UWVBFX1VOU1BFQ0lGSUVEEAASGg'
     'oWT1JHQU5JWkFUSU9OX1RZUEVfU09MTxABEhwKGE9SR0FOSVpBVElPTl9UWVBFX0NMSU5JQxAC'
     'EiAKHE9SR0FOSVpBVElPTl9UWVBFX0VOVEVSUFJJU0UQAw==');
+
+@$core.Deprecated('Use adminAssignTherapistStatusDescriptor instead')
+const AdminAssignTherapistStatus$json = {
+  '1': 'AdminAssignTherapistStatus',
+  '2': [
+    {'1': 'ADMIN_ASSIGN_THERAPIST_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'ADMIN_ASSIGN_THERAPIST_STATUS_ASSIGNED', '2': 1},
+    {
+      '1': 'ADMIN_ASSIGN_THERAPIST_STATUS_TRANSFER_CONFIRMATION_REQUIRED',
+      '2': 2
+    },
+  ],
+};
+
+/// Descriptor for `AdminAssignTherapistStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List adminAssignTherapistStatusDescriptor = $convert.base64Decode(
+    'ChpBZG1pbkFzc2lnblRoZXJhcGlzdFN0YXR1cxItCilBRE1JTl9BU1NJR05fVEhFUkFQSVNUX1'
+    'NUQVRVU19VTlNQRUNJRklFRBAAEioKJkFETUlOX0FTU0lHTl9USEVSQVBJU1RfU1RBVFVTX0FT'
+    'U0lHTkVEEAESQAo8QURNSU5fQVNTSUdOX1RIRVJBUElTVF9TVEFUVVNfVFJBTlNGRVJfQ09ORk'
+    'lSTUFUSU9OX1JFUVVJUkVEEAI=');
 
 @$core.Deprecated('Use appLoginTokenDescriptor instead')
 const AppLoginToken$json = {
@@ -446,6 +468,20 @@ const ReportPreferences$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {
+      '1': 'experimental_dual_run',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'experimentalDualRun'
+    },
+    {
+      '1': 'experimental_available',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '10': 'experimentalAvailable'
+    },
   ],
 };
 
@@ -458,7 +494,9 @@ final $typed_data.Uint8List reportPreferencesDescriptor = $convert.base64Decode(
     'EikKEHNlY3Rpb25fZW1waGFzaXMYByADKAlSD3NlY3Rpb25FbXBoYXNpcxIrChFzdHJlbmd0aH'
     'NfZnJhbWluZxgIIAEoCVIQc3RyZW5ndGhzRnJhbWluZxIbCglmcmVlX3RleHQYCSABKAlSCGZy'
     'ZWVUZXh0EjkKCnVwZGF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUg'
-    'l1cGRhdGVkQXQ=');
+    'l1cGRhdGVkQXQSMgoVZXhwZXJpbWVudGFsX2R1YWxfcnVuGAsgASgIUhNleHBlcmltZW50YWxE'
+    'dWFsUnVuEjUKFmV4cGVyaW1lbnRhbF9hdmFpbGFibGUYDCABKAhSFWV4cGVyaW1lbnRhbEF2YW'
+    'lsYWJsZQ==');
 
 @$core.Deprecated('Use getReportPreferencesRequestDescriptor instead')
 const GetReportPreferencesRequest$json = {
@@ -888,6 +926,24 @@ final $typed_data.Uint8List clientInviteStatusDescriptor = $convert.base64Decode
     'ABKAlSBWVtYWlsEjkKCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0'
     'YW1wUglleHBpcmVzQXQ=');
 
+@$core.Deprecated('Use setManagerTherapistSeatRequestDescriptor instead')
+const SetManagerTherapistSeatRequest$json = {
+  '1': 'SetManagerTherapistSeatRequest',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'practicing', '3': 2, '4': 1, '5': 8, '10': 'practicing'},
+    {'1': 'allocation_id', '3': 3, '4': 1, '5': 9, '10': 'allocationId'},
+    {'1': 'reason', '3': 4, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `SetManagerTherapistSeatRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setManagerTherapistSeatRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5TZXRNYW5hZ2VyVGhlcmFwaXN0U2VhdFJlcXVlc3QSFwoHdXNlcl9pZBgBIAEoCVIGdXNlck'
+        'lkEh4KCnByYWN0aWNpbmcYAiABKAhSCnByYWN0aWNpbmcSIwoNYWxsb2NhdGlvbl9pZBgDIAEo'
+        'CVIMYWxsb2NhdGlvbklkEhYKBnJlYXNvbhgEIAEoCVIGcmVhc29u');
+
 @$core.Deprecated('Use setTherapistStatusRequestDescriptor instead')
 const SetTherapistStatusRequest$json = {
   '1': 'SetTherapistStatusRequest',
@@ -1246,6 +1302,137 @@ final $typed_data.Uint8List adminInviteOrgManagerRequestDescriptor =
         'ChxBZG1pbkludml0ZU9yZ01hbmFnZXJSZXF1ZXN0EicKD29yZ2FuaXphdGlvbl9pZBgBIAEoCV'
         'IOb3JnYW5pemF0aW9uSWQSFAoFZW1haWwYAiABKAlSBWVtYWlsEhYKBnJlYXNvbhgPIAEoCVIG'
         'cmVhc29u');
+
+@$core.Deprecated('Use adminAssignTherapistToOrgRequestDescriptor instead')
+const AdminAssignTherapistToOrgRequest$json = {
+  '1': 'AdminAssignTherapistToOrgRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+    {'1': 'confirm_transfer', '3': 3, '4': 1, '5': 8, '10': 'confirmTransfer'},
+    {
+      '1': 'seat_allocation_id',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'seatAllocationId'
+    },
+    {'1': 'reason', '3': 15, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `AdminAssignTherapistToOrgRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminAssignTherapistToOrgRequestDescriptor =
+    $convert.base64Decode(
+        'CiBBZG1pbkFzc2lnblRoZXJhcGlzdFRvT3JnUmVxdWVzdBInCg9vcmdhbml6YXRpb25faWQYAS'
+        'ABKAlSDm9yZ2FuaXphdGlvbklkEhQKBWVtYWlsGAIgASgJUgVlbWFpbBIpChBjb25maXJtX3Ry'
+        'YW5zZmVyGAMgASgIUg9jb25maXJtVHJhbnNmZXISLAoSc2VhdF9hbGxvY2F0aW9uX2lkGAQgAS'
+        'gJUhBzZWF0QWxsb2NhdGlvbklkEhYKBnJlYXNvbhgPIAEoCVIGcmVhc29u');
+
+@$core.Deprecated('Use therapistTransferWarningDescriptor instead')
+const TherapistTransferWarning$json = {
+  '1': 'TherapistTransferWarning',
+  '2': [
+    {
+      '1': 'current_organization_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'currentOrganizationId'
+    },
+    {
+      '1': 'current_organization_name',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'currentOrganizationName'
+    },
+    {'1': 'total_sessions', '3': 3, '4': 1, '5': 5, '10': 'totalSessions'},
+    {
+      '1': 'billable_sessions',
+      '3': 4,
+      '4': 1,
+      '5': 5,
+      '10': 'billableSessions'
+    },
+    {'1': 'tokens_consumed', '3': 5, '4': 1, '5': 5, '10': 'tokensConsumed'},
+    {
+      '1': 'last_session_at',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'lastSessionAt'
+    },
+    {'1': 'holds_active_seat', '3': 7, '4': 1, '5': 8, '10': 'holdsActiveSeat'},
+  ],
+};
+
+/// Descriptor for `TherapistTransferWarning`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List therapistTransferWarningDescriptor = $convert.base64Decode(
+    'ChhUaGVyYXBpc3RUcmFuc2Zlcldhcm5pbmcSNgoXY3VycmVudF9vcmdhbml6YXRpb25faWQYAS'
+    'ABKAlSFWN1cnJlbnRPcmdhbml6YXRpb25JZBI6ChljdXJyZW50X29yZ2FuaXphdGlvbl9uYW1l'
+    'GAIgASgJUhdjdXJyZW50T3JnYW5pemF0aW9uTmFtZRIlCg50b3RhbF9zZXNzaW9ucxgDIAEoBV'
+    'INdG90YWxTZXNzaW9ucxIrChFiaWxsYWJsZV9zZXNzaW9ucxgEIAEoBVIQYmlsbGFibGVTZXNz'
+    'aW9ucxInCg90b2tlbnNfY29uc3VtZWQYBSABKAVSDnRva2Vuc0NvbnN1bWVkEkIKD2xhc3Rfc2'
+    'Vzc2lvbl9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSDWxhc3RTZXNzaW9u'
+    'QXQSKgoRaG9sZHNfYWN0aXZlX3NlYXQYByABKAhSD2hvbGRzQWN0aXZlU2VhdA==');
+
+@$core.Deprecated('Use adminAssignTherapistToOrgResponseDescriptor instead')
+const AdminAssignTherapistToOrgResponse$json = {
+  '1': 'AdminAssignTherapistToOrgResponse',
+  '2': [
+    {
+      '1': 'status',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.identity.v1.AdminAssignTherapistStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'therapist',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.identity.v1.User',
+      '10': 'therapist'
+    },
+    {
+      '1': 'transfer_warning',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.identity.v1.TherapistTransferWarning',
+      '10': 'transferWarning'
+    },
+  ],
+};
+
+/// Descriptor for `AdminAssignTherapistToOrgResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminAssignTherapistToOrgResponseDescriptor = $convert.base64Decode(
+    'CiFBZG1pbkFzc2lnblRoZXJhcGlzdFRvT3JnUmVzcG9uc2USPwoGc3RhdHVzGAEgASgOMicuaW'
+    'RlbnRpdHkudjEuQWRtaW5Bc3NpZ25UaGVyYXBpc3RTdGF0dXNSBnN0YXR1cxIvCgl0aGVyYXBp'
+    'c3QYAiABKAsyES5pZGVudGl0eS52MS5Vc2VyUgl0aGVyYXBpc3QSUAoQdHJhbnNmZXJfd2Fybm'
+    'luZxgDIAEoCzIlLmlkZW50aXR5LnYxLlRoZXJhcGlzdFRyYW5zZmVyV2FybmluZ1IPdHJhbnNm'
+    'ZXJXYXJuaW5n');
+
+@$core.Deprecated('Use adminUnassignTherapistFromOrgRequestDescriptor instead')
+const AdminUnassignTherapistFromOrgRequest$json = {
+  '1': 'AdminUnassignTherapistFromOrgRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'reason', '3': 15, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `AdminUnassignTherapistFromOrgRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminUnassignTherapistFromOrgRequestDescriptor =
+    $convert.base64Decode(
+        'CiRBZG1pblVuYXNzaWduVGhlcmFwaXN0RnJvbU9yZ1JlcXVlc3QSJwoPb3JnYW5pemF0aW9uX2'
+        'lkGAEgASgJUg5vcmdhbml6YXRpb25JZBIXCgd1c2VyX2lkGAIgASgJUgZ1c2VySWQSFgoGcmVh'
+        'c29uGA8gASgJUgZyZWFzb24=');
 
 @$core.Deprecated('Use adminCreateOrganizationResponseDescriptor instead')
 const AdminCreateOrganizationResponse$json = {

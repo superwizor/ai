@@ -1058,6 +1058,10 @@
   "report_prefs_diagnostic_language_label": "Język diagnostyczny",
   "report_prefs_free_text_hint": "np. Skupiaj się na obserwacjach języka ciała klienta…",
   "report_prefs_free_text_label": "Dodatkowe wskazówki",
+  "report_prefs_experimental_label": "Tryb eksperymentalny",
+  "report_prefs_experimental_subtitle": "Każda nowa sesja dostanie DODATKOWY raport zbudowany na ontologii, której eksperci jeszcze nie zatwierdzili. Nie służy do pracy klinicznej — powstaje obok zwykłego raportu, do porównania.",
+  "report_prefs_experimental_on": "Włączony",
+  "report_prefs_experimental_off": "Wyłączony",
   "report_prefs_free_text_subtitle": "Wolny tekst, max. 500 znaków. Te wskazówki AI uwzględni w każdym raporcie.",
   "report_prefs_hypothesis_hedging_assertive": "Asertywny",
   "report_prefs_hypothesis_hedging_balanced": "Wyważony",
@@ -1444,7 +1448,6 @@
   "invite_client_revoke": "Cofnij zaproszenie",
   "invite_client_revoke_confirm_title": "Cofnąć zaproszenie?",
   "invite_client_revoke_confirm_body": "Link w wysłanym e-mailu natychmiast przestanie działać. Będzie można wysłać nowe zaproszenie.",
-
   "ai_chat_title": "Superwizor AI",
   "ai_chat_fab_label": "Zapytaj AI",
   "ai_chat_fab_subtitle": "Czat z kontekstem sesji",

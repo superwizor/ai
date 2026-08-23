@@ -2353,6 +2353,19 @@ class AppLocalizationsPl extends AppLocalizations {
   String get report_prefs_free_text_label => 'Dodatkowe wskazówki';
 
   @override
+  String get report_prefs_experimental_label => 'Tryb eksperymentalny';
+
+  @override
+  String get report_prefs_experimental_subtitle =>
+      'Każda nowa sesja dostanie DODATKOWY raport zbudowany na ontologii, której eksperci jeszcze nie zatwierdzili. Nie służy do pracy klinicznej — powstaje obok zwykłego raportu, do porównania.';
+
+  @override
+  String get report_prefs_experimental_on => 'Włączony';
+
+  @override
+  String get report_prefs_experimental_off => 'Wyłączony';
+
+  @override
   String get report_prefs_free_text_subtitle =>
       'Wolny tekst, max. 500 znaków. Te wskazówki AI uwzględni w każdym raporcie.';
 

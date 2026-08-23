@@ -30,16 +30,24 @@ class UserRole extends $pb.ProtobufEnum {
   static const UserRole USER_ROLE_SUPERWIZOR_ADMIN =
       UserRole._(4, _omitEnumNames ? '' : 'USER_ROLE_SUPERWIZOR_ADMIN');
 
+  /// Ekspert kliniczny pracujacy w Ontology Studio (plan 16 v1.2 §4.1).
+  /// Tworzy i edytuje wersje ontologii, zatwierdza CUDZE. NIE aktywuje
+  /// ich na produkcji — to zostaje przy SUPERWIZOR_ADMIN. Dostep do
+  /// panelu ograniczony do sekcji /admin/ontologies.
+  static const UserRole USER_ROLE_ONTOLOGY_EDITOR =
+      UserRole._(5, _omitEnumNames ? '' : 'USER_ROLE_ONTOLOGY_EDITOR');
+
   static const $core.List<UserRole> values = <UserRole>[
     USER_ROLE_UNSPECIFIED,
     USER_ROLE_THERAPIST,
     USER_ROLE_PATIENT,
     USER_ROLE_ORG_ADMIN,
     USER_ROLE_SUPERWIZOR_ADMIN,
+    USER_ROLE_ONTOLOGY_EDITOR,
   ];
 
   static final $core.List<UserRole?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 4);
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
   static UserRole? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 
@@ -71,6 +79,42 @@ class OrganizationType extends $pb.ProtobufEnum {
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 
   const OrganizationType._(super.value, super.name);
+}
+
+class AdminAssignTherapistStatus extends $pb.ProtobufEnum {
+  static const AdminAssignTherapistStatus
+      ADMIN_ASSIGN_THERAPIST_STATUS_UNSPECIFIED = AdminAssignTherapistStatus._(
+          0, _omitEnumNames ? '' : 'ADMIN_ASSIGN_THERAPIST_STATUS_UNSPECIFIED');
+
+  /// The therapist is now a member of the requested organization.
+  static const AdminAssignTherapistStatus
+      ADMIN_ASSIGN_THERAPIST_STATUS_ASSIGNED = AdminAssignTherapistStatus._(
+          1, _omitEnumNames ? '' : 'ADMIN_ASSIGN_THERAPIST_STATUS_ASSIGNED');
+
+  /// Nothing was written. The therapist belongs to another org; the
+  /// response carries `transfer_warning` so the admin can see what
+  /// moving would drag along, then retry with confirm_transfer=true.
+  static const AdminAssignTherapistStatus
+      ADMIN_ASSIGN_THERAPIST_STATUS_TRANSFER_CONFIRMATION_REQUIRED =
+      AdminAssignTherapistStatus._(
+          2,
+          _omitEnumNames
+              ? ''
+              : 'ADMIN_ASSIGN_THERAPIST_STATUS_TRANSFER_CONFIRMATION_REQUIRED');
+
+  static const $core.List<AdminAssignTherapistStatus> values =
+      <AdminAssignTherapistStatus>[
+    ADMIN_ASSIGN_THERAPIST_STATUS_UNSPECIFIED,
+    ADMIN_ASSIGN_THERAPIST_STATUS_ASSIGNED,
+    ADMIN_ASSIGN_THERAPIST_STATUS_TRANSFER_CONFIRMATION_REQUIRED,
+  ];
+
+  static final $core.List<AdminAssignTherapistStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 2);
+  static AdminAssignTherapistStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const AdminAssignTherapistStatus._(super.value, super.name);
 }
 
 const $core.bool _omitEnumNames =

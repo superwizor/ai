@@ -173,6 +173,17 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$setMyOrgManagerStatus, request, options: options);
   }
 
+  /// Menedżer, który sam przyjmuje pacjentów. Nadaje ORG_ADMINowi
+  /// miejsce w planie (albo je odbiera) — bez zmiany roli, patrz
+  /// SetManagerTherapistSeatRequest.
+  $grpc.ResponseFuture<$0.User> setManagerTherapistSeat(
+    $0.SetManagerTherapistSeatRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setManagerTherapistSeat, request,
+        options: options);
+  }
+
   $grpc.ResponseFuture<$1.Empty> revokeMyOrgManagerInvite(
     $0.RevokeMyOrgManagerInviteRequest request, {
     $grpc.CallOptions? options,
@@ -276,6 +287,39 @@ class IdentityServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$adminInviteOrgManager, request, options: options);
+  }
+
+  /// Attaches an EXISTING therapist account to an organization by
+  /// e-mail (docs/43 §5) — the admin counterpart of the manager-driven
+  /// InviteTherapist → AcceptInvitation pair, for accounts that already
+  /// exist and therefore cannot be invited again (users.email is
+  /// globally UNIQUE).
+  ///
+  /// A therapist belongs to at most ONE organization (users.organization_id),
+  /// so attaching an account that already sits in another org is a MOVE.
+  /// That is never silent: the first call returns
+  /// TRANSFER_CONFIRMATION_REQUIRED with the therapist's session history
+  /// (total + billable) and writes NOTHING. The admin re-sends the same
+  /// request with confirm_transfer=true to go through with it.
+  $grpc.ResponseFuture<$0.AdminAssignTherapistToOrgResponse>
+      adminAssignTherapistToOrg(
+    $0.AdminAssignTherapistToOrgRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminAssignTherapistToOrg, request,
+        options: options);
+  }
+
+  /// Detaches a therapist from an organization: clears
+  /// users.organization_id and closes the open seat_assignments row.
+  /// The account itself stays active and keeps its kartoteki and
+  /// sessions — this is NOT the soft-delete that RemoveTherapist does.
+  $grpc.ResponseFuture<$1.Empty> adminUnassignTherapistFromOrg(
+    $0.AdminUnassignTherapistFromOrgRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminUnassignTherapistFromOrg, request,
+        options: options);
   }
 
   $grpc.ResponseFuture<$0.AdminListOrganizationsResponse>
@@ -521,6 +565,11 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/SetMyOrgManagerStatus',
           ($0.SetMyOrgManagerStatusRequest value) => value.writeToBuffer(),
           $0.User.fromBuffer);
+  static final _$setManagerTherapistSeat =
+      $grpc.ClientMethod<$0.SetManagerTherapistSeatRequest, $0.User>(
+          '/identity.v1.IdentityService/SetManagerTherapistSeat',
+          ($0.SetManagerTherapistSeatRequest value) => value.writeToBuffer(),
+          $0.User.fromBuffer);
   static final _$revokeMyOrgManagerInvite =
       $grpc.ClientMethod<$0.RevokeMyOrgManagerInviteRequest, $1.Empty>(
           '/identity.v1.IdentityService/RevokeMyOrgManagerInvite',
@@ -567,6 +616,18 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/AdminInviteOrgManager',
           ($0.AdminInviteOrgManagerRequest value) => value.writeToBuffer(),
           $0.Invitation.fromBuffer);
+  static final _$adminAssignTherapistToOrg = $grpc.ClientMethod<
+          $0.AdminAssignTherapistToOrgRequest,
+          $0.AdminAssignTherapistToOrgResponse>(
+      '/identity.v1.IdentityService/AdminAssignTherapistToOrg',
+      ($0.AdminAssignTherapistToOrgRequest value) => value.writeToBuffer(),
+      $0.AdminAssignTherapistToOrgResponse.fromBuffer);
+  static final _$adminUnassignTherapistFromOrg =
+      $grpc.ClientMethod<$0.AdminUnassignTherapistFromOrgRequest, $1.Empty>(
+          '/identity.v1.IdentityService/AdminUnassignTherapistFromOrg',
+          ($0.AdminUnassignTherapistFromOrgRequest value) =>
+              value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$adminListOrganizations = $grpc.ClientMethod<
           $0.AdminListOrganizationsRequest, $0.AdminListOrganizationsResponse>(
       '/identity.v1.IdentityService/AdminListOrganizations',
@@ -789,6 +850,14 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.SetMyOrgManagerStatusRequest.fromBuffer(value),
         ($0.User value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetManagerTherapistSeatRequest, $0.User>(
+        'SetManagerTherapistSeat',
+        setManagerTherapistSeat_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SetManagerTherapistSeatRequest.fromBuffer(value),
+        ($0.User value) => value.writeToBuffer()));
     $addMethod(
         $grpc.ServiceMethod<$0.RevokeMyOrgManagerInviteRequest, $1.Empty>(
             'RevokeMyOrgManagerInvite',
@@ -868,6 +937,24 @@ abstract class IdentityServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.AdminInviteOrgManagerRequest.fromBuffer(value),
             ($0.Invitation value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminAssignTherapistToOrgRequest,
+            $0.AdminAssignTherapistToOrgResponse>(
+        'AdminAssignTherapistToOrg',
+        adminAssignTherapistToOrg_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminAssignTherapistToOrgRequest.fromBuffer(value),
+        ($0.AdminAssignTherapistToOrgResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminUnassignTherapistFromOrgRequest, $1.Empty>(
+            'AdminUnassignTherapistFromOrg',
+            adminUnassignTherapistFromOrg_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminUnassignTherapistFromOrgRequest.fromBuffer(value),
+            ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminListOrganizationsRequest,
             $0.AdminListOrganizationsResponse>(
         'AdminListOrganizations',
@@ -1153,6 +1240,14 @@ abstract class IdentityServiceBase extends $grpc.Service {
   $async.Future<$0.User> setMyOrgManagerStatus(
       $grpc.ServiceCall call, $0.SetMyOrgManagerStatusRequest request);
 
+  $async.Future<$0.User> setManagerTherapistSeat_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SetManagerTherapistSeatRequest> $request) async {
+    return setManagerTherapistSeat($call, await $request);
+  }
+
+  $async.Future<$0.User> setManagerTherapistSeat(
+      $grpc.ServiceCall call, $0.SetManagerTherapistSeatRequest request);
+
   $async.Future<$1.Empty> revokeMyOrgManagerInvite_Pre($grpc.ServiceCall $call,
       $async.Future<$0.RevokeMyOrgManagerInviteRequest> $request) async {
     return revokeMyOrgManagerInvite($call, await $request);
@@ -1230,6 +1325,24 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.Invitation> adminInviteOrgManager(
       $grpc.ServiceCall call, $0.AdminInviteOrgManagerRequest request);
+
+  $async.Future<$0.AdminAssignTherapistToOrgResponse>
+      adminAssignTherapistToOrg_Pre($grpc.ServiceCall $call,
+          $async.Future<$0.AdminAssignTherapistToOrgRequest> $request) async {
+    return adminAssignTherapistToOrg($call, await $request);
+  }
+
+  $async.Future<$0.AdminAssignTherapistToOrgResponse> adminAssignTherapistToOrg(
+      $grpc.ServiceCall call, $0.AdminAssignTherapistToOrgRequest request);
+
+  $async.Future<$1.Empty> adminUnassignTherapistFromOrg_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminUnassignTherapistFromOrgRequest> $request) async {
+    return adminUnassignTherapistFromOrg($call, await $request);
+  }
+
+  $async.Future<$1.Empty> adminUnassignTherapistFromOrg(
+      $grpc.ServiceCall call, $0.AdminUnassignTherapistFromOrgRequest request);
 
   $async.Future<$0.AdminListOrganizationsResponse> adminListOrganizations_Pre(
       $grpc.ServiceCall $call,

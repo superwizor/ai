@@ -4,19 +4,19 @@
 //
 // Design constraints (from docs/10_REPORT_CUSTOMIZATION.md §8):
 //
-//   1. Output is ALWAYS subordinate to the modality baseline.
-//      The fragment text starts with "PREFERENCJE TERAPEUTY
-//      (uzupełnienia stylu, NIE sprzeczne z powyższymi zasadami
-//      klinicznymi)" so the LLM treats it as supplementary, not
-//      overriding.
-//   2. Empty/missing preferences → empty fragment. Call 2 prompt
-//      stays byte-identical to today's behavior for users who
-//      haven't configured anything.
-//   3. Free-text is treated as opaque guidance and appended verbatim
-//      after server-side sanitization (which happens in identity-svc
-//      before it ever reaches the DB).
-//   4. MaxOutputTokens nudge for length=brief lives on the caller
-//      (llm-worker), not here — this package only emits prompt text.
+//  1. Output is ALWAYS subordinate to the modality baseline.
+//     The fragment text starts with "PREFERENCJE TERAPEUTY
+//     (uzupełnienia stylu, NIE sprzeczne z powyższymi zasadami
+//     klinicznymi)" so the LLM treats it as supplementary, not
+//     overriding.
+//  2. Empty/missing preferences → empty fragment. Call 2 prompt
+//     stays byte-identical to today's behavior for users who
+//     haven't configured anything.
+//  3. Free-text is treated as opaque guidance and appended verbatim
+//     after server-side sanitization (which happens in identity-svc
+//     before it ever reaches the DB).
+//  4. MaxOutputTokens nudge for length=brief lives on the caller
+//     (llm-worker), not here — this package only emits prompt text.
 //
 // The full enum surface mirrors identity-svc's preferencesPayload
 // struct. If a new dimension is added there, ADD IT HERE too +
@@ -43,6 +43,18 @@ type Preferences struct {
 	SectionEmphasis    []string `json:"section_emphasis,omitempty"`
 	StrengthsFraming   string   `json:"strengths_framing,omitempty"`
 	FreeText           string   `json:"free_text,omitempty"`
+	// ExperimentalDualRun wlacza generacje raportu eksperymentalnego OBOK
+	// produkcyjnego dla kazdej NOWEJ ukonczonej sesji (plan 16 §2.5).
+	//
+	// Jedzie tym kanalem, a nie osobnym RPC, bo llm-worker i tak czyta
+	// preferencje przy generacji — sciezka automatyczna nie potrzebuje
+	// wiec nowego wywolania. Sam przelacznik jest widoczny w ustawieniach
+	// WYLACZNIE, gdy organizacja ma REPORT_EXPERIMENTAL_ENABLED.
+	//
+	// NIE wchodzi do RenderFragment: to nie jest preferencja stylu
+	// raportu, tylko decyzja o tym, ILE raportow powstaje. Wpisanie jej
+	// do promptu bylo by bledem kategorialnym i zasmiecilo kontekst.
+	ExperimentalDualRun bool `json:"experimental_dual_run,omitempty"`
 }
 
 // Decode unmarshals the raw JSONB column. Empty / "{}" / nil → zero

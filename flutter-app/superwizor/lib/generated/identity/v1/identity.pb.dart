@@ -1270,6 +1270,8 @@ class ReportPreferences extends $pb.GeneratedMessage {
     $core.String? strengthsFraming,
     $core.String? freeText,
     $2.Timestamp? updatedAt,
+    $core.bool? experimentalDualRun,
+    $core.bool? experimentalAvailable,
   }) {
     final result = create();
     if (version != null) result.version = version;
@@ -1283,6 +1285,10 @@ class ReportPreferences extends $pb.GeneratedMessage {
     if (strengthsFraming != null) result.strengthsFraming = strengthsFraming;
     if (freeText != null) result.freeText = freeText;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (experimentalDualRun != null)
+      result.experimentalDualRun = experimentalDualRun;
+    if (experimentalAvailable != null)
+      result.experimentalAvailable = experimentalAvailable;
     return result;
   }
 
@@ -1310,6 +1316,8 @@ class ReportPreferences extends $pb.GeneratedMessage {
     ..aOS(9, _omitFieldNames ? '' : 'freeText')
     ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $2.Timestamp.create)
+    ..aOB(11, _omitFieldNames ? '' : 'experimentalDualRun')
+    ..aOB(12, _omitFieldNames ? '' : 'experimentalAvailable')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1430,6 +1438,46 @@ class ReportPreferences extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(10);
   @$pb.TagNumber(10)
   $2.Timestamp ensureUpdatedAt() => $_ensure(9);
+
+  /// Tryb eksperymentalny (plan 16 §2.5): kazda NOWA ukonczona sesja
+  /// generuje raport eksperymentalny OBOK produkcyjnego. Ekspert nagrywa
+  /// normalnie i dostaje oba do porownania, zero czynnosci per raport.
+  ///
+  /// NIE jest preferencja stylu jak pozostale pola — decyduje, ILE
+  /// raportow powstaje, i nie wchodzi do promptu. Jedzie tym kanalem, bo
+  /// llm-worker i tak czyta preferencje przy generacji, wiec sciezka
+  /// automatyczna nie potrzebuje nowego RPC.
+  ///
+  /// Przelacznik jest widoczny w ustawieniach WYLACZNIE, gdy organizacja
+  /// ma REPORT_EXPERIMENTAL_ENABLED.
+  @$pb.TagNumber(11)
+  $core.bool get experimentalDualRun => $_getBF(10);
+  @$pb.TagNumber(11)
+  set experimentalDualRun($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasExperimentalDualRun() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearExperimentalDualRun() => $_clearField(11);
+
+  /// TYLKO DO ODCZYTU, wyliczane po stronie serwera z flagi organizacji
+  /// REPORT_EXPERIMENTAL_ENABLED. Aplikacja pokazuje przelacznik
+  /// `experimental_dual_run` wylacznie wtedy, gdy to pole jest true.
+  ///
+  /// Jedzie tym samym wywolaniem zamiast osobnym RPC "jakie mam flagi":
+  /// ekran ustawien i tak pobiera preferencje, a dodatkowa runda tylko po
+  /// to, zeby ukryc jeden przelacznik, kosztowalaby latencje wejscia w
+  /// ustawienia dla wszystkich.
+  ///
+  /// Ustawienie go przez klienta jest IGNOROWANE — bramka jest po stronie
+  /// serwera (clinical-svc sprawdza flage przy kazdym zamowieniu).
+  @$pb.TagNumber(12)
+  $core.bool get experimentalAvailable => $_getBF(11);
+  @$pb.TagNumber(12)
+  set experimentalAvailable($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasExperimentalAvailable() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearExperimentalAvailable() => $_clearField(12);
 }
 
 class GetReportPreferencesRequest extends $pb.GeneratedMessage {
@@ -2919,6 +2967,109 @@ class ClientInviteStatus extends $pb.GeneratedMessage {
   $2.Timestamp ensureExpiresAt() => $_ensure(2);
 }
 
+/// Menedżer organizacji, który sam prowadzi terapię.
+///
+/// Rola NIE ulega zmianie — konto zostaje ORG_ADMIN i zachowuje wszystkie
+/// uprawnienia menedżerskie. Prawem do praktykowania jest MIEJSCE w planie:
+/// to na jego podstawie powstaje licznik zużycia (GetSeatPlanForTherapist
+/// w billing-svc nie patrzy na rolę), a aplikacja i tak kieruje na
+/// powierzchnię terapeuty każdego, kto nie jest pacjentem.
+///
+/// Dostępu do danych to nie poszerza: ORG_ADMIN ma już wgląd w kartoteki
+/// swojej organizacji w ramach nadzoru klinicznego (docs/38).
+class SetManagerTherapistSeatRequest extends $pb.GeneratedMessage {
+  factory SetManagerTherapistSeatRequest({
+    $core.String? userId,
+    $core.bool? practicing,
+    $core.String? allocationId,
+    $core.String? reason,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (practicing != null) result.practicing = practicing;
+    if (allocationId != null) result.allocationId = allocationId;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  SetManagerTherapistSeatRequest._();
+
+  factory SetManagerTherapistSeatRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetManagerTherapistSeatRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetManagerTherapistSeatRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOB(2, _omitFieldNames ? '' : 'practicing')
+    ..aOS(3, _omitFieldNames ? '' : 'allocationId')
+    ..aOS(4, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetManagerTherapistSeatRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetManagerTherapistSeatRequest copyWith(
+          void Function(SetManagerTherapistSeatRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as SetManagerTherapistSeatRequest))
+          as SetManagerTherapistSeatRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetManagerTherapistSeatRequest create() =>
+      SetManagerTherapistSeatRequest._();
+  @$core.override
+  SetManagerTherapistSeatRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetManagerTherapistSeatRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetManagerTherapistSeatRequest>(create);
+  static SetManagerTherapistSeatRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get practicing => $_getBF(1);
+  @$pb.TagNumber(2)
+  set practicing($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPracticing() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPracticing() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get allocationId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set allocationId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAllocationId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAllocationId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReason() => $_clearField(4);
+}
+
 class SetTherapistStatusRequest extends $pb.GeneratedMessage {
   factory SetTherapistStatusRequest({
     $core.String? userId,
@@ -4175,6 +4326,438 @@ class AdminInviteOrgManagerRequest extends $pb.GeneratedMessage {
   $core.bool hasEmail() => $_has(1);
   @$pb.TagNumber(2)
   void clearEmail() => $_clearField(2);
+
+  @$pb.TagNumber(15)
+  $core.String get reason => $_getSZ(2);
+  @$pb.TagNumber(15)
+  set reason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(15)
+  $core.bool hasReason() => $_has(2);
+  @$pb.TagNumber(15)
+  void clearReason() => $_clearField(15);
+}
+
+class AdminAssignTherapistToOrgRequest extends $pb.GeneratedMessage {
+  factory AdminAssignTherapistToOrgRequest({
+    $core.String? organizationId,
+    $core.String? email,
+    $core.bool? confirmTransfer,
+    $core.String? seatAllocationId,
+    $core.String? reason,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (email != null) result.email = email;
+    if (confirmTransfer != null) result.confirmTransfer = confirmTransfer;
+    if (seatAllocationId != null) result.seatAllocationId = seatAllocationId;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  AdminAssignTherapistToOrgRequest._();
+
+  factory AdminAssignTherapistToOrgRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminAssignTherapistToOrgRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminAssignTherapistToOrgRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aOS(2, _omitFieldNames ? '' : 'email')
+    ..aOB(3, _omitFieldNames ? '' : 'confirmTransfer')
+    ..aOS(4, _omitFieldNames ? '' : 'seatAllocationId')
+    ..aOS(15, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminAssignTherapistToOrgRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminAssignTherapistToOrgRequest copyWith(
+          void Function(AdminAssignTherapistToOrgRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminAssignTherapistToOrgRequest))
+          as AdminAssignTherapistToOrgRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminAssignTherapistToOrgRequest create() =>
+      AdminAssignTherapistToOrgRequest._();
+  @$core.override
+  AdminAssignTherapistToOrgRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminAssignTherapistToOrgRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminAssignTherapistToOrgRequest>(
+          create);
+  static AdminAssignTherapistToOrgRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  /// The therapist's account e-mail. Matched case-insensitively against
+  /// users.email (non-deleted). No account = NotFound; this RPC never
+  /// creates users and never sends invitations.
+  @$pb.TagNumber(2)
+  $core.String get email => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set email($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEmail() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEmail() => $_clearField(2);
+
+  /// Set true to go through with a move when the therapist already
+  /// belongs to another organization. Without it the server answers
+  /// TRANSFER_CONFIRMATION_REQUIRED and writes nothing.
+  @$pb.TagNumber(3)
+  $core.bool get confirmTransfer => $_getBF(2);
+  @$pb.TagNumber(3)
+  set confirmTransfer($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasConfirmTransfer() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConfirmTransfer() => $_clearField(3);
+
+  /// Which seat allocation to occupy. Optional: when the org has exactly
+  /// one allocation the server picks it; with several, omitting this is
+  /// an InvalidArgument. Orgs with no allocations get no seat row at
+  /// all, matching the allocation-less invite path.
+  @$pb.TagNumber(4)
+  $core.String get seatAllocationId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set seatAllocationId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSeatAllocationId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSeatAllocationId() => $_clearField(4);
+
+  @$pb.TagNumber(15)
+  $core.String get reason => $_getSZ(4);
+  @$pb.TagNumber(15)
+  set reason($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(15)
+  $core.bool hasReason() => $_has(4);
+  @$pb.TagNumber(15)
+  void clearReason() => $_clearField(15);
+}
+
+/// What an admin should see BEFORE moving a therapist out of their
+/// current organization. Sessions and kartoteki stay with the therapist,
+/// but the billing history stays with the OLD org — that asymmetry is
+/// the reason this confirmation exists.
+class TherapistTransferWarning extends $pb.GeneratedMessage {
+  factory TherapistTransferWarning({
+    $core.String? currentOrganizationId,
+    $core.String? currentOrganizationName,
+    $core.int? totalSessions,
+    $core.int? billableSessions,
+    $core.int? tokensConsumed,
+    $2.Timestamp? lastSessionAt,
+    $core.bool? holdsActiveSeat,
+  }) {
+    final result = create();
+    if (currentOrganizationId != null)
+      result.currentOrganizationId = currentOrganizationId;
+    if (currentOrganizationName != null)
+      result.currentOrganizationName = currentOrganizationName;
+    if (totalSessions != null) result.totalSessions = totalSessions;
+    if (billableSessions != null) result.billableSessions = billableSessions;
+    if (tokensConsumed != null) result.tokensConsumed = tokensConsumed;
+    if (lastSessionAt != null) result.lastSessionAt = lastSessionAt;
+    if (holdsActiveSeat != null) result.holdsActiveSeat = holdsActiveSeat;
+    return result;
+  }
+
+  TherapistTransferWarning._();
+
+  factory TherapistTransferWarning.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TherapistTransferWarning.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TherapistTransferWarning',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'currentOrganizationId')
+    ..aOS(2, _omitFieldNames ? '' : 'currentOrganizationName')
+    ..aI(3, _omitFieldNames ? '' : 'totalSessions')
+    ..aI(4, _omitFieldNames ? '' : 'billableSessions')
+    ..aI(5, _omitFieldNames ? '' : 'tokensConsumed')
+    ..aOM<$2.Timestamp>(6, _omitFieldNames ? '' : 'lastSessionAt',
+        subBuilder: $2.Timestamp.create)
+    ..aOB(7, _omitFieldNames ? '' : 'holdsActiveSeat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistTransferWarning clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistTransferWarning copyWith(
+          void Function(TherapistTransferWarning) updates) =>
+      super.copyWith((message) => updates(message as TherapistTransferWarning))
+          as TherapistTransferWarning;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TherapistTransferWarning create() => TherapistTransferWarning._();
+  @$core.override
+  TherapistTransferWarning createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TherapistTransferWarning getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TherapistTransferWarning>(create);
+  static TherapistTransferWarning? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get currentOrganizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set currentOrganizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCurrentOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCurrentOrganizationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get currentOrganizationName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set currentOrganizationName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCurrentOrganizationName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCurrentOrganizationName() => $_clearField(2);
+
+  /// Every session ever recorded by this therapist, across orgs.
+  @$pb.TagNumber(3)
+  $core.int get totalSessions => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set totalSessions($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotalSessions() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotalSessions() => $_clearField(3);
+
+  /// Of those, the ones that consumed billing tokens (usage_events).
+  @$pb.TagNumber(4)
+  $core.int get billableSessions => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set billableSessions($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBillableSessions() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBillableSessions() => $_clearField(4);
+
+  /// Sum of usage_events.tokens_consumed for this therapist's sessions.
+  @$pb.TagNumber(5)
+  $core.int get tokensConsumed => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set tokensConsumed($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTokensConsumed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTokensConsumed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $2.Timestamp get lastSessionAt => $_getN(5);
+  @$pb.TagNumber(6)
+  set lastSessionAt($2.Timestamp value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLastSessionAt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLastSessionAt() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $2.Timestamp ensureLastSessionAt() => $_ensure(5);
+
+  /// True when the therapist currently occupies a seat in the old org —
+  /// that seat is released by the move.
+  @$pb.TagNumber(7)
+  $core.bool get holdsActiveSeat => $_getBF(6);
+  @$pb.TagNumber(7)
+  set holdsActiveSeat($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasHoldsActiveSeat() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearHoldsActiveSeat() => $_clearField(7);
+}
+
+class AdminAssignTherapistToOrgResponse extends $pb.GeneratedMessage {
+  factory AdminAssignTherapistToOrgResponse({
+    AdminAssignTherapistStatus? status,
+    User? therapist,
+    TherapistTransferWarning? transferWarning,
+  }) {
+    final result = create();
+    if (status != null) result.status = status;
+    if (therapist != null) result.therapist = therapist;
+    if (transferWarning != null) result.transferWarning = transferWarning;
+    return result;
+  }
+
+  AdminAssignTherapistToOrgResponse._();
+
+  factory AdminAssignTherapistToOrgResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminAssignTherapistToOrgResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminAssignTherapistToOrgResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aE<AdminAssignTherapistStatus>(1, _omitFieldNames ? '' : 'status',
+        enumValues: AdminAssignTherapistStatus.values)
+    ..aOM<User>(2, _omitFieldNames ? '' : 'therapist', subBuilder: User.create)
+    ..aOM<TherapistTransferWarning>(3, _omitFieldNames ? '' : 'transferWarning',
+        subBuilder: TherapistTransferWarning.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminAssignTherapistToOrgResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminAssignTherapistToOrgResponse copyWith(
+          void Function(AdminAssignTherapistToOrgResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminAssignTherapistToOrgResponse))
+          as AdminAssignTherapistToOrgResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminAssignTherapistToOrgResponse create() =>
+      AdminAssignTherapistToOrgResponse._();
+  @$core.override
+  AdminAssignTherapistToOrgResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminAssignTherapistToOrgResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminAssignTherapistToOrgResponse>(
+          create);
+  static AdminAssignTherapistToOrgResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  AdminAssignTherapistStatus get status => $_getN(0);
+  @$pb.TagNumber(1)
+  set status(AdminAssignTherapistStatus value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStatus() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStatus() => $_clearField(1);
+
+  /// Set when status = ASSIGNED.
+  @$pb.TagNumber(2)
+  User get therapist => $_getN(1);
+  @$pb.TagNumber(2)
+  set therapist(User value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapist() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapist() => $_clearField(2);
+  @$pb.TagNumber(2)
+  User ensureTherapist() => $_ensure(1);
+
+  /// Set when status = TRANSFER_CONFIRMATION_REQUIRED.
+  @$pb.TagNumber(3)
+  TherapistTransferWarning get transferWarning => $_getN(2);
+  @$pb.TagNumber(3)
+  set transferWarning(TherapistTransferWarning value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTransferWarning() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTransferWarning() => $_clearField(3);
+  @$pb.TagNumber(3)
+  TherapistTransferWarning ensureTransferWarning() => $_ensure(2);
+}
+
+class AdminUnassignTherapistFromOrgRequest extends $pb.GeneratedMessage {
+  factory AdminUnassignTherapistFromOrgRequest({
+    $core.String? organizationId,
+    $core.String? userId,
+    $core.String? reason,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (userId != null) result.userId = userId;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  AdminUnassignTherapistFromOrgRequest._();
+
+  factory AdminUnassignTherapistFromOrgRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminUnassignTherapistFromOrgRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminUnassignTherapistFromOrgRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..aOS(15, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUnassignTherapistFromOrgRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUnassignTherapistFromOrgRequest copyWith(
+          void Function(AdminUnassignTherapistFromOrgRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminUnassignTherapistFromOrgRequest))
+          as AdminUnassignTherapistFromOrgRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminUnassignTherapistFromOrgRequest create() =>
+      AdminUnassignTherapistFromOrgRequest._();
+  @$core.override
+  AdminUnassignTherapistFromOrgRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminUnassignTherapistFromOrgRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+          AdminUnassignTherapistFromOrgRequest>(create);
+  static AdminUnassignTherapistFromOrgRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
 
   @$pb.TagNumber(15)
   $core.String get reason => $_getSZ(2);

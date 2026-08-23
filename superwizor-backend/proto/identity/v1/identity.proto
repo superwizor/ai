@@ -363,6 +363,30 @@ message ReportPreferences {
   // Free-text additional guidance, ≤500 chars, server-sanitized.
   string free_text = 9;
   google.protobuf.Timestamp updated_at = 10;
+  // Tryb eksperymentalny (plan 16 §2.5): kazda NOWA ukonczona sesja
+  // generuje raport eksperymentalny OBOK produkcyjnego. Ekspert nagrywa
+  // normalnie i dostaje oba do porownania, zero czynnosci per raport.
+  //
+  // NIE jest preferencja stylu jak pozostale pola — decyduje, ILE
+  // raportow powstaje, i nie wchodzi do promptu. Jedzie tym kanalem, bo
+  // llm-worker i tak czyta preferencje przy generacji, wiec sciezka
+  // automatyczna nie potrzebuje nowego RPC.
+  //
+  // Przelacznik jest widoczny w ustawieniach WYLACZNIE, gdy organizacja
+  // ma REPORT_EXPERIMENTAL_ENABLED.
+  bool experimental_dual_run = 11;
+  // TYLKO DO ODCZYTU, wyliczane po stronie serwera z flagi organizacji
+  // REPORT_EXPERIMENTAL_ENABLED. Aplikacja pokazuje przelacznik
+  // `experimental_dual_run` wylacznie wtedy, gdy to pole jest true.
+  //
+  // Jedzie tym samym wywolaniem zamiast osobnym RPC "jakie mam flagi":
+  // ekran ustawien i tak pobiera preferencje, a dodatkowa runda tylko po
+  // to, zeby ukryc jeden przelacznik, kosztowalaby latencje wejscia w
+  // ustawienia dla wszystkich.
+  //
+  // Ustawienie go przez klienta jest IGNOROWANE — bramka jest po stronie
+  // serwera (clinical-svc sprawdza flage przy kazdym zamowieniu).
+  bool experimental_available = 12;
 }
 
 message GetReportPreferencesRequest {

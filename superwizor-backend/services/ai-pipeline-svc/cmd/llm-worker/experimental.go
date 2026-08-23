@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"cloud.google.com/go/pubsub/v2"
 
 	"github.com/google/uuid"
 
+	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
 
@@ -204,4 +206,87 @@ func publishExperimentalReady(ctx context.Context, sc *SessionContext, reportID 
 	})
 	_, err := res.Get(ctx)
 	return err
+}
+
+// maybeDualRun zamawia raport eksperymentalny OBOK produkcyjnego.
+//
+// Wejscie glowne trybu (plan 16 §2.5): ekspert nagrywa normalnie i
+// dostaje oba raporty do porownania, zero czynnosci per raport. Bez tego
+// kalibracja wymagalaby pamietania o recznym zamowieniu przy kazdej
+// sesji, czyli w praktyce nie zdarzalaby sie wcale.
+//
+// BEST-EFFORT I CICHY: raport produkcyjny jest juz zapisany i
+// opublikowany. Blad tutaj nie moze go cofnac ani wywolac ponowienia
+// calego przebiegu — powtorka wygenerowalaby drugi raport produkcyjny.
+func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, transcriptID string) {
+	if !sc.ReportPreferences.ExperimentalDualRun || pubsubClient == nil || dbPool == nil {
+		return
+	}
+	if pipelineConfig == nil {
+		pipelineConfig = appconfig.NewReader(appconfigPool{dbPool})
+	}
+	if !pipelineConfig.ExperimentalReportsEnabled(ctx, sc.OrganizationID) {
+		// Terapeuta mogl zostawic przelacznik wlaczony, a organizacja
+		// stracic flage. Flaga organizacji wygrywa zawsze.
+		return
+	}
+
+	limit := pipelineConfig.ExperimentalDailyLimit(ctx, sc.OrganizationID)
+	var uzyte int64
+	if err := dbPool.QueryRow(ctx, `
+		SELECT count(*) FROM experimental_report_requests
+		 WHERE therapist_id = $1 AND created_at >= date_trunc('day', now())`,
+		sc.TherapistID).Scan(&uzyte); err != nil {
+		logger.Warn("dual-run: odczyt limitu", "error", err)
+		return
+	}
+	if uzyte >= limit {
+		logger.Info("dual-run: dobowy limit wyczerpany", "limit", limit)
+		return
+	}
+
+	// Najnowsza wersja modalnosci kartoteki — ekspert kalibruje to, nad
+	// czym wlasnie pracuje.
+	var versionID uuid.UUID
+	if err := dbPool.QueryRow(ctx, `
+		SELECT id FROM ontology_versions WHERE modality_id = $1
+		 ORDER BY created_at DESC LIMIT 1`, sc.ModalityID).Scan(&versionID); err != nil {
+		logger.Info("dual-run: modalnosc nie ma zadnej wersji ontologii",
+			"modality_id", sc.ModalityID)
+		return
+	}
+
+	var requestID uuid.UUID
+	if err := dbPool.QueryRow(ctx, `
+		INSERT INTO experimental_report_requests
+		       (therapist_id, session_id, modality_code, ontology_version_id, origin)
+		VALUES ($1, $2, $3, $4, 'dual_run') RETURNING id`,
+		sc.TherapistID, sc.ID, sc.SystemCode, versionID).Scan(&requestID); err != nil {
+		logger.Warn("dual-run: zapis zamowienia", "error", err)
+		return
+	}
+
+	topic := pubsubClient.Publisher("transcript.completed")
+	defer topic.Stop()
+	payload, _ := json.Marshal(map[string]string{
+		"session_id": sc.ID.String(), "transcript_id": transcriptID,
+	})
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: payload,
+		Attributes: map[string]string{
+			"event_type":          "transcript.completed",
+			"session_id":          sc.ID.String(),
+			"pipeline":            "experimental",
+			"request_id":          requestID.String(),
+			"modality_override":   sc.SystemCode,
+			"ontology_version_id": versionID.String(),
+			"requested_by":        sc.TherapistID.String(),
+		},
+	})
+	if _, err := res.Get(ctx); err != nil {
+		logger.Warn("dual-run: publikacja zamowienia", "error", err)
+		return
+	}
+	logger.Info("dual-run: zamowiono raport eksperymentalny",
+		"request_id", requestID, "ontology_version_id", versionID)
 }
