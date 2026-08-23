@@ -31,6 +31,7 @@ import type {
 import { OntologyStatus } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 
 import { clinicalClient } from "@/lib/connect/clients";
+import { useAuth } from "@/lib/firebase/auth-provider";
 import { translateError } from "@/lib/errors/translate";
 import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog";
 
@@ -55,6 +56,7 @@ export function OntologyStudio({ canActivate = true }: Props) {
   const [linting, setLinting] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const { status: authStatus } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | {
@@ -93,20 +95,33 @@ export function OntologyStudio({ canActivate = true }: Props) {
     [tErrors],
   );
 
+  // Odczyt czeka na sesję.
+  //
+  // Bez tokenu transport pomija nagłówek Authorization i żądanie wraca z
+  // 401 — panel pokazywał wtedy „Musisz być zalogowana/y" oraz pustą listę
+  // wersji, choć użytkownik był zalogowany i widział swój e-mail w
+  // nagłówku (zgłoszone 2026-08-23). AdminGuard czeka na auth zanim
+  // wyrenderuje dziecko, ale samo zamontowanie komponentu wyprzedzało
+  // moment, w którym Firebase wystawia token.
+  //
+  // Ten sam błąd i to samo lekarstwo co w OnboardingWizard.
   useEffect(() => {
+    if (authStatus !== "signed-in") return;
     void loadModalities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authStatus]);
 
   useEffect(() => {
+    if (authStatus !== "signed-in") return;
     if (selectedModality) void loadVersions(selectedModality);
-  }, [selectedModality, loadVersions]);
+  }, [authStatus, selectedModality, loadVersions]);
 
   // ── lint na zywo ──
   //
   // Debounce 500 ms: walidacja jest serwerowa (ta sama implementacja co
   // przy zapisie), wiec kazde nacisniecie klawisza nie moze isc po sieci.
   useEffect(() => {
+    if (authStatus !== "signed-in") return;
     if (!draft) {
       setProblems([]);
       setConstructCount(0);
@@ -126,7 +141,7 @@ export function OntologyStudio({ canActivate = true }: Props) {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [draft]);
+  }, [authStatus, draft]);
 
   const isDraft = selected?.status === OntologyStatus.DRAFT;
   const isReview = selected?.status === OntologyStatus.READY_FOR_REVIEW;
