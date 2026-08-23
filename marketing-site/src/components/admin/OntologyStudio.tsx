@@ -31,6 +31,7 @@ import type {
 import { OntologyStatus } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 
 import { clinicalClient } from "@/lib/connect/clients";
+import { OntologyFormEditor } from "@/components/admin/ontology/OntologyFormEditor";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { translateError } from "@/lib/errors/translate";
 import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog";
@@ -51,6 +52,9 @@ export function OntologyStudio({ canActivate = true }: Props) {
   const [selected, setSelected] = useState<OntologyVersion | null>(null);
 
   const [draft, setDraft] = useState("");
+  // Formularz domyślnie. Edytor tekstowy produkuje u ekspertów zbyt wiele
+  // błędów strukturalnych, żeby mógł być pierwszą powierzchnią (dok. 17).
+  const [trybEdycji, setTrybEdycji] = useState<"form" | "yaml">("form");
   const [problems, setProblems] = useState<string[]>([]);
   const [constructCount, setConstructCount] = useState(0);
   const [linting, setLinting] = useState(false);
@@ -296,15 +300,46 @@ export function OntologyStudio({ canActivate = true }: Props) {
                   : ""}
               </p>
 
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                readOnly={!isDraft}
-                spellCheck={false}
-                rows={24}
-                aria-label={t("editorLabel")}
-                className="w-full rounded border border-white/20 bg-black/20 p-3 font-mono text-xs"
-              />
+              {/* Formularz jest trybem PODSTAWOWYM, YAML podglądem.
+                  Ekspert autoryzuje treść imiennie, a autoryzuje się to,
+                  co się widziało — podgląd zostaje więc widoczny i jest
+                  jedynym miejscem, w którym widać, że `is_not` to lista
+                  identyfikatorów, a nie zdanie (dok. 17 §3.1). */}
+              <div className="flex gap-2 mb-3">
+                {(["form", "yaml"] as const).map((tryb) => (
+                  <button
+                    key={tryb}
+                    type="button"
+                    onClick={() => setTrybEdycji(tryb)}
+                    className={`px-3 py-1.5 border font-mono text-[10px] uppercase tracking-[var(--tracking-label)] ${
+                      trybEdycji === tryb
+                        ? "border-ember text-ember bg-ember/10"
+                        : "border-white/25 opacity-70 hover:bg-white/5"
+                    }`}
+                    data-testid={`studio-tab-${tryb}`}
+                  >
+                    {tryb === "form" ? t("tabForm") : t("tabYaml")}
+                  </button>
+                ))}
+              </div>
+
+              {trybEdycji === "form" ? (
+                <OntologyFormEditor
+                  yamlText={draft}
+                  readOnly={!isDraft}
+                  onChange={setDraft}
+                />
+              ) : (
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  readOnly={!isDraft}
+                  spellCheck={false}
+                  rows={24}
+                  aria-label={t("editorLabel")}
+                  className="w-full rounded border border-white/20 bg-black/20 p-3 font-mono text-xs"
+                />
+              )}
 
               {!isDraft && (
                 <p className="mt-2 text-xs opacity-70">
