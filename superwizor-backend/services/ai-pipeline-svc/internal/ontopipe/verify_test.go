@@ -668,3 +668,36 @@ func TestNaruszenieNiesieZdanieKtoreOdpadlo(t *testing.T) {
 		}
 	}
 }
+
+// TestEtykietaMowcyToNieLiczba — wyszło z rejestru odrzuceń po migracji
+// 000095, czyli dokładnie z mechanizmu, który po to powstał.
+//
+// Model uzasadniał twierdzenie zdaniem „Klientka (Speaker 2) opisuje
+// swoje zachowanie…", a R9 czytała „2" jako liczbę bez pokrycia i
+// kasowała całe twierdzenie. Etykieta mówcy pochodzi z NASZEGO
+// renderowania spanów — model cytował to, co sam dostał.
+func TestEtykietaMowcyToNieLiczba(t *testing.T) {
+	for _, tc := range []struct {
+		tekst      string
+		oczekiwane []string
+	}{
+		{"Klientka (Speaker 2) opisuje swoje zachowanie", nil},
+		{"Mówca 1 milczy, mówca 2 dopytuje", nil},
+		{"prokrastynacja to ogniwo 4 łańcucha", nil},
+		{"w sesji 3 wracał ten sam temat", nil},
+		{"klient ocenia napięcie na 7", []string{"7"}},
+		{"Speaker 2 mówi, że pije 3 razy w tygodniu", []string{"3"}},
+	} {
+		got := ProseNumbers(tc.tekst)
+		if len(got) != len(tc.oczekiwane) {
+			t.Errorf("ProseNumbers(%q) = %v, oczekiwano %v", tc.tekst, got, tc.oczekiwane)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.oczekiwane[i] {
+				t.Errorf("ProseNumbers(%q)[%d] = %q, oczekiwano %q",
+					tc.tekst, i, got[i], tc.oczekiwane[i])
+			}
+		}
+	}
+}

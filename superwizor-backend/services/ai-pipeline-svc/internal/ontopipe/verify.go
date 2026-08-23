@@ -430,9 +430,45 @@ func ProseNumbers(s string) []string {
 		if m[0] > 0 && isASCIILetter(s[m[0]-1]) {
 			continue // przylepione do litery: s08, chunk3, v1
 		}
+		if poprzedzaEtykieta(s[:m[0]]) {
+			continue // "Speaker 2", "ogniwo 4" — numer, nie pomiar
+		}
 		out = append(out, s[m[0]:m[1]])
 	}
 	return out
+}
+
+// etykietyNumerujace to slowa, po ktorych liczba jest IDENTYFIKATOREM, a
+// nie wartoscia.
+//
+// "Speaker 2" wyszlo z rejestru odrzucen po migracji 000095: model
+// uzasadnial twierdzenie zdaniem "Klientka (Speaker 2) opisuje swoje
+// zachowanie...", a R9 czytala "2" jako liczbe bez pokrycia i kasowala
+// cale twierdzenie. Etykieta mowcy pochodzi z NASZEGO renderowania
+// spanow — model cytowal to, co sam dostal.
+//
+// Trzeci wariant tej samej pomylki: najpierw identyfikatory spanow
+// (s40), teraz etykiety oddzielone spacja. Wspolny mianownik: liczba
+// przy slowie porzadkujacym nie jest twierdzeniem o kliencie.
+var etykietyNumerujace = []string{
+	"speaker", "mowca", "mówca", "chunk", "fragment", "span",
+	"ogniwo", "krok", "etap", "poziom", "sesja", "sesji",
+}
+
+// poprzedzaEtykieta sprawdza ostatnie slowo przed liczba.
+func poprzedzaEtykieta(przed string) bool {
+	przed = strings.TrimRight(przed, " \t")
+	if przed == "" {
+		return false
+	}
+	i := strings.LastIndexAny(przed, " \t\n([")
+	slowo := strings.ToLower(foldPolish(przed[i+1:]))
+	for _, e := range etykietyNumerujace {
+		if slowo == foldPolish(e) {
+			return true
+		}
+	}
+	return false
 }
 
 func isASCIILetter(b byte) bool {
