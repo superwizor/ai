@@ -3655,11 +3655,13 @@ class GetSessionDetailsResponse extends $pb.GeneratedMessage {
     Session? session,
     Transcript? transcript,
     $core.Iterable<Report>? reports,
+    ExperimentalSkip? experimentalSkip,
   }) {
     final result = create();
     if (session != null) result.session = session;
     if (transcript != null) result.transcript = transcript;
     if (reports != null) result.reports.addAll(reports);
+    if (experimentalSkip != null) result.experimentalSkip = experimentalSkip;
     return result;
   }
 
@@ -3682,6 +3684,8 @@ class GetSessionDetailsResponse extends $pb.GeneratedMessage {
         subBuilder: Transcript.create)
     ..pPM<Report>(3, _omitFieldNames ? '' : 'reports',
         subBuilder: Report.create)
+    ..aOM<ExperimentalSkip>(4, _omitFieldNames ? '' : 'experimentalSkip',
+        subBuilder: ExperimentalSkip.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3728,6 +3732,105 @@ class GetSessionDetailsResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(3)
   $pb.PbList<Report> get reports => $_getList(2);
+
+  /// Wypelnione, gdy terapeuta ma wlaczony tryb eksperymentalny, a raport
+  /// dla TEJ sesji nie powstal. Puste w kazdym innym przypadku.
+  ///
+  /// Stan, nie zdarzenie: ekran sesji odwiedza sie takze tydzien pozniej,
+  /// a pytanie „dlaczego jest jeden raport" zadaje sie wtedy tak samo.
+  @$pb.TagNumber(4)
+  ExperimentalSkip get experimentalSkip => $_getN(3);
+  @$pb.TagNumber(4)
+  set experimentalSkip(ExperimentalSkip value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExperimentalSkip() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExperimentalSkip() => $_clearField(4);
+  @$pb.TagNumber(4)
+  ExperimentalSkip ensureExperimentalSkip() => $_ensure(3);
+}
+
+class ExperimentalSkip extends $pb.GeneratedMessage {
+  factory ExperimentalSkip({
+    $core.String? reason,
+    $core.String? detail,
+    $3.Timestamp? occurredAt,
+  }) {
+    final result = create();
+    if (reason != null) result.reason = reason;
+    if (detail != null) result.detail = detail;
+    if (occurredAt != null) result.occurredAt = occurredAt;
+    return result;
+  }
+
+  ExperimentalSkip._();
+
+  factory ExperimentalSkip.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ExperimentalSkip.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ExperimentalSkip',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'reason')
+    ..aOS(2, _omitFieldNames ? '' : 'detail')
+    ..aOM<$3.Timestamp>(3, _omitFieldNames ? '' : 'occurredAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExperimentalSkip clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExperimentalSkip copyWith(void Function(ExperimentalSkip) updates) =>
+      super.copyWith((message) => updates(message as ExperimentalSkip))
+          as ExperimentalSkip;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ExperimentalSkip create() => ExperimentalSkip._();
+  @$core.override
+  ExperimentalSkip createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ExperimentalSkip getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ExperimentalSkip>(create);
+  static ExperimentalSkip? _defaultInstance;
+
+  /// "daily_limit" | "org_disabled"
+  @$pb.TagNumber(1)
+  $core.String get reason => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set reason($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReason() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReason() => $_clearField(1);
+
+  /// Wartosc istotna dla powodu — dla "daily_limit" obowiazujacy limit.
+  @$pb.TagNumber(2)
+  $core.String get detail => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set detail($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDetail() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDetail() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $3.Timestamp get occurredAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set occurredAt($3.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOccurredAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOccurredAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $3.Timestamp ensureOccurredAt() => $_ensure(2);
 }
 
 class ReportRating extends $pb.GeneratedMessage {

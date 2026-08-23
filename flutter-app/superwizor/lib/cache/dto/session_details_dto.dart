@@ -18,17 +18,25 @@ class SessionDetailsDto {
   final SessionDto session;
   final TranscriptDto transcript;
   final List<ReportDto> reports;
+  /// Dlaczego raport eksperymentalny nie powstał, jeśli nie powstał.
+  ///
+  /// Wypełnione WYŁĄCZNIE wtedy, gdy terapeuta miał włączony przełącznik
+  /// — serwer nie zapisuje pominięcia dla nikogo, kto raportu się nie
+  /// spodziewał. Sama obecność wartości znaczy więc „spodziewał się".
+  final ExperimentalSkipDto? experimentalSkip;
 
   const SessionDetailsDto({
     required this.session,
     required this.transcript,
     required this.reports,
+    this.experimentalSkip,
   });
 
   Map<String, dynamic> toJson() => {
         'session': session.toJson(),
         'transcript': transcript.toJson(),
         'reports': reports.map((r) => r.toJson()).toList(),
+        if (experimentalSkip != null) 'experimentalSkip': experimentalSkip!.toJson(),
       };
 
   factory SessionDetailsDto.fromJson(Map<String, dynamic> j) =>
@@ -43,6 +51,10 @@ class SessionDetailsDto {
         reports: uporzadkujRaporty(((j['reports'] as List?) ?? const [])
             .map((e) => ReportDto.fromJson(e as Map<String, dynamic>))
             .toList()),
+        experimentalSkip: j['experimentalSkip'] == null
+            ? null
+            : ExperimentalSkipDto.fromJson(
+                j['experimentalSkip'] as Map<String, dynamic>),
       );
 
   factory SessionDetailsDto.fromProto(clinical_pb.GetSessionDetailsResponse r) =>
@@ -50,6 +62,12 @@ class SessionDetailsDto {
         session: SessionDto.fromProto(r.session),
         transcript: TranscriptDto.fromProto(r.transcript),
         reports: uporzadkujRaporty(r.reports.map(ReportDto.fromProto).toList()),
+        experimentalSkip: r.hasExperimentalSkip()
+            ? ExperimentalSkipDto(
+                reason: r.experimentalSkip.reason,
+                detail: r.experimentalSkip.detail,
+              )
+            : null,
       );
 }
 
@@ -66,4 +84,20 @@ List<ReportDto> uporzadkujRaporty(List<ReportDto> raporty) {
   final produkcyjne = raporty.where((r) => !r.isExperimental).toList();
   final eksperymentalne = raporty.where((r) => r.isExperimental).toList();
   return [...produkcyjne, ...eksperymentalne];
+}
+
+/// Powód, dla którego raport eksperymentalny nie powstał.
+class ExperimentalSkipDto {
+  final String reason;
+  final String detail;
+
+  const ExperimentalSkipDto({required this.reason, this.detail = ''});
+
+  Map<String, dynamic> toJson() => {'reason': reason, 'detail': detail};
+
+  factory ExperimentalSkipDto.fromJson(Map<String, dynamic> j) =>
+      ExperimentalSkipDto(
+        reason: j['reason'] as String? ?? '',
+        detail: j['detail'] as String? ?? '',
+      );
 }

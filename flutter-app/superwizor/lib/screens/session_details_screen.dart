@@ -9,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import '../cache/dto/report_dto.dart';
 import '../cache/dto/transcript_dto.dart';
 import '../providers/session_details_provider.dart';
+import '../cache/dto/session_details_dto.dart';
 
 class SessionDetailsScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -270,6 +271,39 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                           },
                         ),
                       ),
+                      // Dlaczego jest jeden raport, a nie dwa.
+                      //
+                      // Pod paskiem pigułek, bo tu właśnie pada pytanie:
+                      // terapeuta widzi jedną pigułkę zamiast dwóch. Cisza
+                      // była nierozróżnialna od awarii — pierwszy raz
+                      // zgłoszony jako „czy mam wgrać sesję ponownie?"
+                      // (2026-08-23).
+                      if (data.experimentalSkip != null) ...[
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: theme.colorScheme.secondary.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _opisPominiecia(t, data.experimentalSkip!),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.secondary.withValues(alpha: 0.6),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       // Glassmorphic kontener na treść
                       Expanded(
@@ -446,5 +480,25 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Zamienia powód pominięcia na zdanie dla terapeuty.
+///
+/// Każdy znany powód mówi też, CO Z TYM ZROBIĆ — limit mija jutro,
+/// wyłączona flaga wymaga administratora. „Nie udało się" byłoby gorsze
+/// niż cisza: sugerowałoby awarię, podczas gdy oba powody są decyzjami
+/// konfiguracji.
+///
+/// Powód spoza listy nadal daje zdanie, bo pusty wiersz pod paskiem
+/// pigułek jest gorszy niż jego brak.
+String _opisPominiecia(AppLocalizations t, ExperimentalSkipDto skip) {
+  switch (skip.reason) {
+    case 'daily_limit':
+      return t.sessionDetails_experimentalSkipped_limit(skip.detail);
+    case 'org_disabled':
+      return t.sessionDetails_experimentalSkipped_orgDisabled;
+    default:
+      return t.sessionDetails_experimentalSkipped_other;
   }
 }

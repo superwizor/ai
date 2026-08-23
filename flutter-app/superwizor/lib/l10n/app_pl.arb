@@ -1462,5 +1462,15 @@
   "ai_chat_saved_toast": "Notatka z rozmowy AI zapisana",
   "ai_chat_error_init": "Nie udało się zainicjalizować czatu AI. Sprawdź połączenie i spróbuj ponownie.",
   "ai_chat_system_intro": "Mam kontekst dotychczasowych sesji z tym klientem. Mogę przypomnieć szczegóły, pokazać wzorce lub pomóc przygotować się do kolejnego spotkania.",
-  "ai_chat_note_title": "Notatka z rozmowy AI"
+  "ai_chat_note_title": "Notatka z rozmowy AI",
+  "sessionDetails_experimentalSkipped_limit": "Raport eksperymentalny pominięty: dobowy limit ({limit}) został wyczerpany. Wróci przy kolejnej sesji jutro.",
+  "@sessionDetails_experimentalSkipped_limit": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDetails_experimentalSkipped_orgDisabled": "Raport eksperymentalny pominięty: tryb jest wyłączony dla Twojej organizacji. Przełącznik w ustawieniach zostaje włączony, ale nie działa, dopóki administrator go nie przywróci.",
+  "sessionDetails_experimentalSkipped_other": "Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym."
 }

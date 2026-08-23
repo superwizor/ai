@@ -3306,4 +3306,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ai_chat_note_title => 'AI conversation note';
+
+  @override
+  String sessionDetails_experimentalSkipped_limit(String limit) {
+    return 'Experimental report skipped: the daily limit ($limit) is used up. It resumes with tomorrow\'s session.';
+  }
+
+  @override
+  String get sessionDetails_experimentalSkipped_orgDisabled =>
+      'Experimental report skipped: the mode is switched off for your organization. The toggle in settings stays on but has no effect until an admin re-enables it.';
+
+  @override
+  String get sessionDetails_experimentalSkipped_other =>
+      'No experimental report was generated for this session. The report below is the production one.';
 }

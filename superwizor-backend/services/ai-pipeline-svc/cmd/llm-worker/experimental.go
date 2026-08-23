@@ -231,6 +231,7 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 		// stracic flage. Flaga organizacji wygrywa zawsze — ale terapeuta
 		// ma sie o tym dowiedziec, bo z jego strony nic sie nie zmienilo.
 		logger.Info("dual-run: organizacja nie ma wlaczonego trybu")
+		zapiszPominiecie(ctx, logger, sc, "org_disabled", "")
 		if err := publishExperimentalSkipped(ctx, sc, "org_disabled", 0); err != nil {
 			logger.Warn("dual-run: zawiadomienie o pominieciu", "error", err)
 		}
@@ -239,9 +240,13 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 
 	limit := pipelineConfig.ExperimentalDailyLimit(ctx, sc.OrganizationID)
 	var uzyte int64
+	// skip_reason IS NULL — pominiecie nie zuzywa limitu. Inaczej odmowa z
+	// powodu wyczerpanego limitu sama zuzywalaby limit, a stan raz
+	// osiagniety nigdy by sie nie odblokowal.
 	if err := dbPool.QueryRow(ctx, `
 		SELECT count(*) FROM experimental_report_requests
-		 WHERE therapist_id = $1 AND created_at >= date_trunc('day', now())`,
+		 WHERE therapist_id = $1 AND created_at >= date_trunc('day', now())
+		   AND skip_reason IS NULL`,
 		sc.TherapistID).Scan(&uzyte); err != nil {
 		logger.Warn("dual-run: odczyt limitu", "error", err)
 		return
@@ -259,6 +264,7 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 		// Best-effort jak reszta tej sciezki: raport produkcyjny jest juz
 		// zapisany i blad zawiadomienia nie moze go cofnac.
 		logger.Info("dual-run: dobowy limit wyczerpany", "limit", limit, "uzyte", uzyte)
+		zapiszPominiecie(ctx, logger, sc, "daily_limit", strconv.FormatInt(limit, 10))
 		if err := publishExperimentalSkipped(ctx, sc, "daily_limit", limit); err != nil {
 			logger.Warn("dual-run: zawiadomienie o pominieciu", "error", err)
 		}
@@ -341,4 +347,31 @@ func publishExperimentalSkipped(ctx context.Context, sc *SessionContext, powod s
 	})
 	_, err := res.Get(ctx)
 	return err
+}
+
+// zapiszPominiecie utrwala powod, dla ktorego raport nie powstal.
+//
+// POWIADOMIENIE TO ZA MALO. Zdarzenie mija, a ekran sesji odwiedza sie
+// takze tydzien pozniej — powod musi byc STANEM, ktory da sie odpytac
+// przy kazdym otwarciu. Bez tego terapeuta widzi jeden raport i nie ma
+// jak dojsc, dlaczego nie ma drugiego (zgloszone 2026-08-23).
+//
+// Best-effort: raport produkcyjny jest juz zapisany i blad tego zapisu
+// nie moze go cofnac.
+func zapiszPominiecie(ctx context.Context, logger *slog.Logger, sc *SessionContext,
+	powod, szczegol string) {
+	if dbPool == nil {
+		return
+	}
+	var detal any
+	if szczegol != "" {
+		detal = szczegol
+	}
+	if _, err := dbPool.Exec(ctx, `
+		INSERT INTO experimental_report_requests
+		       (therapist_id, session_id, modality_code, origin, skip_reason, skip_detail)
+		VALUES ($1, $2, $3, 'dual_run', $4, $5)`,
+		sc.TherapistID, sc.ID, sc.SystemCode, powod, detal); err != nil {
+		logger.Warn("dual-run: zapis pominiecia", "error", err)
+	}
 }

@@ -1142,6 +1142,14 @@ const GetSessionDetailsResponse$json = {
       '6': '.clinical.v1.Report',
       '10': 'reports'
     },
+    {
+      '1': 'experimental_skip',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ExperimentalSkip',
+      '10': 'experimentalSkip'
+    },
   ],
 };
 
@@ -1150,7 +1158,31 @@ final $typed_data.Uint8List getSessionDetailsResponseDescriptor = $convert.base6
     'ChlHZXRTZXNzaW9uRGV0YWlsc1Jlc3BvbnNlEi4KB3Nlc3Npb24YASABKAsyFC5jbGluaWNhbC'
     '52MS5TZXNzaW9uUgdzZXNzaW9uEjcKCnRyYW5zY3JpcHQYAiABKAsyFy5jbGluaWNhbC52MS5U'
     'cmFuc2NyaXB0Ugp0cmFuc2NyaXB0Ei0KB3JlcG9ydHMYAyADKAsyEy5jbGluaWNhbC52MS5SZX'
-    'BvcnRSB3JlcG9ydHM=');
+    'BvcnRSB3JlcG9ydHMSSgoRZXhwZXJpbWVudGFsX3NraXAYBCABKAsyHS5jbGluaWNhbC52MS5F'
+    'eHBlcmltZW50YWxTa2lwUhBleHBlcmltZW50YWxTa2lw');
+
+@$core.Deprecated('Use experimentalSkipDescriptor instead')
+const ExperimentalSkip$json = {
+  '1': 'ExperimentalSkip',
+  '2': [
+    {'1': 'reason', '3': 1, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'detail', '3': 2, '4': 1, '5': 9, '10': 'detail'},
+    {
+      '1': 'occurred_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'occurredAt'
+    },
+  ],
+};
+
+/// Descriptor for `ExperimentalSkip`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List experimentalSkipDescriptor = $convert.base64Decode(
+    'ChBFeHBlcmltZW50YWxTa2lwEhYKBnJlYXNvbhgBIAEoCVIGcmVhc29uEhYKBmRldGFpbBgCIA'
+    'EoCVIGZGV0YWlsEjsKC29jY3VycmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVz'
+    'dGFtcFIKb2NjdXJyZWRBdA==');
 
 @$core.Deprecated('Use reportRatingDescriptor instead')
 const ReportRating$json = {

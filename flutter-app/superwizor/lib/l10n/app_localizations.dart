@@ -5920,6 +5920,24 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Notatka z rozmowy AI'**
   String get ai_chat_note_title;
+
+  /// No description provided for @sessionDetails_experimentalSkipped_limit.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport eksperymentalny pominięty: dobowy limit ({limit}) został wyczerpany. Wróci przy kolejnej sesji jutro.'**
+  String sessionDetails_experimentalSkipped_limit(String limit);
+
+  /// No description provided for @sessionDetails_experimentalSkipped_orgDisabled.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport eksperymentalny pominięty: tryb jest wyłączony dla Twojej organizacji. Przełącznik w ustawieniach zostaje włączony, ale nie działa, dopóki administrator go nie przywróci.'**
+  String get sessionDetails_experimentalSkipped_orgDisabled;
+
+  /// No description provided for @sessionDetails_experimentalSkipped_other.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym.'**
+  String get sessionDetails_experimentalSkipped_other;
 }
 
 class _AppLocalizationsDelegate

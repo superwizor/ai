@@ -3329,4 +3329,17 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get ai_chat_note_title => 'Notatka z rozmowy AI';
+
+  @override
+  String sessionDetails_experimentalSkipped_limit(String limit) {
+    return 'Raport eksperymentalny pominięty: dobowy limit ($limit) został wyczerpany. Wróci przy kolejnej sesji jutro.';
+  }
+
+  @override
+  String get sessionDetails_experimentalSkipped_orgDisabled =>
+      'Raport eksperymentalny pominięty: tryb jest wyłączony dla Twojej organizacji. Przełącznik w ustawieniach zostaje włączony, ale nie działa, dopóki administrator go nie przywróci.';
+
+  @override
+  String get sessionDetails_experimentalSkipped_other =>
+      'Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym.';
 }

@@ -1454,5 +1454,15 @@
   "ai_chat_saved_toast": "AI conversation note saved",
   "ai_chat_error_init": "Failed to initialize AI chat. Check your connection and try again.",
   "ai_chat_system_intro": "I have the context of past sessions with this client. I can recall details, show patterns, or help you prepare for the next meeting.",
-  "ai_chat_note_title": "AI conversation note"
+  "ai_chat_note_title": "AI conversation note",
+  "sessionDetails_experimentalSkipped_limit": "Experimental report skipped: the daily limit ({limit}) is used up. It resumes with tomorrow's session.",
+  "@sessionDetails_experimentalSkipped_limit": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDetails_experimentalSkipped_orgDisabled": "Experimental report skipped: the mode is switched off for your organization. The toggle in settings stays on but has no effect until an admin re-enables it.",
+  "sessionDetails_experimentalSkipped_other": "No experimental report was generated for this session. The report below is the production one."
 }

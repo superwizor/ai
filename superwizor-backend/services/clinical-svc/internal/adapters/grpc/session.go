@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -178,6 +179,16 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				OntologyVersion: ontologia,
 			})
 		}
+		// Wyjasnienie, dlaczego raport eksperymentalny nie powstal.
+		//
+		// Najnowsze pominiecie dla tej sesji, jesli jakies bylo. Wiersz
+		// istnieje WYLACZNIE wtedy, gdy terapeuta mial wlaczony przelacznik —
+		// llm-worker konczy wczesniej, gdy go nie ma. Nie trzeba wiec pytac o
+		// preferencje: sama obecnosc wiersza znaczy „spodziewal sie raportu".
+		if pominiecie := s.wczytajPominiecie(ctx, sessionID); pominiecie != nil {
+			resp.ExperimentalSkip = pominiecie
+		}
+
 		// Same KMS-misconfig guard as for transcript segments: if reports
 		// existed in the DB but every single decrypt failed, returning
 		// an empty Reports slice misleads callers into thinking the AI
@@ -676,3 +687,35 @@ func (s *Server) SetAvatarConfig(ctx context.Context, req *clinicalv1.SetAvatarC
 // reports.pipeline_version), wiec test pilnuje, ze nadal odpowiada temu,
 // co worker faktycznie zapisuje.
 const pipelineExperimental = "ontology_s1s5_experimental"
+
+// wczytajPominiecie zwraca najnowsze pominiecie raportu eksperymentalnego
+// dla sesji albo nil.
+//
+// Best-effort: brak wyjasnienia jest gorszy niz jego obecnosc, ale nie na
+// tyle, zeby przez to nie oddac raportow.
+func (s *Server) wczytajPominiecie(ctx context.Context, sessionID uuid.UUID) *clinicalv1.ExperimentalSkip {
+	if s.ontologyPool == nil {
+		return nil
+	}
+	var (
+		powod    string
+		szczegol *string
+		kiedy    time.Time
+	)
+	err := s.ontologyPool.QueryRow(ctx, `
+		SELECT skip_reason, skip_detail, created_at
+		  FROM experimental_report_requests
+		 WHERE session_id = $1 AND skip_reason IS NOT NULL
+		 ORDER BY created_at DESC LIMIT 1`, sessionID).Scan(&powod, &szczegol, &kiedy)
+	if err != nil {
+		return nil
+	}
+	out := &clinicalv1.ExperimentalSkip{
+		Reason:     powod,
+		OccurredAt: timestamppb.New(kiedy),
+	}
+	if szczegol != nil {
+		out.Detail = *szczegol
+	}
+	return out
+}

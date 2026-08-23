@@ -144,9 +144,12 @@ func (s *Server) GenerateExperimentalReport(ctx context.Context,
 // Nieudane generacje TEZ sie licza — kosztowaly wywolania modelu.
 func (s *Server) experimentalUsedToday(ctx context.Context, therapistID uuid.UUID) (int64, error) {
 	var n int64
+	// skip_reason IS NULL — pominiecie nie zuzywa limitu (migracja 000096).
+	// Inaczej odmowa z powodu wyczerpanego limitu sama zuzywalaby limit.
 	err := s.ontologyPool.QueryRow(ctx, `
 		SELECT count(*) FROM experimental_report_requests
-		 WHERE therapist_id = $1 AND created_at >= date_trunc('day', now())`,
+		 WHERE therapist_id = $1 AND created_at >= date_trunc('day', now())
+		   AND skip_reason IS NULL`,
 		therapistID).Scan(&n)
 	return n, err
 }

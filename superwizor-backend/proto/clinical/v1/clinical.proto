@@ -669,6 +669,20 @@ message GetSessionDetailsResponse {
   Session session = 1;
   Transcript transcript = 2;
   repeated Report reports = 3;
+  // Wypelnione, gdy terapeuta ma wlaczony tryb eksperymentalny, a raport
+  // dla TEJ sesji nie powstal. Puste w kazdym innym przypadku.
+  //
+  // Stan, nie zdarzenie: ekran sesji odwiedza sie takze tydzien pozniej,
+  // a pytanie „dlaczego jest jeden raport" zadaje sie wtedy tak samo.
+  ExperimentalSkip experimental_skip = 4;
+}
+
+message ExperimentalSkip {
+  // "daily_limit" | "org_disabled"
+  string reason = 1;
+  // Wartosc istotna dla powodu — dla "daily_limit" obowiazujacy limit.
+  string detail = 2;
+  google.protobuf.Timestamp occurred_at = 3;
 }
 
 // ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
