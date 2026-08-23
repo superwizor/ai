@@ -40,9 +40,14 @@ func schemaS1() map[string]any {
 		"type": "object",
 		"properties": map[string]any{
 			"spans": map[string]any{
-				"type":     "array",
-				"minItems": int64(0),
-				"maxItems": int64(120),
+				"type": "array",
+				// BEZ maxItems. Vertex buduje z ograniczen automat stanow i
+				// gorna granica dlugosci tablicy ZAGNIEZDZONYCH obiektow
+				// mnozy go do odrzucenia calego zadania ("too many states
+				// for serving", zaobserwowane 2026-08-23 na sesji z 382
+				// chunkami). Rozmiar wyjscia S1 i tak ogranicza MaxTokens, a
+				// tutaj chcemy DUZO spanow — zacisk mial sens dla S2, gdzie
+				// twierdzen ma byc kilka, nie dla ekstrakcji.
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -72,7 +77,10 @@ func schemaS1() map[string]any {
 							"type": "array", "maxItems": int64(3),
 							"items": map[string]any{"type": "string", "maxLength": int64(40)},
 						},
-						"silence_before_ms": map[string]any{"type": "integer", "minimum": 0},
+						// Bez "minimum": liczby z granicami tez powiekszaja
+						// automat stanow, a ujemna cisza i tak nie ma sensu —
+						// odsiewa ja kod, nie schemat.
+						"silence_before_ms": map[string]any{"type": "integer"},
 					},
 					"required": []any{"span_id", "quote_verbatim", "speaker", "kind",
 						"observed_by", "about_past", "risk_content", "topics"},
@@ -236,15 +244,19 @@ func schemaS4(in SynthesisInput) map[string]any {
 				"description": "Hipoteza jednym akapitem. Przy theoretical_hypothesis " +
 					"jezyk MODALNY (mozliwe, ze / hipoteza robocza).",
 			},
+			// minItems 1 zostaje (wymog proweniencji), maxItems znika:
+			// gorna granica NAD ENUMEM identyfikatorow spanow daje liczbe
+			// kombinacji rosnaca wykladniczo z liczba spanow, a przy
+			// dluzszej sesji to setki pozycji.
 			"supporting": map[string]any{
-				"type": "array", "items": spanRef,
-				"minItems": int64(1), "maxItems": int64(8),
+				"type": "array", "items": spanRef, "minItems": int64(1),
 			},
 			"contradicting": map[string]any{
-				"type": "array", "items": spanRef, "maxItems": int64(8),
+				"type": "array", "items": spanRef,
 			},
 			"epistemic_status": map[string]any{"type": "string", "enum": statuses},
-			"confidence":       map[string]any{"type": "number", "minimum": 0, "maximum": 1},
+			// Bez granic liczbowych — zakres pilnuje clampConfidence.
+			"confidence": map[string]any{"type": "number"},
 		},
 		"required": []any{"id", "claim", "supporting", "epistemic_status"},
 	}
@@ -275,9 +287,10 @@ func schemaS4(in SynthesisInput) map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			// Liczbe konstruktow ogranicza juz enum construct_id — dodatkowy
+			// maxItems nic nie wnosi, a powieksza automat stanow.
 			"constructs": map[string]any{
 				"type": "array", "items": construct,
-				"maxItems": int64(len(constructIDs) + 1),
 			},
 		},
 		"required": []any{"constructs"},

@@ -106,7 +106,31 @@ func Synthesize(ctx context.Context, llm LLM, o *ontology.Ontology, in Synthesis
 	if err := json.Unmarshal([]byte(resp.JSON), &rep); err != nil {
 		return Report{}, fmt.Errorf("ontopipe: S4 dekodowanie: %w", err)
 	}
+	for i := range rep.Constructs {
+		for j := range rep.Constructs[i].Hypotheses {
+			rep.Constructs[i].Hypotheses[j].Confidence =
+				clampConfidence(rep.Constructs[i].Hypotheses[j].Confidence)
+		}
+	}
 	return rep, nil
+}
+
+// clampConfidence sprowadza pewnosc do [0,1].
+//
+// Zakres pilnuje KOD, a nie schemat: granice liczbowe w JSON Schema
+// powiekszaja automat stanow Vertexa i przy wiekszym schemacie prowadza do
+// odrzucenia calego zadania. Sprowadzenie wartosci do zakresu jest
+// operacja bezstratna dla sensu — model, ktory zwrocil 1.7, i tak chcial
+// powiedziec "bardzo pewne".
+func clampConfidence(v float64) float64 {
+	switch {
+	case v < 0:
+		return 0
+	case v > 1:
+		return 1
+	default:
+		return v
+	}
 }
 
 // allowedSpanIDs zbiera spany, na ktore S4 wolno sie powolac: wylacznie

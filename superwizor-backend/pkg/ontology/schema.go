@@ -73,9 +73,11 @@ func (o *Ontology) SchemaForConstruct(constructID string, opts SchemaOptions) (m
 					"co widac wprost w zapisie; interpretacja i hipoteza teoretyczna wymagaja " +
 					"oznaczenia.",
 			},
-			"confidence": map[string]any{
-				"type": "number", "minimum": 0, "maximum": 1,
-			},
+			// Bez granic liczbowych. Vertex buduje z ograniczen automat
+			// stanow i przy wiekszym schemacie odrzuca cale zadanie
+			// ("too many states for serving", 2026-08-23). Zakres pilnuje
+			// wolajacy — sprowadzenie 1.7 do 1.0 nie zmienia sensu.
+			"confidence": map[string]any{"type": "number"},
 			"reasoning": map[string]any{
 				"type": "string", "maxLength": int64(maxProseChars),
 				"description": "Uzasadnienie oparte WYLACZNIE na wskazanych spanach.",

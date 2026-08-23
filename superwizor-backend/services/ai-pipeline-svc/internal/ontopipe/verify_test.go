@@ -343,3 +343,39 @@ func TestRegeneracjaDostajeNaruszeniaDoPoprawy(t *testing.T) {
 		t.Fatal("opis naruszenia nie mowi, co konkretnie bylo zle")
 	}
 }
+
+// TestZakresPewnosciPilnujeKod: granice liczbowe znikły ze schematów, bo
+// Vertex odrzucał całe żądanie ("too many states for serving"). Zakres
+// musi więc pilnować kod — inaczej pewność 1.7 dojechałaby do raportu.
+func TestZakresPewnosciPilnujeKod(t *testing.T) {
+	for _, tc := range []struct{ wejscie, oczekiwane float64 }{
+		{-0.5, 0}, {0, 0}, {0.62, 0.62}, {1, 1}, {1.7, 1},
+	} {
+		if got := clampConfidence(tc.wejscie); got != tc.oczekiwane {
+			t.Errorf("clampConfidence(%v) = %v, oczekiwano %v",
+				tc.wejscie, got, tc.oczekiwane)
+		}
+	}
+}
+
+// TestSchematyBezOgraniczenRozsadzajacychVertexa pilnuje granicy, której
+// przekroczenie kosztowało pełny przebieg na produkcji: górna granica
+// długości tablicy zagnieżdżonych obiektów albo tablicy nad dużym enumem
+// mnoży automat stanów Vertexa do odrzucenia CAŁEGO żądania.
+func TestSchematyBezOgraniczenRozsadzajacychVertexa(t *testing.T) {
+	spans := schemaS1()["properties"].(map[string]any)["spans"].(map[string]any)
+	if _, ma := spans["maxItems"]; ma {
+		t.Error("S1: tablica spanow znowu ma maxItems — Vertex odrzuci schemat na dluzszej sesji")
+	}
+
+	in, _ := materialS5()
+	h := schemaS4(in)["properties"].(map[string]any)["constructs"].(map[string]any)["items"].(map[string]any)
+	hip := h["properties"].(map[string]any)["hypotheses"].(map[string]any)["items"].(map[string]any)
+	sup := hip["properties"].(map[string]any)["supporting"].(map[string]any)
+	if _, ma := sup["maxItems"]; ma {
+		t.Error("S4: `supporting` znowu ma maxItems nad enumem spanow")
+	}
+	if _, mi := sup["minItems"]; !mi {
+		t.Error("S4: `supporting` straciło minItems — wymog proweniencji zniknal")
+	}
+}

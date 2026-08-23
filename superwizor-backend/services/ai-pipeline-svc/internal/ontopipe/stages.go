@@ -170,7 +170,7 @@ func MapConstruct(ctx context.Context, llm LLM, o *ontology.Ontology, constructI
 			Evidence:        toQuoteRefs(c.Evidence),
 			CounterEvidence: toQuoteRefs(c.CounterEvidence),
 			Status:          ontology.EpistemicStatus(c.EpistemicStatus),
-			Confidence:      c.Confidence,
+			Confidence:      clampConfidence(c.Confidence),
 			Reasoning:       c.Reasoning,
 		})
 	}
