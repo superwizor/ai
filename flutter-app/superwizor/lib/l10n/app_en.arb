@@ -1464,5 +1464,7 @@
     }
   },
   "sessionDetails_experimentalSkipped_orgDisabled": "Experimental report skipped: the mode is switched off for your organization. The toggle in settings stays on but has no effect until an admin re-enables it.",
-  "sessionDetails_experimentalSkipped_other": "No experimental report was generated for this session. The report below is the production one."
+  "sessionDetails_experimentalSkipped_other": "No experimental report was generated for this session. The report below is the production one.",
+  "report_tab_production": "Report",
+  "report_tab_experimental": "Experimental"
 }

@@ -60,6 +60,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   final ScrollController _mainScrollController = ScrollController();
   int _activeSectionIndex = 0;
+  /// Który raport sesji jest oglądany.
+  ///
+  /// Do 24.08 ekran brał `reports.first` i dzielił go na sekcje, więc
+  /// drugiego raportu nie dało się otworzyć w ogóle. Przy dual-run sesja
+  /// ma dwa: produkcyjny i eksperymentalny — i użytkownik widział tylko
+  /// jeden, biorąc pigułki sekcji za pigułki raportów.
+  int _activeReportIndex = 0;
   String? _editedSummary;
   ScreenTracker? _screenTracker;
 
@@ -205,6 +212,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         false;
     ref.read(viewedReportsProvider.notifier).markViewed(widget.sessionId);
 
+    // Telemetria czasu na ekranie celuje w raport PRODUKCYJNY i tak ma
+    // zostać — `reports.first` jest nim, odkąd DTO stawia produkcyjne
+    // przed eksperymentalnymi. Przełączenie na eksperyment nie ma
+    // zawyżać metryki „czas nad raportem", bo mierzy ona pracę
+    // kliniczną, a nie kalibrację ontologii.
     if (_screenTracker == null && fresh.reports.isNotEmpty) {
       _screenTracker = ref
           .read(analyticsCollectorProvider)
@@ -232,8 +244,19 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           // Rating sits to the LEFT of the icon buttons (i.e. first in the
           // actions list) — it's report-scoped UI, so it only shows once the
           // GetSessionDetails fetch has resolved a report we can target.
-          if (_data != null && _data!.reports.isNotEmpty)
-            ReportRatingWidget(reportId: _data!.reports.first.id),
+          // Ocena dotyczy raportu, który masz przed sobą — nie zawsze
+          // pierwszego. Dla eksperymentalnego znika: nie jest materiałem
+          // klinicznym, a oceny zasilają pętlę strojenia preferencji
+          // raportu produkcyjnego.
+          if (_data != null &&
+              _data!.reports.isNotEmpty &&
+              !_data!.reports[_activeReportIndex.clamp(0, _data!.reports.length - 1)]
+                  .isExperimental)
+            ReportRatingWidget(
+              reportId: _data!
+                  .reports[_activeReportIndex.clamp(0, _data!.reports.length - 1)]
+                  .id,
+            ),
           IconButton(
             tooltip: t.action_plan_send_button,
             icon: const Icon(Icons.outgoing_mail),
@@ -320,13 +343,86 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       );
     }
 
-    final report = _data!.reports.first;
+    final raporty = _data!.reports;
+    final indeks = _activeReportIndex.clamp(0, raporty.length - 1);
+    final report = raporty[indeks];
     final payload = _ReportPayload.parse(report);
 
     _sections ??= _parseSections(payload.reportMarkdown, t);
 
     return Column(
       children: [
+        // Selektor raportu STOI NAD sekcjami, bo to wybór grubszy:
+        // najpierw „który raport", potem „która jego część". Pokazuje się
+        // wyłącznie wtedy, gdy jest z czego wybierać — przy jednym
+        // raporcie byłby szumem.
+        if (raporty.length > 1)
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              itemCount: raporty.length,
+              separatorBuilder: (ctx, _) => const SizedBox(width: 8),
+              itemBuilder: (ctx, i) {
+                final r = raporty[i];
+                final aktywny = i == indeks;
+                return Material(
+                  color: aktywny
+                      ? EuphireColors.ember.withValues(alpha: 0.15)
+                      : Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      _activeReportIndex = i;
+                      // Sekcje są cache'owane przez `??=` i należą do
+                      // KONKRETNEGO raportu — bez wyzerowania nowy raport
+                      // wyświetliłby się z podziałem poprzedniego.
+                      _sections = null;
+                      _activeSectionIndex = 0;
+                    }),
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (r.isExperimental) ...[
+                            Icon(
+                              Icons.science_outlined,
+                              size: 15,
+                              color: aktywny
+                                  ? EuphireColors.ember
+                                  : EuphireColors.frostWhite.withValues(alpha: 0.7),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Flexible(
+                            child: Text(
+                              r.isExperimental
+                                  ? t.report_tab_experimental
+                                  : t.report_tab_production,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: aktywny
+                                    ? EuphireColors.ember
+                                    : EuphireColors.frostWhite,
+                                fontWeight:
+                                    aktywny ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         if (_sections!.length > 1)
           SizedBox(
             height: 48,

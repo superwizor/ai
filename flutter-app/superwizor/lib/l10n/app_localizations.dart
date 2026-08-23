@@ -5938,6 +5938,18 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym.'**
   String get sessionDetails_experimentalSkipped_other;
+
+  /// No description provided for @report_tab_production.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport'**
+  String get report_tab_production;
+
+  /// No description provided for @report_tab_experimental.
+  ///
+  /// In pl, this message translates to:
+  /// **'Eksperymentalny'**
+  String get report_tab_experimental;
 }
 
 class _AppLocalizationsDelegate

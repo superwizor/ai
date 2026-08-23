@@ -1472,5 +1472,7 @@
     }
   },
   "sessionDetails_experimentalSkipped_orgDisabled": "Raport eksperymentalny pominięty: tryb jest wyłączony dla Twojej organizacji. Przełącznik w ustawieniach zostaje włączony, ale nie działa, dopóki administrator go nie przywróci.",
-  "sessionDetails_experimentalSkipped_other": "Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym."
+  "sessionDetails_experimentalSkipped_other": "Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym.",
+  "report_tab_production": "Raport",
+  "report_tab_experimental": "Eksperymentalny"
 }

@@ -3319,4 +3319,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionDetails_experimentalSkipped_other =>
       'No experimental report was generated for this session. The report below is the production one.';
+
+  @override
+  String get report_tab_production => 'Report';
+
+  @override
+  String get report_tab_experimental => 'Experimental';
 }
