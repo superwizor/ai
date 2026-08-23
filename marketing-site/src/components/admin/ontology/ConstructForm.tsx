@@ -23,7 +23,8 @@
 
 import { useTranslations } from "next-intl";
 
-import type { ConstructView, MinEvidence } from "@/lib/ontology/model";
+import type { ConstructView, MinEvidence, SlotView } from "@/lib/ontology/model";
+import { SlotEditor } from "@/components/admin/ontology/SlotEditor";
 
 export interface ConstructEdits {
   labelPl: (v: string) => void;
@@ -34,6 +35,8 @@ export interface ConstructEdits {
   isNot: (v: string[]) => void;
   requires: (v: string[]) => void;
   confusions: (v: { input: string; correct: string; note?: string }[]) => void;
+  slots: (v: SlotView[]) => void;
+  minCompleteSlots: (v: number | null) => void;
   usun: () => void;
 }
 
@@ -73,11 +76,16 @@ export function ConstructForm({
       </Sekcja>
 
       {konstrukt.kind === "composite" ? (
-        // K3 dołoży edytor slotów. Do tego czasu mówimy wprost, że
-        // konstrukt ma treść, której formularz nie pokazuje — milczenie
-        // wyglądałoby jak konstrukt pusty.
-        <Sekcja tytul={t("sectionComposite")}>
-          <p className="font-serif text-mist text-sm">{t("compositeNotYet")}</p>
+        <Sekcja tytul={t("sectionComposite")} pomoc={t("compositeHelp")}>
+          <SlotEditor
+            sloty={konstrukt.slots}
+            minComplete={konstrukt.minCompleteSlots}
+            wlasnyId={konstrukt.id}
+            wszystkieId={wszystkieId}
+            etykiety={etykiety}
+            onSlots={edits.slots}
+            onMinComplete={edits.minCompleteSlots}
+          />
         </Sekcja>
       ) : (
         <Sekcja tytul={t("sectionCatalogue")}>

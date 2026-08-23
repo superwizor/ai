@@ -19,8 +19,10 @@ import {
   setConfusions,
   setConstructField,
   setConstructList,
+  setMinCompleteSlots,
   setMinEvidence,
   setMultiLabel,
+  setSlots,
   setValues,
   type MinEvidence,
   type NewConstructShape,
@@ -156,6 +158,18 @@ export function OntologyFormEditor({
                 },
                 confusions: (v) => {
                   setConfusions(doc, aktywny.id, v);
+                  zapisz();
+                },
+                slots: (v) => {
+                  setSlots(doc, aktywny.id, v);
+                  // min_complete_slots musi zmieścić się w NOWEJ liczbie
+                  // slotów. Usunięcie slotu poniżej progu zostawiłoby
+                  // wartość spoza zakresu, którą walidator odrzuci.
+                  setMinCompleteSlots(doc, aktywny.id, aktywny.minCompleteSlots, v.length);
+                  zapisz();
+                },
+                minCompleteSlots: (v) => {
+                  setMinCompleteSlots(doc, aktywny.id, v, aktywny.slots.length);
                   zapisz();
                 },
                 usun: () => {

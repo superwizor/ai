@@ -55,9 +55,51 @@ export interface ConstructView {
   counterExamples: string[];
   forcedStatus: string;
   fallbackRendering: string;
-  /** Ma sloty — kreator K1/K2 ich nie edytuje (K3), ale musi je
-   * pokazywać jako obecne, żeby nikt nie uznał konstruktu za pusty. */
-  hasSlots: boolean;
+  /** Sloty kompozytu (K3). Puste dla konstruktów kategorialnych. */
+  slots: SlotView[];
+  /** Ile slotów musi być wypełnionych, żeby kompozyt w ogóle powstał.
+   * null = domyślnie wszystkie wymagane. */
+  minCompleteSlots: number | null;
+  /** Polityka wartości liczbowych — slot z `quantity` jej wymaga (R9). */
+  hasQuantitiesPolicy: boolean;
+}
+
+/** Jeden slot kompozytu.
+ *
+ * `type` ma cztery legalne formy metaschematu: `span_ref`, `entry_ref`,
+ * `construct_ref(<id>)`, `enum_ref(<id>)`. Formularz składa je z wyboru
+ * rodzaju i pickera konstruktu, więc wyrażenie regularne nie ma jak się
+ * nie zgodzić. */
+export interface SlotView {
+  name: string;
+  kind: SlotKind;
+  /** Konstrukt wskazywany przez `construct_ref` / `enum_ref`. Puste dla
+   * pozostałych rodzajów. */
+  target: string;
+  required: boolean;
+  /** "" | "declarative" | "behavioral" — wymóg dowodowy dla tego slotu. */
+  kindHint: string;
+  quantity: boolean;
+}
+
+export type SlotKind = "span_ref" | "entry_ref" | "construct_ref" | "enum_ref";
+
+export const SLOT_KINDS: SlotKind[] = ["span_ref", "entry_ref", "construct_ref", "enum_ref"];
+
+/** Czy rodzaj slotu wskazuje na konstrukt. */
+export function slotNeedsTarget(kind: SlotKind): boolean {
+  return kind === "construct_ref" || kind === "enum_ref";
+}
+
+function parseSlotType(raw: string): { kind: SlotKind; target: string } {
+  const m = /^(construct_ref|enum_ref)\(([a-z][a-z0-9_]*)\)$/.exec(raw);
+  if (m) return { kind: m[1] as SlotKind, target: m[2] };
+  if (raw === "entry_ref") return { kind: "entry_ref", target: "" };
+  return { kind: "span_ref", target: "" };
+}
+
+export function slotTypeString(slot: SlotView): string {
+  return slotNeedsTarget(slot.kind) ? `${slot.kind}(${slot.target})` : slot.kind;
 }
 
 export interface OntologyView {
@@ -114,7 +156,11 @@ export function readOntology(doc: OntologyDoc): OntologyView {
       counterExamples: asStringList(c?.counter_examples),
       forcedStatus: asString(c?.forced_status),
       fallbackRendering: asString(c?.fallback_rendering),
-      hasSlots: c?.slots != null,
+      slots: readSlots(c?.slots),
+      minCompleteSlots: Number.isFinite(Number(c?.min_complete_slots))
+        ? Number(c?.min_complete_slots)
+        : null,
+      hasQuantitiesPolicy: c?.quantities != null,
     };
   });
 
@@ -134,6 +180,24 @@ function readMinEvidence(v: unknown): MinEvidence | null {
   if (Number.isFinite(Number(m.behavioral))) out.behavioral = Number(m.behavioral);
   if (Number.isFinite(Number(m.sessions))) out.sessions = Number(m.sessions);
   return out;
+}
+
+/** Kolejność slotów zachowana z pliku — to kolejność, w której ekspert
+ * je zapisał, i jedyna, która dla niego coś znaczy. */
+function readSlots(v: unknown): SlotView[] {
+  if (v == null || typeof v !== "object") return [];
+  return Object.entries(v as Record<string, unknown>).map(([name, raw]) => {
+    const s = (raw ?? {}) as Record<string, unknown>;
+    const { kind, target } = parseSlotType(asString(s.type));
+    return {
+      name,
+      kind,
+      target,
+      required: s.required === true,
+      kindHint: asString(s.kind_hint),
+      quantity: s.quantity === true,
+    };
+  });
 }
 
 function readConfusions(v: unknown): Confusion[] {
@@ -175,7 +239,10 @@ export function setConstructList(
   field: string,
   values: string[],
 ): void {
-  const clean = values.map((v) => v.trim()).filter((v) => v !== "");
+  // Deduplikacja: powtórzony wpis w `is_not` albo `requires` nic nie
+  // znaczy, a trafiłby do pliku i do diffu jako szum. Kolejność
+  // pierwszego wystąpienia zostaje — jest deterministyczna.
+  const clean = [...new Set(values.map((v) => v.trim()).filter((v) => v !== ""))];
   const path = ["constructs", id, field];
   if (clean.length === 0) {
     doc.deleteIn(path);
@@ -294,4 +361,47 @@ export function slugify(label: string): string {
   if (bez === "") return "";
   // Metaschemat wymaga litery na początku.
   return /^[a-z]/.test(bez) ? bez : `k_${bez}`;
+}
+
+/** Zapisuje sloty kompozytu.
+ *
+ * Slot bez nazwy albo bez celu (gdy rodzaj go wymaga) jest POMIJANY:
+ * formularz może mieć wiersz w trakcie wypełniania, a niedokończony slot
+ * nie ma prawa trafić do treści, którą zobaczy walidator. */
+export function setSlots(doc: OntologyDoc, id: string, slots: SlotView[]): void {
+  const path = ["constructs", id, "slots"];
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const s of slots) {
+    const nazwa = s.name.trim();
+    if (nazwa === "") continue;
+    if (slotNeedsTarget(s.kind) && s.target.trim() === "") continue;
+    const body: Record<string, unknown> = { type: slotTypeString(s) };
+    if (s.required) body.required = true;
+    if (s.kindHint !== "") body.kind_hint = s.kindHint;
+    if (s.quantity) body.quantity = true;
+    out[nazwa] = body;
+  }
+  if (Object.keys(out).length === 0) {
+    doc.deleteIn(path);
+    return;
+  }
+  doc.setIn(path, doc.createNode(out));
+}
+
+/** Metaschemat dopuszcza `min_complete_slots` w zakresie 1..liczba slotów
+ * i WYŁĄCZNIE dla kompozytu. Formularz ogranicza suwak, ale wołający i tak
+ * przycina — wartość spoza zakresu nie ma jak trafić do pliku. */
+export function setMinCompleteSlots(
+  doc: OntologyDoc,
+  id: string,
+  n: number | null,
+  liczbaSlotow: number,
+): void {
+  const path = ["constructs", id, "min_complete_slots"];
+  if (n === null || liczbaSlotow === 0) {
+    doc.deleteIn(path);
+    return;
+  }
+  const przyciete = Math.min(Math.max(1, n), liczbaSlotow);
+  doc.setIn(path, przyciete);
 }
