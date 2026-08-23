@@ -80,6 +80,23 @@ service ClinicalService {
     // patient file. Empty avatar_config clears to defaults.
     rpc SetAvatarConfig(SetAvatarConfigRequest) returns (google.protobuf.Empty);
 
+    // ─── Raporty eksperymentalne (plan 16 §2.5) ───
+    // Generuje raport na ontologii BEZ autoryzacji ekspertow. Nie
+    // zastepuje raportu produkcyjnego, nie trafia do panelu klienta,
+    // nie wywoluje powiadomienia "Raport gotowy".
+    //
+    // Istnieje po to, zeby eksperci mogli kalibrowac `values` i
+    // `min_evidence` na prawdziwych transkryptach ZANIM ontologia
+    // dostanie `approved_by` — bez tego petla autoryzacyjna nie ma na
+    // czym pracowac.
+    //
+    // Wymaga flagi organizacji REPORT_EXPERIMENTAL_ENABLED i miesci sie
+    // w dobowym limicie na terapeute. Zwraca natychmiast; raport
+    // powstaje asynchronicznie, a jego gotowosc sygnalizuje dokument
+    // inbox `experimental_report_ready`.
+    rpc GenerateExperimentalReport(GenerateExperimentalReportRequest)
+        returns (GenerateExperimentalReportResponse);
+
     // ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
     // 👍/👎 rating on a generated report. Idempotent on
     // (report_id, therapist_id) — re-rating UPSERTs in place.
@@ -1798,4 +1815,29 @@ message AskPatientQuestionResponse {
   }
 
   ChatMeta meta = 5;
+}
+
+// ─── Raporty eksperymentalne (plan 16 §2.5) ───
+
+message GenerateExperimentalReportRequest {
+    // Sesja, ktorej transkrypcja posluzy za material. Musi miec
+    // transkrypcje — stare sesje sa GLOWNYM przypadkiem uzycia, bo
+    // kalibracja ekspercka zaczyna sie od istniejacego materialu.
+    string session_id = 1;
+    // Kod modalnosci, ktorej ontologia obsluzy przebieg. Puste =
+    // modalnosc kartoteki. Rozne od niej pozwala na "raport CBT dla
+    // kartoteki PPT" — porownanie miedzymodalnosciowe wymaga jawnego
+    // wyboru, bo automat zawsze idzie za kartoteka.
+    string modality_code = 2;
+    // Konkretna wersja ontologii, takze `draft`. Puste = najnowsza
+    // wersja wskazanej modalnosci.
+    string ontology_version_id = 3;
+}
+
+message GenerateExperimentalReportResponse {
+    // Identyfikator ZAMOWIENIA, nie raportu: raport jeszcze nie
+    // istnieje. Klient uzywa go do skojarzenia z dokumentem inbox.
+    string request_id = 1;
+    // Ile zamowien zostalo w dobowym limicie PO tym zamowieniu.
+    int32 remaining_today = 2;
 }

@@ -577,3 +577,13 @@ func (a *ConnectAdapter) AdminSetChatControls(ctx context.Context, req *connect.
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) GenerateExperimentalReport(ctx context.Context,
+	req *connect.Request[clinicalv1.GenerateExperimentalReportRequest]) (
+	*connect.Response[clinicalv1.GenerateExperimentalReportResponse], error) {
+	resp, err := a.s.GenerateExperimentalReport(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

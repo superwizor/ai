@@ -224,4 +224,25 @@ func TestPrzelacznikJestWolanyWSciezceProdukcyjnej(t *testing.T) {
 		t.Error("spadek na legacy nie jest raportowany — telemetria nie zobaczy, " +
 			"ze ktos wlaczyl ontologie bez aktywnej wersji")
 	}
+
+	// Tryb eksperymentalny musi KONCZYC SIE przed lustrami produkcyjnymi.
+	// Etykiety mowcow nadpisalyby sesje, pamiec RAG zasilalaby przyszle
+	// raporty produkcyjne trescia z niezautoryzowanej ontologii, a
+	// session.status_changed wyslalby push "Raport gotowy" o czyms, co
+	// nie jest materialem klinicznym.
+	iEksperyment := strings.Index(kod, "Raport eksperymentalny KONCZY SIE TUTAJ")
+	if iEksperyment < 0 {
+		t.Fatal("brak wczesnego wyjscia dla raportu eksperymentalnego")
+	}
+	for _, lustro := range []string{
+		"generateAndSaveSpeakerLabels(ctx, session,",
+		"persistRAGMemoryV2(ctx, session,",
+		`publishSessionStatusChanged(ctx, ev.SessionID, "done")`,
+	} {
+		i := strings.Index(kod, lustro)
+		if i >= 0 && i < iEksperyment {
+			t.Errorf("lustro produkcyjne %q stoi PRZED wyjsciem eksperymentu — "+
+				"raport eksperymentalny by je uruchomil", lustro)
+		}
+	}
 }

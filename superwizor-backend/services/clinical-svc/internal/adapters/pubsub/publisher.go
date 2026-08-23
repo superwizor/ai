@@ -18,6 +18,7 @@ import (
 
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/superwizor-ai/backend/pkg/analytics"
+	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 )
 
 type Publisher struct {
@@ -154,3 +155,43 @@ func (p *Publisher) PublishAnalyticsEvent(ctx context.Context, event analytics.E
 	return err
 }
 
+// PublishExperimentalReportRequested zamawia raport eksperymentalny
+// (plan 16 §2.5).
+//
+// Idzie na ISTNIEJACY temat transcript.completed, a nie na wlasny.
+// Powod jest jeden i wazny: gdyby raport eksperymentalny mial osobna
+// sciezke generacji, przestal by byc eksperymentem NA TYM SAMYM potoku.
+// Sens tego trybu polega na tym, ze walidator, granica terapeuty,
+// wylaczenie spanow ryzyka i weryfikator wyjscia dzialaja identycznie —
+// rozni sie wylacznie bramka aktywnej wersji.
+//
+// Atrybut `pipeline: experimental` jest JEDYNYM przelacznikiem po
+// stronie workera, zeby czesciowo wypelniony komunikat nie mogl w ten
+// tryb wpasc.
+func (p *Publisher) PublishExperimentalReportRequested(ctx context.Context, ev grpcadapter.ExperimentalReportRequest) error {
+	data, err := json.Marshal(map[string]string{
+		"session_id":    ev.SessionID,
+		"transcript_id": ev.TranscriptID,
+	})
+	if err != nil {
+		return err
+	}
+
+	topic := p.client.Publisher("transcript.completed")
+	defer topic.Stop()
+
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: data,
+		Attributes: map[string]string{
+			"event_type":          "transcript.completed",
+			"session_id":          ev.SessionID,
+			"pipeline":            "experimental",
+			"request_id":          ev.RequestID,
+			"modality_override":   ev.ModalityCode,
+			"ontology_version_id": ev.OntologyVersionID,
+			"requested_by":        ev.RequestedBy,
+		},
+	})
+	_, err = res.Get(ctx)
+	return err
+}

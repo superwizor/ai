@@ -283,7 +283,14 @@ type fakePublisher struct {
 	calls           []publisherCall
 	statusChanged   []publisherCall
 	analyticsEvents []analytics.Event
+	experimental    []ExperimentalReportRequest
 	publishErr      error
+}
+
+func (f *fakePublisher) PublishExperimentalReportRequested(_ context.Context,
+	ev ExperimentalReportRequest) error {
+	f.experimental = append(f.experimental, ev)
+	return f.publishErr
 }
 
 type publisherCall struct {

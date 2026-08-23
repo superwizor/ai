@@ -252,7 +252,15 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return err
 	}
 
+	// Zamowienie eksperymentalne (plan 16 §2.5). Rozpoznawane po JEDNYM
+	// atrybucie, zeby nie dalo sie wpasc w ten tryb przez czesciowo
+	// wypelniony komunikat.
+	eksperyment := experimentalFromAttributes(msgData.Message.Attributes)
+
 	logger = logger.With("session_id", ev.SessionID, "transcript_id", ev.TranscriptID)
+	if eksperyment != nil {
+		logger = logger.With("experimental", true)
+	}
 	logger.Info("processing transcript")
 
 	startTime := time.Now()
@@ -428,7 +436,37 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		ontoRes    ontopipe.Result
 		ontoActive *ontology.Ontology
 	)
-	if pipeline.Pipeline == appconfig.PipelineOntology {
+	if eksperyment != nil {
+		// Jedyna bramka, ktora ten tryb omija, to AKTYWNA WERSJA.
+		// Wszystko pozostale — R1-R10, T22, V1-V6 — dziala identycznie.
+		modID, kod, merr := resolveExperimentalModality(ctx, session, eksperyment.ModalityOverride)
+		if merr != nil {
+			logger.Error("eksperyment: nieznana modalnosc", "error", merr)
+			return nil // terminalne: zly kod nie naprawi sie przy retry
+		}
+		o, _, ver, oerr := loadExperimentalOntology(ctx, modID, eksperyment.OntologyVersionID)
+		if oerr != nil {
+			logger.Error("eksperyment: ontologia nie do uzycia", "error", oerr,
+				"modality_code", kod)
+			return nil // terminalne z tego samego powodu
+		}
+		pipeline = pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: ver}
+		ontoActive = o
+		report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
+			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o)
+		if err != nil {
+			return failGen(err, "ontopipe_experimental")
+		}
+		// Baner jest czescia ARTEFAKTU, nie UI: raport bywa kopiowany,
+		// eksportowany i ogladany poza aplikacja, a wtedy oznaczenie
+		// spoza tresci nie istnieje.
+		report.ReportMarkdown = experimentalBanner(kod, ver) + report.ReportMarkdown
+		report.Title = "[EKSPERYMENT] " + report.Title
+		reportJSON, err = ontologyReportJSON(report)
+		if err != nil {
+			return failGen(err, "ontopipe_serialize")
+		}
+	} else if pipeline.Pipeline == appconfig.PipelineOntology {
 		o, ver, oerr := loadActiveOntology(ctx, session.ModalityID)
 		if oerr != nil {
 			logger.Error("ontologia aktywna nieuzywalna — spadek na legacy",
@@ -450,7 +488,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		}
 	}
 
-	if pipeline.Pipeline == appconfig.PipelineLegacy {
+	if eksperyment == nil && pipeline.Pipeline == appconfig.PipelineLegacy {
 		// Call 2 — the full report, now grounded in the retrieved context.
 		// workChunks = zredagowany tekst gdy LLM_PSEUDONYMIZE != off.
 		reportJSON, tokenStats, err = generateReportBody(ctx, ev.SessionID, session.ReportLanguage,
@@ -483,8 +521,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("parse report: %w", err)
 	}
 
+	prov := pipelineProvenance(pipeline)
+	if eksperyment != nil {
+		prov.Pipeline = PipelineExperimental
+	}
 	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON,
-		tokenStats, time.Since(startTime), pipelineProvenance(pipeline))
+		tokenStats, time.Since(startTime), prov)
 	if err != nil {
 		// DB write failure — transient. NACK, retry; do not mark FAILED.
 		logger.Error("persist report (transient — pubsub will retry)", "error", err)
@@ -511,6 +553,30 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			logger.Error("persist grafu twierdzen (transient — pubsub will retry)", "error", perr)
 			return fmt.Errorf("persist ontopipe: %w", perr)
 		}
+	}
+
+	// Raport eksperymentalny KONCZY SIE TUTAJ.
+	//
+	// Zadnych luster produkcyjnych: etykiety mowcow nadpisalyby sesje,
+	// pamiec RAG zasilalaby przyszle raporty produkcyjne trescia z
+	// niezautoryzowanej ontologii, a session.status_changed wyslalby
+	// powiadomienie "Raport gotowy" o czyms, co nie jest materialem
+	// klinicznym. Sesja jest juz COMPLETED z przebiegu produkcyjnego —
+	// dotkniecie jej statusu tutaj bylo by regresja, nie porzadkiem.
+	if eksperyment != nil {
+		if lerr := linkExperimentalReport(ctx, eksperyment.RequestID, reportID); lerr != nil {
+			logger.Warn("eksperyment: dowiazanie zamowienia", "error", lerr)
+		}
+		if ierr := publishExperimentalReady(ctx, session, reportID); ierr != nil {
+			logger.Warn("eksperyment: powiadomienie inbox", "error", ierr)
+		}
+		logger.Info("done (eksperyment)",
+			"report_id", reportID,
+			"ontology_version", pipeline.OntologyVersion,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+			"input_tokens", tokenStats.InputTokens,
+			"output_tokens", tokenStats.OutputTokens)
+		return nil
 	}
 
 	// Po analizie LLM: generate speaker labels z speaker_groups + zapisz
