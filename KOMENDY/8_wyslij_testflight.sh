@@ -47,6 +47,24 @@ echo "📦 2. Budowanie paczki IPA dla iOS..."
 # wersję ma użytkownik, więc musi mieć jedno źródło prawdy.
 flutter build ipa --export-options-plist=ios/ExportOptions.plist
 
+# Sprawdzenie, czy paczka NAPRAWDĘ powstała.
+#
+# `flutter build ipa` potrafi zakończyć się kodem 0 mimo nieudanego
+# eksportu — 23.08.2026 padł na "exportArchive: The network connection was
+# lost", zwrócił zero, a skrypt poleciał dalej do altoola, który wywalił
+# się na braku pliku. Komunikat mówił wtedy o ścieżce, nie o przyczynie.
+#
+# To ten sam tryb awarii, który opisują komentarze wyżej: krok idzie
+# dalej, choć poprzedni nie zrobił swojego. Sprawdzamy więc wynik, a nie
+# kod wyjścia.
+if ! ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
+    echo "❌ Eksport IPA nie powstał, mimo że build zakończył się bez błędu."
+    echo "   Najczęstsza przyczyna: zerwane połączenie z Apple przy exportArchive."
+    echo "   Archiwum jest gotowe — powtórz skrypt albo wyślij ręcznie:"
+    echo "   open build/ios/archive/Runner.xcarchive"
+    exit 1
+fi
+
 # Wczytanie konfiguracji z credentials.env jeśli istnieje
 if [ -f "$ENV_FILE" ]; then
     # Zakotwiczone na poczatku linii i z ograniczeniem do pierwszego
