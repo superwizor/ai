@@ -1,6 +1,7 @@
 package llmworker
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -55,5 +56,36 @@ func TestRaportEksperymentalnyMaOsobnyStempel(t *testing.T) {
 	}
 	if !strings.HasPrefix(PipelineExperimental, "ontology_s1s5") {
 		t.Fatal("stempel eksperymentu nie mowi, ze to potok ontologiczny")
+	}
+}
+
+// TestZamowienieBezPublikacjiNieZostaje pilnuje kolejności, która
+// realnie kosztowała użytkownika raport (2026-08-23).
+//
+// Wiersz zamówienia powstaje PRZED publikacją, bo komunikat musi nieść
+// jego identyfikator. Gdy publikacja padnie — a padła, na braku
+// uprawnienia do tematu — zostaje zamówienie, które zużyło limit i nie
+// dało raportu. Przy limicie 5 wystarczy pięć takich awarii, żeby tryb
+// zamilkł na dobę.
+//
+// Test czyta źródło, bo alternatywa wymaga Pub/Suba i bazy. Sprawdzana
+// jest OBECNOŚĆ wycofania w gałęzi błędu, nie jego wynik.
+func TestZamowienieBezPublikacjiNieZostaje(t *testing.T) {
+	src, err := os.ReadFile("experimental.go")
+	if err != nil {
+		t.Fatalf("odczyt experimental.go: %v", err)
+	}
+	kod := string(src)
+
+	iPublikacja := strings.Index(kod, `logger.Warn("dual-run: publikacja zamowienia"`)
+	if iPublikacja < 0 {
+		t.Fatal("brak obslugi bledu publikacji")
+	}
+	iUsun := strings.Index(kod, "DELETE FROM experimental_report_requests")
+	if iUsun < 0 {
+		t.Fatal("nieudana publikacja nie wycofuje zamowienia — zuzyje limit bez raportu")
+	}
+	if iUsun < iPublikacja {
+		t.Error("wycofanie stoi poza galezia bledu publikacji")
 	}
 }

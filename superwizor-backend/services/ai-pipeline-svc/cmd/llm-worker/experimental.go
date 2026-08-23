@@ -310,7 +310,19 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 		},
 	})
 	if _, err := res.Get(ctx); err != nil {
+		// Wiersz zamowienia powstal PRZED publikacja, bo komunikat musi
+		// niesc jego identyfikator. Nieudana publikacja zostawialaby wiec
+		// zamowienie, ktore zuzylo limit i nie dalo raportu — a przy
+		// dobowym limicie 5 wystarczy pieciu takich awarii, zeby tryb
+		// zamilkl na cala dobe bez zadnego raportu.
+		//
+		// Wycofujemy je. Slad zostaje w logu; wiersz, ktory niczego nie
+		// zamowil, nie ma prawa niczego kosztowac.
 		logger.Warn("dual-run: publikacja zamowienia", "error", err)
+		if _, derr := dbPool.Exec(ctx,
+			`DELETE FROM experimental_report_requests WHERE id = $1`, requestID); derr != nil {
+			logger.Warn("dual-run: wycofanie zamowienia", "error", derr)
+		}
 		return
 	}
 	logger.Info("dual-run: zamowiono raport eksperymentalny",

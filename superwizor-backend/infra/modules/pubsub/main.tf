@@ -329,6 +329,24 @@ resource "google_pubsub_topic_iam_member" "stt_publisher" {
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
 }
+
+# llm-worker publikuje na transcript.completed przy DUAL-RUN.
+#
+# Do trybu eksperymentalnego llm-worker był wyłącznie KONSUMENTEM tego
+# tematu — publikował go stt-worker. Dual-run uczynił go producentem
+# (zamawia raport eksperymentalny obok właśnie ukończonego produkcyjnego)
+# i bez tego bindingu publikacja wraca PermissionDenied.
+#
+# Awaria jest z założenia cicha, bo zamówienie jest best-effort wobec
+# raportu produkcyjnego, który już powstał. Efekt: wiersz zamówienia w
+# bazie, ostrzeżenie w logu i BRAK drugiego raportu — czyli dokładnie to,
+# co użytkownik zgłosił jako „widzę tylko jeden raport" (2026-08-23).
+resource "google_pubsub_topic_iam_member" "llm_transcript_completed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.transcript_completed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
+}
 # IAM: clinical-svc may publish session.deleted (one event per
 # DeleteSession + per session under DeletePatientFile fan-out).
 # Service account convention: clinical-svc@<project>.iam — created
