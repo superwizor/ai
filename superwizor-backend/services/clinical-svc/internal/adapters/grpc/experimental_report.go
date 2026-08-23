@@ -188,13 +188,19 @@ func (s *Server) resolveExperimentalVersion(ctx context.Context, modalityCode, w
 
 func (s *Server) insertExperimentalRequest(ctx context.Context, therapistID, sessionID uuid.UUID,
 	modalityCode, versionID, origin string) (uuid.UUID, error) {
+	// Wersja idzie jako uuid.UUID, nie string: kolumna jest typu UUID, a
+	// przekazanie tekstu opiera sie na niejawnej konwersji sterownika.
+	// Dziala, dopoki dziala — i milczy, gdy przestanie.
+	vid, err := uuid.Parse(versionID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("nieprawidlowa wersja ontologii: %w", err)
+	}
 	var id uuid.UUID
-	err := s.ontologyPool.QueryRow(ctx, `
+	if err := s.ontologyPool.QueryRow(ctx, `
 		INSERT INTO experimental_report_requests
 		       (therapist_id, session_id, modality_code, ontology_version_id, origin)
 		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		therapistID, sessionID, modalityCode, versionID, origin).Scan(&id)
-	if err != nil {
+		therapistID, sessionID, modalityCode, vid, origin).Scan(&id); err != nil {
 		return uuid.Nil, errors.New("insert zamowienia: " + err.Error())
 	}
 	return id, nil
