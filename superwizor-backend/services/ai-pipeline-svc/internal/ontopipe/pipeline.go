@@ -28,8 +28,8 @@ import (
 // sensownego benchmarku.
 const (
 	PromptVersionS1  = "s1/1.0.0"
-	PromptVersionS2  = "s2/1.0.0"
-	PromptVersionS4  = "s4/1.1.0" // +6a: zakaz genezy bez spanu PRZESZLOSC
+	PromptVersionS2  = "s2/1.1.0" // confidence wymagane w schemacie
+	PromptVersionS4  = "s4/1.2.0" // +6a: zakaz genezy; confidence wymagane
 	ValidatorVersion = "r1-r10/1.0.0"
 	// PipelineVersion trafia do reports.pipeline_version.
 	PipelineVersion = "ontology_s1s5"

@@ -77,18 +77,31 @@ func (o *Ontology) SchemaForConstruct(constructID string, opts SchemaOptions) (m
 			// stanow i przy wiekszym schemacie odrzuca cale zadanie
 			// ("too many states for serving", 2026-08-23). Zakres pilnuje
 			// wolajacy — sprowadzenie 1.7 do 1.0 nie zmienia sensu.
-			"confidence": map[string]any{"type": "number"},
+			//
+			// WYMAGANE (nizej). Pole opcjonalne model po prostu pomijal, a
+			// wtedy Go zapisywalo zero — nierozroznialne od swiadomego
+			// "nie jestem pewien". W raporcie znikala wtedy cala adnotacja
+			// o pewnosci, bo rendering pomija zero. Kanarek CBT: dwa
+			// twierdzenia `emotion` weszly do bazy z pewnoscia 0, choc
+			// reszta miala 0,8-1,0.
+			"confidence": map[string]any{
+				"type": "number",
+				"description": "Pewnosc od 0 do 1. Podaj ZAWSZE — takze wtedy, gdy jest " +
+					"niska. Niska pewnosc jest informacja dla terapeuty, brak pewnosci " +
+					"nie jest niczym.",
+			},
 			"reasoning": map[string]any{
 				"type": "string", "maxLength": int64(maxProseChars),
 				"description": "Uzasadnienie oparte WYLACZNIE na wskazanych spanach.",
 			},
 		},
-		"required": []any{"epistemic_status", "evidence", "reasoning"},
+		"required": []any{"epistemic_status", "evidence", "reasoning", "confidence"},
 	}
 	// Kategoria jest wymagana tylko tam, gdzie katalog istnieje. Przy
 	// jego braku konstrukt opisuje zjawisko proza i pole nie ma sensu.
 	if len(c.Values) > 0 {
-		claim["required"] = []any{"category", "epistemic_status", "evidence", "reasoning"}
+		claim["required"] = []any{"category", "epistemic_status", "evidence",
+			"reasoning", "confidence"}
 	}
 
 	return map[string]any{

@@ -172,3 +172,37 @@ func TestNieznanyKonstruktJestBledem(t *testing.T) {
 		t.Error("schemat dla nieistniejacego konstruktu powstal")
 	}
 }
+
+// TestPewnoscJestWymagana — pole opcjonalne model po prostu pomijał, a
+// Go zapisywało wtedy zero: nierozróżnialne od świadomego „nie jestem
+// pewien". W raporcie znikała cała adnotacja, bo rendering pomija zero.
+//
+// Kanarek CBT (2026-08-23): dwa twierdzenia `emotion` weszły do bazy z
+// pewnością 0, choć reszta miała 0,8–1,0.
+func TestPewnoscJestWymagana(t *testing.T) {
+	o := mustParse(t, okYAML)
+	for _, id := range []string{"alpha", "beta"} {
+		sch, err := o.SchemaForConstruct(id, SchemaOptions{})
+		if err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+		claim := sch["properties"].(map[string]any)["claims"].(map[string]any)["items"].(map[string]any)
+		req, _ := claim["required"].([]any)
+		found := false
+		for _, r := range req {
+			if r == "confidence" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: confidence nie jest wymagane — model je pominie, a zero "+
+				"jest nierozroznialne od swiadomej niskiej pewnosci (wymagane: %v)", id, req)
+		}
+		// Opis musi zostac: bez niego wymagane pole dostaje wartosc
+		// przypadkowa zamiast przemyslanej.
+		conf, _ := claim["properties"].(map[string]any)["confidence"].(map[string]any)
+		if d, _ := conf["description"].(string); d == "" {
+			t.Errorf("%s: confidence bez opisu", id)
+		}
+	}
+}

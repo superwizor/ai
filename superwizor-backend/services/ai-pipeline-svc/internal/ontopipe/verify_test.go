@@ -701,3 +701,17 @@ func TestEtykietaMowcyToNieLiczba(t *testing.T) {
 		}
 	}
 }
+
+// TestPewnoscWymaganaTakzeWS4 — S4 przepisuje pewność z twierdzenia
+// źródłowego, więc pominięcie pola gubi ją tak samo jak w S2.
+func TestPewnoscWymaganaTakzeWS4(t *testing.T) {
+	in, _ := materialS5()
+	h := schemaS4(in)["properties"].(map[string]any)["constructs"].(map[string]any)["items"].(map[string]any)["properties"].(map[string]any)["hypotheses"].(map[string]any)["items"].(map[string]any)
+	req, _ := h["required"].([]any)
+	for _, r := range req {
+		if r == "confidence" {
+			return
+		}
+	}
+	t.Fatalf("confidence nie jest wymagane w S4 (wymagane: %v)", req)
+}

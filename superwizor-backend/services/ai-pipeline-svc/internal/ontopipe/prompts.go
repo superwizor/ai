@@ -256,9 +256,16 @@ func schemaS4(in SynthesisInput) map[string]any {
 			},
 			"epistemic_status": map[string]any{"type": "string", "enum": statuses},
 			// Bez granic liczbowych — zakres pilnuje clampConfidence.
-			"confidence": map[string]any{"type": "number"},
+			// WYMAGANE z tego samego powodu co w S2: pole opcjonalne model
+			// pomijal, a rendering pomija zero, wiec adnotacja o pewnosci
+			// znikala z raportu bez sladu.
+			"confidence": map[string]any{
+				"type": "number",
+				"description": "Pewnosc od 0 do 1. Podaj ZAWSZE. Przepisz ja z " +
+					"twierdzenia zrodlowego — nie podnos.",
+			},
 		},
-		"required": []any{"id", "claim", "supporting", "epistemic_status"},
+		"required": []any{"id", "claim", "supporting", "epistemic_status", "confidence"},
 	}
 
 	construct := map[string]any{
