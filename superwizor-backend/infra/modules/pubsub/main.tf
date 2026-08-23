@@ -394,6 +394,19 @@ output "audio_object_finalized_topic_name" { value = google_pubsub_topic.audio_o
 output "audio_object_finalized_subscription_id" { value = google_pubsub_subscription.audio_object_finalized_sub.id }
 output "audio_object_finalized_subscription_name" { value = google_pubsub_subscription.audio_object_finalized_sub.name }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
+# IAM: llm-worker publikuje gotowosc raportu eksperymentalnego.
+#
+# Temat bez tego bindingu przyjmuje utworzenie, ale odrzuca publikacje —
+# a kod traktuje to zawiadomienie jako best-effort, wiec awaria jest CICHA:
+# raport powstaje, dokument inbox nie, i nikt sie nie dowiaduje inaczej niz
+# z ostrzezenia w logu (zaobserwowane na kanarku 2026-08-23).
+resource "google_pubsub_topic_iam_member" "llm_worker_experimental_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.report_experimental_ready.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
+}
+
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
 output "report_experimental_ready_topic" { value = google_pubsub_topic.report_experimental_ready.id }
 output "session_status_changed_topic" { value = google_pubsub_topic.session_status_changed.id }
