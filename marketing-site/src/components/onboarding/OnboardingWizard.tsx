@@ -20,6 +20,7 @@ import { ConnectError, Code } from "@connectrpc/connect";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient } from "@/lib/connect/clients";
+import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { motion, AnimatePresence } from "framer-motion";
 import { getModalityCatalog, pickModality, type ModalityRow } from "@/lib/clinical/modalities";
@@ -199,7 +200,20 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     identityClient
       .getMyProfile(create(EmptySchema, {}))
       .then((me) => {
-        if (!cancelled && me.defaultModalityId) {
+        if (cancelled) return;
+        // ONTOLOGY_EDITOR nie jest terapeuta i nie dostanie modalnosci
+        // nigdy — bez tej galezi kreator pytalby go o numer licencji w
+        // nieskonczonosc (zgloszone 2026-08-23). Sprawdzane PRZED
+        // modalnoscia wlasnie dlatego, ze warunek modalnosci nigdy sie
+        // dla tej roli nie spelni.
+        const role = me.role as unknown;
+        if (role === UserRole.ONTOLOGY_EDITOR || role === "USER_ROLE_ONTOLOGY_EDITOR") {
+          router.replace(
+            locale === "en" ? "/en/admin/ontologies/" : "/pl/admin/ontologies/",
+          );
+          return;
+        }
+        if (me.defaultModalityId) {
           router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
         }
       })

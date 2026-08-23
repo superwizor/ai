@@ -45,7 +45,8 @@ import { sendPasswordResetEmail } from "firebase/auth";
 
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
-import { UserRole, CheckEmailExistsRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { CheckEmailExistsRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { postLoginRoute } from "@/lib/auth/post-login-route";
 import { getFirebaseAuth } from "@/lib/firebase/init";
 import { openAppWithSso } from "@/lib/auth/open-app-sso";
 
@@ -113,32 +114,20 @@ export function LoginForm() {
       throw err;
     }
 
-    // Role-based routing (live-fix 2026-07-04: a CLIENT signing in from
-    // the marketing login landed on the THERAPIST onboarding because the
-    // only branches were admin / no-modality / dashboard).
-    //   SUPERWIZOR_ADMIN → /admin/
-    //   PATIENT          → client panel on the app origin (SSO handoff)
-    //   ORG_ADMIN        → /org/
-    //   THERAPIST        → /onboarding/ (no modality yet) or /dashboard/
-    const role = me.role as unknown;
-    const is = (enumVal: UserRole, name: string) =>
-      role === enumVal || role === name;
-
-    if (is(UserRole.SUPERWIZOR_ADMIN, "USER_ROLE_SUPERWIZOR_ADMIN")) {
-      setPhase("redirect_admin");
-      router.push(`${adminPrefix}/admin/`);
-    } else if (is(UserRole.PATIENT, "USER_ROLE_PATIENT")) {
+    // Role-based routing. Decyzja siedzi w czystej funkcji
+    // (src/lib/auth/post-login-route.ts), bo oba dotychczasowe bledy
+    // wzielo sie z KOLEJNOSCI galezi, a inline nie dalo sie tego
+    // przetestowac bez przegladarki.
+    const trasa = postLoginRoute(
+      { role: me.role as unknown, defaultModalityId: me.defaultModalityId },
+      adminPrefix,
+    );
+    if (trasa.kind === "sso_client") {
       setPhase("redirect_app");
       await openAppWithSso(me.email);
-    } else if (is(UserRole.ORG_ADMIN, "USER_ROLE_ORG_ADMIN")) {
-      setPhase("redirect_app");
-      router.push(`${adminPrefix}/org/`);
-    } else if (!me.defaultModalityId) {
-      setPhase("redirect_app");
-      router.push(`${adminPrefix}/onboarding/`);
     } else {
-      setPhase("redirect_app");
-      router.push(`${adminPrefix}/dashboard/`);
+      setPhase(trasa.phase);
+      router.push(trasa.path);
     }
     return true;
   };
