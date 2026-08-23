@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"cloud.google.com/go/pubsub/v2"
@@ -227,7 +228,12 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 	}
 	if !pipelineConfig.ExperimentalReportsEnabled(ctx, sc.OrganizationID) {
 		// Terapeuta mogl zostawic przelacznik wlaczony, a organizacja
-		// stracic flage. Flaga organizacji wygrywa zawsze.
+		// stracic flage. Flaga organizacji wygrywa zawsze — ale terapeuta
+		// ma sie o tym dowiedziec, bo z jego strony nic sie nie zmienilo.
+		logger.Info("dual-run: organizacja nie ma wlaczonego trybu")
+		if err := publishExperimentalSkipped(ctx, sc, "org_disabled", 0); err != nil {
+			logger.Warn("dual-run: zawiadomienie o pominieciu", "error", err)
+		}
 		return
 	}
 
@@ -241,7 +247,21 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 		return
 	}
 	if uzyte >= limit {
-		logger.Info("dual-run: dobowy limit wyczerpany", "limit", limit)
+		// POMINIECIE MUSI BYC WIDOCZNE.
+		//
+		// Terapeuta wlaczyl przelacznik, ktory obiecuje raport przy
+		// KAZDEJ nowej sesji. Cicha odmowa wyglada nie jak limit, tylko
+		// jak zepsuta funkcja — i dokladnie tak zostala odczytana przy
+		// pierwszym uzyciu na produkcji (2026-08-23): sesja dala jeden
+		// raport, a wlasciciel konta uznal, ze to ten nowy, i pytal, czy
+		// ma wgrac nagranie ponownie.
+		//
+		// Best-effort jak reszta tej sciezki: raport produkcyjny jest juz
+		// zapisany i blad zawiadomienia nie moze go cofnac.
+		logger.Info("dual-run: dobowy limit wyczerpany", "limit", limit, "uzyte", uzyte)
+		if err := publishExperimentalSkipped(ctx, sc, "daily_limit", limit); err != nil {
+			logger.Warn("dual-run: zawiadomienie o pominieciu", "error", err)
+		}
 		return
 	}
 
@@ -289,4 +309,36 @@ func maybeDualRun(ctx context.Context, logger *slog.Logger, sc *SessionContext, 
 	}
 	logger.Info("dual-run: zamowiono raport eksperymentalny",
 		"request_id", requestID, "ontology_version_id", versionID)
+}
+
+// publishExperimentalSkipped zawiadamia, ze raport eksperymentalny NIE
+// powstal, mimo wlaczonego przelacznika.
+//
+// Ten sam temat co gotowosc, bo to ta sama sprawa z punktu widzenia
+// odbiorcy: „co sie stalo z raportem, ktorego sie spodziewalem". Atrybut
+// `kind` rozstrzyga, ktora tresc zapisze konsument — osobny temat
+// oznaczalby druga subskrypcje i druga funkcje dla jednego zdania.
+func publishExperimentalSkipped(ctx context.Context, sc *SessionContext, powod string, limit int64) error {
+	if pubsubClient == nil {
+		return nil
+	}
+	topic := pubsubClient.Publisher("report.experimental_ready")
+	defer topic.Stop()
+
+	payload, _ := json.Marshal(map[string]string{
+		"session_id":   sc.ID.String(),
+		"therapist_id": sc.TherapistID.String(),
+		"skip_reason":  powod,
+		"limit":        strconv.FormatInt(limit, 10),
+	})
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: payload,
+		Attributes: map[string]string{
+			"event_type": "report.experimental_ready",
+			"session_id": sc.ID.String(),
+			"kind":       "skipped",
+		},
+	})
+	_, err := res.Get(ctx)
+	return err
 }
