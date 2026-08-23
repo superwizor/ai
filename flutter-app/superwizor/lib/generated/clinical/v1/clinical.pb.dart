@@ -3443,6 +3443,9 @@ class Report extends $pb.GeneratedMessage {
     $core.String? content,
     $core.String? sentimentLabel,
     $core.String? riskLevel,
+    $core.bool? isExperimental,
+    $core.String? pipelineVersion,
+    $core.String? ontologyVersion,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -3451,6 +3454,9 @@ class Report extends $pb.GeneratedMessage {
     if (content != null) result.content = content;
     if (sentimentLabel != null) result.sentimentLabel = sentimentLabel;
     if (riskLevel != null) result.riskLevel = riskLevel;
+    if (isExperimental != null) result.isExperimental = isExperimental;
+    if (pipelineVersion != null) result.pipelineVersion = pipelineVersion;
+    if (ontologyVersion != null) result.ontologyVersion = ontologyVersion;
     return result;
   }
 
@@ -3473,6 +3479,9 @@ class Report extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'content')
     ..aOS(5, _omitFieldNames ? '' : 'sentimentLabel')
     ..aOS(6, _omitFieldNames ? '' : 'riskLevel')
+    ..aOB(7, _omitFieldNames ? '' : 'isExperimental')
+    ..aOS(8, _omitFieldNames ? '' : 'pipelineVersion')
+    ..aOS(9, _omitFieldNames ? '' : 'ontologyVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3546,6 +3555,44 @@ class Report extends $pb.GeneratedMessage {
   $core.bool hasRiskLevel() => $_has(5);
   @$pb.TagNumber(6)
   void clearRiskLevel() => $_clearField(6);
+
+  /// Czy to raport EKSPERYMENTALNY — zbudowany na ontologii bez
+  /// autoryzacji ekspertow (plan 16 §2.5).
+  ///
+  /// Osobne pole, a nie prefiks w tytule: klient nie moze rozstrzygac o
+  /// materiale klinicznym przez dopasowanie napisu. Prefiks zostaje, bo
+  /// przezywa kopiowanie i eksport, ale UI ma sie opierac na TYM polu.
+  @$pb.TagNumber(7)
+  $core.bool get isExperimental => $_getBF(6);
+  @$pb.TagNumber(7)
+  set isExperimental($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIsExperimental() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIsExperimental() => $_clearField(7);
+
+  /// Ktorym potokiem powstal: "legacy" | "ontology_s1s5" |
+  /// "ontology_s1s5_experimental". Informacyjne — podczas kalibracji
+  /// ontologii (F1) ekspert porownuje przebiegi i musi wiedziec, ktora
+  /// wersja wyprodukowala to, co czyta.
+  @$pb.TagNumber(8)
+  $core.String get pipelineVersion => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set pipelineVersion($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPipelineVersion() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPipelineVersion() => $_clearField(8);
+
+  /// Wersja ontologii, jesli raport powstal potokiem ontologicznym.
+  @$pb.TagNumber(9)
+  $core.String get ontologyVersion => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set ontologyVersion($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasOntologyVersion() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearOntologyVersion() => $_clearField(9);
 }
 
 class GetSessionDetailsRequest extends $pb.GeneratedMessage {
@@ -5033,6 +5080,7 @@ class AdminModalityPrompt extends $pb.GeneratedMessage {
     $core.int? version,
     $core.String? updatedByEmail,
     $3.Timestamp? updatedAt,
+    $core.String? chatPrompt,
   }) {
     final result = create();
     if (modalityId != null) result.modalityId = modalityId;
@@ -5044,6 +5092,7 @@ class AdminModalityPrompt extends $pb.GeneratedMessage {
     if (version != null) result.version = version;
     if (updatedByEmail != null) result.updatedByEmail = updatedByEmail;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (chatPrompt != null) result.chatPrompt = chatPrompt;
     return result;
   }
 
@@ -5070,6 +5119,7 @@ class AdminModalityPrompt extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'updatedByEmail')
     ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $3.Timestamp.create)
+    ..aOS(10, _omitFieldNames ? '' : 'chatPrompt')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5178,6 +5228,1000 @@ class AdminModalityPrompt extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(9);
   @$pb.TagNumber(9)
   $3.Timestamp ensureUpdatedAt() => $_ensure(8);
+
+  /// Chat modality lens — therapist_ai_general_prompt["chat"]. Empty =
+  /// lens disabled for this modality (the chat then runs on the bare
+  /// per-intent prompts). Appended to the generator's system prompt for
+  /// grounded intents; invariants are re-asserted by code (Render()), so
+  /// an edit here can change language and framing, never the rules.
+  @$pb.TagNumber(10)
+  $core.String get chatPrompt => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set chatPrompt($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasChatPrompt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearChatPrompt() => $_clearField(10);
+}
+
+class OntologyModalitySummary extends $pb.GeneratedMessage {
+  factory OntologyModalitySummary({
+    $core.String? modalityId,
+    $core.String? systemCode,
+    $core.String? displayName,
+    $core.String? activeVersion,
+    $core.String? activeVersionId,
+    $core.int? draftCount,
+    $core.int? reviewCount,
+    $core.String? latestVersion,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (systemCode != null) result.systemCode = systemCode;
+    if (displayName != null) result.displayName = displayName;
+    if (activeVersion != null) result.activeVersion = activeVersion;
+    if (activeVersionId != null) result.activeVersionId = activeVersionId;
+    if (draftCount != null) result.draftCount = draftCount;
+    if (reviewCount != null) result.reviewCount = reviewCount;
+    if (latestVersion != null) result.latestVersion = latestVersion;
+    return result;
+  }
+
+  OntologyModalitySummary._();
+
+  factory OntologyModalitySummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyModalitySummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyModalitySummary',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aOS(2, _omitFieldNames ? '' : 'systemCode')
+    ..aOS(3, _omitFieldNames ? '' : 'displayName')
+    ..aOS(4, _omitFieldNames ? '' : 'activeVersion')
+    ..aOS(5, _omitFieldNames ? '' : 'activeVersionId')
+    ..aI(6, _omitFieldNames ? '' : 'draftCount')
+    ..aI(7, _omitFieldNames ? '' : 'reviewCount')
+    ..aOS(8, _omitFieldNames ? '' : 'latestVersion')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyModalitySummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyModalitySummary copyWith(
+          void Function(OntologyModalitySummary) updates) =>
+      super.copyWith((message) => updates(message as OntologyModalitySummary))
+          as OntologyModalitySummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyModalitySummary create() => OntologyModalitySummary._();
+  @$core.override
+  OntologyModalitySummary createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyModalitySummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyModalitySummary>(create);
+  static OntologyModalitySummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get systemCode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set systemCode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSystemCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSystemCode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get displayName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set displayName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDisplayName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDisplayName() => $_clearField(3);
+
+  /// Wersja serwowana na produkcji. Puste = potok ontologiczny
+  /// niedostepny dla tej modalnosci (llm-worker spada na legacy).
+  @$pb.TagNumber(4)
+  $core.String get activeVersion => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set activeVersion($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasActiveVersion() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearActiveVersion() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get activeVersionId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set activeVersionId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasActiveVersionId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearActiveVersionId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get draftCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set draftCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDraftCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDraftCount() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get reviewCount => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set reviewCount($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasReviewCount() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearReviewCount() => $_clearField(7);
+
+  /// Najnowsza wersja niezaleznie od statusu — punkt wejscia do edytora.
+  @$pb.TagNumber(8)
+  $core.String get latestVersion => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set latestVersion($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLatestVersion() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLatestVersion() => $_clearField(8);
+}
+
+class OntologyListModalitiesResponse extends $pb.GeneratedMessage {
+  factory OntologyListModalitiesResponse({
+    $core.Iterable<OntologyModalitySummary>? modalities,
+  }) {
+    final result = create();
+    if (modalities != null) result.modalities.addAll(modalities);
+    return result;
+  }
+
+  OntologyListModalitiesResponse._();
+
+  factory OntologyListModalitiesResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyListModalitiesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyListModalitiesResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<OntologyModalitySummary>(1, _omitFieldNames ? '' : 'modalities',
+        subBuilder: OntologyModalitySummary.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListModalitiesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListModalitiesResponse copyWith(
+          void Function(OntologyListModalitiesResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as OntologyListModalitiesResponse))
+          as OntologyListModalitiesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyListModalitiesResponse create() =>
+      OntologyListModalitiesResponse._();
+  @$core.override
+  OntologyListModalitiesResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyListModalitiesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyListModalitiesResponse>(create);
+  static OntologyListModalitiesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<OntologyModalitySummary> get modalities => $_getList(0);
+}
+
+class OntologyListVersionsRequest extends $pb.GeneratedMessage {
+  factory OntologyListVersionsRequest({
+    $core.String? modalityId,
+    $core.int? pageSize,
+    $core.int? pageOffset,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (pageSize != null) result.pageSize = pageSize;
+    if (pageOffset != null) result.pageOffset = pageOffset;
+    return result;
+  }
+
+  OntologyListVersionsRequest._();
+
+  factory OntologyListVersionsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyListVersionsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyListVersionsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aI(2, _omitFieldNames ? '' : 'pageSize')
+    ..aI(3, _omitFieldNames ? '' : 'pageOffset')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListVersionsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListVersionsRequest copyWith(
+          void Function(OntologyListVersionsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as OntologyListVersionsRequest))
+          as OntologyListVersionsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyListVersionsRequest create() =>
+      OntologyListVersionsRequest._();
+  @$core.override
+  OntologyListVersionsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyListVersionsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyListVersionsRequest>(create);
+  static OntologyListVersionsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get pageSize => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set pageSize($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageSize() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageSize() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get pageOffset => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set pageOffset($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPageOffset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPageOffset() => $_clearField(3);
+}
+
+/// OntologyVersion niesie tresc jako YAML, nie jako strukture.
+///
+/// Powod: metaschemat rozwija sie szybciej niz proto (dok. 11 ma juz
+/// cztery wersje w tydzien), a odwzorowanie go w komunikatach zamienia
+/// kazde rozszerzenie ontologii w zmiane kontraktu API i regeneracje
+/// klientow. Walidacja i tak jest serwerowa (pkg/ontology), wiec proto
+/// nie musi jej powielac.
+class OntologyVersion extends $pb.GeneratedMessage {
+  factory OntologyVersion({
+    $core.String? id,
+    $core.String? modalityId,
+    $core.String? version,
+    $core.String? contentYaml,
+    OntologyStatus? status,
+    $core.String? createdByEmail,
+    $3.Timestamp? createdAt,
+    $core.String? changeNote,
+    $core.String? approvedByEmail,
+    $3.Timestamp? approvedAt,
+    $core.String? approvalNote,
+    $core.bool? isActive,
+    $core.int? constructCount,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (modalityId != null) result.modalityId = modalityId;
+    if (version != null) result.version = version;
+    if (contentYaml != null) result.contentYaml = contentYaml;
+    if (status != null) result.status = status;
+    if (createdByEmail != null) result.createdByEmail = createdByEmail;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (changeNote != null) result.changeNote = changeNote;
+    if (approvedByEmail != null) result.approvedByEmail = approvedByEmail;
+    if (approvedAt != null) result.approvedAt = approvedAt;
+    if (approvalNote != null) result.approvalNote = approvalNote;
+    if (isActive != null) result.isActive = isActive;
+    if (constructCount != null) result.constructCount = constructCount;
+    return result;
+  }
+
+  OntologyVersion._();
+
+  factory OntologyVersion.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyVersion.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyVersion',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'modalityId')
+    ..aOS(3, _omitFieldNames ? '' : 'version')
+    ..aOS(4, _omitFieldNames ? '' : 'contentYaml')
+    ..aE<OntologyStatus>(5, _omitFieldNames ? '' : 'status',
+        enumValues: OntologyStatus.values)
+    ..aOS(6, _omitFieldNames ? '' : 'createdByEmail')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(8, _omitFieldNames ? '' : 'changeNote')
+    ..aOS(9, _omitFieldNames ? '' : 'approvedByEmail')
+    ..aOM<$3.Timestamp>(10, _omitFieldNames ? '' : 'approvedAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(11, _omitFieldNames ? '' : 'approvalNote')
+    ..aOB(12, _omitFieldNames ? '' : 'isActive')
+    ..aI(13, _omitFieldNames ? '' : 'constructCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyVersion clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyVersion copyWith(void Function(OntologyVersion) updates) =>
+      super.copyWith((message) => updates(message as OntologyVersion))
+          as OntologyVersion;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyVersion create() => OntologyVersion._();
+  @$core.override
+  OntologyVersion createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyVersion getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyVersion>(create);
+  static OntologyVersion? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get modalityId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set modalityId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasModalityId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearModalityId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get version => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set version($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVersion() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get contentYaml => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set contentYaml($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasContentYaml() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContentYaml() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  OntologyStatus get status => $_getN(4);
+  @$pb.TagNumber(5)
+  set status(OntologyStatus value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStatus() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStatus() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get createdByEmail => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set createdByEmail($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCreatedByEmail() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCreatedByEmail() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get createdAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set createdAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreatedAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureCreatedAt() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get changeNote => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set changeNote($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasChangeNote() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearChangeNote() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get approvedByEmail => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set approvedByEmail($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasApprovedByEmail() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearApprovedByEmail() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $3.Timestamp get approvedAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set approvedAt($3.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasApprovedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearApprovedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $3.Timestamp ensureApprovedAt() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  $core.String get approvalNote => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set approvalNote($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasApprovalNote() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearApprovalNote() => $_clearField(11);
+
+  /// True dla wersji serwowanej na produkcji.
+  @$pb.TagNumber(12)
+  $core.bool get isActive => $_getBF(11);
+  @$pb.TagNumber(12)
+  set isActive($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasIsActive() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearIsActive() => $_clearField(12);
+
+  /// Liczba konstruktow — do listy, bez parsowania YAML po stronie UI.
+  @$pb.TagNumber(13)
+  $core.int get constructCount => $_getIZ(12);
+  @$pb.TagNumber(13)
+  set constructCount($core.int value) => $_setSignedInt32(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasConstructCount() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearConstructCount() => $_clearField(13);
+}
+
+class OntologyListVersionsResponse extends $pb.GeneratedMessage {
+  factory OntologyListVersionsResponse({
+    $core.Iterable<OntologyVersion>? versions,
+    $core.bool? hasMore,
+  }) {
+    final result = create();
+    if (versions != null) result.versions.addAll(versions);
+    if (hasMore != null) result.hasMore = hasMore;
+    return result;
+  }
+
+  OntologyListVersionsResponse._();
+
+  factory OntologyListVersionsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyListVersionsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyListVersionsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<OntologyVersion>(1, _omitFieldNames ? '' : 'versions',
+        subBuilder: OntologyVersion.create)
+    ..aOB(2, _omitFieldNames ? '' : 'hasMore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListVersionsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyListVersionsResponse copyWith(
+          void Function(OntologyListVersionsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as OntologyListVersionsResponse))
+          as OntologyListVersionsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyListVersionsResponse create() =>
+      OntologyListVersionsResponse._();
+  @$core.override
+  OntologyListVersionsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyListVersionsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyListVersionsResponse>(create);
+  static OntologyListVersionsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<OntologyVersion> get versions => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get hasMore => $_getBF(1);
+  @$pb.TagNumber(2)
+  set hasMore($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHasMore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHasMore() => $_clearField(2);
+}
+
+class OntologyGetVersionRequest extends $pb.GeneratedMessage {
+  factory OntologyGetVersionRequest({
+    $core.String? versionId,
+  }) {
+    final result = create();
+    if (versionId != null) result.versionId = versionId;
+    return result;
+  }
+
+  OntologyGetVersionRequest._();
+
+  factory OntologyGetVersionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyGetVersionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyGetVersionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'versionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyGetVersionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyGetVersionRequest copyWith(
+          void Function(OntologyGetVersionRequest) updates) =>
+      super.copyWith((message) => updates(message as OntologyGetVersionRequest))
+          as OntologyGetVersionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyGetVersionRequest create() => OntologyGetVersionRequest._();
+  @$core.override
+  OntologyGetVersionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyGetVersionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyGetVersionRequest>(create);
+  static OntologyGetVersionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get versionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set versionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersionId() => $_clearField(1);
+}
+
+class OntologyLintRequest extends $pb.GeneratedMessage {
+  factory OntologyLintRequest({
+    $core.String? contentYaml,
+  }) {
+    final result = create();
+    if (contentYaml != null) result.contentYaml = contentYaml;
+    return result;
+  }
+
+  OntologyLintRequest._();
+
+  factory OntologyLintRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyLintRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyLintRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'contentYaml')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyLintRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyLintRequest copyWith(void Function(OntologyLintRequest) updates) =>
+      super.copyWith((message) => updates(message as OntologyLintRequest))
+          as OntologyLintRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyLintRequest create() => OntologyLintRequest._();
+  @$core.override
+  OntologyLintRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyLintRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyLintRequest>(create);
+  static OntologyLintRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get contentYaml => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set contentYaml($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContentYaml() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContentYaml() => $_clearField(1);
+}
+
+class OntologyLintResponse extends $pb.GeneratedMessage {
+  factory OntologyLintResponse({
+    $core.Iterable<$core.String>? problems,
+    $core.int? constructCount,
+  }) {
+    final result = create();
+    if (problems != null) result.problems.addAll(problems);
+    if (constructCount != null) result.constructCount = constructCount;
+    return result;
+  }
+
+  OntologyLintResponse._();
+
+  factory OntologyLintResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyLintResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyLintResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPS(1, _omitFieldNames ? '' : 'problems')
+    ..aI(2, _omitFieldNames ? '' : 'constructCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyLintResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyLintResponse copyWith(void Function(OntologyLintResponse) updates) =>
+      super.copyWith((message) => updates(message as OntologyLintResponse))
+          as OntologyLintResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyLintResponse create() => OntologyLintResponse._();
+  @$core.override
+  OntologyLintResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyLintResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyLintResponse>(create);
+  static OntologyLintResponse? _defaultInstance;
+
+  /// Pusta lista = tresc zdatna do zapisu. Zwracamy WSZYSTKIE problemy,
+  /// nie pierwszy — autor ma zobaczyc pelna liste do poprawienia.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get problems => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.int get constructCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set constructCount($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConstructCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConstructCount() => $_clearField(2);
+}
+
+class OntologyCreateDraftRequest extends $pb.GeneratedMessage {
+  factory OntologyCreateDraftRequest({
+    $core.String? modalityId,
+    $core.String? version,
+    $core.String? contentYaml,
+    $core.String? changeNote,
+    $core.String? copyFromVersionId,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (version != null) result.version = version;
+    if (contentYaml != null) result.contentYaml = contentYaml;
+    if (changeNote != null) result.changeNote = changeNote;
+    if (copyFromVersionId != null) result.copyFromVersionId = copyFromVersionId;
+    return result;
+  }
+
+  OntologyCreateDraftRequest._();
+
+  factory OntologyCreateDraftRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyCreateDraftRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyCreateDraftRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aOS(2, _omitFieldNames ? '' : 'version')
+    ..aOS(3, _omitFieldNames ? '' : 'contentYaml')
+    ..aOS(4, _omitFieldNames ? '' : 'changeNote')
+    ..aOS(5, _omitFieldNames ? '' : 'copyFromVersionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyCreateDraftRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyCreateDraftRequest copyWith(
+          void Function(OntologyCreateDraftRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as OntologyCreateDraftRequest))
+          as OntologyCreateDraftRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyCreateDraftRequest create() => OntologyCreateDraftRequest._();
+  @$core.override
+  OntologyCreateDraftRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyCreateDraftRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyCreateDraftRequest>(create);
+  static OntologyCreateDraftRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get version => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set version($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVersion() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVersion() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get contentYaml => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set contentYaml($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasContentYaml() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearContentYaml() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get changeNote => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set changeNote($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasChangeNote() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearChangeNote() => $_clearField(4);
+
+  /// Opcjonalne: skopiuj tresc z istniejacej wersji. Tak dziala "edytuj"
+  /// na wersji approved — nie mutujemy jej, tylko rozgalezimy.
+  @$pb.TagNumber(5)
+  $core.String get copyFromVersionId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set copyFromVersionId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCopyFromVersionId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCopyFromVersionId() => $_clearField(5);
+}
+
+class OntologyUpdateDraftRequest extends $pb.GeneratedMessage {
+  factory OntologyUpdateDraftRequest({
+    $core.String? versionId,
+    $core.String? contentYaml,
+    $core.String? changeNote,
+  }) {
+    final result = create();
+    if (versionId != null) result.versionId = versionId;
+    if (contentYaml != null) result.contentYaml = contentYaml;
+    if (changeNote != null) result.changeNote = changeNote;
+    return result;
+  }
+
+  OntologyUpdateDraftRequest._();
+
+  factory OntologyUpdateDraftRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyUpdateDraftRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyUpdateDraftRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'versionId')
+    ..aOS(2, _omitFieldNames ? '' : 'contentYaml')
+    ..aOS(3, _omitFieldNames ? '' : 'changeNote')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyUpdateDraftRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyUpdateDraftRequest copyWith(
+          void Function(OntologyUpdateDraftRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as OntologyUpdateDraftRequest))
+          as OntologyUpdateDraftRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyUpdateDraftRequest create() => OntologyUpdateDraftRequest._();
+  @$core.override
+  OntologyUpdateDraftRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyUpdateDraftRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyUpdateDraftRequest>(create);
+  static OntologyUpdateDraftRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get versionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set versionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get contentYaml => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set contentYaml($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasContentYaml() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearContentYaml() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get changeNote => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set changeNote($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChangeNote() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChangeNote() => $_clearField(3);
+}
+
+/// OntologyTransitionRequest obsluguje kazde przejscie statusu i
+/// aktywacje. Notatka jest WYMAGANA wszedzie z tego samego powodu co w
+/// ChatControls: wpis audytowy czyta nastepny dyzurny.
+class OntologyTransitionRequest extends $pb.GeneratedMessage {
+  factory OntologyTransitionRequest({
+    $core.String? versionId,
+    $core.String? note,
+  }) {
+    final result = create();
+    if (versionId != null) result.versionId = versionId;
+    if (note != null) result.note = note;
+    return result;
+  }
+
+  OntologyTransitionRequest._();
+
+  factory OntologyTransitionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OntologyTransitionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OntologyTransitionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'versionId')
+    ..aOS(2, _omitFieldNames ? '' : 'note')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyTransitionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OntologyTransitionRequest copyWith(
+          void Function(OntologyTransitionRequest) updates) =>
+      super.copyWith((message) => updates(message as OntologyTransitionRequest))
+          as OntologyTransitionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OntologyTransitionRequest create() => OntologyTransitionRequest._();
+  @$core.override
+  OntologyTransitionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OntologyTransitionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OntologyTransitionRequest>(create);
+  static OntologyTransitionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get versionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set versionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get note => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set note($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNote() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNote() => $_clearField(2);
 }
 
 class AdminListModalityPromptsResponse extends $pb.GeneratedMessage {
@@ -5326,6 +6370,7 @@ class AdminModalityPromptVersion extends $pb.GeneratedMessage {
     $core.String? changeNote,
     $core.String? createdByEmail,
     $3.Timestamp? createdAt,
+    $core.String? chatPrompt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -5334,6 +6379,7 @@ class AdminModalityPromptVersion extends $pb.GeneratedMessage {
     if (changeNote != null) result.changeNote = changeNote;
     if (createdByEmail != null) result.createdByEmail = createdByEmail;
     if (createdAt != null) result.createdAt = createdAt;
+    if (chatPrompt != null) result.chatPrompt = chatPrompt;
     return result;
   }
 
@@ -5357,6 +6403,7 @@ class AdminModalityPromptVersion extends $pb.GeneratedMessage {
     ..aOS(5, _omitFieldNames ? '' : 'createdByEmail')
     ..aOM<$3.Timestamp>(6, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $3.Timestamp.create)
+    ..aOS(7, _omitFieldNames ? '' : 'chatPrompt')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5435,6 +6482,18 @@ class AdminModalityPromptVersion extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(6);
   @$pb.TagNumber(6)
   $3.Timestamp ensureCreatedAt() => $_ensure(5);
+
+  /// Snapshot of the chat lens at this version. Versions predating the
+  /// lens (before 2026-08-20) return "" here — the snapshot column holds
+  /// the full JSONB, so no backfill is needed or possible.
+  @$pb.TagNumber(7)
+  $core.String get chatPrompt => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set chatPrompt($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasChatPrompt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearChatPrompt() => $_clearField(7);
 }
 
 class AdminGetModalityPromptHistoryResponse extends $pb.GeneratedMessage {
@@ -5509,12 +6568,14 @@ class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
     $core.String? systemPrompt,
     $core.String? changeNote,
     $core.int? expectedVersion,
+    $core.String? promptKey,
   }) {
     final result = create();
     if (modalityId != null) result.modalityId = modalityId;
     if (systemPrompt != null) result.systemPrompt = systemPrompt;
     if (changeNote != null) result.changeNote = changeNote;
     if (expectedVersion != null) result.expectedVersion = expectedVersion;
+    if (promptKey != null) result.promptKey = promptKey;
     return result;
   }
 
@@ -5536,6 +6597,7 @@ class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'systemPrompt')
     ..aOS(3, _omitFieldNames ? '' : 'changeNote')
     ..aI(4, _omitFieldNames ? '' : 'expectedVersion')
+    ..aOS(5, _omitFieldNames ? '' : 'promptKey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5570,8 +6632,12 @@ class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearModalityId() => $_clearField(1);
 
-  /// Full replacement text for therapist_ai_general_prompt["system"].
-  /// Trimmed non-empty, ≤ 20000 chars.
+  /// Full replacement text for the key selected by prompt_key.
+  /// For "system": trimmed non-empty, ≤ 20000 chars.
+  /// For "chat": ≤ 5500 chars (the lens rides on every grounded
+  /// generator call, so it stays far tighter than the report prompt);
+  /// EMPTY IS VALID and disables the lens.
+  /// Brand-frame banned words are rejected server-side for "chat".
   @$pb.TagNumber(2)
   $core.String get systemPrompt => $_getSZ(1);
   @$pb.TagNumber(2)
@@ -5595,6 +6661,11 @@ class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
   /// Optimistic lock: must equal the current latest version for this
   /// modality or the call fails FailedPrecondition (someone else saved
   /// in between — reload before retrying).
+  ///
+  /// ONE counter guards BOTH keys on purpose: every version row snapshots
+  /// the whole JSONB, so two admins editing "system" and "chat"
+  /// concurrently would still silently overwrite each other's snapshot if
+  /// the locks were separate.
   @$pb.TagNumber(4)
   $core.int get expectedVersion => $_getIZ(3);
   @$pb.TagNumber(4)
@@ -5603,6 +6674,19 @@ class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
   $core.bool hasExpectedVersion() => $_has(3);
   @$pb.TagNumber(4)
   void clearExpectedVersion() => $_clearField(4);
+
+  /// Which key this save targets: "system" (default, report prompt) or
+  /// "chat" (modality lens for the chat). A string, not an enum, because
+  /// the storage is a JSONB key and inventing a parallel enum would just
+  /// add a translation layer to drift.
+  @$pb.TagNumber(5)
+  $core.String get promptKey => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set promptKey($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPromptKey() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPromptKey() => $_clearField(5);
 }
 
 class AdminUpdateModalityPromptResponse extends $pb.GeneratedMessage {
@@ -12168,6 +13252,281 @@ class AdminSetChatControlsRequest extends $pb.GeneratedMessage {
   void clearNote() => $_clearField(6);
 }
 
+class AdminGetExperimentalControlsRequest extends $pb.GeneratedMessage {
+  factory AdminGetExperimentalControlsRequest({
+    $core.String? organizationId,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    return result;
+  }
+
+  AdminGetExperimentalControlsRequest._();
+
+  factory AdminGetExperimentalControlsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminGetExperimentalControlsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminGetExperimentalControlsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetExperimentalControlsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetExperimentalControlsRequest copyWith(
+          void Function(AdminGetExperimentalControlsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminGetExperimentalControlsRequest))
+          as AdminGetExperimentalControlsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminGetExperimentalControlsRequest create() =>
+      AdminGetExperimentalControlsRequest._();
+  @$core.override
+  AdminGetExperimentalControlsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminGetExperimentalControlsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+          AdminGetExperimentalControlsRequest>(create);
+  static AdminGetExperimentalControlsRequest? _defaultInstance;
+
+  /// Puste = wartosci globalne. Ustawione = wartosci SKUTECZNE dla tej
+  /// organizacji, wraz z informacja, czy pochodza z nadpisania.
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+}
+
+class AdminExperimentalControls extends $pb.GeneratedMessage {
+  factory AdminExperimentalControls({
+    $core.bool? enabled,
+    $fixnum.Int64? dailyLimit,
+    $core.bool? isOrgOverride,
+    $core.String? note,
+    $3.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (enabled != null) result.enabled = enabled;
+    if (dailyLimit != null) result.dailyLimit = dailyLimit;
+    if (isOrgOverride != null) result.isOrgOverride = isOrgOverride;
+    if (note != null) result.note = note;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  AdminExperimentalControls._();
+
+  factory AdminExperimentalControls.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminExperimentalControls.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminExperimentalControls',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'enabled')
+    ..aInt64(2, _omitFieldNames ? '' : 'dailyLimit')
+    ..aOB(3, _omitFieldNames ? '' : 'isOrgOverride')
+    ..aOS(4, _omitFieldNames ? '' : 'note')
+    ..aOM<$3.Timestamp>(5, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminExperimentalControls clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminExperimentalControls copyWith(
+          void Function(AdminExperimentalControls) updates) =>
+      super.copyWith((message) => updates(message as AdminExperimentalControls))
+          as AdminExperimentalControls;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminExperimentalControls create() => AdminExperimentalControls._();
+  @$core.override
+  AdminExperimentalControls createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminExperimentalControls getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminExperimentalControls>(create);
+  static AdminExperimentalControls? _defaultInstance;
+
+  /// Czy organizacja moze generowac raporty na ontologii BEZ autoryzacji.
+  @$pb.TagNumber(1)
+  $core.bool get enabled => $_getBF(0);
+  @$pb.TagNumber(1)
+  set enabled($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEnabled() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEnabled() => $_clearField(1);
+
+  /// Dobowy limit na terapeute. Potok wieloetapowy na Pro jest drogi, a
+  /// dual-run podwaja koszt kazdej sesji.
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get dailyLimit => $_getI64(1);
+  @$pb.TagNumber(2)
+  set dailyLimit($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDailyLimit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDailyLimit() => $_clearField(2);
+
+  /// True, gdy wartosci pochodza z nadpisania organizacji, a nie z
+  /// wiersza globalnego.
+  @$pb.TagNumber(3)
+  $core.bool get isOrgOverride => $_getBF(2);
+  @$pb.TagNumber(3)
+  set isOrgOverride($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIsOrgOverride() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIsOrgOverride() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get note => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set note($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNote() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNote() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $3.Timestamp get updatedAt => $_getN(4);
+  @$pb.TagNumber(5)
+  set updatedAt($3.Timestamp value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUpdatedAt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUpdatedAt() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $3.Timestamp ensureUpdatedAt() => $_ensure(4);
+}
+
+class AdminSetExperimentalControlsRequest extends $pb.GeneratedMessage {
+  factory AdminSetExperimentalControlsRequest({
+    $core.String? organizationId,
+    $core.bool? enabled,
+    $fixnum.Int64? dailyLimit,
+    $core.String? note,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (enabled != null) result.enabled = enabled;
+    if (dailyLimit != null) result.dailyLimit = dailyLimit;
+    if (note != null) result.note = note;
+    return result;
+  }
+
+  AdminSetExperimentalControlsRequest._();
+
+  factory AdminSetExperimentalControlsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminSetExperimentalControlsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminSetExperimentalControlsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aOB(2, _omitFieldNames ? '' : 'enabled')
+    ..aInt64(3, _omitFieldNames ? '' : 'dailyLimit')
+    ..aOS(4, _omitFieldNames ? '' : 'note')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetExperimentalControlsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetExperimentalControlsRequest copyWith(
+          void Function(AdminSetExperimentalControlsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminSetExperimentalControlsRequest))
+          as AdminSetExperimentalControlsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminSetExperimentalControlsRequest create() =>
+      AdminSetExperimentalControlsRequest._();
+  @$core.override
+  AdminSetExperimentalControlsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminSetExperimentalControlsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+          AdminSetExperimentalControlsRequest>(create);
+  static AdminSetExperimentalControlsRequest? _defaultInstance;
+
+  /// Puste = zmiana wartosci globalnej; ustawione = nadpisanie dla
+  /// organizacji. Wlaczanie globalne jest mozliwe, ale nie jest tym, po
+  /// co ten przelacznik powstal — tryb ma dzialac na organizacji
+  /// eksperckiej, nie u wszystkich.
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  /// Zmieniane sa WYLACZNIE pola obecne. optional, nie wartosc domyslna:
+  /// bez tego "zmien limit, zostaw flage" cicho przestawialoby flage.
+  @$pb.TagNumber(2)
+  $core.bool get enabled => $_getBF(1);
+  @$pb.TagNumber(2)
+  set enabled($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEnabled() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEnabled() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get dailyLimit => $_getI64(2);
+  @$pb.TagNumber(3)
+  set dailyLimit($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDailyLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDailyLimit() => $_clearField(3);
+
+  /// Dlaczego. Wymagane przy kazdej zmianie — wpis audytowy bez powodu
+  /// nie odpowiada na zadne pytanie, ktore ktos potem zada.
+  @$pb.TagNumber(4)
+  $core.String get note => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set note($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNote() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNote() => $_clearField(4);
+}
+
 class AskPatientQuestionRequest extends $pb.GeneratedMessage {
   factory AskPatientQuestionRequest({
     $core.String? patientFileId,
@@ -13064,6 +14423,172 @@ class AskPatientQuestionResponse extends $pb.GeneratedMessage {
   void clearMeta() => $_clearField(5);
   @$pb.TagNumber(5)
   ChatMeta ensureMeta() => $_ensure(4);
+}
+
+class GenerateExperimentalReportRequest extends $pb.GeneratedMessage {
+  factory GenerateExperimentalReportRequest({
+    $core.String? sessionId,
+    $core.String? modalityCode,
+    $core.String? ontologyVersionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (modalityCode != null) result.modalityCode = modalityCode;
+    if (ontologyVersionId != null) result.ontologyVersionId = ontologyVersionId;
+    return result;
+  }
+
+  GenerateExperimentalReportRequest._();
+
+  factory GenerateExperimentalReportRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GenerateExperimentalReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateExperimentalReportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'modalityCode')
+    ..aOS(3, _omitFieldNames ? '' : 'ontologyVersionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateExperimentalReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateExperimentalReportRequest copyWith(
+          void Function(GenerateExperimentalReportRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as GenerateExperimentalReportRequest))
+          as GenerateExperimentalReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GenerateExperimentalReportRequest create() =>
+      GenerateExperimentalReportRequest._();
+  @$core.override
+  GenerateExperimentalReportRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GenerateExperimentalReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateExperimentalReportRequest>(
+          create);
+  static GenerateExperimentalReportRequest? _defaultInstance;
+
+  /// Sesja, ktorej transkrypcja posluzy za material. Musi miec
+  /// transkrypcje — stare sesje sa GLOWNYM przypadkiem uzycia, bo
+  /// kalibracja ekspercka zaczyna sie od istniejacego materialu.
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  /// Kod modalnosci, ktorej ontologia obsluzy przebieg. Puste =
+  /// modalnosc kartoteki. Rozne od niej pozwala na "raport CBT dla
+  /// kartoteki PPT" — porownanie miedzymodalnosciowe wymaga jawnego
+  /// wyboru, bo automat zawsze idzie za kartoteka.
+  @$pb.TagNumber(2)
+  $core.String get modalityCode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set modalityCode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasModalityCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearModalityCode() => $_clearField(2);
+
+  /// Konkretna wersja ontologii, takze `draft`. Puste = najnowsza
+  /// wersja wskazanej modalnosci.
+  @$pb.TagNumber(3)
+  $core.String get ontologyVersionId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set ontologyVersionId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOntologyVersionId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOntologyVersionId() => $_clearField(3);
+}
+
+class GenerateExperimentalReportResponse extends $pb.GeneratedMessage {
+  factory GenerateExperimentalReportResponse({
+    $core.String? requestId,
+    $core.int? remainingToday,
+  }) {
+    final result = create();
+    if (requestId != null) result.requestId = requestId;
+    if (remainingToday != null) result.remainingToday = remainingToday;
+    return result;
+  }
+
+  GenerateExperimentalReportResponse._();
+
+  factory GenerateExperimentalReportResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GenerateExperimentalReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenerateExperimentalReportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'requestId')
+    ..aI(2, _omitFieldNames ? '' : 'remainingToday')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateExperimentalReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenerateExperimentalReportResponse copyWith(
+          void Function(GenerateExperimentalReportResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as GenerateExperimentalReportResponse))
+          as GenerateExperimentalReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GenerateExperimentalReportResponse create() =>
+      GenerateExperimentalReportResponse._();
+  @$core.override
+  GenerateExperimentalReportResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GenerateExperimentalReportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GenerateExperimentalReportResponse>(
+          create);
+  static GenerateExperimentalReportResponse? _defaultInstance;
+
+  /// Identyfikator ZAMOWIENIA, nie raportu: raport jeszcze nie
+  /// istnieje. Klient uzywa go do skojarzenia z dokumentem inbox.
+  @$pb.TagNumber(1)
+  $core.String get requestId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set requestId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRequestId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRequestId() => $_clearField(1);
+
+  /// Ile zamowien zostalo w dobowym limicie PO tym zamowieniu.
+  @$pb.TagNumber(2)
+  $core.int get remainingToday => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set remainingToday($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRemainingToday() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRemainingToday() => $_clearField(2);
 }
 
 const $core.bool _omitFieldNames =

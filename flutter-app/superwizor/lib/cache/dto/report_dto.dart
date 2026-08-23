@@ -9,6 +9,14 @@ class ReportDto {
   final String content;
   final String sentimentLabel;
   final String riskLevel;
+  /// Raport zbudowany na ontologii BEZ autoryzacji ekspertów.
+  ///
+  /// Pole z serwera, nie dopasowanie prefiksu w tytule: o tym, czy coś
+  /// jest materiałem klinicznym, nie rozstrzyga się porównywaniem
+  /// napisów. Prefiks w tytule zostaje, bo przeżywa kopiowanie i eksport.
+  final bool isExperimental;
+  final String pipelineVersion;
+  final String ontologyVersion;
 
   const ReportDto({
     required this.id,
@@ -17,6 +25,9 @@ class ReportDto {
     required this.content,
     required this.sentimentLabel,
     required this.riskLevel,
+    this.isExperimental = false,
+    this.pipelineVersion = '',
+    this.ontologyVersion = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -26,6 +37,9 @@ class ReportDto {
         'content': content,
         'sentimentLabel': sentimentLabel,
         'riskLevel': riskLevel,
+        'isExperimental': isExperimental,
+        'pipelineVersion': pipelineVersion,
+        'ontologyVersion': ontologyVersion,
       };
 
   factory ReportDto.fromJson(Map<String, dynamic> j) => ReportDto(
@@ -35,6 +49,9 @@ class ReportDto {
         content: j['content'] as String? ?? '',
         sentimentLabel: j['sentimentLabel'] as String? ?? '',
         riskLevel: j['riskLevel'] as String? ?? '',
+        isExperimental: j['isExperimental'] as bool? ?? false,
+        pipelineVersion: j['pipelineVersion'] as String? ?? '',
+        ontologyVersion: j['ontologyVersion'] as String? ?? '',
       );
 
   factory ReportDto.fromProto(clinical_pb.Report r) => ReportDto(
@@ -44,5 +61,8 @@ class ReportDto {
         content: r.content,
         sentimentLabel: r.sentimentLabel,
         riskLevel: r.riskLevel,
+        isExperimental: r.isExperimental,
+        pipelineVersion: r.pipelineVersion,
+        ontologyVersion: r.ontologyVersion,
       );
 }

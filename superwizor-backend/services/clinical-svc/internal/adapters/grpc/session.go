@@ -159,6 +159,10 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 			}
 			content := string(contentBytes)
 
+			var ontologia string
+			if rep.OntologyVersion != nil {
+				ontologia = *rep.OntologyVersion
+			}
 			resp.Reports = append(resp.Reports, &clinicalv1.Report{
 				Id:             rep.ID.String(),
 				Title:          title,
@@ -166,6 +170,12 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				Content:        content,
 				SentimentLabel: sentiment,
 				RiskLevel:      risk,
+				// Pochodzenie z kolumn migracji 000089. Klient nie moze
+				// rozstrzygac o materiale klinicznym przez dopasowanie
+				// prefiksu w tytule.
+				IsExperimental:  rep.PipelineVersion == pipelineExperimental,
+				PipelineVersion: rep.PipelineVersion,
+				OntologyVersion: ontologia,
 			})
 		}
 		// Same KMS-misconfig guard as for transcript segments: if reports
@@ -658,3 +668,11 @@ func (s *Server) SetAvatarConfig(ctx context.Context, req *clinicalv1.SetAvatarC
 
 	return &emptypb.Empty{}, nil
 }
+
+// pipelineExperimental lustruje stempel z llm-workera.
+//
+// Napis, nie import: clinical-svc nie zalezy od ai-pipeline-svc i nie
+// powinien zaczac. Wartosc jest czescia kontraktu bazy (kolumna
+// reports.pipeline_version), wiec test pilnuje, ze nadal odpowiada temu,
+// co worker faktycznie zapisuje.
+const pipelineExperimental = "ontology_s1s5_experimental"

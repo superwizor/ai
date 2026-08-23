@@ -209,6 +209,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                                 onTap: () => setState(() => _selectedSectionIndex = index),
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
+                                  constraints: const BoxConstraints(maxWidth: 240),
                                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: theme.colorScheme.surface,
@@ -228,15 +229,39 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                                     ] : [],
                                   ),
                                   child: Center(
-                                    child: Text(
-                                      section.title,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: isActive 
-                                            ? theme.colorScheme.secondary 
-                                            : theme.colorScheme.secondary.withValues(alpha: 0.5),
-                                      ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Raport eksperymentalny dostaje
+                                        // znacznik, a nie tylko dłuższy
+                                        // tytuł: pigułki bywają szerokie
+                                        // i prefiks ucieka poza ekran,
+                                        // a ikona zostaje widoczna zawsze.
+                                        if (section.isExperimental) ...[
+                                          Icon(
+                                            Icons.science_outlined,
+                                            size: 16,
+                                            color: theme.colorScheme.primary
+                                                .withValues(alpha: isActive ? 1.0 : 0.5),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        Flexible(
+                                          child: Text(
+                                            section.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: isActive
+                                                  ? theme.colorScheme.secondary
+                                                  : theme.colorScheme.secondary
+                                                      .withValues(alpha: 0.5),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),

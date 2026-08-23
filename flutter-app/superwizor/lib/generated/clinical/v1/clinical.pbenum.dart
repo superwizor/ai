@@ -42,6 +42,33 @@ class ProcessType extends $pb.ProtobufEnum {
   const ProcessType._(super.value, super.name);
 }
 
+/// OntologyStatus lustrzany wobec typu ontology_status w bazie.
+class OntologyStatus extends $pb.ProtobufEnum {
+  static const OntologyStatus ONTOLOGY_STATUS_UNSPECIFIED =
+      OntologyStatus._(0, _omitEnumNames ? '' : 'ONTOLOGY_STATUS_UNSPECIFIED');
+  static const OntologyStatus ONTOLOGY_STATUS_DRAFT =
+      OntologyStatus._(1, _omitEnumNames ? '' : 'ONTOLOGY_STATUS_DRAFT');
+  static const OntologyStatus ONTOLOGY_STATUS_READY_FOR_REVIEW =
+      OntologyStatus._(
+          2, _omitEnumNames ? '' : 'ONTOLOGY_STATUS_READY_FOR_REVIEW');
+  static const OntologyStatus ONTOLOGY_STATUS_APPROVED =
+      OntologyStatus._(3, _omitEnumNames ? '' : 'ONTOLOGY_STATUS_APPROVED');
+
+  static const $core.List<OntologyStatus> values = <OntologyStatus>[
+    ONTOLOGY_STATUS_UNSPECIFIED,
+    ONTOLOGY_STATUS_DRAFT,
+    ONTOLOGY_STATUS_READY_FOR_REVIEW,
+    ONTOLOGY_STATUS_APPROVED,
+  ];
+
+  static final $core.List<OntologyStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static OntologyStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const OntologyStatus._(super.value, super.name);
+}
+
 /// ChatIntent mirrors the taxonomy in ADR section 5.4 v1.1. The
 /// prohibited categories appear here so a refusal can name what was
 /// refused — never so a payload can carry one.

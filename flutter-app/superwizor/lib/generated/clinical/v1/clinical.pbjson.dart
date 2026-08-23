@@ -33,6 +33,23 @@ final $typed_data.Uint8List processTypeDescriptor = $convert.base64Decode(
     'RZUEVfSU5ESVZJRFVBTBABEhcKE1BST0NFU1NfVFlQRV9DT1VQTEUQAhIXChNQUk9DRVNTX1RZ'
     'UEVfRkFNSUxZEAMSFgoSUFJPQ0VTU19UWVBFX0dST1VQEAQ=');
 
+@$core.Deprecated('Use ontologyStatusDescriptor instead')
+const OntologyStatus$json = {
+  '1': 'OntologyStatus',
+  '2': [
+    {'1': 'ONTOLOGY_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'ONTOLOGY_STATUS_DRAFT', '2': 1},
+    {'1': 'ONTOLOGY_STATUS_READY_FOR_REVIEW', '2': 2},
+    {'1': 'ONTOLOGY_STATUS_APPROVED', '2': 3},
+  ],
+};
+
+/// Descriptor for `OntologyStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List ontologyStatusDescriptor = $convert.base64Decode(
+    'Cg5PbnRvbG9neVN0YXR1cxIfChtPTlRPTE9HWV9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVPTl'
+    'RPTE9HWV9TVEFUVVNfRFJBRlQQARIkCiBPTlRPTE9HWV9TVEFUVVNfUkVBRFlfRk9SX1JFVklF'
+    'VxACEhwKGE9OVE9MT0dZX1NUQVRVU19BUFBST1ZFRBAD');
+
 @$core.Deprecated('Use chatIntentDescriptor instead')
 const ChatIntent$json = {
   '1': 'ChatIntent',
@@ -1068,6 +1085,9 @@ const Report$json = {
     {'1': 'content', '3': 4, '4': 1, '5': 9, '10': 'content'},
     {'1': 'sentiment_label', '3': 5, '4': 1, '5': 9, '10': 'sentimentLabel'},
     {'1': 'risk_level', '3': 6, '4': 1, '5': 9, '10': 'riskLevel'},
+    {'1': 'is_experimental', '3': 7, '4': 1, '5': 8, '10': 'isExperimental'},
+    {'1': 'pipeline_version', '3': 8, '4': 1, '5': 9, '10': 'pipelineVersion'},
+    {'1': 'ontology_version', '3': 9, '4': 1, '5': 9, '10': 'ontologyVersion'},
   ],
 };
 
@@ -1076,7 +1096,9 @@ final $typed_data.Uint8List reportDescriptor = $convert.base64Decode(
     'CgZSZXBvcnQSDgoCaWQYASABKAlSAmlkEhQKBXRpdGxlGAIgASgJUgV0aXRsZRIjCg1zdW1tYX'
     'J5X3Nob3J0GAMgASgJUgxzdW1tYXJ5U2hvcnQSGAoHY29udGVudBgEIAEoCVIHY29udGVudBIn'
     'Cg9zZW50aW1lbnRfbGFiZWwYBSABKAlSDnNlbnRpbWVudExhYmVsEh0KCnJpc2tfbGV2ZWwYBi'
-    'ABKAlSCXJpc2tMZXZlbA==');
+    'ABKAlSCXJpc2tMZXZlbBInCg9pc19leHBlcmltZW50YWwYByABKAhSDmlzRXhwZXJpbWVudGFs'
+    'EikKEHBpcGVsaW5lX3ZlcnNpb24YCCABKAlSD3BpcGVsaW5lVmVyc2lvbhIpChBvbnRvbG9neV'
+    '92ZXJzaW9uGAkgASgJUg9vbnRvbG9neVZlcnNpb24=');
 
 @$core.Deprecated('Use getSessionDetailsRequestDescriptor instead')
 const GetSessionDetailsRequest$json = {
@@ -1486,6 +1508,7 @@ const AdminModalityPrompt$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {'1': 'chat_prompt', '3': 10, '4': 1, '5': 9, '10': 'chatPrompt'},
   ],
 };
 
@@ -1497,7 +1520,245 @@ final $typed_data.Uint8List adminModalityPromptDescriptor = $convert.base64Decod
     'N1cHBvcnRlZBgFIAEoCFILaXNTdXBwb3J0ZWQSIwoNc3lzdGVtX3Byb21wdBgGIAEoCVIMc3lz'
     'dGVtUHJvbXB0EhgKB3ZlcnNpb24YByABKAVSB3ZlcnNpb24SKAoQdXBkYXRlZF9ieV9lbWFpbB'
     'gIIAEoCVIOdXBkYXRlZEJ5RW1haWwSOQoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90'
-    'b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdA==');
+    'b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdBIfCgtjaGF0X3Byb21wdBgKIAEoCVIKY2hhdFByb2'
+    '1wdA==');
+
+@$core.Deprecated('Use ontologyModalitySummaryDescriptor instead')
+const OntologyModalitySummary$json = {
+  '1': 'OntologyModalitySummary',
+  '2': [
+    {'1': 'modality_id', '3': 1, '4': 1, '5': 9, '10': 'modalityId'},
+    {'1': 'system_code', '3': 2, '4': 1, '5': 9, '10': 'systemCode'},
+    {'1': 'display_name', '3': 3, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'active_version', '3': 4, '4': 1, '5': 9, '10': 'activeVersion'},
+    {'1': 'active_version_id', '3': 5, '4': 1, '5': 9, '10': 'activeVersionId'},
+    {'1': 'draft_count', '3': 6, '4': 1, '5': 5, '10': 'draftCount'},
+    {'1': 'review_count', '3': 7, '4': 1, '5': 5, '10': 'reviewCount'},
+    {'1': 'latest_version', '3': 8, '4': 1, '5': 9, '10': 'latestVersion'},
+  ],
+};
+
+/// Descriptor for `OntologyModalitySummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyModalitySummaryDescriptor = $convert.base64Decode(
+    'ChdPbnRvbG9neU1vZGFsaXR5U3VtbWFyeRIfCgttb2RhbGl0eV9pZBgBIAEoCVIKbW9kYWxpdH'
+    'lJZBIfCgtzeXN0ZW1fY29kZRgCIAEoCVIKc3lzdGVtQ29kZRIhCgxkaXNwbGF5X25hbWUYAyAB'
+    'KAlSC2Rpc3BsYXlOYW1lEiUKDmFjdGl2ZV92ZXJzaW9uGAQgASgJUg1hY3RpdmVWZXJzaW9uEi'
+    'oKEWFjdGl2ZV92ZXJzaW9uX2lkGAUgASgJUg9hY3RpdmVWZXJzaW9uSWQSHwoLZHJhZnRfY291'
+    'bnQYBiABKAVSCmRyYWZ0Q291bnQSIQoMcmV2aWV3X2NvdW50GAcgASgFUgtyZXZpZXdDb3VudB'
+    'IlCg5sYXRlc3RfdmVyc2lvbhgIIAEoCVINbGF0ZXN0VmVyc2lvbg==');
+
+@$core.Deprecated('Use ontologyListModalitiesResponseDescriptor instead')
+const OntologyListModalitiesResponse$json = {
+  '1': 'OntologyListModalitiesResponse',
+  '2': [
+    {
+      '1': 'modalities',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.OntologyModalitySummary',
+      '10': 'modalities'
+    },
+  ],
+};
+
+/// Descriptor for `OntologyListModalitiesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyListModalitiesResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5PbnRvbG9neUxpc3RNb2RhbGl0aWVzUmVzcG9uc2USRAoKbW9kYWxpdGllcxgBIAMoCzIkLm'
+        'NsaW5pY2FsLnYxLk9udG9sb2d5TW9kYWxpdHlTdW1tYXJ5Ugptb2RhbGl0aWVz');
+
+@$core.Deprecated('Use ontologyListVersionsRequestDescriptor instead')
+const OntologyListVersionsRequest$json = {
+  '1': 'OntologyListVersionsRequest',
+  '2': [
+    {'1': 'modality_id', '3': 1, '4': 1, '5': 9, '10': 'modalityId'},
+    {'1': 'page_size', '3': 2, '4': 1, '5': 5, '10': 'pageSize'},
+    {'1': 'page_offset', '3': 3, '4': 1, '5': 5, '10': 'pageOffset'},
+  ],
+};
+
+/// Descriptor for `OntologyListVersionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyListVersionsRequestDescriptor =
+    $convert.base64Decode(
+        'ChtPbnRvbG9neUxpc3RWZXJzaW9uc1JlcXVlc3QSHwoLbW9kYWxpdHlfaWQYASABKAlSCm1vZG'
+        'FsaXR5SWQSGwoJcGFnZV9zaXplGAIgASgFUghwYWdlU2l6ZRIfCgtwYWdlX29mZnNldBgDIAEo'
+        'BVIKcGFnZU9mZnNldA==');
+
+@$core.Deprecated('Use ontologyVersionDescriptor instead')
+const OntologyVersion$json = {
+  '1': 'OntologyVersion',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'modality_id', '3': 2, '4': 1, '5': 9, '10': 'modalityId'},
+    {'1': 'version', '3': 3, '4': 1, '5': 9, '10': 'version'},
+    {'1': 'content_yaml', '3': 4, '4': 1, '5': 9, '10': 'contentYaml'},
+    {
+      '1': 'status',
+      '3': 5,
+      '4': 1,
+      '5': 14,
+      '6': '.clinical.v1.OntologyStatus',
+      '10': 'status'
+    },
+    {'1': 'created_by_email', '3': 6, '4': 1, '5': 9, '10': 'createdByEmail'},
+    {
+      '1': 'created_at',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {'1': 'change_note', '3': 8, '4': 1, '5': 9, '10': 'changeNote'},
+    {'1': 'approved_by_email', '3': 9, '4': 1, '5': 9, '10': 'approvedByEmail'},
+    {
+      '1': 'approved_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'approvedAt'
+    },
+    {'1': 'approval_note', '3': 11, '4': 1, '5': 9, '10': 'approvalNote'},
+    {'1': 'is_active', '3': 12, '4': 1, '5': 8, '10': 'isActive'},
+    {'1': 'construct_count', '3': 13, '4': 1, '5': 5, '10': 'constructCount'},
+  ],
+};
+
+/// Descriptor for `OntologyVersion`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyVersionDescriptor = $convert.base64Decode(
+    'Cg9PbnRvbG9neVZlcnNpb24SDgoCaWQYASABKAlSAmlkEh8KC21vZGFsaXR5X2lkGAIgASgJUg'
+    'ptb2RhbGl0eUlkEhgKB3ZlcnNpb24YAyABKAlSB3ZlcnNpb24SIQoMY29udGVudF95YW1sGAQg'
+    'ASgJUgtjb250ZW50WWFtbBIzCgZzdGF0dXMYBSABKA4yGy5jbGluaWNhbC52MS5PbnRvbG9neV'
+    'N0YXR1c1IGc3RhdHVzEigKEGNyZWF0ZWRfYnlfZW1haWwYBiABKAlSDmNyZWF0ZWRCeUVtYWls'
+    'EjkKCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdG'
+    'VkQXQSHwoLY2hhbmdlX25vdGUYCCABKAlSCmNoYW5nZU5vdGUSKgoRYXBwcm92ZWRfYnlfZW1h'
+    'aWwYCSABKAlSD2FwcHJvdmVkQnlFbWFpbBI7CgthcHByb3ZlZF9hdBgKIAEoCzIaLmdvb2dsZS'
+    '5wcm90b2J1Zi5UaW1lc3RhbXBSCmFwcHJvdmVkQXQSIwoNYXBwcm92YWxfbm90ZRgLIAEoCVIM'
+    'YXBwcm92YWxOb3RlEhsKCWlzX2FjdGl2ZRgMIAEoCFIIaXNBY3RpdmUSJwoPY29uc3RydWN0X2'
+    'NvdW50GA0gASgFUg5jb25zdHJ1Y3RDb3VudA==');
+
+@$core.Deprecated('Use ontologyListVersionsResponseDescriptor instead')
+const OntologyListVersionsResponse$json = {
+  '1': 'OntologyListVersionsResponse',
+  '2': [
+    {
+      '1': 'versions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.OntologyVersion',
+      '10': 'versions'
+    },
+    {'1': 'has_more', '3': 2, '4': 1, '5': 8, '10': 'hasMore'},
+  ],
+};
+
+/// Descriptor for `OntologyListVersionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyListVersionsResponseDescriptor =
+    $convert.base64Decode(
+        'ChxPbnRvbG9neUxpc3RWZXJzaW9uc1Jlc3BvbnNlEjgKCHZlcnNpb25zGAEgAygLMhwuY2xpbm'
+        'ljYWwudjEuT250b2xvZ3lWZXJzaW9uUgh2ZXJzaW9ucxIZCghoYXNfbW9yZRgCIAEoCFIHaGFz'
+        'TW9yZQ==');
+
+@$core.Deprecated('Use ontologyGetVersionRequestDescriptor instead')
+const OntologyGetVersionRequest$json = {
+  '1': 'OntologyGetVersionRequest',
+  '2': [
+    {'1': 'version_id', '3': 1, '4': 1, '5': 9, '10': 'versionId'},
+  ],
+};
+
+/// Descriptor for `OntologyGetVersionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyGetVersionRequestDescriptor =
+    $convert.base64Decode(
+        'ChlPbnRvbG9neUdldFZlcnNpb25SZXF1ZXN0Eh0KCnZlcnNpb25faWQYASABKAlSCXZlcnNpb2'
+        '5JZA==');
+
+@$core.Deprecated('Use ontologyLintRequestDescriptor instead')
+const OntologyLintRequest$json = {
+  '1': 'OntologyLintRequest',
+  '2': [
+    {'1': 'content_yaml', '3': 1, '4': 1, '5': 9, '10': 'contentYaml'},
+  ],
+};
+
+/// Descriptor for `OntologyLintRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyLintRequestDescriptor = $convert.base64Decode(
+    'ChNPbnRvbG9neUxpbnRSZXF1ZXN0EiEKDGNvbnRlbnRfeWFtbBgBIAEoCVILY29udGVudFlhbW'
+    'w=');
+
+@$core.Deprecated('Use ontologyLintResponseDescriptor instead')
+const OntologyLintResponse$json = {
+  '1': 'OntologyLintResponse',
+  '2': [
+    {'1': 'problems', '3': 1, '4': 3, '5': 9, '10': 'problems'},
+    {'1': 'construct_count', '3': 2, '4': 1, '5': 5, '10': 'constructCount'},
+  ],
+};
+
+/// Descriptor for `OntologyLintResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyLintResponseDescriptor = $convert.base64Decode(
+    'ChRPbnRvbG9neUxpbnRSZXNwb25zZRIaCghwcm9ibGVtcxgBIAMoCVIIcHJvYmxlbXMSJwoPY2'
+    '9uc3RydWN0X2NvdW50GAIgASgFUg5jb25zdHJ1Y3RDb3VudA==');
+
+@$core.Deprecated('Use ontologyCreateDraftRequestDescriptor instead')
+const OntologyCreateDraftRequest$json = {
+  '1': 'OntologyCreateDraftRequest',
+  '2': [
+    {'1': 'modality_id', '3': 1, '4': 1, '5': 9, '10': 'modalityId'},
+    {'1': 'version', '3': 2, '4': 1, '5': 9, '10': 'version'},
+    {'1': 'content_yaml', '3': 3, '4': 1, '5': 9, '10': 'contentYaml'},
+    {'1': 'change_note', '3': 4, '4': 1, '5': 9, '10': 'changeNote'},
+    {
+      '1': 'copy_from_version_id',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'copyFromVersionId'
+    },
+  ],
+};
+
+/// Descriptor for `OntologyCreateDraftRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyCreateDraftRequestDescriptor = $convert.base64Decode(
+    'ChpPbnRvbG9neUNyZWF0ZURyYWZ0UmVxdWVzdBIfCgttb2RhbGl0eV9pZBgBIAEoCVIKbW9kYW'
+    'xpdHlJZBIYCgd2ZXJzaW9uGAIgASgJUgd2ZXJzaW9uEiEKDGNvbnRlbnRfeWFtbBgDIAEoCVIL'
+    'Y29udGVudFlhbWwSHwoLY2hhbmdlX25vdGUYBCABKAlSCmNoYW5nZU5vdGUSLwoUY29weV9mcm'
+    '9tX3ZlcnNpb25faWQYBSABKAlSEWNvcHlGcm9tVmVyc2lvbklk');
+
+@$core.Deprecated('Use ontologyUpdateDraftRequestDescriptor instead')
+const OntologyUpdateDraftRequest$json = {
+  '1': 'OntologyUpdateDraftRequest',
+  '2': [
+    {'1': 'version_id', '3': 1, '4': 1, '5': 9, '10': 'versionId'},
+    {'1': 'content_yaml', '3': 2, '4': 1, '5': 9, '10': 'contentYaml'},
+    {'1': 'change_note', '3': 3, '4': 1, '5': 9, '10': 'changeNote'},
+  ],
+};
+
+/// Descriptor for `OntologyUpdateDraftRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyUpdateDraftRequestDescriptor =
+    $convert.base64Decode(
+        'ChpPbnRvbG9neVVwZGF0ZURyYWZ0UmVxdWVzdBIdCgp2ZXJzaW9uX2lkGAEgASgJUgl2ZXJzaW'
+        '9uSWQSIQoMY29udGVudF95YW1sGAIgASgJUgtjb250ZW50WWFtbBIfCgtjaGFuZ2Vfbm90ZRgD'
+        'IAEoCVIKY2hhbmdlTm90ZQ==');
+
+@$core.Deprecated('Use ontologyTransitionRequestDescriptor instead')
+const OntologyTransitionRequest$json = {
+  '1': 'OntologyTransitionRequest',
+  '2': [
+    {'1': 'version_id', '3': 1, '4': 1, '5': 9, '10': 'versionId'},
+    {'1': 'note', '3': 2, '4': 1, '5': 9, '10': 'note'},
+  ],
+};
+
+/// Descriptor for `OntologyTransitionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List ontologyTransitionRequestDescriptor =
+    $convert.base64Decode(
+        'ChlPbnRvbG9neVRyYW5zaXRpb25SZXF1ZXN0Eh0KCnZlcnNpb25faWQYASABKAlSCXZlcnNpb2'
+        '5JZBISCgRub3RlGAIgASgJUgRub3Rl');
 
 @$core.Deprecated('Use adminListModalityPromptsResponseDescriptor instead')
 const AdminListModalityPromptsResponse$json = {
@@ -1554,6 +1815,7 @@ const AdminModalityPromptVersion$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'createdAt'
     },
+    {'1': 'chat_prompt', '3': 7, '4': 1, '5': 9, '10': 'chatPrompt'},
   ],
 };
 
@@ -1563,7 +1825,7 @@ final $typed_data.Uint8List adminModalityPromptVersionDescriptor = $convert.base
     'gCIAEoBVIHdmVyc2lvbhIjCg1zeXN0ZW1fcHJvbXB0GAMgASgJUgxzeXN0ZW1Qcm9tcHQSHwoL'
     'Y2hhbmdlX25vdGUYBCABKAlSCmNoYW5nZU5vdGUSKAoQY3JlYXRlZF9ieV9lbWFpbBgFIAEoCV'
     'IOY3JlYXRlZEJ5RW1haWwSOQoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5U'
-    'aW1lc3RhbXBSCWNyZWF0ZWRBdA==');
+    'aW1lc3RhbXBSCWNyZWF0ZWRBdBIfCgtjaGF0X3Byb21wdBgHIAEoCVIKY2hhdFByb21wdA==');
 
 @$core.Deprecated('Use adminGetModalityPromptHistoryResponseDescriptor instead')
 const AdminGetModalityPromptHistoryResponse$json = {
@@ -1596,6 +1858,7 @@ const AdminUpdateModalityPromptRequest$json = {
     {'1': 'system_prompt', '3': 2, '4': 1, '5': 9, '10': 'systemPrompt'},
     {'1': 'change_note', '3': 3, '4': 1, '5': 9, '10': 'changeNote'},
     {'1': 'expected_version', '3': 4, '4': 1, '5': 5, '10': 'expectedVersion'},
+    {'1': 'prompt_key', '3': 5, '4': 1, '5': 9, '10': 'promptKey'},
   ],
 };
 
@@ -1605,7 +1868,7 @@ final $typed_data.Uint8List adminUpdateModalityPromptRequestDescriptor =
         'CiBBZG1pblVwZGF0ZU1vZGFsaXR5UHJvbXB0UmVxdWVzdBIfCgttb2RhbGl0eV9pZBgBIAEoCV'
         'IKbW9kYWxpdHlJZBIjCg1zeXN0ZW1fcHJvbXB0GAIgASgJUgxzeXN0ZW1Qcm9tcHQSHwoLY2hh'
         'bmdlX25vdGUYAyABKAlSCmNoYW5nZU5vdGUSKQoQZXhwZWN0ZWRfdmVyc2lvbhgEIAEoBVIPZX'
-        'hwZWN0ZWRWZXJzaW9u');
+        'hwZWN0ZWRWZXJzaW9uEh0KCnByb21wdF9rZXkYBSABKAlSCXByb21wdEtleQ==');
 
 @$core.Deprecated('Use adminUpdateModalityPromptResponseDescriptor instead')
 const AdminUpdateModalityPromptResponse$json = {
@@ -3588,6 +3851,85 @@ final $typed_data.Uint8List adminSetChatControlsRequestDescriptor = $convert.bas
     'ZRgGIAEoCVIEbm90ZUIKCghfZW5hYmxlZEIHCgVfbW9kZUIRCg9fY2xhc3NpZmllcl90YXVCEg'
     'oQX3F1b3RhX21pY3JvX3VzZA==');
 
+@$core.Deprecated('Use adminGetExperimentalControlsRequestDescriptor instead')
+const AdminGetExperimentalControlsRequest$json = {
+  '1': 'AdminGetExperimentalControlsRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+  ],
+};
+
+/// Descriptor for `AdminGetExperimentalControlsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminGetExperimentalControlsRequestDescriptor =
+    $convert.base64Decode(
+        'CiNBZG1pbkdldEV4cGVyaW1lbnRhbENvbnRyb2xzUmVxdWVzdBInCg9vcmdhbml6YXRpb25faW'
+        'QYASABKAlSDm9yZ2FuaXphdGlvbklk');
+
+@$core.Deprecated('Use adminExperimentalControlsDescriptor instead')
+const AdminExperimentalControls$json = {
+  '1': 'AdminExperimentalControls',
+  '2': [
+    {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'daily_limit', '3': 2, '4': 1, '5': 3, '10': 'dailyLimit'},
+    {'1': 'is_org_override', '3': 3, '4': 1, '5': 8, '10': 'isOrgOverride'},
+    {'1': 'note', '3': 4, '4': 1, '5': 9, '10': 'note'},
+    {
+      '1': 'updated_at',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `AdminExperimentalControls`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminExperimentalControlsDescriptor = $convert.base64Decode(
+    'ChlBZG1pbkV4cGVyaW1lbnRhbENvbnRyb2xzEhgKB2VuYWJsZWQYASABKAhSB2VuYWJsZWQSHw'
+    'oLZGFpbHlfbGltaXQYAiABKANSCmRhaWx5TGltaXQSJgoPaXNfb3JnX292ZXJyaWRlGAMgASgI'
+    'Ug1pc09yZ092ZXJyaWRlEhIKBG5vdGUYBCABKAlSBG5vdGUSOQoKdXBkYXRlZF9hdBgFIAEoCz'
+    'IaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdA==');
+
+@$core.Deprecated('Use adminSetExperimentalControlsRequestDescriptor instead')
+const AdminSetExperimentalControlsRequest$json = {
+  '1': 'AdminSetExperimentalControlsRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {
+      '1': 'enabled',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '9': 0,
+      '10': 'enabled',
+      '17': true
+    },
+    {
+      '1': 'daily_limit',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '9': 1,
+      '10': 'dailyLimit',
+      '17': true
+    },
+    {'1': 'note', '3': 4, '4': 1, '5': 9, '10': 'note'},
+  ],
+  '8': [
+    {'1': '_enabled'},
+    {'1': '_daily_limit'},
+  ],
+};
+
+/// Descriptor for `AdminSetExperimentalControlsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminSetExperimentalControlsRequestDescriptor =
+    $convert.base64Decode(
+        'CiNBZG1pblNldEV4cGVyaW1lbnRhbENvbnRyb2xzUmVxdWVzdBInCg9vcmdhbml6YXRpb25faW'
+        'QYASABKAlSDm9yZ2FuaXphdGlvbklkEh0KB2VuYWJsZWQYAiABKAhIAFIHZW5hYmxlZIgBARIk'
+        'CgtkYWlseV9saW1pdBgDIAEoA0gBUgpkYWlseUxpbWl0iAEBEhIKBG5vdGUYBCABKAlSBG5vdG'
+        'VCCgoIX2VuYWJsZWRCDgoMX2RhaWx5X2xpbWl0');
+
 @$core.Deprecated('Use askPatientQuestionRequestDescriptor instead')
 const AskPatientQuestionRequest$json = {
   '1': 'AskPatientQuestionRequest',
@@ -3866,3 +4208,41 @@ final $typed_data.Uint8List askPatientQuestionResponseDescriptor = $convert.base
     'Fuc3dlchI0CgdyZWZ1c2FsGAQgASgLMhguY2xpbmljYWwudjEuQ2hhdFJlZnVzYWxIAFIHcmVm'
     'dXNhbBIpCgRtZXRhGAUgASgLMhUuY2xpbmljYWwudjEuQ2hhdE1ldGFSBG1ldGFCCQoHcGF5bG'
     '9hZA==');
+
+@$core.Deprecated('Use generateExperimentalReportRequestDescriptor instead')
+const GenerateExperimentalReportRequest$json = {
+  '1': 'GenerateExperimentalReportRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'modality_code', '3': 2, '4': 1, '5': 9, '10': 'modalityCode'},
+    {
+      '1': 'ontology_version_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'ontologyVersionId'
+    },
+  ],
+};
+
+/// Descriptor for `GenerateExperimentalReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateExperimentalReportRequestDescriptor =
+    $convert.base64Decode(
+        'CiFHZW5lcmF0ZUV4cGVyaW1lbnRhbFJlcG9ydFJlcXVlc3QSHQoKc2Vzc2lvbl9pZBgBIAEoCV'
+        'IJc2Vzc2lvbklkEiMKDW1vZGFsaXR5X2NvZGUYAiABKAlSDG1vZGFsaXR5Q29kZRIuChNvbnRv'
+        'bG9neV92ZXJzaW9uX2lkGAMgASgJUhFvbnRvbG9neVZlcnNpb25JZA==');
+
+@$core.Deprecated('Use generateExperimentalReportResponseDescriptor instead')
+const GenerateExperimentalReportResponse$json = {
+  '1': 'GenerateExperimentalReportResponse',
+  '2': [
+    {'1': 'request_id', '3': 1, '4': 1, '5': 9, '10': 'requestId'},
+    {'1': 'remaining_today', '3': 2, '4': 1, '5': 5, '10': 'remainingToday'},
+  ],
+};
+
+/// Descriptor for `GenerateExperimentalReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List generateExperimentalReportResponseDescriptor =
+    $convert.base64Decode(
+        'CiJHZW5lcmF0ZUV4cGVyaW1lbnRhbFJlcG9ydFJlc3BvbnNlEh0KCnJlcXVlc3RfaWQYASABKA'
+        'lSCXJlcXVlc3RJZBInCg9yZW1haW5pbmdfdG9kYXkYAiABKAVSDnJlbWFpbmluZ1RvZGF5');

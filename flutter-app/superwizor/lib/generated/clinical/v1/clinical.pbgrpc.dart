@@ -240,6 +240,29 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$setAvatarConfig, request, options: options);
   }
 
+  /// ─── Raporty eksperymentalne (plan 16 §2.5) ───
+  /// Generuje raport na ontologii BEZ autoryzacji ekspertow. Nie
+  /// zastepuje raportu produkcyjnego, nie trafia do panelu klienta,
+  /// nie wywoluje powiadomienia "Raport gotowy".
+  ///
+  /// Istnieje po to, zeby eksperci mogli kalibrowac `values` i
+  /// `min_evidence` na prawdziwych transkryptach ZANIM ontologia
+  /// dostanie `approved_by` — bez tego petla autoryzacyjna nie ma na
+  /// czym pracowac.
+  ///
+  /// Wymaga flagi organizacji REPORT_EXPERIMENTAL_ENABLED i miesci sie
+  /// w dobowym limicie na terapeute. Zwraca natychmiast; raport
+  /// powstaje asynchronicznie, a jego gotowosc sygnalizuje dokument
+  /// inbox `experimental_report_ready`.
+  $grpc.ResponseFuture<$0.GenerateExperimentalReportResponse>
+      generateExperimentalReport(
+    $0.GenerateExperimentalReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$generateExperimentalReport, request,
+        options: options);
+  }
+
   /// ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
   /// 👍/👎 rating on a generated report. Idempotent on
   /// (report_id, therapist_id) — re-rating UPSERTs in place.
@@ -368,6 +391,98 @@ class ClinicalServiceClient extends $grpc.Client {
         options: options);
   }
 
+  /// ── Ontology Studio (plan 16 v1.2, sekcja 4.1) ──
+  ///
+  /// Ontologia modalnosci przestala byc plikiem w repo pod CODEOWNERS,
+  /// a stala sie wersjonowanym rekordem edytowanym w aplikacji
+  /// (adnotacja do D2 w dok. 11). Cykl zycia: draft -> ready_for_review
+  /// -> approved, a AKTYWACJA NA PRODUKCJI jest osobna operacja.
+  ///
+  /// Rozdzial rol jest sedno tego kontraktu:
+  ///   ONTOLOGY_EDITOR  — tworzy, edytuje, zglasza, zatwierdza CUDZE wersje
+  ///   SUPERWIZOR_ADMIN — to samo PLUS aktywacja na produkcji
+  ///
+  /// Ekspert odpowiada za tresc, admin za to, co generuje raporty.
+  /// Dlatego OntologyActivateVersion ma wlasna bramke i nie da sie jej
+  /// wywolac "przy okazji" zatwierdzania.
+  $grpc.ResponseFuture<$0.OntologyListModalitiesResponse>
+      ontologyListModalities(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyListModalities, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyListVersionsResponse> ontologyListVersions(
+    $0.OntologyListVersionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyListVersions, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyGetVersion(
+    $0.OntologyGetVersionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyGetVersion, request, options: options);
+  }
+
+  /// Lint bez zapisu — edytor woła to na żywo, żeby autor widział
+  /// problemy przed zapisem. Ta sama implementacja co przy zapisie
+  /// (pkg/ontology), więc nie da się przejść lintu i polec na Save.
+  $grpc.ResponseFuture<$0.OntologyLintResponse> ontologyLint(
+    $0.OntologyLintRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyLint, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyCreateDraft(
+    $0.OntologyCreateDraftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyCreateDraft, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyUpdateDraft(
+    $0.OntologyUpdateDraftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyUpdateDraft, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologySubmitForReview(
+    $0.OntologyTransitionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologySubmitForReview, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyApprove(
+    $0.OntologyTransitionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyApprove, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyReject(
+    $0.OntologyTransitionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyReject, request, options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN only. Wymaga statusu approved.
+  $grpc.ResponseFuture<$0.OntologyVersion> ontologyActivateVersion(
+    $0.OntologyTransitionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$ontologyActivateVersion, request,
+        options: options);
+  }
+
   /// ─── AI chat control surface (ADR 62 section 11) ───
   /// Reads and flips the chat kill switch. The runbook (docs/64) also
   /// documents a direct SQL path as break-glass; this RPC is the normal
@@ -386,6 +501,34 @@ class ClinicalServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$adminSetChatControls, request, options: options);
+  }
+
+  /// ─── Raporty eksperymentalne — kontrola per organizacja ───
+  /// Ten sam wzorzec co kontrola czatu: odczyt wartosci SKUTECZNEJ
+  /// (nadpisanie organizacji albo globalna), zapis z wymagana notatka i
+  /// wpisem audytowym.
+  ///
+  /// Osobna para RPC, nie pole w AdminSetChatControls: to sa dwa rozne
+  /// przelaczniki o roznym ryzyku. Czat wylacza sie w kryzysie, tryb
+  /// eksperymentalny wlacza sie na czas kalibracji ontologii — zlanie
+  /// ich w jedno wywolanie oznaczaloby, ze pomylka w jednym polu rusza
+  /// drugi mechanizm.
+  $grpc.ResponseFuture<$0.AdminExperimentalControls>
+      adminGetExperimentalControls(
+    $0.AdminGetExperimentalControlsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminGetExperimentalControls, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AdminExperimentalControls>
+      adminSetExperimentalControls(
+    $0.AdminSetExperimentalControlsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminSetExperimentalControls, request,
+        options: options);
   }
 
   /// ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
@@ -688,6 +831,12 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/SetAvatarConfig',
           ($0.SetAvatarConfigRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$generateExperimentalReport = $grpc.ClientMethod<
+          $0.GenerateExperimentalReportRequest,
+          $0.GenerateExperimentalReportResponse>(
+      '/clinical.v1.ClinicalService/GenerateExperimentalReport',
+      ($0.GenerateExperimentalReportRequest value) => value.writeToBuffer(),
+      $0.GenerateExperimentalReportResponse.fromBuffer);
   static final _$rateReport =
       $grpc.ClientMethod<$0.RateReportRequest, $0.RateReportResponse>(
           '/clinical.v1.ClinicalService/RateReport',
@@ -750,6 +899,56 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/AdminUpdateModalityPrompt',
       ($0.AdminUpdateModalityPromptRequest value) => value.writeToBuffer(),
       $0.AdminUpdateModalityPromptResponse.fromBuffer);
+  static final _$ontologyListModalities =
+      $grpc.ClientMethod<$1.Empty, $0.OntologyListModalitiesResponse>(
+          '/clinical.v1.ClinicalService/OntologyListModalities',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.OntologyListModalitiesResponse.fromBuffer);
+  static final _$ontologyListVersions = $grpc.ClientMethod<
+          $0.OntologyListVersionsRequest, $0.OntologyListVersionsResponse>(
+      '/clinical.v1.ClinicalService/OntologyListVersions',
+      ($0.OntologyListVersionsRequest value) => value.writeToBuffer(),
+      $0.OntologyListVersionsResponse.fromBuffer);
+  static final _$ontologyGetVersion =
+      $grpc.ClientMethod<$0.OntologyGetVersionRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyGetVersion',
+          ($0.OntologyGetVersionRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologyLint =
+      $grpc.ClientMethod<$0.OntologyLintRequest, $0.OntologyLintResponse>(
+          '/clinical.v1.ClinicalService/OntologyLint',
+          ($0.OntologyLintRequest value) => value.writeToBuffer(),
+          $0.OntologyLintResponse.fromBuffer);
+  static final _$ontologyCreateDraft =
+      $grpc.ClientMethod<$0.OntologyCreateDraftRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyCreateDraft',
+          ($0.OntologyCreateDraftRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologyUpdateDraft =
+      $grpc.ClientMethod<$0.OntologyUpdateDraftRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyUpdateDraft',
+          ($0.OntologyUpdateDraftRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologySubmitForReview =
+      $grpc.ClientMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologySubmitForReview',
+          ($0.OntologyTransitionRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologyApprove =
+      $grpc.ClientMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyApprove',
+          ($0.OntologyTransitionRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologyReject =
+      $grpc.ClientMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyReject',
+          ($0.OntologyTransitionRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
+  static final _$ontologyActivateVersion =
+      $grpc.ClientMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+          '/clinical.v1.ClinicalService/OntologyActivateVersion',
+          ($0.OntologyTransitionRequest value) => value.writeToBuffer(),
+          $0.OntologyVersion.fromBuffer);
   static final _$adminGetChatControls =
       $grpc.ClientMethod<$0.AdminGetChatControlsRequest, $0.AdminChatControls>(
           '/clinical.v1.ClinicalService/AdminGetChatControls',
@@ -760,6 +959,16 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/AdminSetChatControls',
           ($0.AdminSetChatControlsRequest value) => value.writeToBuffer(),
           $0.AdminChatControls.fromBuffer);
+  static final _$adminGetExperimentalControls = $grpc.ClientMethod<
+          $0.AdminGetExperimentalControlsRequest, $0.AdminExperimentalControls>(
+      '/clinical.v1.ClinicalService/AdminGetExperimentalControls',
+      ($0.AdminGetExperimentalControlsRequest value) => value.writeToBuffer(),
+      $0.AdminExperimentalControls.fromBuffer);
+  static final _$adminSetExperimentalControls = $grpc.ClientMethod<
+          $0.AdminSetExperimentalControlsRequest, $0.AdminExperimentalControls>(
+      '/clinical.v1.ClinicalService/AdminSetExperimentalControls',
+      ($0.AdminSetExperimentalControlsRequest value) => value.writeToBuffer(),
+      $0.AdminExperimentalControls.fromBuffer);
   static final _$getOrgTherapistMetrics = $grpc.ClientMethod<
           $0.GetOrgTherapistMetricsRequest, $0.OrgTherapistMetricsResponse>(
       '/clinical.v1.ClinicalService/GetOrgTherapistMetrics',
@@ -1058,6 +1267,16 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.SetAvatarConfigRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GenerateExperimentalReportRequest,
+            $0.GenerateExperimentalReportResponse>(
+        'GenerateExperimentalReport',
+        generateExperimentalReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GenerateExperimentalReportRequest.fromBuffer(value),
+        ($0.GenerateExperimentalReportResponse value) =>
+            value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.RateReportRequest, $0.RateReportResponse>(
         'RateReport',
         rateReport_Pre,
@@ -1163,6 +1382,94 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminUpdateModalityPromptRequest.fromBuffer(value),
         ($0.AdminUpdateModalityPromptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.OntologyListModalitiesResponse>(
+        'OntologyListModalities',
+        ontologyListModalities_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.OntologyListModalitiesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.OntologyListVersionsRequest,
+            $0.OntologyListVersionsResponse>(
+        'OntologyListVersions',
+        ontologyListVersions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.OntologyListVersionsRequest.fromBuffer(value),
+        ($0.OntologyListVersionsResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyGetVersionRequest, $0.OntologyVersion>(
+            'OntologyGetVersion',
+            ontologyGetVersion_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyGetVersionRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyLintRequest, $0.OntologyLintResponse>(
+            'OntologyLint',
+            ontologyLint_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyLintRequest.fromBuffer(value),
+            ($0.OntologyLintResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyCreateDraftRequest, $0.OntologyVersion>(
+            'OntologyCreateDraft',
+            ontologyCreateDraft_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyCreateDraftRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyUpdateDraftRequest, $0.OntologyVersion>(
+            'OntologyUpdateDraft',
+            ontologyUpdateDraft_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyUpdateDraftRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+            'OntologySubmitForReview',
+            ontologySubmitForReview_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyTransitionRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+            'OntologyApprove',
+            ontologyApprove_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyTransitionRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+            'OntologyReject',
+            ontologyReject_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyTransitionRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.OntologyTransitionRequest, $0.OntologyVersion>(
+            'OntologyActivateVersion',
+            ontologyActivateVersion_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.OntologyTransitionRequest.fromBuffer(value),
+            ($0.OntologyVersion value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminGetChatControlsRequest,
             $0.AdminChatControls>(
         'AdminGetChatControls',
@@ -1181,6 +1488,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminSetChatControlsRequest.fromBuffer(value),
         ($0.AdminChatControls value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminGetExperimentalControlsRequest,
+            $0.AdminExperimentalControls>(
+        'AdminGetExperimentalControls',
+        adminGetExperimentalControls_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminGetExperimentalControlsRequest.fromBuffer(value),
+        ($0.AdminExperimentalControls value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminSetExperimentalControlsRequest,
+            $0.AdminExperimentalControls>(
+        'AdminSetExperimentalControls',
+        adminSetExperimentalControls_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminSetExperimentalControlsRequest.fromBuffer(value),
+        ($0.AdminExperimentalControls value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.GetOrgTherapistMetricsRequest,
             $0.OrgTherapistMetricsResponse>(
         'GetOrgTherapistMetrics',
@@ -1543,6 +1868,16 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> setAvatarConfig(
       $grpc.ServiceCall call, $0.SetAvatarConfigRequest request);
 
+  $async.Future<$0.GenerateExperimentalReportResponse>
+      generateExperimentalReport_Pre($grpc.ServiceCall $call,
+          $async.Future<$0.GenerateExperimentalReportRequest> $request) async {
+    return generateExperimentalReport($call, await $request);
+  }
+
+  $async.Future<$0.GenerateExperimentalReportResponse>
+      generateExperimentalReport(
+          $grpc.ServiceCall call, $0.GenerateExperimentalReportRequest request);
+
   $async.Future<$0.RateReportResponse> rateReport_Pre($grpc.ServiceCall $call,
       $async.Future<$0.RateReportRequest> $request) async {
     return rateReport($call, await $request);
@@ -1650,6 +1985,93 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$0.AdminUpdateModalityPromptResponse> adminUpdateModalityPrompt(
       $grpc.ServiceCall call, $0.AdminUpdateModalityPromptRequest request);
 
+  $async.Future<$0.OntologyListModalitiesResponse> ontologyListModalities_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return ontologyListModalities($call, await $request);
+  }
+
+  $async.Future<$0.OntologyListModalitiesResponse> ontologyListModalities(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.OntologyListVersionsResponse> ontologyListVersions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyListVersionsRequest> $request) async {
+    return ontologyListVersions($call, await $request);
+  }
+
+  $async.Future<$0.OntologyListVersionsResponse> ontologyListVersions(
+      $grpc.ServiceCall call, $0.OntologyListVersionsRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyGetVersion_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyGetVersionRequest> $request) async {
+    return ontologyGetVersion($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyGetVersion(
+      $grpc.ServiceCall call, $0.OntologyGetVersionRequest request);
+
+  $async.Future<$0.OntologyLintResponse> ontologyLint_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyLintRequest> $request) async {
+    return ontologyLint($call, await $request);
+  }
+
+  $async.Future<$0.OntologyLintResponse> ontologyLint(
+      $grpc.ServiceCall call, $0.OntologyLintRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyCreateDraft_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyCreateDraftRequest> $request) async {
+    return ontologyCreateDraft($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyCreateDraft(
+      $grpc.ServiceCall call, $0.OntologyCreateDraftRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyUpdateDraft_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyUpdateDraftRequest> $request) async {
+    return ontologyUpdateDraft($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyUpdateDraft(
+      $grpc.ServiceCall call, $0.OntologyUpdateDraftRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologySubmitForReview_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyTransitionRequest> $request) async {
+    return ontologySubmitForReview($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologySubmitForReview(
+      $grpc.ServiceCall call, $0.OntologyTransitionRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyApprove_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.OntologyTransitionRequest> $request) async {
+    return ontologyApprove($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyApprove(
+      $grpc.ServiceCall call, $0.OntologyTransitionRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyReject_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.OntologyTransitionRequest> $request) async {
+    return ontologyReject($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyReject(
+      $grpc.ServiceCall call, $0.OntologyTransitionRequest request);
+
+  $async.Future<$0.OntologyVersion> ontologyActivateVersion_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.OntologyTransitionRequest> $request) async {
+    return ontologyActivateVersion($call, await $request);
+  }
+
+  $async.Future<$0.OntologyVersion> ontologyActivateVersion(
+      $grpc.ServiceCall call, $0.OntologyTransitionRequest request);
+
   $async.Future<$0.AdminChatControls> adminGetChatControls_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.AdminGetChatControlsRequest> $request) async {
@@ -1667,6 +2089,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.AdminChatControls> adminSetChatControls(
       $grpc.ServiceCall call, $0.AdminSetChatControlsRequest request);
+
+  $async.Future<$0.AdminExperimentalControls> adminGetExperimentalControls_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminGetExperimentalControlsRequest> $request) async {
+    return adminGetExperimentalControls($call, await $request);
+  }
+
+  $async.Future<$0.AdminExperimentalControls> adminGetExperimentalControls(
+      $grpc.ServiceCall call, $0.AdminGetExperimentalControlsRequest request);
+
+  $async.Future<$0.AdminExperimentalControls> adminSetExperimentalControls_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminSetExperimentalControlsRequest> $request) async {
+    return adminSetExperimentalControls($call, await $request);
+  }
+
+  $async.Future<$0.AdminExperimentalControls> adminSetExperimentalControls(
+      $grpc.ServiceCall call, $0.AdminSetExperimentalControlsRequest request);
 
   $async.Future<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics_Pre(
       $grpc.ServiceCall $call,

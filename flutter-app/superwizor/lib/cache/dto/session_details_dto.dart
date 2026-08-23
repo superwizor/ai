@@ -36,15 +36,34 @@ class SessionDetailsDto {
         session: SessionDto.fromJson(j['session'] as Map<String, dynamic>),
         transcript:
             TranscriptDto.fromJson(j['transcript'] as Map<String, dynamic>),
-        reports: ((j['reports'] as List?) ?? const [])
+        // Ten sam porzadek co przy odczycie z sieci. Cache zapisany
+        // starsza wersja aplikacji nie ma pola isExperimental, wiec
+        // domyslne false ustawia wszystko jako produkcyjne — kolejnosc
+        // z serwera zostaje i nic sie nie psuje.
+        reports: uporzadkujRaporty(((j['reports'] as List?) ?? const [])
             .map((e) => ReportDto.fromJson(e as Map<String, dynamic>))
-            .toList(),
+            .toList()),
       );
 
   factory SessionDetailsDto.fromProto(clinical_pb.GetSessionDetailsResponse r) =>
       SessionDetailsDto(
         session: SessionDto.fromProto(r.session),
         transcript: TranscriptDto.fromProto(r.transcript),
-        reports: r.reports.map(ReportDto.fromProto).toList(),
+        reports: uporzadkujRaporty(r.reports.map(ReportDto.fromProto).toList()),
       );
+}
+
+/// Raport PRODUKCYJNY idzie pierwszy, niezależnie od czasu powstania.
+///
+/// Serwer zwraca raporty od najnowszego, a raport eksperymentalny
+/// powstaje PO produkcyjnym (dual-run rusza dopiero po opublikowaniu
+/// „gotowe"). Bez tego porządku otwarcie sesji pokazywałoby domyślnie
+/// eksperyment — czyli materiał, który jawnie nie służy do pracy
+/// klinicznej — a raport właściwy trzeba by odszukać.
+///
+/// W obrębie każdej z grup kolejność z serwera zostaje.
+List<ReportDto> uporzadkujRaporty(List<ReportDto> raporty) {
+  final produkcyjne = raporty.where((r) => !r.isExperimental).toList();
+  final eksperymentalne = raporty.where((r) => r.isExperimental).toList();
+  return [...produkcyjne, ...eksperymentalne];
 }

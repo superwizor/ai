@@ -188,6 +188,49 @@ func (ns NullNotificationStatus) Value() (driver.Value, error) {
 	return string(ns.NotificationStatus), nil
 }
 
+type OntologyStatus string
+
+const (
+	OntologyStatusDraft          OntologyStatus = "draft"
+	OntologyStatusReadyForReview OntologyStatus = "ready_for_review"
+	OntologyStatusApproved       OntologyStatus = "approved"
+)
+
+func (e *OntologyStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OntologyStatus(s)
+	case string:
+		*e = OntologyStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OntologyStatus: %T", src)
+	}
+	return nil
+}
+
+type NullOntologyStatus struct {
+	OntologyStatus OntologyStatus `json:"ontology_status"`
+	Valid          bool           `json:"valid"` // Valid is true if OntologyStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOntologyStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.OntologyStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OntologyStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOntologyStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OntologyStatus), nil
+}
+
 type OrganizationType string
 
 const (
@@ -647,6 +690,7 @@ const (
 	UserRolePATIENT         UserRole = "PATIENT"
 	UserRoleORGADMIN        UserRole = "ORG_ADMIN"
 	UserRoleSUPERWIZORADMIN UserRole = "SUPERWIZOR_ADMIN"
+	UserRoleONTOLOGYEDITOR  UserRole = "ONTOLOGY_EDITOR"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -897,6 +941,19 @@ type EmailTemplate struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Zamowienia raportow eksperymentalnych (plan 16 §2.5). Liczone PRZED generacja, bo wiersz w reports powstaje dopiero po niej.
+type ExperimentalReportRequest struct {
+	ID                uuid.UUID   `json:"id"`
+	TherapistID       uuid.UUID   `json:"therapist_id"`
+	SessionID         uuid.UUID   `json:"session_id"`
+	ModalityCode      string      `json:"modality_code"`
+	OntologyVersionID pgtype.UUID `json:"ontology_version_id"`
+	Origin            string      `json:"origin"`
+	// NULL dla zamowien w locie i nieudanych. Oba liczą sie do dobowego limitu — oba kosztowaly wywolania modelu.
+	ReportID  pgtype.UUID `json:"report_id"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
 type FcmToken struct {
 	ID                uuid.UUID          `json:"id"`
 	UserID            uuid.UUID          `json:"user_id"`
@@ -1006,6 +1063,8 @@ type Modality struct {
 	CreatedAt                 time.Time    `json:"created_at"`
 	UpdatedAt                 time.Time    `json:"updated_at"`
 	ModalityType              ModalityType `json:"modality_type"`
+	// Wersja serwowana na produkcji. Ustawia WYLACZNIE SUPERWIZOR_ADMIN na wersji approved z zielonym benchmarkiem. NULL = potok ontologiczny niedostepny dla tej modalnosci (fail-closed na legacy).
+	ActiveOntologyVersionID pgtype.UUID `json:"active_ontology_version_id"`
 }
 
 type ModalityPromptVersion struct {
@@ -1031,6 +1090,23 @@ type NotificationDelivery struct {
 	ErrorMessage     *string            `json:"error_message"`
 	CreatedAt        time.Time          `json:"created_at"`
 	SentAt           pgtype.Timestamptz `json:"sent_at"`
+}
+
+type OntologyVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    string    `json:"version"`
+	// Tresc ontologii w YAML, doslownie — z komentarzami. Zrodlem prawdy o strukturze jest pkg/ontology, nie typ kolumny.
+	Content        string             `json:"content"`
+	Status         OntologyStatus     `json:"status"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ChangeNote     string             `json:"change_note"`
+	SubmittedAt    pgtype.Timestamptz `json:"submitted_at"`
+	ApprovedBy     pgtype.UUID        `json:"approved_by"`
+	ApprovedAt     pgtype.Timestamptz `json:"approved_at"`
+	ApprovalNote   *string            `json:"approval_note"`
+	ConstructCount int32              `json:"construct_count"`
 }
 
 // Per-organization seat purchase: how many therapist seats in which plan, at what negotiated price. Occupancy = active seat_assignments + pending invitations for the allocation (docs/38 §3).
@@ -1197,6 +1273,65 @@ type Report struct {
 	// Template that produced this document, if any. NULL = the standard per-modality pipeline.
 	TemplateID      pgtype.UUID `json:"template_id"`
 	TemplateVersion *int32      `json:"template_version"`
+	// Ktorym potokiem powstal raport. Raporty *_experimental nie licza sie do ReportsAvailable i nie wyzwalaja powiadomien (plan 16 sekcja 2.5).
+	PipelineVersion  string  `json:"pipeline_version"`
+	OntologyVersion  *string `json:"ontology_version"`
+	PromptVersions   []byte  `json:"prompt_versions"`
+	ValidatorVersion *string `json:"validator_version"`
+}
+
+type ReportClaim struct {
+	ID                    uuid.UUID      `json:"id"`
+	ReportID              uuid.UUID      `json:"report_id"`
+	ConstructID           string         `json:"construct_id"`
+	Categories            []string       `json:"categories"`
+	EpistemicStatus       string         `json:"epistemic_status"`
+	Confidence            pgtype.Numeric `json:"confidence"`
+	ReasoningCiphertext   []byte         `json:"reasoning_ciphertext"`
+	ReasoningEncryptedDek []byte         `json:"reasoning_encrypted_dek"`
+	IsEtiological         bool           `json:"is_etiological"`
+	CreatedAt             time.Time      `json:"created_at"`
+}
+
+type ReportClaimEvidence struct {
+	ClaimID uuid.UUID `json:"claim_id"`
+	SpanID  uuid.UUID `json:"span_id"`
+	Role    string    `json:"role"`
+}
+
+// Rejestr odrzuceń walidatora (S3) i naruszeń weryfikatora (S5). Od migracji 000095 niesie także uzasadnienie odrzuconego twierdzenia — szyfrowane, kasowane kaskadowo z raportem. Powód zmiany: progi i prompty stroi się na przykładach, a przykład bez treści nie stroi niczego (kanarek CBT 2026-08-23).
+type ReportClaimRejection struct {
+	ID          uuid.UUID `json:"id"`
+	ReportID    uuid.UUID `json:"report_id"`
+	ConstructID string    `json:"construct_id"`
+	Rule        string    `json:"rule"`
+	Detail      *string   `json:"detail"`
+	CreatedAt   time.Time `json:"created_at"`
+	// Uzasadnienie modelu dla odrzuconego twierdzenia. NULL dla odrzuceń niezwiązanych z pojedynczym twierdzeniem.
+	ReasoningCiphertext   []byte         `json:"reasoning_ciphertext"`
+	ReasoningEncryptedDek []byte         `json:"reasoning_encrypted_dek"`
+	ProposedCategories    []string       `json:"proposed_categories"`
+	EpistemicStatus       *string        `json:"epistemic_status"`
+	Confidence            pgtype.Numeric `json:"confidence"`
+	// span_ref spanów, na które powoływało się odrzucone twierdzenie. Bez FK do report_spans: to materiał do analizy, nie część grafu raportu.
+	EvidenceSpanRefs []string `json:"evidence_span_refs"`
+}
+
+type ReportPattern struct {
+	ID            uuid.UUID `json:"id"`
+	ReportID      uuid.UUID `json:"report_id"`
+	PatternRef    string    `json:"pattern_ref"`
+	PatternType   string    `json:"pattern_type"`
+	Topics        []string  `json:"topics"`
+	Method        string    `json:"method"`
+	MethodVersion string    `json:"method_version"`
+	SessionsCount int32     `json:"sessions_count"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+type ReportPatternSpan struct {
+	PatternID uuid.UUID `json:"pattern_id"`
+	SpanID    uuid.UUID `json:"span_id"`
 }
 
 // LLM-chat-style 👍/👎 feedback on therapist_reports. See docs/10_REPORT_CUSTOMIZATION.md §5.
@@ -1212,6 +1347,24 @@ type ReportRating struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	// Admin review status for the feedback dashboard. pending = unreviewed/to-do, done = admin marked as actioned.
 	AdminReviewStatus string `json:"admin_review_status"`
+}
+
+type ReportSpan struct {
+	ID                uuid.UUID `json:"id"`
+	SessionID         uuid.UUID `json:"session_id"`
+	TranscriptID      uuid.UUID `json:"transcript_id"`
+	SpanRef           string    `json:"span_ref"`
+	QuoteCiphertext   []byte    `json:"quote_ciphertext"`
+	QuoteEncryptedDek []byte    `json:"quote_encrypted_dek"`
+	TsStartMs         *int32    `json:"ts_start_ms"`
+	TsEndMs           *int32    `json:"ts_end_ms"`
+	Speaker           *string   `json:"speaker"`
+	Kind              string    `json:"kind"`
+	ObservedBy        string    `json:"observed_by"`
+	AboutPast         bool      `json:"about_past"`
+	RiskContent       bool      `json:"risk_content"`
+	SilenceBeforeMs   int32     `json:"silence_before_ms"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 // Therapist-authored document templates. A template composes typed SECTIONS over guardrailed executors — it is not a saved prompt (decision D7, docs/63 F10). Versions are append-only; sharing forks a version rather than linking to it.
