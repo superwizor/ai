@@ -48,7 +48,7 @@ func (v vertexLLM) GenerateJSON(ctx context.Context, req ontopipe.LLMRequest) (o
 		// byty. Zaden nie potrzebuje lancucha mysli — potrzebuja
 		// PRZEWIDYWALNEGO budzetu.
 		ThinkingConfig: &genai.ThinkingConfig{
-			ThinkingBudget: genai.Ptr(int32(0)),
+			ThinkingBudget: genai.Ptr(thinkingBudgetFor(req.Model)),
 		},
 	}
 
@@ -87,6 +87,33 @@ func (v vertexLLM) GenerateJSON(ctx context.Context, req ontopipe.LLMRequest) (o
 	}
 	return out, nil
 }
+
+// thinkingBudgetFor dobiera budzet myslenia do modelu.
+//
+// Flash dopuszcza ZERO i tego wlasnie chcemy: tokeny myslenia licza sie
+// do MaxOutputTokens, a pierwszy przebieg S1 na sesji z 382 chunkami
+// zwrocil pusta odpowiedz, bo rozmyslanie zjadlo caly budzet.
+//
+// Pro zera NIE dopuszcza ("The model does not support setting
+// thinking_budget to 0", 2026-08-23) — mysli zawsze. Dajemy mu MINIMUM,
+// zeby budzet byl przewidywalny zamiast dynamicznego. To nie jest
+// zubozenie etapu: S2 wybiera kategorie z ENUMU przy podanej definicji i
+// granicach konstruktu, a S4 przepisuje juz zatwierdzone byty. Praca
+// jakosciowa siedzi w kontekscie, nie w lancuchu mysli.
+func thinkingBudgetFor(model string) int32 {
+	if model == ModelExtractionFlash {
+		return 0
+	}
+	return minThinkingBudgetPro
+}
+
+// minThinkingBudgetPro to najmniejszy budzet akceptowany przez Pro.
+const minThinkingBudgetPro = 128
+
+// ModelExtractionFlash lustruje ontopipe.ModelExtraction — trzymane
+// osobno, zeby dobor budzetu nie zalezal od importu pakietu, ktory sam
+// wola ten adapter.
+const ModelExtractionFlash = "gemini-2.5-flash"
 
 // workerDB adaptuje pule do waskiego interfejsu ontopipe.
 type workerDB struct{}
