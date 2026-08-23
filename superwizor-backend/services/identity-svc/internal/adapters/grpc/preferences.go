@@ -29,16 +29,22 @@ import (
 // Whenever a new dimension is added: update this struct + the
 // validators + the renderer in ai-pipeline-svc.internal/reportprefs.
 type preferencesPayload struct {
-	Version            int32     `json:"version"`
-	Length             string    `json:"length,omitempty"`
-	Tone               string    `json:"tone,omitempty"`
-	QuoteDensity       string    `json:"quote_density,omitempty"`
-	DiagnosticLanguage string    `json:"diagnostic_language,omitempty"`
-	HypothesisHedging  string    `json:"hypothesis_hedging,omitempty"`
-	SectionEmphasis    []string  `json:"section_emphasis,omitempty"`
-	StrengthsFraming   string    `json:"strengths_framing,omitempty"`
-	FreeText           string    `json:"free_text,omitempty"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	Version            int32    `json:"version"`
+	Length             string   `json:"length,omitempty"`
+	Tone               string   `json:"tone,omitempty"`
+	QuoteDensity       string   `json:"quote_density,omitempty"`
+	DiagnosticLanguage string   `json:"diagnostic_language,omitempty"`
+	HypothesisHedging  string   `json:"hypothesis_hedging,omitempty"`
+	SectionEmphasis    []string `json:"section_emphasis,omitempty"`
+	StrengthsFraming   string   `json:"strengths_framing,omitempty"`
+	FreeText           string   `json:"free_text,omitempty"`
+	// ExperimentalDualRun to NIE jest preferencja stylu jak pozostale
+	// pola — decyduje, ILE raportow powstaje (plan 16 §2.5), i celowo NIE
+	// wchodzi do renderera promptu w ai-pipeline-svc/internal/reportprefs.
+	// Dlatego tez nie ma dla niej listy dozwolonych wartosci: bool nie ma
+	// czego walidowac.
+	ExperimentalDualRun bool      `json:"experimental_dual_run,omitempty"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // Closed allow-lists. The renderer in ai-pipeline-svc trusts whatever
@@ -131,7 +137,41 @@ func (s *Server) GetReportPreferences(ctx context.Context, req *identityv1.GetRe
 		payload = preferencesPayload{Version: schemaVersion}
 	}
 
-	return toProtoPreferences(payload), nil
+	out := toProtoPreferences(payload)
+	out.ExperimentalAvailable = s.experimentalAvailable(ctx, id)
+	return out, nil
+}
+
+// experimentalAvailable mowi, czy organizacja terapeuty ma wlaczony tryb
+// eksperymentalny (plan 16 §2.5).
+//
+// Czytane WPROST z app_config, bez czytnika appconfig: identity-svc nie
+// uzywa go nigdzie indziej, a wciagniecie calego cache'u z 30-sekundowym
+// TTL dla jednego bool na ekranie ustawien byloby wieksza zaleznoscia niz
+// korzyscia. Rozstrzygniecie jest tu WYLACZNIE kosmetyczne — decyduje o
+// widocznosci przelacznika. Bramka faktyczna siedzi w clinical-svc i
+// llm-workerze, ktore sprawdzaja flage przy kazdym zamowieniu.
+//
+// Blad odczytu -> false: ukryty przelacznik jest lepszy niz widoczny
+// przelacznik, ktory po klikniciu zwroci PermissionDenied.
+func (s *Server) experimentalAvailable(ctx context.Context, therapistID uuid.UUID) bool {
+	if s.pool == nil {
+		return false
+	}
+	var wartosc *string
+	err := s.pool.QueryRow(ctx, `
+		SELECT c.value
+		  FROM users u
+		  LEFT JOIN app_config c
+		         ON c.key = 'REPORT_EXPERIMENTAL_ENABLED'
+		        AND (c.organization_id = u.organization_id OR c.organization_id IS NULL)
+		 WHERE u.id = $1
+		 ORDER BY c.organization_id NULLS LAST
+		 LIMIT 1`, therapistID).Scan(&wartosc)
+	if err != nil || wartosc == nil {
+		return false
+	}
+	return *wartosc == "true"
 }
 
 // UpdateReportPreferences validates and persists a new preference
@@ -227,6 +267,8 @@ func (s *Server) UpdateReportPreferences(ctx context.Context, req *identityv1.Up
 		compareAndTrack("hypothesis_hedging", oldPayload.HypothesisHedging, payload.HypothesisHedging)
 		compareAndTrack("strengths_framing", oldPayload.StrengthsFraming, payload.StrengthsFraming)
 		compareAndTrack("free_text", oldPayload.FreeText, payload.FreeText)
+		compareAndTrack("experimental_dual_run",
+			boolLabel(oldPayload.ExperimentalDualRun), boolLabel(payload.ExperimentalDualRun))
 
 		oldSections := strings.Join(oldPayload.SectionEmphasis, ",")
 		newSections := strings.Join(payload.SectionEmphasis, ",")
@@ -261,28 +303,30 @@ func protoToPayload(p *identityv1.ReportPreferences) (preferencesPayload, error)
 		}
 	}
 	return preferencesPayload{
-		Length:             strings.TrimSpace(p.Length),
-		Tone:               strings.TrimSpace(p.Tone),
-		QuoteDensity:       strings.TrimSpace(p.QuoteDensity),
-		DiagnosticLanguage: strings.TrimSpace(p.DiagnosticLanguage),
-		HypothesisHedging:  strings.TrimSpace(p.HypothesisHedging),
-		SectionEmphasis:    sections,
-		StrengthsFraming:   strings.TrimSpace(p.StrengthsFraming),
-		FreeText:           p.FreeText, // intentional: don't trim — see sanitizeFreeText
+		Length:              strings.TrimSpace(p.Length),
+		Tone:                strings.TrimSpace(p.Tone),
+		QuoteDensity:        strings.TrimSpace(p.QuoteDensity),
+		DiagnosticLanguage:  strings.TrimSpace(p.DiagnosticLanguage),
+		HypothesisHedging:   strings.TrimSpace(p.HypothesisHedging),
+		SectionEmphasis:     sections,
+		StrengthsFraming:    strings.TrimSpace(p.StrengthsFraming),
+		FreeText:            p.FreeText, // intentional: don't trim — see sanitizeFreeText
+		ExperimentalDualRun: p.ExperimentalDualRun,
 	}, nil
 }
 
 func toProtoPreferences(p preferencesPayload) *identityv1.ReportPreferences {
 	out := &identityv1.ReportPreferences{
-		Version:            p.Version,
-		Length:             p.Length,
-		Tone:               p.Tone,
-		QuoteDensity:       p.QuoteDensity,
-		DiagnosticLanguage: p.DiagnosticLanguage,
-		HypothesisHedging:  p.HypothesisHedging,
-		SectionEmphasis:    p.SectionEmphasis,
-		StrengthsFraming:   p.StrengthsFraming,
-		FreeText:           p.FreeText,
+		Version:             p.Version,
+		Length:              p.Length,
+		Tone:                p.Tone,
+		QuoteDensity:        p.QuoteDensity,
+		DiagnosticLanguage:  p.DiagnosticLanguage,
+		HypothesisHedging:   p.HypothesisHedging,
+		SectionEmphasis:     p.SectionEmphasis,
+		StrengthsFraming:    p.StrengthsFraming,
+		FreeText:            p.FreeText,
+		ExperimentalDualRun: p.ExperimentalDualRun,
 	}
 	if !p.UpdatedAt.IsZero() {
 		out.UpdatedAt = timestamppb.New(p.UpdatedAt)
@@ -351,4 +395,13 @@ func sanitizeFreeText(p *preferencesPayload) error {
 	}
 	p.FreeText = cleaned
 	return nil
+}
+
+// boolLabel zapisuje przelacznik tak, jak reszta pol sledzenia zmian —
+// tekstem, zeby audyt mial jednolity ksztalt.
+func boolLabel(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
 }

@@ -775,6 +775,71 @@ resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
 
 # Cloud Run invoker bindings — Cloud Functions Gen2 == Cloud Run under the
 # hood; the trigger SA needs run.invoker on its own service.
+# notification-worker-on-experimental — dokument inbox dla raportu
+# eksperymentalnego (plan 16 §2.5).
+#
+# Osobna funkcja, nie galaz w on-status: tamta na "done" wysyla push
+# "Raport gotowy" i przestawia stan sesji w panelu klienta. Ta pisze
+# WYLACZNIE dokument inbox — zero pusha, bo ekspert zamowil ten raport
+# swiadomie, a dzwonek "Raport gotowy" o eksperymencie bylby dokladnie
+# tym pomyleniem, przed ktorym broni caly ten tryb.
+resource "google_cloudfunctions2_function" "notification_worker_on_experimental" {
+  name        = "notification-worker-on-experimental"
+  location    = var.region
+  project     = var.project_id
+  description = "Zapisuje dokument inbox po wygenerowaniu raportu eksperymentalnego"
+
+  build_config {
+    runtime     = "go126"
+    entry_point = "ProcessExperimentalReportReady"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.notification_worker_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 2
+    min_instance_count    = 0
+    available_memory      = "256Mi"
+    available_cpu         = "1"
+    timeout_seconds       = 60
+    service_account_email = var.notification_worker_sa_email
+
+    environment_variables = {
+      GCP_PROJECT_ID = var.project_id
+    }
+
+    secret_environment_variables {
+      key        = "DATABASE_URL"
+      project_id = var.project_id
+      secret     = var.db_url_secret_id
+      version    = "latest"
+    }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = var.report_experimental_ready_topic
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = var.notification_worker_sa_email
+  }
+}
+
+resource "google_cloud_run_service_iam_member" "notification_on_experimental_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.notification_worker_on_experimental.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.notification_worker_sa_email}"
+}
+
 resource "google_cloud_run_service_iam_member" "notification_on_status_invoker" {
   location = var.region
   project  = var.project_id

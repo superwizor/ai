@@ -82,20 +82,26 @@ func sesja(code string) *SessionContext {
 // wyjsciowej fazy F0 z planu 16: "ustawienie `ontology` bez implementacji
 // NIE psuje generacji raportu".
 //
-// Konfiguracja prosi o nowy potok, modalnosc ma aktywna ontologie — a
-// mimo to raport ma powstac stara sciezka, bo ontopipe wchodzi dopiero w
-// F2. Rozstrzygniecie musi byc legacy Z POWODEM, nie bledem.
-func TestBramkaF0_OntologiaBezImplementacjiNiePsujeGeneracji(t *testing.T) {
-	cfg := konfiguracjaZOntologia(t) // konfiguracja PROSI o nowy potok
+// Od F2 komplet warunkow (konfiguracja prosi + modalnosc ma AKTYWNA
+// wersje) prowadzi do nowego potoku. Do F2 ta sama sytuacja konczyla sie
+// legacy z powodem `pipeline_not_implemented` — bramka F0 pilnowala, ze
+// wlaczenie przelacznika przed czasem nie psuje generacji. Bramka
+// spelnila swoja role i zostaje zastapiona testem docelowego zachowania.
+func TestOntologiaGdyKonfiguracjaIAktywnaWersja(t *testing.T) {
+	cfg := konfiguracjaZOntologia(t)
 	d := resolvePipeline(context.Background(), cfg,
 		atrapaDostepnosci{version: "1.0.0"}, sesja("PPT"), cichyLogger())
 
-	if d.Pipeline != appconfig.PipelineLegacy {
-		t.Fatalf("potok = %q, oczekiwano %q — F2 jeszcze nie istnieje",
-			d.Pipeline, appconfig.PipelineLegacy)
+	if d.Pipeline != appconfig.PipelineOntology {
+		t.Fatalf("potok = %q, oczekiwano %q", d.Pipeline, appconfig.PipelineOntology)
 	}
-	if d.FallbackReason != fallbackNotImplemented {
-		t.Errorf("powod = %q, oczekiwano %q", d.FallbackReason, fallbackNotImplemented)
+	if d.FallbackReason != "" {
+		t.Errorf("powod spadku = %q przy udanym rozstrzygnieciu", d.FallbackReason)
+	}
+	// Wersja MUSI wrocic z rozstrzygnieciem: trafia na raport i bez niej
+	// nie da sie po fakcie odtworzyc, czym raport powstal.
+	if d.OntologyVersion != "1.0.0" {
+		t.Errorf("wersja ontologii = %q, oczekiwano 1.0.0", d.OntologyVersion)
 	}
 }
 
@@ -162,13 +168,17 @@ func TestNilKonfiguracjiNieWywracaGeneracji(t *testing.T) {
 
 // TestPowodSpadkuRozroznia — powody prowadza do roznych dzialan
 // operacyjnych, wiec nie moga byc zlane w jeden. "Brak aktywnej wersji"
-// to zadanie dla admina (aktywuj w Studio); "brak implementacji" znika
-// wraz z F2 i nie wymaga niczyjej reakcji.
+// to zadanie dla admina (aktywuj w Studio); "ontologia nieuzywalna" to
+// zadanie dla autora tresci; nieznany kod modalnosci to blad wdrozenia.
 func TestPowodSpadkuRozroznia(t *testing.T) {
-	if fallbackNoActiveOntology == fallbackNotImplemented ||
-		fallbackNoActiveOntology == fallbackUnknownModality ||
-		fallbackNotImplemented == fallbackUnknownModality {
-		t.Fatal("powody spadku musza byc rozroznialne w telemetrii")
+	powody := []string{fallbackNoActiveOntology, fallbackUnknownModality,
+		fallbackOntologyUnusable}
+	widziane := map[string]bool{}
+	for _, p := range powody {
+		if p == "" || widziane[p] {
+			t.Fatalf("powody spadku musza byc rozroznialne w telemetrii: %v", powody)
+		}
+		widziane[p] = true
 	}
 }
 
@@ -196,12 +206,43 @@ func TestPrzelacznikJestWolanyWSciezceProdukcyjnej(t *testing.T) {
 			"nie jest przelacznikiem")
 	}
 	// Slad na raporcie: bez niego nie da sie po fakcie powiedziec, czym
-	// raport powstal (plan 16 §2.3).
-	if !strings.Contains(kod, "pipeline.Pipeline)") {
+	// raport powstal (plan 16 §2.3). Od F2 to komplet — nazwa potoku,
+	// wersja ontologii, wersje promptow i walidatora.
+	if !strings.Contains(kod, "pipelineProvenance(pipeline)") {
 		t.Error("wynik rozstrzygniecia nie trafia do persistReport — raport bez sladu potoku")
+	}
+	// Galaz ontologiczna musi byc WOLANA, nie tylko istniec — dokladnie
+	// ta luka powstala 22.08 przy samym resolvePipeline.
+	if !strings.Contains(kod, "runOntologyPipeline(ctx, logger, session,") {
+		t.Error("ProcessTranscript nie wola potoku ontologicznego — implementacja bez sciezki " +
+			"produkcyjnej to ten sam blad, co przelacznik, ktorego nikt nie pyta")
+	}
+	if !strings.Contains(kod, "ontopipe.Persist(ctx,") {
+		t.Error("graf twierdzen nie jest utrwalany — raport bez proweniencji do spanow")
 	}
 	if !strings.Contains(kod, "report_pipeline_fallback") {
 		t.Error("spadek na legacy nie jest raportowany — telemetria nie zobaczy, " +
 			"ze ktos wlaczyl ontologie bez aktywnej wersji")
+	}
+
+	// Tryb eksperymentalny musi KONCZYC SIE przed lustrami produkcyjnymi.
+	// Etykiety mowcow nadpisalyby sesje, pamiec RAG zasilalaby przyszle
+	// raporty produkcyjne trescia z niezautoryzowanej ontologii, a
+	// session.status_changed wyslalby push "Raport gotowy" o czyms, co
+	// nie jest materialem klinicznym.
+	iEksperyment := strings.Index(kod, "Raport eksperymentalny KONCZY SIE TUTAJ")
+	if iEksperyment < 0 {
+		t.Fatal("brak wczesnego wyjscia dla raportu eksperymentalnego")
+	}
+	for _, lustro := range []string{
+		"generateAndSaveSpeakerLabels(ctx, session,",
+		"persistRAGMemoryV2(ctx, session,",
+		`publishSessionStatusChanged(ctx, ev.SessionID, "done")`,
+	} {
+		i := strings.Index(kod, lustro)
+		if i >= 0 && i < iEksperyment {
+			t.Errorf("lustro produkcyjne %q stoi PRZED wyjsciem eksperymentu — "+
+				"raport eksperymentalny by je uruchomil", lustro)
+		}
 	}
 }

@@ -428,6 +428,32 @@ class _ReportPreferencesSectionState
             onTap: () => _openFreeTextEditor(prefs),
           ),
         ]),
+        // Tryb eksperymentalny (plan 16 §2.5). Widoczny WYŁĄCZNIE, gdy
+        // serwer potwierdzi, że organizacja ma go włączonego — inaczej
+        // przełącznik po kliknięciu zwróciłby PermissionDenied.
+        //
+        // Własna karta, nie kolejny wiersz wśród preferencji stylu:
+        // pozostałe pola zmieniają JAK wygląda raport, ten zmienia ILE
+        // raportów powstaje i za ile. To inna kategoria decyzji.
+        if (prefs.experimentalAvailable) ...[
+          const SizedBox(height: 24),
+          _SectionLabel(t.report_prefs_experimental_label),
+          _SettingsCard(children: [
+            SwitchListTile.adaptive(
+              value: prefs.experimentalDualRun,
+              onChanged: (v) =>
+                  _save(prefs.deepCopy()..experimentalDualRun = v),
+              title: Text(
+                prefs.experimentalDualRun
+                    ? t.report_prefs_experimental_on
+                    : t.report_prefs_experimental_off,
+              ),
+              subtitle: Text(t.report_prefs_experimental_subtitle),
+              isThreeLine: true,
+              secondary: const Icon(Icons.science_outlined),
+            ),
+          ]),
+        ],
       ],
     );
   }

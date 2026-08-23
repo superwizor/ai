@@ -4200,6 +4200,30 @@ abstract class AppLocalizations {
   /// **'Dodatkowe wskazówki'**
   String get report_prefs_free_text_label;
 
+  /// No description provided for @report_prefs_experimental_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tryb eksperymentalny'**
+  String get report_prefs_experimental_label;
+
+  /// No description provided for @report_prefs_experimental_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Każda nowa sesja dostanie DODATKOWY raport zbudowany na ontologii, której eksperci jeszcze nie zatwierdzili. Nie służy do pracy klinicznej — powstaje obok zwykłego raportu, do porównania.'**
+  String get report_prefs_experimental_subtitle;
+
+  /// No description provided for @report_prefs_experimental_on.
+  ///
+  /// In pl, this message translates to:
+  /// **'Włączony'**
+  String get report_prefs_experimental_on;
+
+  /// No description provided for @report_prefs_experimental_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyłączony'**
+  String get report_prefs_experimental_off;
+
   /// No description provided for @report_prefs_free_text_subtitle.
   ///
   /// In pl, this message translates to:

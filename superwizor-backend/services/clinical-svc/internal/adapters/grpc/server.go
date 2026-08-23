@@ -42,6 +42,22 @@ type SessionEventPublisher interface {
 	// via session.status_changed (docs/21). Used for "cancelled".
 	PublishSessionStatusChanged(ctx context.Context, sessionID, status string) error
 	PublishAnalyticsEvent(ctx context.Context, event analytics.Event) error
+	// PublishExperimentalReportRequested zamawia raport eksperymentalny
+	// (plan 16 §2.5) na istniejacym temacie transcript.completed —
+	// atrybuty odrozniaja go od zwyklego przebiegu. Osobny temat
+	// wymagalby drugiej funkcji, drugiej subskrypcji i drugiego miejsca,
+	// w ktorym moze rozjechac sie logika generacji.
+	PublishExperimentalReportRequested(ctx context.Context, ev ExperimentalReportRequest) error
+}
+
+// ExperimentalReportRequest to zamowienie raportu eksperymentalnego.
+type ExperimentalReportRequest struct {
+	SessionID         string
+	TranscriptID      string
+	RequestID         string
+	ModalityCode      string
+	OntologyVersionID string
+	RequestedBy       string
 }
 
 // TxOpener abstracts "start a transaction, give me a Querier scoped to

@@ -474,6 +474,12 @@ SELECT
     count(r.id)
   FROM sessions s
   LEFT JOIN reports r ON r.session_id = s.id
+                     -- Raporty eksperymentalne NIE sa materialem
+                     -- klinicznym (plan 16 §2.5) i nie moga podbijac
+                     -- licznika, ktory terapeuta czyta jako "tyle mam
+                     -- raportow". Filtr w JOIN, nie w WHERE: w WHERE
+                     -- wycialby sesje bez raportu z calej statystyki.
+                     AND r.pipeline_version <> 'ontology_s1s5_experimental'
  WHERE s.patient_file_id = $1 AND s.deleted_at IS NULL`
 
 const sqlLongestGap = `

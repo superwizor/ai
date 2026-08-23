@@ -74,6 +74,11 @@ variable "notification_worker_sa_email" {
   description = "Email of the notification-svc service account (shared by Cloud Run server + 3 worker functions)"
 }
 
+variable "report_experimental_ready_topic" {
+  description = "Temat report.experimental_ready (plan 16 §2.5)"
+  type        = string
+}
+
 variable "session_deleted_topic" {
   type        = string
   description = "Pub/Sub topic ID for session.deleted (clinical-svc → notification-worker-on-deleted cleanup of Firestore mirror + inbox)"

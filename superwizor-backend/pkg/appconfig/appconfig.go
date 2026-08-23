@@ -43,6 +43,19 @@ const (
 	KeyAIChatMode          = "AI_CHAT_MODE"
 	KeyAIChatClassifierTau = "AI_CHAT_CLASSIFIER_TAU"
 	KeyAIChatQuotaMicroUSD = "AI_CHAT_QUOTA_MICRO_USD"
+
+	// KeyReportExperimentalEnabled wlacza raporty eksperymentalne —
+	// generowane na ontologii BEZ autoryzacji ekspertow (plan 16 §2.5).
+	//
+	// Bramka chroni raport PRODUKCYJNY, a nie zabrania ekspertom patrzec
+	// na wyniki szkicu: bez tego petla autoryzacyjna (F1 -> F2) nie ma na
+	// czym pracowac, bo nikt nie kalibruje `values` i `min_evidence` na
+	// sucho. Wlaczane PER ORGANIZACJE (ekspercka / BETA), nigdy globalnie.
+	KeyReportExperimentalEnabled = "REPORT_EXPERIMENTAL_ENABLED"
+	// KeyReportExperimentalDailyLimit ogranicza liczbe raportow
+	// eksperymentalnych na terapeute na dobe. Potok wieloetapowy na Pro
+	// jest drogi, a dual-run podwaja koszt kazdej sesji.
+	KeyReportExperimentalDailyLimit = "REPORT_EXPERIMENTAL_DAILY_LIMIT"
 )
 
 // KeyReportPipeline zwraca klucz przelacznika potoku raportu dla jednej
@@ -99,6 +112,10 @@ var defaults = map[string]string{
 	KeyAIChatMode:          ModeDefinedOps,
 	KeyAIChatClassifierTau: "0.85",
 	KeyAIChatQuotaMicroUSD: "4000000",
+	// Domyslnie WYLACZONE: raport eksperymentalny powstaje na ontologii
+	// bez autoryzacji, wiec wlaczenie musi byc decyzja, nie zaniechaniem.
+	KeyReportExperimentalEnabled:    "false",
+	KeyReportExperimentalDailyLimit: "5",
 }
 
 // init dopisuje domyslne "legacy" dla kazdej znanej modalnosci.
@@ -338,6 +355,25 @@ func (r *Reader) Float64(ctx context.Context, key string, org uuid.UUID) float64
 
 // ChatEnabled and ChatMode are the two hot-path reads, named so the call
 // sites read as intent rather than as string lookups.
+// ExperimentalReportsEnabled mowi, czy organizacja moze generowac
+// raporty eksperymentalne.
+func (r *Reader) ExperimentalReportsEnabled(ctx context.Context, org uuid.UUID) bool {
+	return r.Bool(ctx, KeyReportExperimentalEnabled, org)
+}
+
+// ExperimentalDailyLimit zwraca dobowy limit na terapeute.
+//
+// Wartosc <= 0 traktujemy jako BRAK ZGODY, nie jako brak limitu:
+// odwrotna interpretacja zamienialaby literowke w konfiguracji w
+// nieograniczony wydatek na modelu Pro.
+func (r *Reader) ExperimentalDailyLimit(ctx context.Context, org uuid.UUID) int64 {
+	n := r.Int64(ctx, KeyReportExperimentalDailyLimit, org)
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
 func (r *Reader) ChatEnabled(ctx context.Context, org uuid.UUID) bool {
 	return r.Bool(ctx, KeyAIChatEnabled, org)
 }

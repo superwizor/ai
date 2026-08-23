@@ -51,6 +51,18 @@ resource "google_pubsub_topic" "transcript_completed" {
   project = var.project_id
 }
 
+# report.experimental_ready — raport eksperymentalny gotowy (plan 16 §2.5).
+#
+# OSOBNY temat, nie session.status_changed. Tamten strumien jest lustrem
+# produkcyjnym: konsument na "done" wysyla push "Raport gotowy" i
+# przestawia stan sesji w panelu klienta. Raport eksperymentalny nie jest
+# materialem klinicznym i nie ma prawa uruchomic zadnej z tych rzeczy —
+# jedyne, co robi jego konsument, to dokument inbox odswiezajacy liste.
+resource "google_pubsub_topic" "report_experimental_ready" {
+  name    = "report.experimental_ready"
+  project = var.project_id
+}
+
 # report.generated RETIRED (docs/21 Faza-4): llm-worker now publishes the
 # terminal-success transition to session.status_changed ("done") and
 # notification-worker-on-status owns the report-ready fan-out. The topic,
@@ -383,6 +395,7 @@ output "audio_object_finalized_subscription_id" { value = google_pubsub_subscrip
 output "audio_object_finalized_subscription_name" { value = google_pubsub_subscription.audio_object_finalized_sub.name }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
+output "report_experimental_ready_topic" { value = google_pubsub_topic.report_experimental_ready.id }
 output "session_status_changed_topic" { value = google_pubsub_topic.session_status_changed.id }
 output "session_status_changed_dlq_topic" { value = google_pubsub_topic.session_status_changed_dlq.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }

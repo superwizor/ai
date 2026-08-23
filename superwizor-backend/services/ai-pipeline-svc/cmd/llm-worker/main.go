@@ -23,13 +23,16 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/genai"
 
+	"github.com/superwizor-ai/backend/pkg/appconfig"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 	"github.com/superwizor-ai/backend/pkg/llmcost"
 	"github.com/superwizor-ai/backend/pkg/logging"
+	"github.com/superwizor-ai/backend/pkg/ontology"
 	"github.com/superwizor-ai/backend/pkg/rag"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/ontopipe"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/pseudonymize"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
@@ -249,7 +252,15 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return err
 	}
 
+	// Zamowienie eksperymentalne (plan 16 §2.5). Rozpoznawane po JEDNYM
+	// atrybucie, zeby nie dalo sie wpasc w ten tryb przez czesciowo
+	// wypelniony komunikat.
+	eksperyment := experimentalFromAttributes(msgData.Message.Attributes)
+
 	logger = logger.With("session_id", ev.SessionID, "transcript_id", ev.TranscriptID)
+	if eksperyment != nil {
+		logger = logger.With("experimental", true)
+	}
 	logger.Info("processing transcript")
 
 	startTime := time.Now()
@@ -410,15 +421,83 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		ragContext = ""
 	}
 
-	// Call 2 — the full report, now grounded in the retrieved context.
-	// workChunks = zredagowany tekst gdy LLM_PSEUDONYMIZE != off.
-	reportJSON, tokenStats, err := generateReportBody(ctx, ev.SessionID, session.ReportLanguage,
-		modalityPrompt, ragContext, workChunks, session.ReportPreferences, metadataPayload, stats)
-	if err != nil {
-		return failGen(err, "report")
+	// Gałąź ontologiczna (plan 16, F2) zastępuje WYŁĄCZNIE call-2.
+	// Wszystko powyżej — call-1, pseudonimizacja, retrieval — zostaje
+	// wspólne, bo opisuje sesję, a nie konceptualizację.
+	//
+	// FAIL-CLOSED także tutaj: aktywna wersja, której nie da się
+	// załadować, cofa generację na starą ścieżkę zamiast wywalić raport.
+	// Wskaźnik aktywacji i użyteczność treści to dwie różne rzeczy i
+	// druga może się zepsuć po pierwszej.
+	var (
+		reportJSON string
+		tokenStats TokenStats
+		report     ReportPayload
+		ontoRes    ontopipe.Result
+		ontoActive *ontology.Ontology
+	)
+	if eksperyment != nil {
+		// Jedyna bramka, ktora ten tryb omija, to AKTYWNA WERSJA.
+		// Wszystko pozostale — R1-R10, T22, V1-V6 — dziala identycznie.
+		modID, kod, merr := resolveExperimentalModality(ctx, session, eksperyment.ModalityOverride)
+		if merr != nil {
+			logger.Error("eksperyment: nieznana modalnosc", "error", merr)
+			return nil // terminalne: zly kod nie naprawi sie przy retry
+		}
+		o, _, ver, oerr := loadExperimentalOntology(ctx, modID, eksperyment.OntologyVersionID)
+		if oerr != nil {
+			logger.Error("eksperyment: ontologia nie do uzycia", "error", oerr,
+				"modality_code", kod)
+			return nil // terminalne z tego samego powodu
+		}
+		pipeline = pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: ver}
+		ontoActive = o
+		report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
+			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o)
+		if err != nil {
+			return failGen(err, "ontopipe_experimental")
+		}
+		// Baner jest czescia ARTEFAKTU, nie UI: raport bywa kopiowany,
+		// eksportowany i ogladany poza aplikacja, a wtedy oznaczenie
+		// spoza tresci nie istnieje.
+		report.ReportMarkdown = experimentalBanner(kod, ver) + report.ReportMarkdown
+		report.Title = "[EKSPERYMENT] " + report.Title
+		reportJSON, err = ontologyReportJSON(report)
+		if err != nil {
+			return failGen(err, "ontopipe_serialize")
+		}
+	} else if pipeline.Pipeline == appconfig.PipelineOntology {
+		o, ver, oerr := loadActiveOntology(ctx, session.ModalityID)
+		if oerr != nil {
+			logger.Error("ontologia aktywna nieuzywalna — spadek na legacy",
+				"error", oerr, "system_code", session.SystemCode)
+			pipeline = pipelineDecision{Pipeline: appconfig.PipelineLegacy,
+				FallbackReason: fallbackOntologyUnusable}
+		} else {
+			pipeline.OntologyVersion = ver
+			ontoActive = o
+			report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
+				transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o)
+			if err != nil {
+				return failGen(err, "ontopipe")
+			}
+			reportJSON, err = ontologyReportJSON(report)
+			if err != nil {
+				return failGen(err, "ontopipe_serialize")
+			}
+		}
 	}
 
-	var report ReportPayload
+	if eksperyment == nil && pipeline.Pipeline == appconfig.PipelineLegacy {
+		// Call 2 — the full report, now grounded in the retrieved context.
+		// workChunks = zredagowany tekst gdy LLM_PSEUDONYMIZE != off.
+		reportJSON, tokenStats, err = generateReportBody(ctx, ev.SessionID, session.ReportLanguage,
+			modalityPrompt, ragContext, workChunks, session.ReportPreferences, metadataPayload, stats)
+		if err != nil {
+			return failGen(err, "report")
+		}
+	}
+
 	if err := json.Unmarshal([]byte(reportJSON), &report); err != nil {
 		// Surface the head of the response so we can see what Gemini
 		// returned vs what we expected (e.g. wrong shape, error JSON,
@@ -442,11 +521,62 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("parse report: %w", err)
 	}
 
-	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime), pipeline.Pipeline)
+	prov := pipelineProvenance(pipeline)
+	if eksperyment != nil {
+		prov.Pipeline = PipelineExperimental
+	}
+	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON,
+		tokenStats, time.Since(startTime), prov)
 	if err != nil {
 		// DB write failure — transient. NACK, retry; do not mark FAILED.
 		logger.Error("persist report (transient — pubsub will retry)", "error", err)
 		return fmt.Errorf("persist: %w", err)
+	}
+
+	// Graf twierdzen z proweniencja do spanow. Zapis JEST czescia
+	// raportu, nie dodatkiem: bez niego nie ma klikalnych cytatow w UI,
+	// odtwarzalnosci do audytu ani benchmarku porownujacego wersje
+	// ontologii na tym samym materiale. Blad traktujemy jak kazdy inny
+	// blad zapisu — przejsciowo, z retry.
+	if ontoActive != nil {
+		repID, perr := uuid.Parse(reportID)
+		if perr != nil {
+			return fmt.Errorf("parse report id: %w", perr)
+		}
+		transID, perr := uuid.Parse(ev.TranscriptID)
+		if perr != nil {
+			return fmt.Errorf("parse transcript id: %w", perr)
+		}
+		if perr := ontopipe.Persist(ctx, workerDB{}, crypto, ontopipe.PersistInput{
+			ReportID: repID, SessionID: session.ID, TranscriptID: transID,
+		}, ontoRes); perr != nil {
+			logger.Error("persist grafu twierdzen (transient — pubsub will retry)", "error", perr)
+			return fmt.Errorf("persist ontopipe: %w", perr)
+		}
+	}
+
+	// Raport eksperymentalny KONCZY SIE TUTAJ.
+	//
+	// Zadnych luster produkcyjnych: etykiety mowcow nadpisalyby sesje,
+	// pamiec RAG zasilalaby przyszle raporty produkcyjne trescia z
+	// niezautoryzowanej ontologii, a session.status_changed wyslalby
+	// powiadomienie "Raport gotowy" o czyms, co nie jest materialem
+	// klinicznym. Sesja jest juz COMPLETED z przebiegu produkcyjnego —
+	// dotkniecie jej statusu tutaj bylo by regresja, nie porzadkiem.
+	if eksperyment != nil {
+		if lerr := linkExperimentalReport(ctx, eksperyment.RequestID, reportID); lerr != nil {
+			logger.Warn("eksperyment: dowiazanie zamowienia", "error", lerr)
+		}
+		if ierr := publishExperimentalReady(ctx, session, reportID); ierr != nil {
+			logger.Warn("eksperyment: powiadomienie inbox", "error", ierr)
+		}
+		logger.Info("done (eksperyment)",
+			"report_id", reportID,
+			"ontology_version", pipeline.OntologyVersion,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+			"input_tokens", tokenStats.InputTokens,
+			"output_tokens", tokenStats.OutputTokens)
+		return nil
 	}
 
 	// Po analizie LLM: generate speaker labels z speaker_groups + zapisz
@@ -472,6 +602,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 	// FCM "report ready" push + inbox doc) — docs/21 Faza-4. The old
 	// report.generated topic + notification-worker-on-report are retired.
 	_ = publishSessionStatusChanged(ctx, ev.SessionID, "done")
+
+	// Dual-run (plan 16 §2.5): raport eksperymentalny OBOK produkcyjnego,
+	// jesli terapeuta ma wlaczony przelacznik. Po opublikowaniu "done",
+	// zeby zamowienie nie mialo szansy opoznic powiadomienia o raporcie,
+	// na ktory terapeuta faktycznie czeka.
+	maybeDualRun(ctx, logger, session, ev.TranscriptID)
 
 	logger.Info("done",
 		"report_id", reportID,
@@ -1626,6 +1762,42 @@ func schemaToVertexSchema(s map[string]any) *genai.Schema {
 		}
 	}
 
+	// Ograniczenia rozmiaru wyjscia. Do 2026-08-23 byly po cichu
+	// gubione — schemat je deklarowal, a do Vertexa nie docieraly.
+	// Dla potoku ontologicznego to nie kosmetyka: pomiar na czacie
+	// (21.08) pokazal, ze instrukcje dlugosciowe w prompcie sa szumem
+	// (-10%, -16%, +15% w trzech przebiegach), a zacisk maxItems dziala.
+	// Kontrola rozmiaru nalezy do schematu, wiec schemat musi dojechac.
+	//
+	// Sciezki starej generacji to NIE dotyka: report_schema.json nie
+	// zawiera zadnego z tych kluczy (test TestLegacySchemaBezOgraniczen).
+	setInt := func(key string, dst **int64) {
+		switch v := s[key].(type) {
+		case int64:
+			*dst = genai.Ptr(v)
+		case int:
+			*dst = genai.Ptr(int64(v))
+		case float64:
+			*dst = genai.Ptr(int64(v))
+		}
+	}
+	setInt("minItems", &vs.MinItems)
+	setInt("maxItems", &vs.MaxItems)
+	setInt("maxLength", &vs.MaxLength)
+
+	setFloat := func(key string, dst **float64) {
+		switch v := s[key].(type) {
+		case float64:
+			*dst = genai.Ptr(v)
+		case int:
+			*dst = genai.Ptr(float64(v))
+		case int64:
+			*dst = genai.Ptr(float64(v))
+		}
+	}
+	setFloat("minimum", &vs.Minimum)
+	setFloat("maximum", &vs.Maximum)
+
 	return vs
 }
 
@@ -2572,7 +2744,37 @@ func transcriptHeadTail(chunks []transcriptfmt.Chunk, n int) string {
 // pipelineVersion nie jest ozdoba: bez niego nie da sie po fakcie
 // odroznic raportu ze starej sciezki od ontologicznego ani wykluczyc
 // raportow eksperymentalnych z licznika ReportsAvailable (plan 16 §2.3).
-func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration, pipelineVersion string) (string, error) {
+// provenance to slad potoku zapisywany na raporcie (migracja 000089).
+//
+// Komplet, nie sama nazwa potoku: bez wersji ontologii i wersji promptow
+// nie da sie odtworzyc, czym powstal raport sprzed miesiaca — a to jest
+// wymog audytu i warunek sensownego benchmarku.
+type provenance struct {
+	Pipeline        string
+	OntologyVersion string
+	PromptVersions  map[string]string
+	Validator       string
+}
+
+// pipelineProvenance sklada slad dla jednej generacji.
+func pipelineProvenance(d pipelineDecision) provenance {
+	p := provenance{Pipeline: d.Pipeline}
+	if d.Pipeline != appconfig.PipelineOntology {
+		// Stara sciezka nie ma ontologii ani wersjonowanych promptow
+		// etapow — wpisanie ich bylo by falszem w kolumnie audytowej.
+		return p
+	}
+	p.OntologyVersion = d.OntologyVersion
+	p.PromptVersions = map[string]string{
+		"s1": ontopipe.PromptVersionS1,
+		"s2": ontopipe.PromptVersionS2,
+		"s4": ontopipe.PromptVersionS4,
+	}
+	p.Validator = ontopipe.ValidatorVersion
+	return p
+}
+
+func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration, prov provenance) (string, error) {
 	transID, err := uuid.Parse(transcriptID)
 	if err != nil {
 		return "", err
@@ -2611,15 +2813,17 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			sentiment_label, risk_level, speaker_role_inference,
 			llm_model, llm_input_tokens,
 			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd,
-			pipeline_version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+			pipeline_version, ontology_version, prompt_versions, validator_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+		        $18, $19, $20)`,
 		reportID, session.ID, transID, session.ModalityID,
 		ciphertext, encDEK, report.Title, report.SummaryShort,
 		nil, nil, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), nullableCost(costUSD, costErr),
-		pipelineVersion)
+		prov.Pipeline, nullableText(prov.OntologyVersion), promptVersionsJSON(prov.PromptVersions),
+		nullableText(prov.Validator))
 	if err != nil {
 		return "", err
 	}
@@ -2864,4 +3068,28 @@ func nullableCost(costUSD float64, err error) any {
 		return nil
 	}
 	return costUSD
+}
+
+// nullableText zapisuje NULL zamiast pustego stringa.
+//
+// Roznica jest audytowa: pusty string mowi "wersja to pusty napis",
+// a NULL mowi "ta sciezka nie ma wersji". Raporty ze starej generacji
+// maja miec to drugie.
+func nullableText(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// promptVersionsJSON serializuje wersje promptow etapow.
+func promptVersionsJSON(m map[string]string) any {
+	if len(m) == 0 {
+		return nil
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	return b
 }
