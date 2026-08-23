@@ -39,15 +39,26 @@ type pipelineDecision struct {
 	// legacy, a to pole mowi dlaczego — zasila telemetrie
 	// report_pipeline_fallback i panel Jakosci.
 	FallbackReason string
+	// OntologyVersion to semver AKTYWNEJ wersji, ktora obsluzy ten
+	// raport. Trafia na raport (kolumna ontology_version z migracji
+	// 000089) — bez niej nie da sie odtworzyc, czym raport powstal.
+	OntologyVersion string
 }
 
 // Powody spadku na legacy. Rozdzielone, bo prowadza do roznych dzialan:
-// brak aktywnej wersji to zadanie dla admina (aktywuj), brak kodu
-// modalnosci to blad konfiguracji, a not_implemented znika wraz z F2.
+// brak aktywnej wersji to zadanie dla admina (aktywuj), a nieznany kod
+// modalnosci to blad konfiguracji.
+//
+// `pipeline_not_implemented` zniknal wraz z F2 — od momentu, gdy ontopipe
+// istnieje, spadek z tego powodu bylby klamstwem w telemetrii.
 const (
 	fallbackNoActiveOntology = "no_active_ontology"
 	fallbackUnknownModality  = "unknown_modality_code"
-	fallbackNotImplemented   = "pipeline_not_implemented"
+	// fallbackOntologyUnusable: wskaznik aktywnej wersji istnieje, ale
+	// tresci nie da sie zaladowac (nie przechodzi metaschematu albo
+	// znikla). Osobny powod, bo wymaga innej reakcji niz brak aktywacji:
+	// to jest uszkodzona ontologia, nie jej nieobecnosc.
+	fallbackOntologyUnusable = "ontology_unusable"
 )
 
 // ontologyAvailability mowi, czy modalnosc ma aktywna wersje ontologii.
@@ -115,14 +126,9 @@ func resolvePipeline(
 			FallbackReason: fallbackNoActiveOntology}
 	}
 
-	// F0: potok istnieje jako rozstrzygniecie, ale nie ma jeszcze
-	// implementacji (ontopipe wchodzi w F2). Zwracamy legacy z jawnym
-	// powodem — to jest wlasnie test bramki F0: ustawienie `ontology`
-	// przed czasem NIE MOZE zepsuc generacji raportu.
-	logger.Info("przelacznik potoku: ontologia zadana, implementacja jeszcze nie gotowa — legacy",
+	logger.Info("przelacznik potoku: ontologia",
 		"system_code", sc.SystemCode, "ontology_version", version)
-	return pipelineDecision{Pipeline: appconfig.PipelineLegacy,
-		FallbackReason: fallbackNotImplemented}
+	return pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: version}
 }
 
 // pipelineConfig to czytnik konfiguracji dla przelacznika.
