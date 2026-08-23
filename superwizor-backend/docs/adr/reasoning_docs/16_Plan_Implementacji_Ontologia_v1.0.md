@@ -16,6 +16,7 @@
 | 1.0 | 2026-08-22 | Pierwsza wersja planu. |
 | 1.1 | 2026-08-22 | Sekcja 2.5: tryb eksperymentalny — raporty S1–S5 na szkicu ontologii przed autoryzacją; wejście główne: przełącznik w ustawieniach aplikacji (dual-run per nowa sesja), uzupełniające: akcja na żądanie (stare sesje + inna modalność); doprecyzowanie bramki fail-closed; F2-DoD. |
 | 1.2 | 2026-08-22 | DECYZJA PRODUKTOWA: ontologia przenosi się z repo (read-only, PR/CODEOWNERS) do bazy — Ontology Studio z cyklem życia draft → ready_for_review → approved, nowa rola ONTOLOGY_EDITOR, aktywacja produkcyjna wyłącznie przez SUPERWIZOR_ADMIN. Własności bezpieczeństwa dawnego D2 odtworzone innymi środkami (four-eyes, niemutowalność approved, walidacja serwerowa, audyt). Pliki ontology/ w repo degradują do seedów. |
+| 1.3 | 2026-08-23 | F2 zamknięta po stronie kodu: ontopipe S1/S1.5/S2/S3/S4/S5, zapis grafu twierdzeń (000093), wpięcie w llm-worker za fail-closed przełącznikiem, tryb eksperymentalny obydwoma wejściami (przełącznik dual-run + GenerateExperimentalReport), rejestr zamówień (000094). Otwarte: F1 (autoryzacja ekspercka treści) i F3 (złoty zestaw) — obie zależne od pracy ludzi, nie kodu. |
 
 Ten dokument nie powtarza architektury — mapuje ją na repozytorium. Gdzie
 dokument 11 mówi „co i dlaczego", ten mówi „gdzie, czym i w jakiej
