@@ -1,0 +1,161 @@
+# Ontologia Gestalt — SZKIC 0.1.0.
+#
+# Status: DO AUTORYZACJI EKSPERCKIEJ (D2). approved_by puste = CI blokuje prod.
+#
+# Pochodzenie treści: dokument 15 §3 (analiza dopasowania modalności). Ten
+# plik rozwija tamten fragment ilustracyjny do pełnego szkicu — z granicami
+# `is_not`, rejestrem pomyłek i progami dowodowymi, których szkic w dok. 15
+# nie miał.
+#
+# ══ Dlaczego Gestalt enumeruje się lepiej, niż sugeruje reputacja ══
+#
+# Modalność uchodząca za najmniej strukturalną okazała się bliska duchowi
+# tej architektury: fenomenologiczny etos („obserwacja przed interpretacją,
+# opis przed oceną") jest TOŻSAMY z dyscypliną statusów epistemicznych.
+# Raport Gestalt będzie naturalnie observation-heavy, a format przestrzeni
+# hipotez z `next_session_questions` pasuje do stylu dialogicznego lepiej
+# niż w którejkolwiek innej modalności (dok. 15 §3.1).
+#
+# ══ Sufit pokrycia danych — ograniczenie, nie wada ontologii ══
+#
+# Znacząca część materiału Gestalt jest NIEWERBALNA, a źródłem jest
+# transkrypt audio. Materiał cielesny wchodzi wyłącznie zwerbalizowany:
+# „widzę, że zaciska pan pięści" wypowiedziane przez terapeutę JEST spanem
+# (kind: behavioral, observed_by: therapist) i nie narusza R10 — to
+# wypowiedź terapeuty O KLIENCIE, nie inferencja systemu o terapeucie.
+#
+# Konsekwencja dla benchmarku (dok. 15 §3.2 pkt 3): recall Gestalt będzie
+# strukturalnie niższy NIE z winy systemu, tylko kanału danych. Protokół
+# anotacji musi to odróżniać polem `osiągalność: transcript | in_person_only`,
+# inaczej Gestalt „obleje" niesłusznie.
+#
+# ══ Czego tu NIE MA i dlaczego ══
+#
+# `detectors:` ze szkicu w dok. 15 (markery leksykalne dla introjekcji,
+# wzorzec `sequence` dla defleksji) NIE wchodzi do tego pliku: metaschemat
+# v1.4 takiego pola nie zna, a wymyślanie go tutaj obeszłoby walidację.
+# Detektory to osobny ticket — dopisanie ich do metaschematu wymaga decyzji,
+# jak deterministyczny marker ma się do wyniku S2 (wspiera czy zastępuje).
+
+modality: gestalt
+version: 0.1.0
+approved_by: []                 # PUSTE do autoryzacji — blokuje prod (CI)
+
+constructs:
+
+  contact_interruption:
+    label_pl: "Przerwanie kontaktu"
+    aliases: ["mechanizm przerwania", "zakłócenie kontaktu"]
+    definition: >
+      Sposób, w jaki przerywa się cykl kontaktu ze środowiskiem. NIE jest
+      to mechanizm obronny w rozumieniu psychodynamicznym: opisuje formę
+      przerwania TU I TERAZ, nie strukturę intrapsychiczną.
+      PLACEHOLDER definicji kanonicznej (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    # Kanon 6 pozycji wg dok. 15 §3.1. ZWERYFIKOWAĆ: część źródeł wymienia
+    # 5 (bez egotyzmu), część 7 (z proflekcją) — pierwszy punkt sesji
+    # autoryzacyjnej.
+    values: ["konfluencja", "introjekcja", "projekcja", "retrofleksja",
+             "defleksja", "egotyzm"]
+    # Przerwanie kontaktu jest zawsze ODCZYTEM procesu, nigdy zapisem —
+    # nawet gdy marker leksykalny jest jednoznaczny.
+    forced_status: interpretation
+    min_evidence: {spans: 2}
+    is_not: [awareness_zone, contact_cycle_phase]
+    common_confusions:
+      - {input: "mechanizm obronny", correct: "przerwanie kontaktu opisuje proces tu i teraz", note: "nie mieszać z aparatem psychodynamicznym"}
+      - {input: "opór", correct: "przerwanie kontaktu jest twórczym przystosowaniem, nie oporem", note: "różnica wartościująca — kluczowa dla etosu modalności"}
+      - {input: "unikanie", correct: "defleksja, jeśli to odwrócenie kontaktu", note: "unikanie jest terminem CBT, nie Gestalt"}
+    examples:
+      - 'Muszę być dla wszystkich miły — introjekcja przyjęta bez przetrawienia'
+      - 'Wszyscy w pracy mnie oceniają, bez danych o tym — projekcja'
+      - 'Zmiana tematu w odpowiedzi na pytanie o uczucia — defleksja'
+    counter_examples:
+      - 'Świadoma decyzja o niekonfrontowaniu — to wybór, nie przerwanie'
+
+  contact_cycle_phase:
+    label_pl: "Faza cyklu kontaktu"
+    definition: >
+      Miejsce w cyklu: doznanie → świadomość → mobilizacja → działanie →
+      kontakt → wycofanie. Przerwanie cyklu rozpoznaje się po BRAKUJĄCEJ
+      fazie, nie po obecności przerwania. PLACEHOLDER (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["doznanie", "świadomość", "mobilizacja", "działanie",
+             "kontakt", "wycofanie"]
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "etap terapii", correct: "faza cyklu dotyczy JEDNEJ sekwencji doświadczenia", note: "nie mylić z fazą procesu terapeutycznego"}
+
+  awareness_zone:
+    label_pl: "Strefa świadomości"
+    definition: >
+      Skąd pochodzi materiał, którego klient jest świadomy: strefa
+      wewnętrzna (doznania z ciała), zewnętrzna (świat zmysłami),
+      pośrednia (myślenie, wyobrażanie, interpretowanie).
+      Czysta etykieta klasyfikacyjna nad spanem. PLACEHOLDER (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["wewnętrzna", "zewnętrzna", "pośrednia"]
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: 'czuję, że mnie nie lubi', correct: 'strefa pośrednia — to interpretacja, nie doznanie', note: 'konstrukcja czuję-że prawie zawsze wprowadza myślenie; ta sama pułapka co w CBT'}
+
+  polarity:
+    label_pl: "Polaryzacja"
+    definition: >
+      Dwa przeciwstawne bieguny w doświadczeniu klienta (klasycznie
+      topdog/underdog). Napięcie między biegunami wyraża istniejąca
+      relacja `napiecie` — kompozyt trzyma same bieguny. PLACEHOLDER (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: composite
+    slots:
+      pole_a:
+        type: span_ref
+        required: true
+      pole_b:
+        type: span_ref
+        required: true
+    min_complete_slots: 2
+    min_evidence: {spans: 2}
+    common_confusions:
+      - {input: "ambiwalencja", correct: "polaryzacja wymaga DWÓCH nazwanych biegunów", note: "sama niepewność to nie polaryzacja"}
+
+  unfinished_business:
+    label_pl: "Niedokończona sprawa"
+    definition: >
+      Temat wracający bez domknięcia cyklu kontaktu. Rozpoznawany po
+      REKURENCJI (S1.5) przy braku fazy `wycofanie`, nie po treści.
+      PLACEHOLDER (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null                # otwarty — treść jest opisem, nie etykietą
+    forced_status: interpretation
+    # Próg wymaga DWÓCH sesji: temat wracający raz w obrębie jednej sesji
+    # jest wątkiem rozmowy, nie sprawą niedokończoną.
+    min_evidence: {spans: 3, sessions: 2}
+    requires: [contact_cycle_phase]
+    fallback_rendering: "temat powracający (bez rozstrzygnięcia o domknięciu)"
+    is_not: [contact_interruption]
+    common_confusions:
+      - {input: "trauma", correct: "niedokończona sprawa nie zakłada urazu", note: "z etosu modalności — opis przed oceną"}
+
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis, open_question,
+                     insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
+                 mediacja, paralela]   # paralela ZOSTAJE: przeniesienie wzorca z relacji zewnętrznej na kontakt z terapeutą jest w Gestalt materiałem pierwszorzędnym
+
+# M5 (dok. 15 §3.3): część środowiska Gestalt jest filozoficznie niechętna
+# konceptualizacji przypadku jako takiej. Produkt „raport konceptualizacyjny"
+# bywa odbierany jako obcy gatunkowo; produkt „lustro procesu" — nie.
+# Silnik ten sam, kompozycja inna: profil zmienia WAGI SEKCJI i szablony
+# językowe S4, nigdy walidacji ani statusów.
+report_profile:
+  sections:
+    patterns_and_relations: {weight: high}
+    open_questions: {weight: high}
+    interpretive_constructs: {weight: low}
+  default_tone: phenomenological
