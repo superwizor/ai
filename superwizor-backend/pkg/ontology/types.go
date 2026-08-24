@@ -162,6 +162,40 @@ type Confusion struct {
 	Note    string `yaml:"note,omitempty"`
 }
 
+// Sekcje raportu (M5). Kanoniczna lista — walidator odrzuca klucze
+// spoza niej, bo literowka w nazwie sekcji ("patterns_and_relatoins")
+// dzialalaby jak brak wpisu i nikt by sie nie dowiedzial.
+const (
+	SectionSessionSummary = "session_summary"
+	SectionInterpretive   = "interpretive_constructs"
+	SectionPatterns       = "patterns_and_relations"
+	SectionOpenQuestions  = "open_questions"
+	SectionOutOfTaxonomy  = "out_of_taxonomy"
+)
+
+// ReportSections to komplet znanych sekcji W KOLEJNOSCI DOMYSLNEJ.
+// Kolejnosc jest czescia kontraktu: profil bez wag (albo z wagami
+// rownymi) renderuje dokladnie w tym porzadku.
+var ReportSections = []string{
+	SectionSessionSummary, SectionInterpretive, SectionPatterns,
+	SectionOpenQuestions, SectionOutOfTaxonomy,
+}
+
+// Wagi sekcji. Waga steruje KOLEJNOSCIA, nigdy widocznoscia — ukrycie
+// zweryfikowanej tresci byloby decyzja o tresci, a M5 zmienia wylacznie
+// kompozycje (dok. 15 §3.3: "nie zmienia walidacji ani statusow").
+const (
+	WeightHigh   = "high"
+	WeightNormal = "normal"
+	WeightLow    = "low"
+)
+
+// KnownTones to tony jezykowe S4 o ZDEFINIOWANYM dzialaniu. Enum jest
+// celowo ciasny: ton, ktorego szablon S4 nie zna, bylby po cichu
+// ignorowany — a to dokladnie ta klasa pulapki, ktora metaschemat ma
+// wykluczac. Nowy ton = nowy szablon + wpis tutaj, swiadomie.
+var KnownTones = []string{"phenomenological"}
+
 // ReportProfile to opcjonalne wagi sekcji i ton (M5, v1.4).
 type ReportProfile struct {
 	Sections    map[string]SectionProfile `yaml:"sections,omitempty"`

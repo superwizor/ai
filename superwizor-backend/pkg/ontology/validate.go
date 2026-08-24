@@ -22,7 +22,51 @@ func (o *Ontology) Validate() []string {
 	p = append(p, o.validateHeader()...)
 	p = append(p, o.validateConstructs()...)
 	p = append(p, o.validatePolicies()...)
+	p = append(p, o.validateReportProfile()...)
 	sort.Strings(p)
+	return p
+}
+
+// validateReportProfile pilnuje M5.
+//
+// Do 2026-08-24 profil byl niewalidowany, bo nic go nie czytalo. Od kiedy
+// renderer komponuje wedlug niego sekcje, literowka w kluczu sekcji albo
+// w wadze dzialalaby jak brak wpisu — czyli najgorszy rodzaj bledu:
+// niewidoczny.
+func (o *Ontology) validateReportProfile() []string {
+	if o.ReportProfile == nil {
+		return nil
+	}
+	var p []string
+	znane := map[string]bool{}
+	for _, s := range ReportSections {
+		znane[s] = true
+	}
+	for key, sec := range o.ReportProfile.Sections {
+		if !znane[key] {
+			p = append(p, fmt.Sprintf("report_profile.sections.%s: nieznana sekcja (znane: %s)",
+				key, strings.Join(ReportSections, ", ")))
+		}
+		switch sec.Weight {
+		case WeightHigh, WeightNormal, WeightLow:
+		default:
+			p = append(p, fmt.Sprintf("report_profile.sections.%s: waga %q (high|normal|low)",
+				key, sec.Weight))
+		}
+	}
+	if t := o.ReportProfile.DefaultTone; t != "" {
+		ok := false
+		for _, znany := range KnownTones {
+			if t == znany {
+				ok = true
+			}
+		}
+		if !ok {
+			p = append(p, fmt.Sprintf("report_profile.default_tone %q: ton bez zdefiniowanego "+
+				"szablonu S4 bylby po cichu ignorowany (znane: %s)",
+				t, strings.Join(KnownTones, ", ")))
+		}
+	}
 	return p
 }
 

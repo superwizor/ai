@@ -200,6 +200,15 @@ func buildS2Prompt(o *ontology.Ontology, constructID string) string {
 func buildS4Prompt(o *ontology.Ontology) string {
 	var b strings.Builder
 	b.WriteString(promptS4Base)
+	// Ton per modalnosc (M5). Zmienia SZABLON JEZYKOWY, nigdy tresc
+	// twierdzen — S5 weryfikuje wyjscie bez zmian. Tony spoza KnownTones
+	// odrzuca metaschemat, wiec galaz default jest nieosiagalna dla
+	// tresci, ktora przeszla walidacje.
+	if o.ReportProfile != nil && o.ReportProfile.DefaultTone == "phenomenological" {
+		b.WriteString("\n\nTON: fenomenologiczny. Opis przed oceną, obserwacja przed " +
+			"interpretacją. Tam, gdzie wystarczy opis tego, co widać, nie klasyfikuj; " +
+			"pytania formułuj jako zaproszenia do świadomości, nie tezy.\n")
+	}
 	fmt.Fprintf(&b, "\n\nMODALNOSC: %s (ontologia %s)\n", o.Modality, o.Version)
 	b.WriteString("\nNAZWY KONSTRUKTOW\n")
 	for _, id := range o.ConstructIDs() {

@@ -190,3 +190,19 @@ etiology_policy: strict
 therapist_boundary: strict
 relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
                  mediacja, paralela]
+
+# M5 (dok. 15 §3.3): kompozycja sekcji raportu. Wagi steruja KOLEJNOSCIA,
+# nigdy widocznoscia — sekcja pusta znika sama. Edytowalne w Ontology
+# Studio; zmiana przechodzi przez wersjonowanie i four-eyes jak kazda
+# inna, a diff przegladu ja pokazuje.
+#
+# PPT: klasyczna konceptualizacja — bilans i konstrukty na gorze,
+# porzadek domyslny dla reszty. Profil jest tu JAWNY (mimo ze rowny
+# domyslnemu), zeby ekspert widzial w Studio uchwyt, ktorym steruje
+# ksztaltem raportu.
+report_profile:
+  sections:
+    session_summary: {weight: high}
+    interpretive_constructs: {weight: high}
+    patterns_and_relations: {weight: normal}
+    open_questions: {weight: normal}

@@ -210,7 +210,12 @@ func runOntologyPipeline(
 	}
 
 	payload := metadataPayload
-	payload.ReportMarkdown = ontopipe.RenderMarkdown(o, res)
+	// SummaryShort z call-1 zasila sekcje "Bilans sesji" (M5). Streszczenie
+	// nie jest wnioskowaniem i istnieje dla kazdego raportu, wiec sekcja
+	// nie omija potoku — pokazuje material policzony niezaleznie od niego.
+	payload.ReportMarkdown = ontopipe.RenderMarkdown(o, res, ontopipe.RenderInput{
+		SummaryShort: metadataPayload.SummaryShort,
+	})
 	return payload, res, stats, nil
 }
 

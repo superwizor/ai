@@ -136,3 +136,12 @@ etiology_policy: strict
 therapist_boundary: strict
 relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
                  mediacja]      # paralela wyłączona dla CBT do decyzji (11 §3.2: flaga per modalność)
+
+# M5 (dok. 15 §3.3): kompozycja sekcji raportu — patrz uwaga w ppt/0.1.0.
+# CBT: konceptualizacja strukturalna; bilans i konstrukty na gorze.
+report_profile:
+  sections:
+    session_summary: {weight: high}
+    interpretive_constructs: {weight: high}
+    patterns_and_relations: {weight: normal}
+    open_questions: {weight: normal}
