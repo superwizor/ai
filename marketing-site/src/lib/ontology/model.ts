@@ -130,6 +130,16 @@ export const KNOWN_TONES = ["phenomenological"] as const;
 export interface ReportProfileView {
   sections: Partial<Record<ReportSection, SectionWeight>>;
   defaultTone: string;
+  /** Układ nazwanych sekcji (M5+). Niepusty = wagi nie obowiązują
+   * (mechanizmy wzajemnie wykluczające po stronie metaschematu). */
+  layout: LayoutSectionView[];
+}
+
+export interface LayoutSectionView {
+  id: string;
+  title: string;
+  kind: string;
+  constructs: string[];
 }
 
 /** Sygnatura dokumentu — Document z `yaml`, opakowany, żeby wołający nie
@@ -208,7 +218,17 @@ function readReportProfile(v: unknown): ReportProfileView | null {
       if (w === "high" || w === "normal" || w === "low") sections[key] = w;
     }
   }
-  return { sections, defaultTone: asString(raw.default_tone) };
+  const layout: LayoutSectionView[] = Array.isArray(raw.layout)
+    ? (raw.layout as unknown[])
+        .filter((e): e is Record<string, unknown> => e != null && typeof e === "object")
+        .map((e) => ({
+          id: asString(e.id),
+          title: asString(e.title),
+          kind: asString(e.kind),
+          constructs: asStringList(e.constructs),
+        }))
+    : [];
+  return { sections, defaultTone: asString(raw.default_tone), layout };
 }
 
 function readMinEvidence(v: unknown): MinEvidence | null {
@@ -457,8 +477,17 @@ export function setSectionWeight(
   section: ReportSection,
   weight: SectionWeight,
 ): void {
+  // Ontologia z ukladem nie ma wag (mechanizmy wzajemnie wykluczajace);
+  // zapis wagi obok ukladu tworzylby dokument, ktorego walidacja nie
+  // przyjmie. Panel tego nie oferuje, ale model tez nie moze.
+  const uklad = doc.getIn(["report_profile", "layout"]);
+  if (uklad != null) return;
   if (weight === "normal") {
-    doc.deleteIn(["report_profile", "sections", section]);
+    // deleteIn rzuca na brakujacym wezle posrednim — profil bez `sections`
+    // (np. sam ton) to stan legalny, wiec brak wpisu to brak roboty.
+    if (doc.getIn(["report_profile", "sections"]) != null) {
+      doc.deleteIn(["report_profile", "sections", section]);
+    }
     czyscPustyProfil(doc);
     return;
   }
@@ -488,7 +517,10 @@ function czyscPustyProfil(doc: OntologyDoc): void {
   const sekcje = obj.sections as Record<string, unknown> | undefined;
   const maSekcje = sekcje != null && Object.keys(sekcje).length > 0;
   const maTon = typeof obj.default_tone === "string" && obj.default_tone !== "";
-  if (!maSekcje && !maTon) {
+  // Uklad to tez tresc profilu — bez tego zdjecie tonu z ontologii
+  // z ukladem wycieloby caly report_profile razem z ukladem.
+  const maUklad = Array.isArray(obj.layout) && obj.layout.length > 0;
+  if (!maSekcje && !maTon && !maUklad) {
     doc.deleteIn(["report_profile"]);
   } else if (!maSekcje && sekcje != null) {
     doc.deleteIn(["report_profile", "sections"]);

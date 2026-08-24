@@ -137,11 +137,47 @@ therapist_boundary: strict
 relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
                  mediacja]      # paralela wyłączona dla CBT do decyzji (11 §3.2: flaga per modalność)
 
-# M5 (dok. 15 §3.3): kompozycja sekcji raportu — patrz uwaga w ppt/0.1.0.
-# CBT: konceptualizacja strukturalna; bilans i konstrukty na gorze.
+# M5+: uklad sekcji ANALOGICZNY do raportu legacy (soczewka CBT).
+# Roznice wzgledem soczewki nazwane w ppt/0.1.0 — te same ograniczenia:
+# rozliczenie pracy domowej i TWARDE USTALENIA czekaja na ekstrakcje
+# ustalen w S1; sekwencja problemowa (Sytuacja->Mysl->...) czeka na
+# obsluge kompozytu cbt_episode w S2.
 report_profile:
-  sections:
-    session_summary: {weight: high}
-    interpretive_constructs: {weight: high}
-    patterns_and_relations: {weight: normal}
-    open_questions: {weight: normal}
+  layout:
+    - id: podsumowanie
+      title: "Podsumowanie sesji"
+      kind: summary
+    - id: obserwacje
+      title: "Wnikliwe obserwacje"
+      kind: constructs
+      constructs: [automatic_thought, cognitive_distortion, emotion,
+                   compensatory_strategy]
+    - id: watki
+      title: "Wątki do pogłębienia"
+      kind: constructs
+      constructs: [intermediate_belief, core_belief]
+    - id: konceptualizacja
+      title: "Konceptualizacja poznawcza"
+      kind: constructs
+      constructs: [cbt_episode]
+    - id: plan_dzialania
+      title: "Plan działania klienta"
+      kind: suggestions
+      guidance: >
+        2-4 zadania w duchu CBT. PRIORYTETOWO rozwijaj zadania ustalone
+        lub zasugerowane na sesji; dodatkowe oznacz jako propozycje
+        nieomawiane. Jezyk przyjazny klientowi, bez zargonu i bez hipotez
+        klinicznych — zadania maja byc bezpieczne do pokazania klientowi.
+    - id: interwencje
+      title: "Propozycje interwencji"
+      kind: interventions
+      guidance: >
+        1-2 techniki CBT warunkowo (np. restrukturyzacja poznawcza,
+        strzalka w dol, eksperyment behawioralny, dialog sokratejski).
+        Scenariusz z przykladowymi pytaniami terapeuty.
+    - id: superwizja
+      title: "Czego można było nie zauważyć"
+      kind: overlooked
+    - id: pytania
+      title: "Pytania i niewiadome"
+      kind: questions

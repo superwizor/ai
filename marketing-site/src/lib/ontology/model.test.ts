@@ -9,6 +9,8 @@ import {
   setConfusions,
   setConstructField,
   setConstructList,
+  setDefaultTone,
+  setSectionWeight,
   setMinEvidence,
   setMultiLabel,
   setValues,
@@ -217,5 +219,64 @@ describe("identyfikator z nazwy", () => {
 
   it("nazwa zaczynająca się od cyfry dostaje prefiks, nie zostaje odrzucona", () => {
     expect(slugify("3 pytania")).toBe("k_3_pytania");
+  });
+});
+
+describe("uklad sekcji (M5+)", () => {
+  const zUkladem = `modality: ppt
+version: 0.1.0
+approved_by: []
+constructs:
+  need:
+    label_pl: "Potrzeba"
+    definition: "Def."
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null
+    min_evidence: {spans: 1}
+epistemic_statuses: [observation]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie]
+report_profile:
+  layout:
+    - id: bilans
+      title: "Bilans sesji"
+      kind: summary
+    - id: konflikty
+      title: "Konflikty"
+      kind: constructs
+      constructs: [need]
+  default_tone: phenomenological
+`;
+
+  it("czyta uklad do widoku profilu", () => {
+    const prof = readOntology(parseDoc(zUkladem)).reportProfile!;
+    expect(prof.layout.map((s) => s.id)).toEqual(["bilans", "konflikty"]);
+    expect(prof.layout[1]).toMatchObject({
+      title: "Konflikty",
+      kind: "constructs",
+      constructs: ["need"],
+    });
+  });
+
+  it("zdjecie tonu nie wycina profilu z ukladem", () => {
+    const doc = parseDoc(zUkladem);
+    setDefaultTone(doc, "");
+    const prof = readOntology(doc).reportProfile!;
+    expect(prof.defaultTone).toBe("");
+    // Regresja: czyscPustyProfil traktowal uklad-bez-wag jako pusty profil.
+    expect(prof.layout).toHaveLength(2);
+  });
+
+  it("waga przy ukladzie to no-op — dokument nie moze stac sie niewalidowalny", () => {
+    const doc = parseDoc(zUkladem);
+    setSectionWeight(doc, "open_questions", "high");
+    expect(docToString(doc)).not.toContain("sections");
+  });
+
+  it("ontologia bez ukladu ma pusta liste", () => {
+    const doc = parseDoc(zUkladem.replace(/  layout:[\s\S]*?constructs: \[need\]\n/, ""));
+    expect(readOntology(doc).reportProfile!.layout).toEqual([]);
   });
 });

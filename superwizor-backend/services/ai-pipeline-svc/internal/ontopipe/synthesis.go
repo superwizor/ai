@@ -58,6 +58,37 @@ type SynthesisInput struct {
 	// Corrections to naruszenia V1-V6 z poprzedniej proby. Puste przy
 	// pierwszym przebiegu.
 	Corrections []Violation
+	// Zamowienia sekcji generacyjnych (uklad M5). Flagi i wytyczne, nie
+	// material zrodlowy: Guidance* to tresc EKSPERCKA z ontologii
+	// (wersjonowana, po four-eyes), a nie nic z sesji. Pola przechodza
+	// przez test refleksji SWIADOMIE.
+	WantSuggestions       bool
+	WantInterventions     bool
+	SuggestionsGuidance   string
+	InterventionsGuidance string
+}
+
+// Suggestion to jedna propozycja miedzy sesjami (uklad M5).
+//
+// Regula soczewki, ktora tu obowiazuje strukturalnie: "propozycje
+// ROZWIJAJA to, co na sesji ustalono — nie wprowadzaj nowych kierunkow
+// bez oparcia w materiale". BasisConstruct jest enumem zatwierdzonych
+// konstruktow, wiec propozycja bez oparcia nie moze POWSTAC.
+type Suggestion struct {
+	Title          string `json:"title"`
+	BasisConstruct string `json:"basis_construct"`
+	Target         string `json:"target"`
+	Instruction    string `json:"instruction"`
+}
+
+// Intervention to propozycja warunkowa na kolejne sesje — nigdy
+// zalecenie. VerifyFirst wymusza jezyk soczewki: "zanim zastosujesz,
+// zweryfikuj [co]".
+type Intervention struct {
+	Name           string `json:"name"`
+	BasisConstruct string `json:"basis_construct"`
+	VerifyFirst    string `json:"verify_first"`
+	Scenario       string `json:"scenario"`
 }
 
 // Report to wynik S4 w formacie przestrzeni hipotez (dok. 11 sekcja 5).
@@ -67,7 +98,9 @@ type SynthesisInput struct {
 // tle danych przeciw, i dopiero to czyni obrone "klinicysta jako autor
 // decyzji" realna zamiast deklaratywnej.
 type Report struct {
-	Constructs []ConstructReport `json:"constructs"`
+	Constructs    []ConstructReport `json:"constructs"`
+	Suggestions   []Suggestion      `json:"suggestions,omitempty"`
+	Interventions []Intervention    `json:"interventions,omitempty"`
 }
 
 type ConstructReport struct {
@@ -103,9 +136,13 @@ func Synthesize(ctx context.Context, llm LLM, o *ontology.Ontology, in Synthesis
 		// twierdzen jest uczciwszy niz raport wymyslony.
 		return Report{}, nil
 	}
+	prompt := buildS4Prompt(o)
+	var pb strings.Builder
+	pb.WriteString(prompt)
+	appendGenerativeGuidance(&pb, in)
 	resp, err := llm.GenerateJSON(ctx, LLMRequest{
 		Model:        ModelSynthesis,
-		SystemPrompt: buildS4Prompt(o),
+		SystemPrompt: pb.String(),
 		UserContent:  renderSynthesisInput(in),
 		Schema:       schemaS4(in),
 		MaxTokens:    8192,

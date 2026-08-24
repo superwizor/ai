@@ -196,10 +196,51 @@ const (
 // wykluczac. Nowy ton = nowy szablon + wpis tutaj, swiadomie.
 var KnownTones = []string{"phenomenological"}
 
-// ReportProfile to opcjonalne wagi sekcji i ton (M5, v1.4).
+// Rodzaje sekcji ukladu (M5+). Kazdy rodzaj to KLOCEK renderera —
+// uklad mowi, ktore klocki, w jakiej kolejnosci i pod jakim tytulem.
+const (
+	LayoutSummary       = "summary"         // esencja z call-1 + kotwice pamieciowe
+	LayoutConstructs    = "constructs"      // przestrzen hipotez wskazanych konstruktow
+	LayoutSuggestions   = "suggestions"     // propozycje miedzy sesjami (S4, ugruntowane)
+	LayoutInterventions = "interventions"   // propozycje interwencji (S4, ugruntowane)
+	LayoutOverlooked    = "overlooked"      // "czego mozna bylo nie zauwazyc"
+	LayoutQuestions     = "questions"       // niewiadome + pytania na kolejna sesje
+	LayoutPatterns      = "patterns"        // wzmianki o wzorcach
+	LayoutOutOfTaxonomy = "out_of_taxonomy" // no_fit
+)
+
+var LayoutKinds = []string{
+	LayoutSummary, LayoutConstructs, LayoutSuggestions, LayoutInterventions,
+	LayoutOverlooked, LayoutQuestions, LayoutPatterns, LayoutOutOfTaxonomy,
+}
+
+// ReportProfile to kompozycja raportu (M5).
+//
+// Dwa poziomy: `sections` (wagi high/normal/low nad sekcjami domyslnymi)
+// dla modalnosci, ktorym wystarczy kolejnosc — oraz `layout` (uklad
+// nazwanych sekcji z przypisaniem konstruktow) dla modalnosci, ktore
+// odwzorowuja strukture znana terapeutom z raportow legacy. WZAJEMNIE
+// WYKLUCZAJACE: obecnosc obu to blad walidacji, bo dwie rownolegle
+// definicje kolejnosci nie maja rozstrzygniecia.
 type ReportProfile struct {
 	Sections    map[string]SectionProfile `yaml:"sections,omitempty"`
+	Layout      []LayoutSection           `yaml:"layout,omitempty"`
 	DefaultTone string                    `yaml:"default_tone,omitempty"`
+}
+
+// LayoutSection to jedna sekcja ukladu.
+type LayoutSection struct {
+	ID    string `yaml:"id"`
+	Title string `yaml:"title"`
+	Kind  string `yaml:"kind"`
+	// Constructs przypisuje konstrukty do sekcji rodzaju `constructs`.
+	// Konstrukt moze nalezec do JEDNEJ sekcji; nieprzypisane laduja w
+	// sekcji koncowej — uklad nigdy nie ukrywa zweryfikowanej tresci.
+	Constructs []string `yaml:"constructs,omitempty"`
+	// Guidance to wytyczne generacyjne dla S4 (wylacznie rodzaje
+	// suggestions/interventions). Zyja w ontologii, nie w prompcie:
+	// sa trescia ekspercka, wersjonowana i podlegajaca four-eyes.
+	Guidance string `yaml:"guidance,omitempty"`
 }
 
 type SectionProfile struct {

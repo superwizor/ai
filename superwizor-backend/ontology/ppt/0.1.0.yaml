@@ -191,18 +191,54 @@ therapist_boundary: strict
 relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
                  mediacja, paralela]
 
-# M5 (dok. 15 §3.3): kompozycja sekcji raportu. Wagi steruja KOLEJNOSCIA,
-# nigdy widocznoscia — sekcja pusta znika sama. Edytowalne w Ontology
-# Studio; zmiana przechodzi przez wersjonowanie i four-eyes jak kazda
-# inna, a diff przegladu ja pokazuje.
-#
-# PPT: klasyczna konceptualizacja — bilans i konstrukty na gorze,
-# porzadek domyslny dla reszty. Profil jest tu JAWNY (mimo ze rowny
-# domyslnemu), zeby ekspert widzial w Studio uchwyt, ktorym steruje
-# ksztaltem raportu.
+# M5+: uklad sekcji ANALOGICZNY do raportu legacy (soczewka PPT).
+# Odwzorowanie 1:1 tam, gdzie potok ma czym renderowac; roznice nazwane:
+#  - "Bilans sesji": esencja (call-1) + kotwice pamieciowe (cytaty
+#    dowodowe wybrane przez kod). TWARDE USTALENIA i metafora czekaja na
+#    ekstrakcje ustalen w S1 (osobny ticket).
+#  - "Wskazowki superwizyjne" ograniczone do rdzenia "czego mozna bylo
+#    nie zauwazyc" (kontrdowody + no_fit + degradacje) — komentarz o
+#    technice terapeuty wymaga decyzji (przyleganie do R10).
+#  - guidance sekcji generacyjnych = wytyczne z soczewki, skondensowane;
+#    edytowalne tutaj, wersjonowane, po four-eyes.
 report_profile:
-  sections:
-    session_summary: {weight: high}
-    interpretive_constructs: {weight: high}
-    patterns_and_relations: {weight: normal}
-    open_questions: {weight: normal}
+  layout:
+    - id: bilans_sesji
+      title: "Bilans sesji"
+      kind: summary
+    - id: analiza_rownowagi
+      title: "Analiza w Modelu Równowagi"
+      kind: constructs
+      constructs: [balance_model_area, capacity_state, conflict_processing_form,
+                   capacity_assessment]
+    - id: konflikty
+      title: "Konflikty i Ukryte Potencjalności"
+      kind: constructs
+      constructs: [current_conflict, inner_conflict, key_conflict, basic_conflict,
+                   need, actual_capacity_primary, actual_capacity_secondary]
+    - id: konceptualizacja
+      title: "Pozytywna Konceptualizacja"
+      kind: constructs
+      constructs: [positum, symptom_function, resource, ppt_stage]
+    - id: inspiracje
+      title: "Inspiracje między sesjami"
+      kind: suggestions
+      guidance: >
+        2-3 zaproszenia do obserwacji lub mikro-praktyki wspierajace
+        rownowage. Charakter obserwacyjny (etapy 1-2) albo zasobowy
+        (etap 3), chyba ze material jasno wskazuje pozniejszy etap.
+        Jezyk niedyrektywny, przyjazny klientowi.
+    - id: interwencje
+      title: "Propozycje interwencji"
+      kind: interventions
+      guidance: >
+        1-2 interwencje warunkowe w duchu PPT. Przy braku danych o etapie
+        proponuj interwencje etapow 1-3. Historie transkulturowe podawaj
+        wylacznie jako motyw; nie przypisuj Peseschkianowi historii
+        wymyslonych.
+    - id: superwizja
+      title: "Czego można było nie zauważyć"
+      kind: overlooked
+    - id: pytania
+      title: "Pytania i niewiadome"
+      kind: questions

@@ -32,6 +32,25 @@ export function ReportCompositionPanel({
 }) {
   const t = useTranslations("admin.ontologyComposition");
 
+  // Uklad nazwanych sekcji wyklucza wagi (metaschemat odrzuca oba naraz).
+  // Zapis wagi obok ukladu skonczylby sie bledem walidacji dopiero przy
+  // zapisie — panel nie moze wiec jej oferowac.
+  if (profil && profil.layout.length > 0) {
+    return (
+      <div className="grid gap-2" data-testid="report-composition">
+        <p className="font-serif text-mist text-xs">{t("layoutNotice")}</p>
+        <ul className="grid gap-1">
+          {profil.layout.map((sec) => (
+            <li key={sec.id} className="font-serif text-frost text-sm">
+              {sec.title}
+              <span className="font-mono text-[10px] text-mist ml-2">{sec.kind}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3" data-testid="report-composition">
       <p className="font-serif text-mist text-xs">{t("help")}</p>

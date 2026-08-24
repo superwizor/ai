@@ -64,12 +64,17 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 			"wraz z cytatami, bez prozy interpretacyjnej.\n\n")
 	}
 
+	if o.ReportProfile != nil && len(o.ReportProfile.Layout) > 0 {
+		renderLayout(&b, o, res, in)
+		return b.String()
+	}
+
 	for _, sekcja := range sectionOrder(o) {
 		switch sekcja {
 		case ontology.SectionSessionSummary:
 			renderSummary(&b, in.SummaryShort)
 		case ontology.SectionInterpretive:
-			renderInterpretive(&b, o, res)
+			renderInterpretive(&b, o, res, nil)
 		case ontology.SectionPatterns:
 			renderPatterns(&b, o, res)
 		case ontology.SectionOpenQuestions:
@@ -79,6 +84,203 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 		}
 	}
 	return b.String()
+}
+
+// renderLayout renderuje uklad nazwanych sekcji (M5+).
+//
+// NIEZBYWALNY niezmiennik: uklad nigdy nie ukrywa zweryfikowanej tresci.
+// Konstrukty nieprzypisane do zadnej sekcji laduja w sekcji koncowej,
+// a pytania, wzmianki o wzorcach i no_fit — jesli uklad ich nie
+// przewidzial — sa doklejane z tytulami domyslnymi. Ekspert steruje
+// KSZTALTEM, nie tym, co terapeuta zobaczy.
+func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in RenderInput) {
+	przypisane := map[string]bool{}
+	pokryte := map[string]bool{}
+	for _, sec := range o.ReportProfile.Layout {
+		pokryte[sec.Kind] = true
+		for _, id := range sec.Constructs {
+			przypisane[id] = true
+		}
+	}
+
+	for _, sec := range o.ReportProfile.Layout {
+		switch sec.Kind {
+		case ontology.LayoutSummary:
+			renderSummarySection(b, sec.Title, in.SummaryShort, res)
+		case ontology.LayoutConstructs:
+			naleza := map[string]bool{}
+			for _, id := range sec.Constructs {
+				naleza[id] = true
+			}
+			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
+				return renderInterpretive(bb, o, res, naleza)
+			})
+		case ontology.LayoutSuggestions:
+			renderSuggestions(b, o, sec.Title, res.Report.Suggestions)
+		case ontology.LayoutInterventions:
+			renderInterventions(b, o, sec.Title, res.Report.Interventions)
+		case ontology.LayoutOverlooked:
+			renderOverlooked(b, o, sec.Title, res)
+		case ontology.LayoutQuestions:
+			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
+				return renderQuestionsBody(bb, o, res)
+			})
+		case ontology.LayoutPatterns:
+			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
+				return renderPatternsBody(bb, o, res)
+			})
+		case ontology.LayoutOutOfTaxonomy:
+			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
+				return renderNoFitBody(bb, o, res)
+			})
+		}
+	}
+
+	// ── nigdy nie ukrywaj ──
+	nieprzypisane := map[string]bool{}
+	maNieprzypisane := false
+	for _, cr := range res.Constructsy() {
+		if !przypisane[cr.ConstructID] {
+			nieprzypisane[cr.ConstructID] = true
+			maNieprzypisane = true
+		}
+	}
+	if maNieprzypisane {
+		renderTitled(b, "Pozostałe obserwacje", func(bb *strings.Builder) bool {
+			return renderInterpretive(bb, o, res, nieprzypisane)
+		})
+	}
+	if !pokryte[ontology.LayoutQuestions] {
+		renderTitled(b, "Pytania i niewiadome", func(bb *strings.Builder) bool {
+			return renderQuestionsBody(bb, o, res)
+		})
+	}
+	if !pokryte[ontology.LayoutPatterns] {
+		renderTitled(b, "Powiązania i wzorce", func(bb *strings.Builder) bool {
+			return renderPatternsBody(bb, o, res)
+		})
+	}
+	if !pokryte[ontology.LayoutOutOfTaxonomy] {
+		renderTitled(b, "Poza obecną taksonomią", func(bb *strings.Builder) bool {
+			return renderNoFitBody(bb, o, res)
+		})
+	}
+}
+
+// renderTitled renderuje sekcje z tytulem WYLACZNIE, gdy tresc istnieje —
+// pusta sekcja znika razem z naglowkiem.
+func renderTitled(b *strings.Builder, title string, body func(*strings.Builder) bool) {
+	var tmp strings.Builder
+	if !body(&tmp) {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n", title)
+	b.WriteString(tmp.String())
+}
+
+// renderSummarySection to esencja + kotwice pamieciowe.
+//
+// Kotwice wybiera KOD: cytaty dowodowe twierdzen o najwyzszej pewnosci,
+// bez powtorzen spanow, maksymalnie cztery. Zaden model nie decyduje,
+// co jest kotwica — dowod juz przeszedl weryfikacje mechaniczna i S3.
+func renderSummarySection(b *strings.Builder, title, summary string, res Result) {
+	kotwice := pickAnchors(res.Approved, 4)
+	if strings.TrimSpace(summary) == "" && len(kotwice) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n", title)
+	if strings.TrimSpace(summary) != "" {
+		b.WriteString(strings.TrimSpace(summary))
+		b.WriteString("\n\n")
+	}
+	if len(kotwice) > 0 {
+		b.WriteString("**Kotwice pamięciowe**\n\n")
+		for _, k := range kotwice {
+			fmt.Fprintf(b, "> %s\n\n", k.Quote)
+		}
+	}
+}
+
+type anchor struct{ Quote string }
+
+func pickAnchors(claims []ontology.Claim, limit int) []anchor {
+	posortowane := append([]ontology.Claim{}, claims...)
+	sort.SliceStable(posortowane, func(i, j int) bool {
+		return posortowane[i].Confidence > posortowane[j].Confidence
+	})
+	widziane := map[string]bool{}
+	var out []anchor
+	for _, c := range posortowane {
+		for _, q := range c.Evidence {
+			if widziane[q.SpanID] || strings.TrimSpace(q.Quote) == "" {
+				continue
+			}
+			widziane[q.SpanID] = true
+			out = append(out, anchor{Quote: q.Quote})
+			break // jeden cytat na twierdzenie — kotwice maja byc ROZNE
+		}
+		if len(out) == limit {
+			break
+		}
+	}
+	return out
+}
+
+func renderSuggestions(b *strings.Builder, o *ontology.Ontology, title string, sug []Suggestion) {
+	if len(sug) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n", title)
+	for _, s := range sug {
+		fmt.Fprintf(b, "**%s**\n\n", s.Title)
+		fmt.Fprintf(b, "Rozwija: %s. Cel: %s.\n\n", labelFor(o, s.BasisConstruct), s.Target)
+		fmt.Fprintf(b, "%s\n\n", s.Instruction)
+	}
+}
+
+func renderInterventions(b *strings.Builder, o *ontology.Ontology, title string, iv []Intervention) {
+	if len(iv) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n", title)
+	for _, i := range iv {
+		fmt.Fprintf(b, "**%s**\n\n", i.Name)
+		fmt.Fprintf(b, "Opiera się na: %s. Zanim zastosujesz, zweryfikuj: %s\n\n",
+			labelFor(o, i.BasisConstruct), i.VerifyFirst)
+		fmt.Fprintf(b, "%s\n\n", i.Scenario)
+	}
+	b.WriteString("_Propozycje warunkowe — decyzja i odpowiedzialność należą do terapeuty._\n\n")
+}
+
+// renderOverlooked to "czego mozna bylo nie zauwazyc" — zlozone w KODZIE
+// z materialu, ktory juz przeszedl potok: kontrdowody zatwierdzonych
+// twierdzen, zjawiska poza taksonomia, konstrukty zdegradowane. To sa
+// dokladnie funkcje D1 ("ten fragment przeczy...", "tego moglas nie
+// zauwazyc") zebrane w jedno miejsce.
+func renderOverlooked(b *strings.Builder, o *ontology.Ontology, title string, res Result) {
+	var tmp strings.Builder
+	widziane := map[string]bool{}
+	for _, c := range res.Approved {
+		for _, q := range c.CounterEvidence {
+			if widziane[q.SpanID] || strings.TrimSpace(q.Quote) == "" {
+				continue
+			}
+			widziane[q.SpanID] = true
+			fmt.Fprintf(&tmp, "> %s\n\n— przeczy: %s\n\n", q.Quote, labelFor(o, c.ConstructID))
+		}
+	}
+	for _, id := range res.NoFit {
+		fmt.Fprintf(&tmp, "- %s: zjawisko nie mieści się w taksonomii — odnotowane bez etykiety\n", labelFor(o, id))
+	}
+	for _, d := range res.Degraded {
+		fmt.Fprintf(&tmp, "- %s: %s\n", labelFor(o, d.ConstructID), d.To)
+	}
+	if tmp.Len() == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n", title)
+	b.WriteString(tmp.String())
+	b.WriteString("\n")
 }
 
 // sectionOrder zwraca sekcje w kolejnosci wynikajacej z profilu.
@@ -118,9 +320,22 @@ func renderSummary(b *strings.Builder, summary string) {
 	b.WriteString("\n\n")
 }
 
-func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result) {
+// renderInterpretive renderuje konstrukty; `tylko` != nil zaweza do
+// wskazanych (uklad), nil = wszystkie (kompozycja domyslna). Zwraca, czy
+// cokolwiek wypisano. W trybie ukladu naglowki konstruktow schodza
+// poziom nizej (###), bo sekcje ukladu zajmuja poziom ##.
+func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result, tylko map[string]bool) bool {
+	naglowek := "## %s\n\n"
+	if tylko != nil {
+		naglowek = "### %s\n\n"
+	}
+	cokolwiek := false
 	for _, cr := range res.Constructsy() {
-		fmt.Fprintf(b, "## %s\n\n", labelFor(o, cr.ConstructID))
+		if tylko != nil && !tylko[cr.ConstructID] {
+			continue
+		}
+		cokolwiek = true
+		fmt.Fprintf(b, naglowek, labelFor(o, cr.ConstructID))
 
 		if len(cr.Hypotheses) == 0 {
 			// Pole bez twierdzen renderuje sie jako ZAPROSZENIE, nie jako
@@ -152,6 +367,7 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result) {
 			b.WriteString("\n")
 		}
 	}
+	return cokolwiek
 }
 
 // renderPatterns agreguje meta-obserwacje w jedna sekcje.
@@ -162,22 +378,23 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result) {
 // nie jest teza i moze wystapic wylacznie jako wzmianka, ktora przeszla
 // S4 i V5.
 func renderPatterns(b *strings.Builder, o *ontology.Ontology, res Result) {
-	var ma bool
-	for _, cr := range res.Constructsy() {
-		if len(cr.PatternNotices) > 0 {
-			ma = true
-		}
-	}
-	if !ma {
-		return
-	}
-	b.WriteString("## Powiązania i wzorce\n\n")
+	renderTitled(b, "Powiązania i wzorce", func(bb *strings.Builder) bool {
+		return renderPatternsBody(bb, o, res)
+	})
+}
+
+func renderPatternsBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
+	cokolwiek := false
 	for _, cr := range res.Constructsy() {
 		for _, p := range cr.PatternNotices {
+			cokolwiek = true
 			fmt.Fprintf(b, "- **%s:** %s\n", labelFor(o, cr.ConstructID), p)
 		}
 	}
-	b.WriteString("\n")
+	if cokolwiek {
+		b.WriteString("\n")
+	}
+	return cokolwiek
 }
 
 // renderQuestions agreguje niewiadome i pytania na kolejna sesje.
@@ -187,20 +404,18 @@ func renderPatterns(b *strings.Builder, o *ontology.Ontology, res Result) {
 // zeby terapeuta przygotowujacy kolejna sesje nie zbieral ich po calym
 // dokumencie.
 func renderQuestions(b *strings.Builder, o *ontology.Ontology, res Result) {
-	var ma bool
-	for _, cr := range res.Constructsy() {
-		if len(cr.UnknownYet) > 0 || len(cr.NextSessionQuestions) > 0 {
-			ma = true
-		}
-	}
-	if !ma {
-		return
-	}
-	b.WriteString("## Pytania i niewiadome\n\n")
+	renderTitled(b, "Pytania i niewiadome", func(bb *strings.Builder) bool {
+		return renderQuestionsBody(bb, o, res)
+	})
+}
+
+func renderQuestionsBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
+	cokolwiek := false
 	for _, cr := range res.Constructsy() {
 		if len(cr.UnknownYet) == 0 && len(cr.NextSessionQuestions) == 0 {
 			continue
 		}
+		cokolwiek = true
 		fmt.Fprintf(b, "**%s**\n\n", labelFor(o, cr.ConstructID))
 		for _, u := range cr.UnknownYet {
 			fmt.Fprintf(b, "- %s\n", u)
@@ -210,19 +425,26 @@ func renderQuestions(b *strings.Builder, o *ontology.Ontology, res Result) {
 		}
 		b.WriteString("\n")
 	}
+	return cokolwiek
 }
 
 func renderNoFit(b *strings.Builder, o *ontology.Ontology, res Result) {
+	renderTitled(b, "Poza obecną taksonomią", func(bb *strings.Builder) bool {
+		return renderNoFitBody(bb, o, res)
+	})
+}
+
+func renderNoFitBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
 	if len(res.NoFit) == 0 {
-		return
+		return false
 	}
-	b.WriteString("## Poza obecną taksonomią\n\n")
 	b.WriteString("W materiale pojawiły się zjawiska, których obecna ontologia " +
 		"nie obejmuje. Zostały odnotowane bez nadawania im kategorii:\n\n")
 	for _, id := range res.NoFit {
 		fmt.Fprintf(b, "- %s\n", labelFor(o, id))
 	}
 	b.WriteString("\n")
+	return true
 }
 
 func labelFor(o *ontology.Ontology, id string) string {

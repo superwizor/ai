@@ -54,6 +54,11 @@ func (o *Ontology) validateReportProfile() []string {
 				key, sec.Weight))
 		}
 	}
+	if len(o.ReportProfile.Layout) > 0 && len(o.ReportProfile.Sections) > 0 {
+		p = append(p, "report_profile: layout i sections sa wzajemnie wykluczajace — "+
+			"dwie rownolegle definicje kolejnosci nie maja rozstrzygniecia")
+	}
+	p = append(p, o.validateLayout()...)
 	if t := o.ReportProfile.DefaultTone; t != "" {
 		ok := false
 		for _, znany := range KnownTones {
@@ -79,6 +84,67 @@ var (
 	slotTypeRe = regexp.MustCompile(`^(span_ref|entry_ref|(construct_ref|enum_ref)\([a-z][a-z0-9_]*\))$`)
 	refRe      = regexp.MustCompile(`^(construct_ref|enum_ref)\(([a-z][a-z0-9_]*)\)$`)
 )
+
+// validateLayout pilnuje ukladu sekcji (M5+).
+//
+// Najwazniejsze reguly to te, ktorych zlamanie byloby NIEWIDOCZNE w
+// dzialaniu: konstrukt przypisany do dwoch sekcji renderowalby sie
+// podwojnie, literowka w rodzaju dzialalaby jak brak sekcji, a guidance
+// przy rodzaju nie-generacyjnym bylby po cichu ignorowany.
+func (o *Ontology) validateLayout() []string {
+	var p []string
+	znaneKinds := map[string]bool{}
+	for _, k := range LayoutKinds {
+		znaneKinds[k] = true
+	}
+	widzianeID := map[string]bool{}
+	widzianeKind := map[string]bool{}
+	przypisane := map[string]string{}
+
+	for _, sec := range o.ReportProfile.Layout {
+		if !idRe.MatchString(sec.ID) {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: id musi pasowac do [a-z][a-z0-9_]*", sec.ID))
+		}
+		if widzianeID[sec.ID] {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: powtorzone id", sec.ID))
+		}
+		widzianeID[sec.ID] = true
+		if strings.TrimSpace(sec.Title) == "" {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: title jest wymagane — sekcja bez tytulu nie ma czym byc w raporcie", sec.ID))
+		}
+		if !znaneKinds[sec.Kind] {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: nieznany rodzaj %q (znane: %s)",
+				sec.ID, sec.Kind, strings.Join(LayoutKinds, ", ")))
+			continue
+		}
+		if sec.Kind != LayoutConstructs && widzianeKind[sec.Kind] {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: rodzaj %q wystapil drugi raz — tresc renderowalaby sie podwojnie", sec.ID, sec.Kind))
+		}
+		widzianeKind[sec.Kind] = true
+
+		if sec.Kind == LayoutConstructs {
+			if len(sec.Constructs) == 0 {
+				p = append(p, fmt.Sprintf("report_profile.layout.%s: rodzaj constructs bez listy konstruktow", sec.ID))
+			}
+			for _, id := range sec.Constructs {
+				if _, ok := o.Constructs[id]; !ok {
+					p = append(p, fmt.Sprintf("report_profile.layout.%s: konstrukt %q nie istnieje", sec.ID, id))
+				}
+				if gdzie, ok := przypisane[id]; ok {
+					p = append(p, fmt.Sprintf("report_profile.layout.%s: konstrukt %q juz przypisany do %s — renderowalby sie podwojnie", sec.ID, id, gdzie))
+				}
+				przypisane[id] = sec.ID
+			}
+		} else if len(sec.Constructs) > 0 {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: constructs dopuszczalne wylacznie dla rodzaju constructs", sec.ID))
+		}
+
+		if sec.Guidance != "" && sec.Kind != LayoutSuggestions && sec.Kind != LayoutInterventions {
+			p = append(p, fmt.Sprintf("report_profile.layout.%s: guidance dziala wylacznie dla suggestions/interventions — tutaj bylby po cichu ignorowany", sec.ID))
+		}
+	}
+	return p
+}
 
 func (o *Ontology) validateHeader() []string {
 	var p []string

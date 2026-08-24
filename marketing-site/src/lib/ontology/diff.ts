@@ -112,6 +112,35 @@ function diffProfilu(a: OntologyView, b: OntologyView): Zmiana[] {
     }
   }
 
+  // Uklad (M5+): porownanie po sekcjach — dodane/usuniete po id,
+  // zmiana tytulu/rodzaju/przypisania i zmiana kolejnosci osobno.
+  // Kolejnosc jest trescia ukladu, wiec jej zmiana JEST zmiana.
+  const la = a.reportProfile?.layout ?? [];
+  const lb = b.reportProfile?.layout ?? [];
+  const mapaA = new Map(la.map((sec) => [sec.id, sec]));
+  const mapaB = new Map(lb.map((sec) => [sec.id, sec]));
+  for (const sec of lb) {
+    const stara = mapaA.get(sec.id);
+    if (!stara) {
+      out.push({ rodzaj: "dodano", konstrukt: "", klucz: "ukladSekcjaDodana",
+        dane: { tytul: sec.title || sec.id } });
+    } else if (JSON.stringify(stara) !== JSON.stringify(sec)) {
+      out.push({ rodzaj: "zmieniono", konstrukt: "", klucz: "ukladSekcjaZmieniona",
+        dane: { tytul: sec.title || sec.id } });
+    }
+  }
+  for (const sec of la) {
+    if (!mapaB.has(sec.id)) {
+      out.push({ rodzaj: "usunieto", konstrukt: "", klucz: "ukladSekcjaUsunieta",
+        dane: { tytul: sec.title || sec.id } });
+    }
+  }
+  const wspolne = la.filter((sec) => mapaB.has(sec.id)).map((sec) => sec.id);
+  const wspolneB = lb.filter((sec) => mapaA.has(sec.id)).map((sec) => sec.id);
+  if (wspolne.join("|") !== wspolneB.join("|")) {
+    out.push({ rodzaj: "zmieniono", konstrukt: "", klucz: "ukladKolejnosc" });
+  }
+
   const tonA = a.reportProfile?.defaultTone ?? "";
   const tonB = b.reportProfile?.defaultTone ?? "";
   if (tonA !== tonB) {

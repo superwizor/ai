@@ -940,7 +940,11 @@
       "slotZmieniony": "Zmieniona część: {nazwa}",
       "minSlotow": "Wymagane części: {z} → {na}",
       "sekcjaWaga": "Sekcja „{sekcja}”: waga {z} → {na}",
-      "tonRaportu": "Ton raportu: {z} → {na}"
+      "tonRaportu": "Ton raportu: {z} → {na}",
+      "ukladSekcjaDodana": "Układ: nowa sekcja „{tytul}”",
+      "ukladSekcjaUsunieta": "Układ: usunięta sekcja „{tytul}”",
+      "ukladSekcjaZmieniona": "Układ: zmieniona sekcja „{tytul}”",
+      "ukladKolejnosc": "Układ: zmieniona kolejność sekcji"
     },
     "ontologyComposition": {
       "help": "Wagi sterują kolejnością sekcji w raporcie — nigdy widocznością. Sekcja bez treści znika sama. Zmiana kompozycji przechodzi przegląd tak samo jak zmiana treści.",
@@ -954,7 +958,8 @@
       "weightLow": "na dole",
       "tone": "Ton języka raportu",
       "toneNone": "domyślny",
-      "tone_phenomenological": "fenomenologiczny"
+      "tone_phenomenological": "fenomenologiczny",
+      "layoutNotice": "Ta ontologia używa własnego układu sekcji (analogicznego do raportu legacy). Kolejność i tytuły edytuj w podglądzie YAML — wagi nie obowiązują."
     }
   },
   "errors": {

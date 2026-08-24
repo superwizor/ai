@@ -24,10 +24,16 @@ func TestS4NieMaDostepuDoTranskrypcji(t *testing.T) {
 	// materialu zrodlowego. PastSpanIDs doszlo 2026-08-23: niesie sam
 	// podzbior identyfikatorow, ktore i tak sa juz w Claims, i istnieje
 	// po to, zeby S4 mogl SPELNIC regule V3 zamiast byc nia zaskakiwany.
+	// Kazda pozycja to SWIADOMA decyzja, ze pole nie wnosi materialu
+	// zrodlowego. Want*/Guidance* (2026-08-24): flagi ukladu M5 i wytyczne
+	// EKSPERCKIE z ontologii — wersjonowane, po four-eyes, zero tresci
+	// sesji.
 	dozwolone := map[string]bool{
 		"Claims": true, "Patterns": true, "Degraded": true,
 		"Insufficient": true, "NoFit": true, "Corrections": true,
-		"PastSpanIDs": true,
+		"PastSpanIDs":     true,
+		"WantSuggestions": true, "WantInterventions": true,
+		"SuggestionsGuidance": true, "InterventionsGuidance": true,
 	}
 	ty := reflect.TypeOf(SynthesisInput{})
 	for i := 0; i < ty.NumField(); i++ {

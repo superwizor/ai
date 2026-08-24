@@ -217,6 +217,31 @@ func buildS4Prompt(o *ontology.Ontology) string {
 	return b.String()
 }
 
+// appendGenerativeGuidance dokleja wytyczne sekcji generacyjnych.
+//
+// Wytyczne pochodza z ONTOLOGII (layout.guidance) — sa trescia ekspercka,
+// wersjonowana i po four-eyes, a nie promptem w kodzie. Regula oparcia
+// jest jednak nasza i niezbywalna: pole basis_construct wymusza ja
+// schematem, a zdanie tutaj tlumaczy modelowi, PO CO ono jest.
+func appendGenerativeGuidance(b *strings.Builder, in SynthesisInput) {
+	if in.WantSuggestions {
+		b.WriteString("\n\nPROPOZYCJE MIEDZY SESJAMI (pole `suggestions`, 2-3 pozycje):\n" +
+			"Kazda ROZWIJA zatwierdzone ustalenia — pole basis_construct wskazuje, " +
+			"z ktorego konstruktu wynika. Nie wprowadzaj kierunkow bez oparcia.\n")
+		if in.SuggestionsGuidance != "" {
+			b.WriteString(in.SuggestionsGuidance + "\n")
+		}
+	}
+	if in.WantInterventions {
+		b.WriteString("\n\nPROPOZYCJE INTERWENCJI (pole `interventions`, 1-2 pozycje):\n" +
+			"Propozycje WARUNKOWE, nie zalecenia. verify_first mowi, co terapeuta " +
+			"ma sprawdzic, zanim zastosuje.\n")
+		if in.InterventionsGuidance != "" {
+			b.WriteString(in.InterventionsGuidance + "\n")
+		}
+	}
+}
+
 // schemaS4 buduje schemat raportu ZAWEZONY DO KONKRETNEGO PRZEBIEGU.
 //
 // Enumy nie sa tu ozdoba. `construct_id` ograniczony do konstruktow,
@@ -243,6 +268,38 @@ func schemaS4(in SynthesisInput) map[string]any {
 	}
 
 	statuses := statusesInPlay(in)
+
+	// Sekcje generacyjne (uklad M5): pola pojawiaja sie w schemacie
+	// WYLACZNIE, gdy uklad ich zazadal — model nieproszony nie ma jak ich
+	// zwrocic. basis_construct to enum zatwierdzonych konstruktow:
+	// propozycja bez oparcia w materiale nie moze POWSTAC, dokladnie tak
+	// jak twierdzenie bez cytatu.
+	suggestion := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"title": map[string]any{"type": "string", "maxLength": int64(120)},
+			"basis_construct": map[string]any{"type": "string", "enum": constructEnum,
+				"description": "Konstrukt, z ktorego ustalen ta propozycja WYNIKA."},
+			"target": map[string]any{"type": "string", "maxLength": int64(160),
+				"description": "Co ma byc wzmacniane albo obserwowane."},
+			"instruction": map[string]any{"type": "string", "maxLength": int64(600),
+				"description": "Niedyrektywne zaproszenie, jezyk przyjazny klientowi."},
+		},
+		"required": []any{"title", "basis_construct", "target", "instruction"},
+	}
+	intervention := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string", "maxLength": int64(120)},
+			"basis_construct": map[string]any{"type": "string", "enum": constructEnum,
+				"description": "Hipoteza/konstrukt z TEGO raportu, na ktorym sie opiera."},
+			"verify_first": map[string]any{"type": "string", "maxLength": int64(300),
+				"description": "Co terapeuta ma zweryfikowac, ZANIM zastosuje."},
+			"scenario": map[string]any{"type": "string", "maxLength": int64(900),
+				"description": "Jak wprowadzic, z przykladowym sformulowaniem."},
+		},
+		"required": []any{"name", "basis_construct", "verify_first", "scenario"},
+	}
 
 	hypothesis := map[string]any{
 		"type": "object",
@@ -300,16 +357,26 @@ func schemaS4(in SynthesisInput) map[string]any {
 		"required": []any{"construct_id", "hypotheses"},
 	}
 
-	return map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			// Liczbe konstruktow ogranicza juz enum construct_id — dodatkowy
-			// maxItems nic nie wnosi, a powieksza automat stanow.
-			"constructs": map[string]any{
-				"type": "array", "items": construct,
-			},
+	// Liczbe konstruktow ogranicza juz enum construct_id — dodatkowy
+	// maxItems nic nie wnosi, a powieksza automat stanow.
+	props := map[string]any{
+		"constructs": map[string]any{
+			"type": "array", "items": construct,
 		},
-		"required": []any{"constructs"},
+	}
+	required := []any{"constructs"}
+	if in.WantSuggestions {
+		props["suggestions"] = map[string]any{"type": "array", "items": suggestion}
+		required = append(required, "suggestions")
+	}
+	if in.WantInterventions {
+		props["interventions"] = map[string]any{"type": "array", "items": intervention}
+		required = append(required, "interventions")
+	}
+	return map[string]any{
+		"type":       "object",
+		"properties": props,
+		"required":   required,
 	}
 }
 

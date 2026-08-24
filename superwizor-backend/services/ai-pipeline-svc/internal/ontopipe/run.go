@@ -92,10 +92,35 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 		NoFit:        res.NoFit,
 		PastSpanIDs:  pastIDs,
 	}
+	// Sekcje generacyjne zamawia UKLAD ontologii — nie kod. Modalnosc
+	// bez layoutu (albo bez tych rodzajow) nie placi za generacje,
+	// ktorej nie wyrenderuje.
+	if o.ReportProfile != nil {
+		for _, sec := range o.ReportProfile.Layout {
+			switch sec.Kind {
+			case ontology.LayoutSuggestions:
+				si.WantSuggestions = true
+				si.SuggestionsGuidance = sec.Guidance
+			case ontology.LayoutInterventions:
+				si.WantInterventions = true
+				si.InterventionsGuidance = sec.Guidance
+			}
+		}
+	}
 	for proba := 0; ; proba++ {
 		rep, err := Synthesize(ctx, llm, o, si, &res.Usage)
 		if err != nil {
 			return res, err
+		}
+		// Limity liczebnosci z soczewek (2-3 propozycje, 1-2 interwencje)
+		// egzekwuje KOD, nie schemat: maxItems nad obiektami rozsadza
+		// automat stanow Vertexa (lekcja z 23.08). Przyciecie jest
+		// deterministyczne — pierwsze N w kolejnosci modelu.
+		if len(rep.Suggestions) > 3 {
+			rep.Suggestions = rep.Suggestions[:3]
+		}
+		if len(rep.Interventions) > 2 {
+			rep.Interventions = rep.Interventions[:2]
 		}
 		viol := Verify(o, rep, si, spanByID)
 		if len(viol) == 0 {

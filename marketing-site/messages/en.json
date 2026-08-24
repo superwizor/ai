@@ -940,7 +940,11 @@
       "slotZmieniony": "Part changed: {nazwa}",
       "minSlotow": "Required parts: {z} → {na}",
       "sekcjaWaga": "Section “{sekcja}”: weight {z} → {na}",
-      "tonRaportu": "Report tone: {z} → {na}"
+      "tonRaportu": "Report tone: {z} → {na}",
+      "ukladSekcjaDodana": "Layout: new section “{tytul}”",
+      "ukladSekcjaUsunieta": "Layout: removed section “{tytul}”",
+      "ukladSekcjaZmieniona": "Layout: changed section “{tytul}”",
+      "ukladKolejnosc": "Layout: section order changed"
     },
     "ontologyComposition": {
       "help": "Weights control the ORDER of report sections — never their visibility. An empty section disappears on its own. A composition change goes through review just like a content change.",
@@ -954,7 +958,8 @@
       "weightLow": "at the bottom",
       "tone": "Report language tone",
       "toneNone": "default",
-      "tone_phenomenological": "phenomenological"
+      "tone_phenomenological": "phenomenological",
+      "layoutNotice": "This ontology uses a custom section layout (mirroring the legacy report). Edit order and titles in the YAML view — weights do not apply."
     }
   },
   "errors": {
