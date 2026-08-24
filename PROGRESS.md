@@ -89,6 +89,29 @@ Gotchas:
 
 ## In progress
 
+### Ontologia F2/M5+ — uklad nazwanych sekcji (main, db67ff91, 2026-08-24)
+
+Raporty eksperymentalne lustrzane wobec soczewek legacy: `report_profile.layout`
+(uporzadkowane sekcje, XOR z wagami) w metaschemacie + walidacja; S4 generuje
+suggestions/interventions wylacznie na zamowienie ukladu (basis_construct jako
+enum); renderer ze sciezka layout i ogonem never-hide; seedy PPT+CBT po 8 sekcji
+(Gestalt celowo przy wagach — lustro procesu, dok. 15). Studio: panel kompozycji
+przy ukladzie pokazuje liste zamiast wag (inaczej dokument niewalidowalny),
+diff pokrywa uklad. Drafty w DB zaktualizowane (dbw, "wersji z layout: 2").
+STAN: DOMKNIETE 2026-08-24. Deploy (uzytkownik uruchamial terragrunt — klasyfikator
+trybu auto blokuje apply w tej sesji; rewizje 00126, potem 00127). Kanarki rundy 1
+wykryly regresje: pruneViolating budowal Report od zera i przenosil same
+Constructs — suggestions/interventions ginely z kazdego raportu z naruszeniem V
+(fix a67b0bd0, test lamany celowo). Runda 2 na 00127: PPT komplet 8 sekcji w
+kolejnosci soczewki; CBT komplet poza znanymi lukami (cbt_episode bez S2
+composite; „Czego mozna bylo nie zauwazyc" znika gdy brak kontrdowodow — by
+design). Puste sekcje znikaja z zalozenia, wiec sklad naglowkow moze sie roznic
+miedzy przebiegami. Luki nazwane w komentarzach
+seedow: TWARDE USTALENIA (ekstrakcja ustalen w S1 — osobny ticket), komentarz
+superwizyjny o technice terapeuty (decyzja produktowa przy R10), sekwencja
+cbt_episode (S2 composite).
+
+
 ### Pacjent→Klient w produkcie (branch `feat/rename-patient-client-labels`, 2026-06-12)
 
 Dokończenie de-medykalizacji: backend `pkg/i18n/rolelabels` — `therapy|patient`
