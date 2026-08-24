@@ -144,6 +144,23 @@ ClassifiedError classifyUploadError(Object error) {
     return ClassifiedError(UploadErrorClass.terminal, msg);
   }
 
+  // ── Filesystem ──────────────────────────────────────────────
+  // Missing source file is TERMINAL, not retryable. The runner already
+  // ran _repairContainerPath (iOS container-UUID rotation) before the
+  // worker touched the row — if the file still isn't there, no number
+  // of retries will conjure it back. Pre-fix this fell into the
+  // retryable catch-all and a row spun "Wznawianie… próba 26" forever
+  // while the home banner promised "Nagranie jest bezpieczne"
+  // (incydent Marcin Krzys, 2026-08-24). Other FileSystemExceptions
+  // (disk full, EBUSY) stay retryable below — only a confirmed-absent
+  // path is hopeless.
+  if (error is PathNotFoundException) {
+    return ClassifiedError(
+      UploadErrorClass.terminal,
+      'source_file_missing: ${error.path ?? error.message}',
+    );
+  }
+
   // ── Network plumbing ────────────────────────────────────────
   if (error is SocketException ||
       error is HttpException ||

@@ -154,6 +154,22 @@ class UploadQueueRunner {
     }
   }
 
+  /// Czy w kolejce siedzi STARSZY, wciąż żywy wiersz tej samej
+  /// kartoteki. Porządek: (queuedAt, localId) — tie-break po localId,
+  /// żeby dwa wiersze z tą samą sekundą nie blokowały się nawzajem.
+  bool _blockedByEarlierSibling(PendingUpload row) {
+    for (final other in _queue.all()) {
+      if (other.localId == row.localId) continue;
+      if (other.patientFileId != row.patientFileId) continue;
+      if (other.isTerminal) continue;
+      final earlier = other.queuedAt.isBefore(row.queuedAt) ||
+          (other.queuedAt.isAtSameMomentAs(row.queuedAt) &&
+              other.localId.compareTo(row.localId) < 0);
+      if (earlier) return true;
+    }
+    return false;
+  }
+
   /// Wciąga raporty z warstwy natywnej i zdejmuje martwe leasingi
   /// (docs/58 §6).
   ///
@@ -551,6 +567,20 @@ class UploadQueueRunner {
         // so we don't fire a doomed CreateAudioUpload that just re-parks.
         final fresh = _queue.getById(initial.localId);
         if (fresh == null || fresh.isTerminal || fresh.isParked) continue;
+        // FIFO per kartoteka (2026-08-24): nagrania jednej kartoteki idą
+        // w kolejności powstania. Bez tego nowsze nagranie potrafiło
+        // wgrać się przed starszym zawieszonym — dostawało wcześniejszy
+        // numer sesji, a kontekst RAG (raport N czyta raporty < N)
+        // składał się w złej kolejności. Blokuje każdy nie-terminalny
+        // starszy wiersz tej samej kartoteki: retryable czeka razem z
+        // backoffem poprzednika (brak pliku jest od dziś terminalny,
+        // więc nie zablokuje kolejki na zawsze), leasing natywny czeka
+        // na rekoncyliację, park kwotowy i tak parkuje rodzeństwo.
+        if (_blockedByEarlierSibling(fresh)) {
+          debugPrint('[upload-runner] ${fresh.localId} czeka na starszy '
+              'wiersz kartoteki ${fresh.patientFileId} (FIFO)');
+          continue;
+        }
         var current = fresh;
         // Heal container-UUID drift BEFORE the worker touches the row.
         final repaired = await _repairContainerPath(current);

@@ -550,14 +550,25 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             // legacy / offline" affordance — Hive shows
                             // it only when ListSessions hasn't been
                             // refreshed yet.
-                            final knownSessionIds = sessions
+                            // Dedup po sesjach RENDEROWANYCH, nie znanych
+                            // (2026-08-24): sesja serwerowa może istnieć,
+                            // a mimo to nie trafić na listę (anulowana po
+                            // stronie serwera, schowana przez banner quota,
+                            // odfiltrowana). Dedup po samym "istnieniu"
+                            // chował wtedy TAKŻE lokalną kartę — chip na
+                            // kaflu mówił "Wgrywanie…", a w kartotece nie
+                            // było żadnego śladu (incydent Marcin Krzys).
+                            // Karta lokalna znika wyłącznie, gdy jej
+                            // serwerowy odpowiednik jest naprawdę widoczny.
+                            final renderedSessionIds = filteredSessions
                                 .map((s) => s.id)
                                 .toSet();
                             final visiblePending = pendingUploads
                                 .where(
                                   (u) => u.sessionId == null
                                       ? true
-                                      : !knownSessionIds.contains(u.sessionId),
+                                      : !renderedSessionIds
+                                          .contains(u.sessionId),
                                 )
                                 .toList(growable: false);
 

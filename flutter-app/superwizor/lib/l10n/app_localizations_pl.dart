@@ -3348,4 +3348,21 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get report_tab_experimental => 'Eksperymentalny';
+
+  @override
+  String get pending_uploads_err_reason_file_missing =>
+      'plik nagrania nie istnieje na urządzeniu';
+
+  @override
+  String get pending_uploads_file_missing_title => 'Nagranie niedostępne';
+
+  @override
+  String get pending_uploads_file_missing_desc =>
+      'Plik audio tej sesji nie istnieje już na tym urządzeniu, więc przesyłanie nie może zostać wznowione. Jeśli nagranie było długie i cenne, skontaktuj się z nami — sprawdzimy, czy część danych dotarła na serwer.';
+
+  @override
+  String get report_ready_snackbar => 'Raport z sesji jest gotowy.';
+
+  @override
+  String get report_ready_snackbar_open => 'Otwórz';
 }

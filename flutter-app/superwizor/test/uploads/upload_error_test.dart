@@ -3,6 +3,8 @@
 // upload that got stuck because the classifier mapped 400 → terminal
 // without inspecting the body).
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:superwizor/uploads/upload_error.dart';
@@ -96,4 +98,28 @@ void main() {
       expect(r.kind, UploadErrorClass.terminal);
     });
   });
+
+  group('classifyUploadError — filesystem', () {
+    // Incydent 2026-08-24: wiersz z nieistniejącym plikiem kręcił
+    // "Wznawianie… próba 26" w nieskończoność — PathNotFoundException
+    // spadał do gałęzi retryable. Po naprawie ścieżki kontenera brak
+    // pliku jest nieodwracalny.
+    test('PathNotFoundException → terminal z markerem source_file_missing',
+        () {
+      final c = classifyUploadError(const PathNotFoundException(
+        '/var/mobile/.../Documents/sessions/x/chunk_00001.enc',
+        OSError('No such file or directory', 2),
+        'Cannot retrieve length of file',
+      ));
+      expect(c.kind, UploadErrorClass.terminal);
+      expect(c.message, contains('source_file_missing'));
+    });
+
+    test('inne FileSystemException zostają retryable (dysk pełny itp.)', () {
+      final c = classifyUploadError(const FileSystemException(
+          'writeFrom failed', '/tmp/x', OSError('No space left', 28)));
+      expect(c.kind, UploadErrorClass.retryable);
+    });
+  });
+
 }

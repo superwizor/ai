@@ -5950,6 +5950,36 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Eksperymentalny'**
   String get report_tab_experimental;
+
+  /// No description provided for @pending_uploads_err_reason_file_missing.
+  ///
+  /// In pl, this message translates to:
+  /// **'plik nagrania nie istnieje na urządzeniu'**
+  String get pending_uploads_err_reason_file_missing;
+
+  /// No description provided for @pending_uploads_file_missing_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie niedostępne'**
+  String get pending_uploads_file_missing_title;
+
+  /// No description provided for @pending_uploads_file_missing_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plik audio tej sesji nie istnieje już na tym urządzeniu, więc przesyłanie nie może zostać wznowione. Jeśli nagranie było długie i cenne, skontaktuj się z nami — sprawdzimy, czy część danych dotarła na serwer.'**
+  String get pending_uploads_file_missing_desc;
+
+  /// No description provided for @report_ready_snackbar.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport z sesji jest gotowy.'**
+  String get report_ready_snackbar;
+
+  /// No description provided for @report_ready_snackbar_open.
+  ///
+  /// In pl, this message translates to:
+  /// **'Otwórz'**
+  String get report_ready_snackbar_open;
 }
 
 class _AppLocalizationsDelegate

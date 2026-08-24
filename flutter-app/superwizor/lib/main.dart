@@ -60,6 +60,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 final navigatorKey = GlobalKey<NavigatorState>();
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -188,7 +189,25 @@ void main() async {
       if (sessionId is String && sessionId.isNotEmpty) {
         if (SessionStatusScreen.currentlyViewedSessionId != sessionId) {
           if (!kIsWeb && Platform.isIOS) LiveActivityService.stopFromBackground();
-          navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
+          // Do 2026-08-24 aplikacja NAWIGOWAŁA tu sama (pushNamed) —
+          // wyrywało to użytkownika z dowolnego ekranu, a przy dwóch
+          // sesjach w locie mnożyło ekrany statusu i rozstrajało stos
+          // (raport bez drogi powrotu). Raport-gotowy w foregroundzie
+          // to informacja, nie rozkaz: snackbar z akcją, nawigacja
+          // wyłącznie z ręki użytkownika.
+          final ctx = navigatorKey.currentContext;
+          final t =
+              (ctx != null && ctx.mounted) ? AppLocalizations.of(ctx) : null;
+          scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 8),
+            content: Text(t?.report_ready_snackbar ?? 'Raport jest gotowy.'),
+            action: SnackBarAction(
+              label: t?.report_ready_snackbar_open ?? 'Otwórz',
+              onPressed: () => navigatorKey.currentState
+                  ?.pushNamed('/session', arguments: sessionId),
+            ),
+          ));
         }
       }
     }
@@ -254,6 +273,7 @@ class SuperWizorApp extends ConsumerWidget {
       // Pełne pokrycie ekranów zamiast trzech ręcznych wywołań.
       // Zdarzenia idą do NASZEGO kolektora — uzasadnienie w
       // analytics/screen_view_observer.dart.
+      scaffoldMessengerKey: scaffoldMessengerKey,
       navigatorObservers: [
         ScreenViewObserver((nazwa) {
           ref

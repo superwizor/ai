@@ -3325,4 +3325,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get report_tab_experimental => 'Experimental';
+
+  @override
+  String get pending_uploads_err_reason_file_missing =>
+      'the recording file no longer exists on this device';
+
+  @override
+  String get pending_uploads_file_missing_title => 'Recording unavailable';
+
+  @override
+  String get pending_uploads_file_missing_desc =>
+      'The audio file for this session no longer exists on this device, so the upload cannot be resumed. If the recording was long and valuable, contact us — we will check whether any data reached the server.';
+
+  @override
+  String get report_ready_snackbar => 'The session report is ready.';
+
+  @override
+  String get report_ready_snackbar_open => 'Open';
 }

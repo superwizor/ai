@@ -1474,5 +1474,10 @@
   "sessionDetails_experimentalSkipped_orgDisabled": "Raport eksperymentalny pominięty: tryb jest wyłączony dla Twojej organizacji. Przełącznik w ustawieniach zostaje włączony, ale nie działa, dopóki administrator go nie przywróci.",
   "sessionDetails_experimentalSkipped_other": "Raport eksperymentalny nie powstał dla tej sesji. Raport poniżej jest raportem produkcyjnym.",
   "report_tab_production": "Raport",
-  "report_tab_experimental": "Eksperymentalny"
+  "report_tab_experimental": "Eksperymentalny",
+  "pending_uploads_err_reason_file_missing": "plik nagrania nie istnieje na urządzeniu",
+  "pending_uploads_file_missing_title": "Nagranie niedostępne",
+  "pending_uploads_file_missing_desc": "Plik audio tej sesji nie istnieje już na tym urządzeniu, więc przesyłanie nie może zostać wznowione. Jeśli nagranie było długie i cenne, skontaktuj się z nami — sprawdzimy, czy część danych dotarła na serwer.",
+  "report_ready_snackbar": "Raport z sesji jest gotowy.",
+  "report_ready_snackbar_open": "Otwórz"
 }

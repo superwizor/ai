@@ -569,4 +569,75 @@ void main() {
 
     await runner.dispose();
   });
+
+  group('FIFO per kartoteka (2026-08-24)', () {
+    PendingUpload seedAt(String id, {String pf = 'pf', int plusSec = 0}) =>
+        PendingUpload.initial(
+          localId: id,
+          therapistId: 'th',
+          patientFileId: pf,
+          patientLanguageCode: 'pl-PL',
+          sourceKind: UploadSourceKind.plainFile,
+          sourcePath: '/$id',
+          contentType: 'audio/flac',
+          sizeBytes: 100,
+          chunkCount: 1,
+          actualDurationSeconds: 0,
+          needsServerSideConversion: false,
+          idempotencyKey: id,
+          now: DateTime.now().toUtc().add(Duration(seconds: plusSec)),
+        );
+
+    test('młodszy wiersz tej samej kartoteki czeka na starszy', () async {
+      final io = _FakeIo();
+      // Starszy: create pada błędem sieciowym → wiersz zostaje aktywny
+      // z backoffem. Młodszy nie ma prawa ruszyć przed nim.
+      io.createUploadError = const SocketException('brak sieci');
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      await queue.enqueue(seedAt('a-starszy'));
+      await queue.enqueue(seedAt('b-mlodszy', plusSec: 1));
+      await runner.start();
+
+      // Młodszy nie wykonał ŻADNEGO ruchu (wszystkie próby create to
+      // starszy — budżet przejść w ticku ponawia go do wyczerpania).
+      expect(queue.getById('b-mlodszy')!.phase, UploadPhase.pending);
+      expect(queue.getById('b-mlodszy')!.attemptCount, 0);
+
+      // Starszy terminalny → młodszy rusza w następnym ticku.
+      io.createUploadError = null;
+      await queue.update(queue.getById('a-starszy')!.copyWith(
+            phase: UploadPhase.failed,
+            terminatedAt: DateTime.now().toUtc(),
+          ));
+      await runner.kick();
+      expect(queue.getById('b-mlodszy')!.phase, UploadPhase.completed);
+      await runner.dispose();
+    });
+
+    test('inna kartoteka nie blokuje', () async {
+      final io = _FakeIo();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      await queue.enqueue(seedAt('c-pf1'));
+      await queue.enqueue(seedAt('d-pf2', pf: 'pf-inna', plusSec: 1));
+      await runner.start();
+      expect(queue.getById('c-pf1')!.phase, UploadPhase.completed);
+      expect(queue.getById('d-pf2')!.phase, UploadPhase.completed);
+      await runner.dispose();
+    });
+  });
+
 }

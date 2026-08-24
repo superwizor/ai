@@ -40,6 +40,7 @@ import '../cache/dto/session_details_dto.dart';
 import '../cache/dto/transcript_dto.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
+import 'home_screen.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../repositories/session_details_repository.dart';
@@ -284,6 +285,24 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(t.transcript_tab, style: theme.textTheme.titleLarge),
+        // Siatka bezpieczeństwa (2026-08-24): ten ekran bywał jedynym
+        // route'em po wyścigu nawigacji (auto-push z FCM x kaskada
+        // pushReplacement) — wtedy domyślna strzałka wstecz znika i nie
+        // ma ŻADNEJ drogi wyjścia. Gdy nie ma czego cofać, dajemy dom.
+        leading: Navigator.of(context).canPop()
+            ? null
+            : IconButton(
+                tooltip: t.session_status_back_to_records,
+                icon: const Icon(Icons.home_outlined),
+                onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'HomeScreen'),
+                    builder: (_) => const HomeScreen(),
+                  ),
+                  (route) => false,
+                ),
+              ),
+
         actions: [
           IconButton(
             tooltip: t.sessionDetails_copy_transcript,

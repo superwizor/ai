@@ -456,8 +456,14 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
     final sid = _resolvedSessionId;
     if (sid != null) {
-      // Report by default (feedback 2026-07-20) — matches the comment
-      // above: the user is about to see the report.
+      // pushReplacement wymienia SZCZYT stosu, nie "nasz" route. Po
+      // 3.6 s kaskady użytkownik mógł już być gdzie indziej (auto-push
+      // z FCM, własna nawigacja) — wymiana trafiałaby wtedy w cudzy
+      // ekran, a po pushAndRemoveUntil potrafiła zostawić Raport jako
+      // jedyny route bez drogi wyjścia (incydent 2026-08-24). Gdy nie
+      // jesteśmy na wierzchu, nie nawigujemy wcale.
+      final route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         settings: const RouteSettings(name: 'ReportScreen'),
         builder: (_) => ReportScreen(sessionId: sid),

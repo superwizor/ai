@@ -1466,5 +1466,10 @@
   "sessionDetails_experimentalSkipped_orgDisabled": "Experimental report skipped: the mode is switched off for your organization. The toggle in settings stays on but has no effect until an admin re-enables it.",
   "sessionDetails_experimentalSkipped_other": "No experimental report was generated for this session. The report below is the production one.",
   "report_tab_production": "Report",
-  "report_tab_experimental": "Experimental"
+  "report_tab_experimental": "Experimental",
+  "pending_uploads_err_reason_file_missing": "the recording file no longer exists on this device",
+  "pending_uploads_file_missing_title": "Recording unavailable",
+  "pending_uploads_file_missing_desc": "The audio file for this session no longer exists on this device, so the upload cannot be resumed. If the recording was long and valuable, contact us — we will check whether any data reached the server.",
+  "report_ready_snackbar": "The session report is ready.",
+  "report_ready_snackbar_open": "Open"
 }

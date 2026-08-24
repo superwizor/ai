@@ -295,12 +295,26 @@ class _BottomSheetNetworkError extends StatelessWidget {
     final isNetworkErr = lower.contains('socket') ||
         lower.contains('network') ||
         lower.contains('clientexception');
+    // Brak pliku źródłowego — jedyny błąd, przy którym "Ponów" jest
+    // obietnicą bez pokrycia. Osobny tytuł i opis mówią wprost, że
+    // nagranie jest niedostępne.
+    final isFileMissing = lower.contains('source_file_missing');
 
-    final title = isNetworkErr ? l.pending_uploads_no_internet_title : l.pending_uploads_error_title;
-    final desc = isNetworkErr
-        ? l.pending_uploads_no_internet_desc
-        : l.pending_uploads_error_desc;
-    final icon = isNetworkErr ? Icons.wifi_off_rounded : Icons.cloud_off_rounded;
+    final title = isFileMissing
+        ? l.pending_uploads_file_missing_title
+        : isNetworkErr
+            ? l.pending_uploads_no_internet_title
+            : l.pending_uploads_error_title;
+    final desc = isFileMissing
+        ? l.pending_uploads_file_missing_desc
+        : isNetworkErr
+            ? l.pending_uploads_no_internet_desc
+            : l.pending_uploads_error_desc;
+    final icon = isFileMissing
+        ? Icons.audio_file_outlined
+        : isNetworkErr
+            ? Icons.wifi_off_rounded
+            : Icons.cloud_off_rounded;
 
     return Container(
       decoration: BoxDecoration(
@@ -395,7 +409,11 @@ class _BottomSheetNetworkError extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 32),
-            // CTA
+            // CTA — dla brakującego pliku "Ponów" byłby obietnicą bez
+            // pokrycia (żadna próba nie odtworzy pliku), więc znika;
+            // zostaje samo zamknięcie, a usunięcie wiersza robi się
+            // przyciskiem Anuluj na karcie.
+            if (!isFileMissing)
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -428,7 +446,7 @@ class _BottomSheetNetworkError extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(height: 12),
+            if (!isFileMissing) const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -525,7 +543,24 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
     final patients = ref.watch(patientsProvider).value;
     final patient = patients?.where((p) => p.id == upload.patientFileId).firstOrNull;
     final patientName = patient != null ? patient.workingAlias : l.pending_uploads_default_patient_name;
-    final sessionNumber = (patient?.sessionCount ?? 0) + 1;
+    // Numer to PRZEWIDYWANIE (serwer nadaje właściwy przy tworzeniu
+    // sesji): count+1 dla najstarszego aktywnego wgrania kartoteki,
+    // +1 za każde wcześniejsze. Do 2026-08-24 każda karta liczyła
+    // count+1 — dwa wgrania tej samej kartoteki wisiały jako ta sama
+    // "Sesja #7". Z FIFO w runnerze kolejność enqueue = kolejność
+    // wgrania, więc przewidywanie jest trafne.
+    final allRows =
+        ref.watch(pendingUploadsStreamProvider).value ?? const <PendingUpload>[];
+    final ahead = allRows
+        .where((u) =>
+            u.patientFileId == upload.patientFileId &&
+            u.localId != upload.localId &&
+            u.phase != UploadPhase.completed &&
+            (u.queuedAt.isBefore(upload.queuedAt) ||
+                (u.queuedAt.isAtSameMomentAs(upload.queuedAt) &&
+                    u.localId.compareTo(upload.localId) < 0)))
+        .length;
+    final sessionNumber = (patient?.sessionCount ?? 0) + 1 + ahead;
 
     // Quota-blocked rows get a special premium card
     if (isQuotaBlocked) {
@@ -964,7 +999,12 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
   static String _friendlyError(String raw, AppLocalizations l) {
     final lower = raw.toLowerCase();
     String reason = raw;
-    if (lower.contains('socket') || lower.contains('network') ||
+    if (lower.contains('source_file_missing')) {
+      // Stan nieodwracalny (fix 2026-08-24): plik nagrania zniknął z
+      // urządzenia. Bez tej gałęzi użytkownik widział surowy
+      // "PathNotFoundException…" i obietnicę automatycznego wznowienia.
+      reason = l.pending_uploads_err_reason_file_missing;
+    } else if (lower.contains('socket') || lower.contains('network') ||
         lower.contains('clientexception')) {
       reason = l.pending_uploads_err_reason_no_internet;
     } else if (lower.contains('timeout') || lower.contains('deadline')) {
