@@ -89,6 +89,25 @@ Gotchas:
 
 ## In progress
 
+### Flutter: kolejka wgrań + widocznosc raportow eksperymentalnych (main, 2026-08-24)
+
+Buildy 55 i 56 w TestFlight (upload potwierdzony). 55: PathNotFound
+terminalny z uczciwym komunikatem (source_file_missing), ODZYSK zrodla
+(sonda katalogu sesji: chunk_*.enc / upload.flac -> przepiecie wiersza;
+root cause: encryptRecording kasuje raw.flac przed utrwaleniem fazy —
+kill w oknie = wiersz wskazuje nieistniejacy plik, dane zostaja),
+FIFO per kartoteka, rozrozniane numery na kartach kolejki, siatka
+nawigacyjna (leading-fallback, isCurrent guard, FCM snackbar zamiast
+auto-nawigacji), dedupe kart w kartotece po sesjach RENDEROWANYCH.
+56: inbox listener obsluguje experimental_report_ready/skipped ->
+invalidate cache sesji + zywy refresh otwartego ekranu (TTL 1 h
+ukrywal drugi raport do godziny). Studio promptow: konflikt wersji
+(wspolny licznik system+chat) = dedykowany komunikat + samonaprawa.
+OTWARTE: bramka "modalnosc bez ontologii" w maybeDualRun wychodzi bez
+zapisu pominiecia (ciche skip_reason); raport eksperymentalny dziala
+na sesjach EN bez bramki jezykowej (decyzja produktowa).
+
+
 ### Ontologia F2/M5+ — uklad nazwanych sekcji (main, db67ff91, 2026-08-24)
 
 Raporty eksperymentalne lustrzane wobec soczewek legacy: `report_profile.layout`
