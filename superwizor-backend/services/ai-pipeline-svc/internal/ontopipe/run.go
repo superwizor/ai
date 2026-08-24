@@ -366,6 +366,25 @@ func pruneViolating(rep Report, viol []Violation) (Report, []string) {
 		}
 		out.Constructs = append(out.Constructs, nowy)
 	}
+	// Sekcje generacyjne przezywaja przycinanie: naruszenia dotycza prozy
+	// konstruktow, nie propozycji. Wyjatek — propozycja oparta na
+	// konstrukcie usunietym W CALOSCI traci ugruntowanie i idzie razem
+	// z nim (kanarki 24.08: prune gubil suggestions/interventions, bo
+	// budowal Report od zera i przenosil same Constructs).
+	for _, sg := range rep.Suggestions {
+		if zleKonstrukty[sg.BasisConstruct] {
+			usuniete = append(usuniete, "suggestion/"+sg.BasisConstruct)
+			continue
+		}
+		out.Suggestions = append(out.Suggestions, sg)
+	}
+	for _, iv := range rep.Interventions {
+		if zleKonstrukty[iv.BasisConstruct] {
+			usuniete = append(usuniete, "intervention/"+iv.BasisConstruct)
+			continue
+		}
+		out.Interventions = append(out.Interventions, iv)
+	}
 	return out, usuniete
 }
 

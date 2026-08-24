@@ -715,3 +715,53 @@ func TestPewnoscWymaganaTakzeWS4(t *testing.T) {
 	}
 	t.Fatalf("confidence nie jest wymagane w S4 (wymagane: %v)", req)
 }
+
+// Kanarki 24.08: przycinanie budowalo Report od zera i przenosilo same
+// Constructs — sekcje generacyjne znikaly z KAZDEGO raportu, ktory
+// przeszedl przez prune (czyli z kazdego z choc jednym naruszeniem V).
+func TestPrzycinaniePrzenosiSekcjeGeneracyjne(t *testing.T) {
+	rep := Report{
+		Constructs: []ConstructReport{
+			{ConstructID: "need", Hypotheses: []Hypothesis{{ID: "h1", Claim: "x"}, {ID: "h2", Claim: "y"}}},
+			{ConstructID: "resource", Hypotheses: []Hypothesis{{ID: "h3", Claim: "z"}}},
+		},
+		Suggestions: []Suggestion{
+			{Title: "A", BasisConstruct: "need"},
+			{Title: "B", BasisConstruct: "resource"},
+		},
+		Interventions: []Intervention{
+			{Name: "I1", BasisConstruct: "resource"},
+		},
+	}
+
+	// Naruszenie na poziomie JEDNEJ hipotezy (klasa V2) — propozycje
+	// maja przezyc w komplecie.
+	po, _ := pruneViolating(rep, []Violation{
+		{Rule: VRuleForeign, ConstructID: "need", HypothesisID: "h1"},
+	})
+	if len(po.Suggestions) != 2 || len(po.Interventions) != 1 {
+		t.Fatalf("po przycieciu hipotezy: suggestions=%d interventions=%d, chcemy 2/1",
+			len(po.Suggestions), len(po.Interventions))
+	}
+
+	// Konstrukt usuniety W CALOSCI — propozycja na nim oparta traci
+	// ugruntowanie i idzie razem z nim; reszta zostaje.
+	po, usuniete := pruneViolating(rep, []Violation{
+		{Rule: VRuleUnknownConstruct, ConstructID: "resource"},
+	})
+	if len(po.Suggestions) != 1 || po.Suggestions[0].BasisConstruct != "need" {
+		t.Fatalf("po usunieciu konstruktu: zostalo %v, chcemy tylko need", po.Suggestions)
+	}
+	if len(po.Interventions) != 0 {
+		t.Fatalf("interwencja na usunietym konstrukcie ma zniknac, jest %v", po.Interventions)
+	}
+	znalezione := false
+	for _, u := range usuniete {
+		if u == "intervention/resource" {
+			znalezione = true
+		}
+	}
+	if !znalezione {
+		t.Fatalf("rejestr usunietych nie odnotowal interwencji: %v", usuniete)
+	}
+}
