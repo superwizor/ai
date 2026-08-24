@@ -124,3 +124,14 @@ describe("translateError", () => {
     expect(() => translateError({ nieoczekiwany: "kształt" }, t)).not.toThrow();
   });
 });
+
+describe("konflikt wersji promptu (2026-08-24)", () => {
+  it("mapuje optimistic-lock z AdminUpdateModalityPrompt na dedykowany klucz", () => {
+    const e = new ConnectError(
+      "prompt was changed by someone else (current version 12, expected 8) — reload before retrying",
+      Code.FailedPrecondition,
+    );
+    expect(translateError(e, t)).toBe("backend.promptVersionConflict");
+  });
+});
+

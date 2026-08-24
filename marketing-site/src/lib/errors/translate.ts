@@ -39,6 +39,12 @@ const BACKEND_PATTERNS: Array<{ contains: string; key: string }> = [
   // identity-svc handler — every SUPERWIZOR_ADMIN mutation gates on
   // reason length. The user can fix this by typing more.
   { contains: "reason must be >=", key: "backend.reasonTooShort" },
+  // clinical-svc AdminUpdateModalityPrompt — optimistic lock. Licznik
+  // wersji jest wspólny dla promptu raportu i czatu, więc zapis
+  // „tamtego" klucza (albo drugie okno Studia) unieważnia expectedVersion
+  // tej instancji. Generyczne „obecny stan" nie mówiło, że wystarczy
+  // spróbować ponownie; PromptStudio przy tym błędzie sam odświeża stan.
+  { contains: "prompt was changed by someone else", key: "backend.promptVersionConflict" },
   // identity-svc AdminAssignTherapistToOrg — organizacja ma WIĘCEJ NIŻ
   // JEDEN przydział miejsc, więc backend nie zgadnie, do którego planu
   // wpiąć terapeutę, i żąda jawnego seat_allocation_id. Bez tej reguły

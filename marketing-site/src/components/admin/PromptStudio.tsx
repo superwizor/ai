@@ -25,6 +25,7 @@ import type {
   AdminModalityPromptVersion,
 } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 import { clinicalClient } from "@/lib/connect/clients";
+import { ConnectError } from "@connectrpc/connect";
 import { translateError } from "@/lib/errors/translate";
 import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog";
 import { diffLines, type DiffOp } from "@/lib/diff";
@@ -240,6 +241,19 @@ export function PromptStudio() {
     setSelectedId(id);
   };
 
+  // Odświeżenie listy BEZ przełączania `loading` — efekt reseedujący
+  // draft zależy od `loading`, a w scenariuszu konfliktu wersji draft
+  // niesie treść przywracanej wersji i nie wolno go nadpisać żywym
+  // promptem (zapis po cichu utrwaliłby stary tekst jako nową wersję).
+  const refreshVersions = useCallback(async () => {
+    try {
+      const resp = await clinicalClient.adminListModalityPrompts({});
+      setPrompts(resp.prompts);
+    } catch {
+      // Best-effort: bez odświeżenia kolejny zapis znów zwróci konflikt.
+    }
+  }, []);
+
   const onSave = async (reason: string): Promise<ActionResult> => {
     if (!selected) return { error: t("nothingSelected") };
     try {
@@ -262,6 +276,17 @@ export function PromptStudio() {
       window.setTimeout(() => setSavedFlash(false), 4000);
       return "success";
     } catch (e) {
+      // Konflikt wersji: stan strony jest nieaktualny (wspólny licznik
+      // wersji dla promptu raportu i czatu; drugie okno też go bije).
+      // Odświeżamy prompts w tle — draft (np. przywracana wersja 8)
+      // zostaje nietknięty, więc ponowny Potwierdź przechodzi.
+      if (
+        e instanceof ConnectError &&
+        e.message.toLowerCase().includes("prompt was changed by someone else")
+      ) {
+        void refreshVersions();
+        void loadHistory(selected.modalityId);
+      }
       return { error: translateError(e, tErrors) };
     }
   };
