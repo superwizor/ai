@@ -765,3 +765,48 @@ func TestPrzycinaniePrzenosiSekcjeGeneracyjne(t *testing.T) {
 		t.Fatalf("rejestr usunietych nie odnotowal interwencji: %v", usuniete)
 	}
 }
+
+// Kanarek 149156fb (24.08): JEDNO V5 na wzmiance wzorcowej zrzucalo caly
+// raport do trybu ekstraktywnego, bo bramka przycietego raportu liczyla
+// usuniete HIPOTEZY (`len(usuniete) > 0`), a przyciecie samej wzmianki
+// niczego do niej nie dodaje. Rozstrzyga ponowna weryfikacja, nie licznik.
+func TestV5NaWzmianceNieDajeTrybuEkstraktywnego(t *testing.T) {
+	f := domyslnaAtrapa(t)
+	bazowy := f.handler
+	f.handler = func(req LLMRequest) (string, error) {
+		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+			// Kazda proba: hipoteza CZYSTA + wzmianka o wzorcu, ktorego
+			// S1.5 nie policzyl (V5 na notatce, bez HypothesisID).
+			return `{"constructs":[{"construct_id":"konflikt","hypotheses":[{"id":"A",` +
+				`"claim":"Materiał daje się czytać jako napięcie.",` +
+				`"supporting":["s01"],"contradicting":[],` +
+				`"epistemic_status":"interpretation","confidence":0.6}],` +
+				`"unknown_yet":[],"next_session_questions":[],` +
+				`"pattern_notices":["temat wraca trzeci raz"]}]}`, nil
+		}
+		return bazowy(req)
+	}
+	res, err := Run(context.Background(), f, Input{
+		SessionID: "s", Transcript: testTranskrypcja, Ontology: testO(t),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Extractive {
+		t.Fatalf("V5 na wzmiance zrzucil raport do trybu ekstraktywnego: %v",
+			res.Violations)
+	}
+	var konflikt *ConstructReport
+	for i := range res.Report.Constructs {
+		if res.Report.Constructs[i].ConstructID == "konflikt" {
+			konflikt = &res.Report.Constructs[i]
+		}
+	}
+	if konflikt == nil || len(konflikt.Hypotheses) == 0 {
+		t.Fatal("proza hipotez nie przetrwala przyciecia wzmianki")
+	}
+	if len(konflikt.PatternNotices) != 0 {
+		t.Fatalf("wzmianka bez wzorca miala zostac przycieta: %v",
+			konflikt.PatternNotices)
+	}
+}

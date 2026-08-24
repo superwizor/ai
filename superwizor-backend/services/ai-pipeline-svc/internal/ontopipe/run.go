@@ -144,14 +144,19 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 			// alarmowy zostaje: naruszenia ida do rejestru, a Pruned
 			// zasila telemetrie tak samo jak Extractive.
 			przyciety, usuniete := pruneViolating(rep, viol)
-			if len(usuniete) > 0 {
-				if reszta := Verify(o, przyciety, si, spanByID); len(reszta) == 0 &&
-					maHipotezy(przyciety) {
-					res.Report = przyciety
-					res.Violations = viol
-					res.PrunedHypotheses = usuniete
-					return res, nil
-				}
+			// Bramka po WYNIKU ponownej weryfikacji, nie po liczbie
+			// usunietych hipotez. Przyciecie samych wzmianek wzorcowych
+			// (V5 na notatce) nie dodaje nic do `usuniete` — stara
+			// bramka `len(usuniete) > 0` zrzucala wtedy caly raport do
+			// trybu ekstraktywnego, mimo ze po przycieciu przechodzil
+			// V1-V6 w calosci (kanarek PPT 149156fb, 24.08: JEDNO V5
+			// na key_conflict skasowalo dwadziescia hipotez prozy).
+			if reszta := Verify(o, przyciety, si, spanByID); len(reszta) == 0 &&
+				maHipotezy(przyciety) {
+				res.Report = przyciety
+				res.Violations = viol
+				res.PrunedHypotheses = usuniete
+				return res, nil
 			}
 
 			// TRYB EKSTRAKTYWNY: cytaty i kategorie bez prozy.
