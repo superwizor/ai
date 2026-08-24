@@ -25,6 +25,7 @@ class _FakeIo implements UploadIo {
   int putCalls = 0;
   int completeCalls = 0;
   Object? createUploadError;
+  Object? putError;
   final List<String> cleanedLocalIds = [];
   Set<String>? lastPruneLiveIds;
   int pruneCalls = 0;
@@ -40,6 +41,7 @@ class _FakeIo implements UploadIo {
   @override
   Future<void> putBytes(PendingUpload u,
       {void Function(double)? onProgress}) async {
+    if (putError != null) throw putError!;
     // Simulate a mid-upload progress tick (resumable chunked PUT) so tests
     // can assert the runner overlays it onto the emitted snapshot.
     onProgress?.call(0.5);
@@ -636,6 +638,96 @@ void main() {
       await runner.start();
       expect(queue.getById('c-pf1')!.phase, UploadPhase.completed);
       expect(queue.getById('d-pf2')!.phase, UploadPhase.completed);
+      await runner.dispose();
+    });
+  });
+
+
+  group('odzysk brakującego źródła (2026-08-24)', () {
+    test('plainFile bez pliku, chunki .enc obok → wiersz przepięty i kończy',
+        () async {
+      final dir = await Directory.systemTemp.createTemp('odzysk');
+      final sesja = Directory('${dir.path}/sessions/s1');
+      await sesja.create(recursive: true);
+      // raw.flac NIE istnieje; obok komplet chunków.
+      await File('${sesja.path}/chunk_00000.enc').writeAsBytes([1, 2, 3]);
+      await File('${sesja.path}/chunk_00001.enc').writeAsBytes([4, 5]);
+
+      final io = _FakeIo();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      await queue.enqueue(PendingUpload.initial(
+        localId: 's1',
+        therapistId: 'th',
+        patientFileId: 'pf',
+        patientLanguageCode: 'pl-PL',
+        sourceKind: UploadSourceKind.plainFile,
+        sourcePath: '${sesja.path}/raw.flac',
+        contentType: 'audio/x-flac',
+        sizeBytes: 100,
+        chunkCount: 1,
+        actualDurationSeconds: 0,
+        needsServerSideConversion: true,
+        idempotencyKey: 's1',
+        now: DateTime.now().toUtc(),
+      ));
+      await runner.start();
+
+      final po = queue.getById('s1')!;
+      expect(po.sourceKind, UploadSourceKind.encryptedChunks,
+          reason: 'sonda ma przepiąć wiersz na chunki zamiast dać mu paść');
+      expect(po.sourcePath, sesja.path);
+      expect(po.chunkCount, 2);
+      expect(po.phase, UploadPhase.completed);
+      await runner.dispose();
+    });
+
+    test('plainFile bez pliku i bez artefaktów → terminal, nie pętla', () async {
+      final dir = await Directory.systemTemp.createTemp('odzysk2');
+      final sesja = Directory('${dir.path}/sessions/s2');
+      await sesja.create(recursive: true);
+
+      final io = _FakeIo();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = UploadQueueRunner(
+        queue: queue,
+        worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+        periodicInterval: const Duration(hours: 1),
+        connectivityStream: const Stream.empty(),
+        hasNetwork: () async => true,
+      );
+      // PUT rzuci prawdziwym PathNotFoundException dopiero w realnym IO —
+      // fake symuluje to jawnie.
+      io.putError = const PathNotFoundException(
+          '/x/raw.flac', OSError('No such file', 2));
+      await queue.enqueue(PendingUpload.initial(
+        localId: 's2',
+        therapistId: 'th',
+        patientFileId: 'pf',
+        patientLanguageCode: 'pl-PL',
+        sourceKind: UploadSourceKind.plainFile,
+        sourcePath: '${sesja.path}/raw.flac',
+        contentType: 'audio/flac',
+        sizeBytes: 100,
+        chunkCount: 1,
+        actualDurationSeconds: 0,
+        needsServerSideConversion: false,
+        idempotencyKey: 's2',
+        now: DateTime.now().toUtc(),
+      ));
+      await runner.start();
+
+      final po = queue.getById('s2')!;
+      expect(po.phase, UploadPhase.failed,
+          reason: 'brak pliku i artefaktów = terminal (klasyfikator), '
+              'nie wieczne Wznawianie');
+      expect(po.lastError, contains('source_file_missing'));
       await runner.dispose();
     });
   });

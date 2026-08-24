@@ -121,6 +121,24 @@ class GrpcUploadIo implements UploadIo {
     // chunk_*.enc in the same dir and securely deletes raw.flac.
     final sessionId = _sessionIdFromPath(u.sourcePath);
     final rawPath = p.join(u.sourcePath, 'raw.flac');
+    // Idempotentne wznowienie (2026-08-24): encryptRecording kasuje
+    // raw.flac PO zapisaniu chunków, a faza wiersza utrwala się dopiero
+    // po powrocie. Ubicie procesu w tym oknie (np. instalacja
+    // aktualizacji) zostawia wiersz w `encrypting` bez raw.flac — ale z
+    // kompletem chunków obok. Ponowne wejście ma je przyjąć, nie rzucać.
+    if (!await File(rawPath).exists()) {
+      final istniejace = await _secureStorage.listChunks(sessionId);
+      if (istniejace.isNotEmpty) {
+        debugPrint('[upload-io] encrypt re-entry localId=${u.localId}: '
+            'raw.flac już skasowany, ${istniejace.length} chunków na '
+            'dysku — wznawiam bez szyfrowania');
+        return EncryptResult(
+          sizeBytes:
+              SecureAudioStorageService.estimateDecryptedSize(istniejace),
+          chunkCount: istniejace.length,
+        );
+      }
+    }
     final chunks = await _secureStorage.encryptRecording(
       rawPath: rawPath,
       sessionId: sessionId,

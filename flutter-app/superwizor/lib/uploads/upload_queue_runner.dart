@@ -25,9 +25,11 @@
 
 import 'dart:async';
 import 'dart:io'
-    show Directory, FileSystemEntity, FileSystemEntityType, InternetAddress;
+    show Directory, File, FileSystemEntity, FileSystemEntityType,
+        InternetAddress;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:path/path.dart' as path_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -152,6 +154,72 @@ class UploadQueueRunner {
       debugPrint('[upload-runner] path repair failed for ${u.localId}: $e');
       return u;
     }
+  }
+
+  /// Odzysk brakującego źródła (2026-08-24, „Sesja #7" 132 min).
+  ///
+  /// Wiersz plainFile (nagranie online) trzyma sourcePath =
+  /// `sessions/<id>/raw.flac`. Ten plik potrafi zniknąć z NASZEJ ręki:
+  /// _secureDelete po szyfrowaniu (konkurencyjna ścieżka recovery
+  /// wchodząca w encrypting dla tej samej sesji) albo sprzątanie.
+  /// iOS nie kasuje Documents — więc gdy raw.flac nie istnieje, obok
+  /// zwykle leżą pełnowartościowe artefakty: komplet chunk_*.enc
+  /// (zaszyfrowane to samo audio) albo upload.flac (odszyfrowany do
+  /// oddania systemowi). Bez tej sondy wiersz kończył jako
+  /// source_file_missing, choć dane wciąż są na urządzeniu.
+  Future<PendingUpload> _repairMissingSource(PendingUpload u) async {
+    if (u.sourceKind != UploadSourceKind.plainFile) return u;
+    try {
+      if (await FileSystemEntity.type(u.sourcePath) !=
+          FileSystemEntityType.notFound) {
+        return u;
+      }
+      final dir = Directory(path_pkg.dirname(u.sourcePath));
+      if (!await dir.exists()) return u;
+      final wpisy = await dir.list().toList();
+      final chunki = wpisy
+          .whereType<File>()
+          .where((f) {
+            final nazwa = path_pkg.basename(f.path);
+            return nazwa.startsWith('chunk_') && nazwa.endsWith('.enc');
+          })
+          .toList();
+      if (chunki.isNotEmpty) {
+        debugPrint('[upload-runner] ${u.localId}: raw.flac zniknął, ale '
+            '${chunki.length} chunk(ów) .enc jest na dysku — przepinam '
+            'wiersz na encryptedChunks');
+        return u.copyWith(
+          sourceKind: UploadSourceKind.encryptedChunks,
+          sourcePath: dir.path,
+          chunkCount: chunki.length,
+          // Serwer skleja chunki i tak przepuszcza plik przez sondę
+          // finalize; content-type juz niesie ewentualne audio/x-flac.
+          needsServerSideConversion: false,
+          attemptCount: 0,
+          nextAttemptAt: DateTime.now().toUtc(),
+          clearLastError: true,
+        );
+      }
+      final handOff = File(
+          path_pkg.join(dir.path, 'upload.flac'));
+      if (await handOff.exists() && await handOff.length() > 0) {
+        debugPrint('[upload-runner] ${u.localId}: raw.flac zniknął, '
+            'przepinam na upload.flac (artefakt os-hand-off)');
+        return u.copyWith(
+          sourcePath: handOff.path,
+          sizeBytes: await handOff.length(),
+          attemptCount: 0,
+          nextAttemptAt: DateTime.now().toUtc(),
+          clearLastError: true,
+        );
+      }
+      debugPrint('[upload-runner] ${u.localId}: katalog sesji istnieje, '
+          'ale nie ma w nim ani chunków, ani upload.flac '
+          '(${wpisy.length} innych wpisów) — źródło realnie utracone');
+    } catch (e) {
+      debugPrint('[upload-runner] sonda źródła ${u.localId}: $e');
+    }
+    return u;
   }
 
   /// Czy w kolejce siedzi STARSZY, wciąż żywy wiersz tej samej
@@ -587,6 +655,15 @@ class UploadQueueRunner {
         if (!identical(repaired, current)) {
           await _queue.update(repaired);
           current = repaired;
+          changed = true;
+        }
+        // Brakujące źródło ≠ utracone audio: sonda katalogu sesji może
+        // przepiąć wiersz na chunki/artefakt hand-off zamiast pozwolić
+        // mu paść jako source_file_missing.
+        final odzyskany = await _repairMissingSource(current);
+        if (!identical(odzyskany, current)) {
+          await _queue.update(odzyskany);
+          current = odzyskany;
           changed = true;
         }
         // Budżet iteracji na wiersz na tick (2026-07-29). Klasa

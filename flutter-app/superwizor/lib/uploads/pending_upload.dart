@@ -285,13 +285,16 @@ class PendingUpload {
     int? sizeBytes,
     int? actualDurationSeconds,
     int? chunkCount,
+    // Odzysk zrodla (2026-08-24): gdy raw.flac znikl, a w katalogu sesji
+    // lezy komplet chunk_*.enc, runner przepina wiersz na te chunki.
+    UploadSourceKind? sourceKind,
   }) {
     return PendingUpload(
       localId: localId,
       therapistId: therapistId,
       patientFileId: patientFileId,
       patientLanguageCode: patientLanguageCode,
-      sourceKind: sourceKind,
+      sourceKind: sourceKind ?? this.sourceKind,
       sourcePath: sourcePath ?? this.sourcePath,
       contentType: contentType ?? this.contentType,
       sizeBytes: sizeBytes ?? this.sizeBytes,

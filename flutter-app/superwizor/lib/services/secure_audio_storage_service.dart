@@ -171,6 +171,32 @@ class SecureAudioStorageService {
     return chunks;
   }
 
+  /// Inwentarz chunków sesji, w kolejności sekwencji. Pusta lista, gdy
+  /// katalog nie istnieje albo nic w nim nie ma. Do idempotentnego
+  /// wznowienia szyfrowania i diagnozy „czy audio naprawdę przepadło".
+  Future<List<EncryptedChunk>> listChunks(String sessionId) async {
+    final dir = await _sessionDir(sessionId);
+    if (!await dir.exists()) return const [];
+    final files = (await dir
+            .list()
+            .where((e) =>
+                e is File &&
+                p.basename(e.path).startsWith('chunk_') &&
+                e.path.endsWith('.enc'))
+            .toList())
+        .cast<File>()
+      ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+    final out = <EncryptedChunk>[];
+    for (var i = 0; i < files.length; i++) {
+      out.add(EncryptedChunk(
+        seq: i,
+        path: files[i].path,
+        sizeBytes: await files[i].length(),
+      ));
+    }
+    return out;
+  }
+
   // ---------- read path: decrypt for upload ----------
 
   /// Nazwa odszyfrowanego pliku oddawanego systemowemu uploaderowi.
