@@ -19,8 +19,10 @@ import {
   setConfusions,
   setConstructField,
   setConstructList,
+  setDefaultTone,
   setMinCompleteSlots,
   setMinEvidence,
+  setSectionWeight,
   setMultiLabel,
   setSlots,
   setValues,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/ontology/model";
 import { ConstructForm } from "@/components/admin/ontology/ConstructForm";
 import { NewConstructWizard } from "@/components/admin/ontology/NewConstructWizard";
+import { ReportCompositionPanel } from "@/components/admin/ontology/ReportCompositionPanel";
 
 export function OntologyFormEditor({
   yamlText,
@@ -97,6 +100,26 @@ export function OntologyFormEditor({
             <span className="font-mono text-[10px] opacity-60">{c.id}</span>
           </button>
         ))}
+        {/* Kompozycja raportu jest wlasnoscia ONTOLOGII, nie konstruktu —
+            panel mieszka wiec przy liscie, nie w formularzu konstruktu. */}
+        <div className="border border-white/15 p-3 mt-2">
+          <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-2">
+            {t("compositionHeading")}
+          </p>
+          <fieldset disabled={readOnly} className={readOnly ? "opacity-70" : ""}>
+            <ReportCompositionPanel
+              profil={widok.reportProfile}
+              onWeight={(sekcja, waga) => {
+                setSectionWeight(doc, sekcja, waga);
+                zapisz();
+              }}
+              onTone={(ton) => {
+                setDefaultTone(doc, ton);
+                zapisz();
+              }}
+            />
+          </fieldset>
+        </div>
         {!readOnly && (
           <button
             type="button"

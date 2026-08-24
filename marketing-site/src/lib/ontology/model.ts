@@ -106,6 +106,30 @@ export interface OntologyView {
   modality: string;
   version: string;
   constructs: ConstructView[];
+  /** Kompozycja sekcji raportu (M5). null = profil domyślny. */
+  reportProfile: ReportProfileView | null;
+}
+
+/** Sekcje raportu i ich wagi — lustro kanonicznej listy z pkg/ontology.
+ * Kolejność jest częścią kontraktu: to porządek domyślny renderera. */
+export const REPORT_SECTIONS = [
+  "session_summary",
+  "interpretive_constructs",
+  "patterns_and_relations",
+  "open_questions",
+  "out_of_taxonomy",
+] as const;
+
+export type ReportSection = (typeof REPORT_SECTIONS)[number];
+export type SectionWeight = "high" | "normal" | "low";
+
+/** Tony o ZDEFINIOWANYM szablonie S4 — lustro KnownTones z pkg/ontology.
+ * Metaschemat odrzuca inne, więc formularz nie może ich zaoferować. */
+export const KNOWN_TONES = ["phenomenological"] as const;
+
+export interface ReportProfileView {
+  sections: Partial<Record<ReportSection, SectionWeight>>;
+  defaultTone: string;
 }
 
 /** Sygnatura dokumentu — Document z `yaml`, opakowany, żeby wołający nie
@@ -168,7 +192,23 @@ export function readOntology(doc: OntologyDoc): OntologyView {
     modality: asString(raw?.modality),
     version: asString(raw?.version),
     constructs,
+    reportProfile: readReportProfile(raw?.report_profile),
   };
+}
+
+function readReportProfile(v: unknown): ReportProfileView | null {
+  if (v == null || typeof v !== "object") return null;
+  const raw = v as Record<string, unknown>;
+  const sections: Partial<Record<ReportSection, SectionWeight>> = {};
+  const rawSections = (raw.sections ?? {}) as Record<string, unknown>;
+  for (const key of REPORT_SECTIONS) {
+    const sec = rawSections[key];
+    if (sec != null && typeof sec === "object") {
+      const w = asString((sec as Record<string, unknown>).weight);
+      if (w === "high" || w === "normal" || w === "low") sections[key] = w;
+    }
+  }
+  return { sections, defaultTone: asString(raw.default_tone) };
 }
 
 function readMinEvidence(v: unknown): MinEvidence | null {
@@ -404,4 +444,53 @@ export function setMinCompleteSlots(
   }
   const przyciete = Math.min(Math.max(1, n), liczbaSlotow);
   doc.setIn(path, przyciete);
+}
+
+/** Ustawia wagę sekcji raportu (M5).
+ *
+ * "normal" USUWA wpis zamiast go zapisywać: normal jest wartością
+ * domyślną, a profil ma nieść wyłącznie odstępstwa — inaczej każda
+ * ontologia dźwigałaby pełną kopię domyślnej kompozycji, a diff przeglądu
+ * pokazywałby "zmiany" tam, gdzie nikt niczego nie zmienił. */
+export function setSectionWeight(
+  doc: OntologyDoc,
+  section: ReportSection,
+  weight: SectionWeight,
+): void {
+  if (weight === "normal") {
+    doc.deleteIn(["report_profile", "sections", section]);
+    czyscPustyProfil(doc);
+    return;
+  }
+  doc.setIn(["report_profile", "sections", section], doc.createNode({ weight }));
+}
+
+/** Ustawia ton językowy S4. Pusty = brak tonu (usuwa klucz). */
+export function setDefaultTone(doc: OntologyDoc, tone: string): void {
+  if (tone.trim() === "") {
+    doc.deleteIn(["report_profile", "default_tone"]);
+    czyscPustyProfil(doc);
+    return;
+  }
+  doc.setIn(["report_profile", "default_tone"], tone.trim());
+}
+
+/** Profil bez odstępstw znika z pliku w całości — pusty blok
+ * `report_profile: {}` sugerowałby decyzję, której nikt nie podjął. */
+function czyscPustyProfil(doc: OntologyDoc): void {
+  const raw = doc.getIn(["report_profile"]);
+  const js =
+    raw != null && typeof (raw as { toJSON?: unknown }).toJSON === "function"
+      ? (raw as { toJSON: () => unknown }).toJSON()
+      : raw;
+  if (js == null || typeof js !== "object") return;
+  const obj = js as Record<string, unknown>;
+  const sekcje = obj.sections as Record<string, unknown> | undefined;
+  const maSekcje = sekcje != null && Object.keys(sekcje).length > 0;
+  const maTon = typeof obj.default_tone === "string" && obj.default_tone !== "";
+  if (!maSekcje && !maTon) {
+    doc.deleteIn(["report_profile"]);
+  } else if (!maSekcje && sekcje != null) {
+    doc.deleteIn(["report_profile", "sections"]);
+  }
 }

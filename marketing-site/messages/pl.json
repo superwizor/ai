@@ -882,7 +882,8 @@
       "sectionComposite": "Części składowe",
       "compositeNotYet": "Ten konstrukt jest strukturą złożoną. Edytor części dochodzi w kolejnym kroku — na razie edytuj je w podglądzie YAML.",
       "removeConstruct": "Usuń konstrukt",
-      "compositeHelp": "Kompozyt powstaje z części. Każda wskazuje fragment sesji, wpis klienta albo inny konstrukt."
+      "compositeHelp": "Kompozyt powstaje z części. Każda wskazuje fragment sesji, wpis klienta albo inny konstrukt.",
+      "compositionHeading": "Kompozycja raportu"
     },
     "ontologySlots": {
       "slotName": "nazwa części",
@@ -937,7 +938,23 @@
       "slotDodany": "Część kompozytu: {nazwa}",
       "slotUsuniety": "Część kompozytu: {nazwa}",
       "slotZmieniony": "Zmieniona część: {nazwa}",
-      "minSlotow": "Wymagane części: {z} → {na}"
+      "minSlotow": "Wymagane części: {z} → {na}",
+      "sekcjaWaga": "Sekcja „{sekcja}”: waga {z} → {na}",
+      "tonRaportu": "Ton raportu: {z} → {na}"
+    },
+    "ontologyComposition": {
+      "help": "Wagi sterują kolejnością sekcji w raporcie — nigdy widocznością. Sekcja bez treści znika sama. Zmiana kompozycji przechodzi przegląd tak samo jak zmiana treści.",
+      "section_session_summary": "Bilans sesji",
+      "section_interpretive_constructs": "Konstrukty interpretacyjne",
+      "section_patterns_and_relations": "Powiązania i wzorce",
+      "section_open_questions": "Pytania i niewiadome",
+      "section_out_of_taxonomy": "Poza taksonomią",
+      "weightHigh": "na górze",
+      "weightNormal": "domyślnie",
+      "weightLow": "na dole",
+      "tone": "Ton języka raportu",
+      "toneNone": "domyślny",
+      "tone_phenomenological": "fenomenologiczny"
     }
   },
   "errors": {

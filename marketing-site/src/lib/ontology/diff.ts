@@ -20,7 +20,12 @@
 // razem z polem, a zgłaszanie tego jako zmiany dałoby dokładnie ten szum,
 // którego ta funkcja ma nie produkować.
 
-import type { ConstructView, OntologyView, SlotView } from "./model";
+import {
+  REPORT_SECTIONS,
+  type ConstructView,
+  type OntologyView,
+  type SlotView,
+} from "./model";
 
 export type ZmianaRodzaj = "dodano" | "usunieto" | "zmieniono";
 
@@ -78,6 +83,45 @@ export function diffOntologii(przed: OntologyView, po: OntologyView): Zmiana[] {
     if (stary) out.push(...diffKonstruktu(stary, c));
   }
 
+  out.push(...diffProfilu(przed, po));
+
+  return out;
+}
+
+// diffProfilu pokazuje zmiany KOMPOZYCJI raportu (M5).
+//
+// Kompozycja zmienia to, co terapeuta czyta i w jakiej kolejności — więc
+// podlega przeglądowi tak samo jak treść. Waga „normal" i brak wpisu to
+// ta sama kompozycja, dlatego porównujemy wartości SKUTECZNE, nie
+// obecność kluczy: dopisanie jawnego `normal` nie jest zmianą.
+function diffProfilu(a: OntologyView, b: OntologyView): Zmiana[] {
+  const out: Zmiana[] = [];
+  const waga = (v: OntologyView, s: (typeof REPORT_SECTIONS)[number]) =>
+    v.reportProfile?.sections[s] ?? "normal";
+
+  for (const sekcja of REPORT_SECTIONS) {
+    const z = waga(a, sekcja);
+    const na = waga(b, sekcja);
+    if (z !== na) {
+      out.push({
+        rodzaj: "zmieniono",
+        konstrukt: "",
+        klucz: "sekcjaWaga",
+        dane: { sekcja, z, na },
+      });
+    }
+  }
+
+  const tonA = a.reportProfile?.defaultTone ?? "";
+  const tonB = b.reportProfile?.defaultTone ?? "";
+  if (tonA !== tonB) {
+    out.push({
+      rodzaj: "zmieniono",
+      konstrukt: "",
+      klucz: "tonRaportu",
+      dane: { z: tonA || "—", na: tonB || "—" },
+    });
+  }
   return out;
 }
 

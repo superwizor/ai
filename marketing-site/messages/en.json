@@ -882,7 +882,8 @@
       "sectionComposite": "Component parts",
       "compositeNotYet": "This construct is a composite. The parts editor arrives in the next step — for now edit them in the YAML view.",
       "removeConstruct": "Remove construct",
-      "compositeHelp": "A composite is made of parts. Each points to a session fragment, a client entry or another construct."
+      "compositeHelp": "A composite is made of parts. Each points to a session fragment, a client entry or another construct.",
+      "compositionHeading": "Report composition"
     },
     "ontologySlots": {
       "slotName": "part name",
@@ -937,7 +938,23 @@
       "slotDodany": "Composite part: {nazwa}",
       "slotUsuniety": "Composite part: {nazwa}",
       "slotZmieniony": "Part changed: {nazwa}",
-      "minSlotow": "Required parts: {z} → {na}"
+      "minSlotow": "Required parts: {z} → {na}",
+      "sekcjaWaga": "Section “{sekcja}”: weight {z} → {na}",
+      "tonRaportu": "Report tone: {z} → {na}"
+    },
+    "ontologyComposition": {
+      "help": "Weights control the ORDER of report sections — never their visibility. An empty section disappears on its own. A composition change goes through review just like a content change.",
+      "section_session_summary": "Session summary",
+      "section_interpretive_constructs": "Interpretive constructs",
+      "section_patterns_and_relations": "Patterns and relations",
+      "section_open_questions": "Questions and unknowns",
+      "section_out_of_taxonomy": "Outside the taxonomy",
+      "weightHigh": "at the top",
+      "weightNormal": "default",
+      "weightLow": "at the bottom",
+      "tone": "Report language tone",
+      "toneNone": "default",
+      "tone_phenomenological": "phenomenological"
     }
   },
   "errors": {
