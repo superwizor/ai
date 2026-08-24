@@ -58,3 +58,27 @@ final sessionDetailsProvider =
       );
   return SessionDetailsDto.fromProto(res);
 });
+
+
+/// Licznik unieważnień szczegółów jednej sesji.
+///
+/// Podbijany przez InboxRefreshListener, gdy do inboxu wpada
+/// `experimental_report_ready` / `experimental_report_skipped` — raport
+/// eksperymentalny rodzi się kilka minut PO produkcyjnym, a ekran
+/// raportu maluje cache z miękkim TTL 1 h, więc bez tego sygnału drugi
+/// raport pojawiał się dopiero po godzinie (incydent „nowy en",
+/// 2026-08-24). Ekran raportu nasłuchuje rodziny dla swojej sesji i na
+/// podbicie robi refresh z sieci.
+final sessionDetailsRevisionProvider =
+    NotifierProvider.family<SessionDetailsRevision, int, String>(
+        SessionDetailsRevision.new);
+
+class SessionDetailsRevision extends Notifier<int> {
+  SessionDetailsRevision(this.sessionId);
+  final String sessionId;
+
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}

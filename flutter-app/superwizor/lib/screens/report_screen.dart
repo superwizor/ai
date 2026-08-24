@@ -31,6 +31,7 @@ import '../l10n/app_localizations.dart';
 import 'home_screen.dart';
 import '../analytics/analytics_collector.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/session_details_provider.dart';
 import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../repositories/session_details_repository.dart';
@@ -234,6 +235,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    // Zywy sygnal z inboxu: raport eksperymentalny doszedl do TEJ sesji,
+    // gdy ekran jest otwarty — cache wlasnie zostal uniewazniony, wiec
+    // dociagamy z sieci bez czekania na ponowne wejscie.
+    ref.listen<int>(sessionDetailsRevisionProvider(widget.sessionId),
+        (prev, next) {
+      if (prev != null && next != prev) {
+        unawaited(_refreshFromBackend(showLoaderIfEmpty: false));
+      }
+    });
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(

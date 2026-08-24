@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../client/client_home_screen.dart';
 import '../providers/patient_notes_provider.dart';
+import '../providers/session_details_provider.dart';
+import '../repositories/session_details_repository.dart';
 import 'session_state_listener.dart';
 
 /// docs/39 PR12 — live client-panel refresh via the existing Firestore
@@ -95,6 +97,20 @@ class InboxRefreshListener {
               .catchError((_) {});
         }
         break;
+      case 'experimental_report_ready':
+      case 'experimental_report_skipped':
+        // Raport eksperymentalny (albo powód jego braku) dociera parę
+        // minut po produkcyjnym. Szczegóły sesji siedzą wtedy w cache z
+        // miękkim TTL 1 h — bez unieważnienia drugi raport był
+        // niewidoczny do godziny od pierwszego otwarcia. Podbicie
+        // rewizji odświeża także AKTUALNIE otwarty ekran raportu.
+        if (n.sessionId.isNotEmpty) {
+          unawaited(_invalidateSessionDetails(n.sessionId));
+          _container
+              .read(sessionDetailsRevisionProvider(n.sessionId).notifier)
+              .bump();
+        }
+        break;
       case 'item_shared':
         // Client web panel: the therapist shared a session/note. The
         // timeline provider is a FutureProvider.autoDispose — invalidating
@@ -102,6 +118,16 @@ class InboxRefreshListener {
         // otherwise.
         _container.invalidate(clientHomeProvider);
         break;
+    }
+  }
+
+  Future<void> _invalidateSessionDetails(String sessionId) async {
+    try {
+      final repo =
+          await _container.read(sessionDetailsRepositoryProvider.future);
+      await repo?.invalidate(sessionId);
+    } catch (e) {
+      debugPrint('inbox: invalidate session details: $e');
     }
   }
 
