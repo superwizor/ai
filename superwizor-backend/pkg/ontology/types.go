@@ -92,6 +92,10 @@ type Ontology struct {
 // Construct to jedna kategoria/kompozyt taksonomii.
 type Construct struct {
 	LabelPL    string   `yaml:"label_pl"`
+	// LabelEN to etykieta dla raportow w jezyku angielskim (raport
+	// wychodzi w jezyku KARTOTEKI, nie ontologii). Opcjonalna — brak
+	// tlumaczenia renderuje label_pl, co samo zglasza luke ekspertowi.
+	LabelEN    string   `yaml:"label_en,omitempty"`
 	Aliases    []string `yaml:"aliases,omitempty"`
 	Definition string   `yaml:"definition,omitempty"`
 	Source     *Source  `yaml:"source,omitempty"`
@@ -232,7 +236,10 @@ type ReportProfile struct {
 type LayoutSection struct {
 	ID    string `yaml:"id"`
 	Title string `yaml:"title"`
-	Kind  string `yaml:"kind"`
+	// TitleEN — tytul sekcji dla raportow angielskich; opcjonalny,
+	// fallback na Title (ta sama zasada co label_en konstruktu).
+	TitleEN string `yaml:"title_en,omitempty"`
+	Kind    string `yaml:"kind"`
 	// Constructs przypisuje konstrukty do sekcji rodzaju `constructs`.
 	// Konstrukt moze nalezec do JEDNEJ sekcji; nieprzypisane laduja w
 	// sekcji koncowej — uklad nigdy nie ukrywa zweryfikowanej tresci.

@@ -364,3 +364,118 @@ func TestWytyczneZOntologiiTrafiajaDoPromptu(t *testing.T) {
 		t.Fatal("prompt nie tlumaczy reguly oparcia")
 	}
 }
+
+// Feedback 2026-08-24: "Dane za: s08, s28" nie mowi terapeucie nic —
+// dowody maja byc przytoczone CYTATEM, bez etykiety identyfikatorow.
+func TestCytatyZamiastIdentyfikatorowSpanow(t *testing.T) {
+	res := wynikPelny()
+	res.Spans = []ontology.TopicSpan{
+		{Span: ontology.Span{ID: "s01", QuoteVerbatim: "chcę być blisko, a duszę się"}},
+		{Span: ontology.Span{ID: "s02", QuoteVerbatim: "w niedzielę było zupełnie inaczej"}},
+	}
+	res.Report.Constructs[0].Hypotheses[0].Contradicting = []string{"s02"}
+	md := RenderMarkdown(ontologiaZUkladem(t), res, RenderInput{})
+
+	if strings.Contains(md, "Dane za") || strings.Contains(md, "Dane przeciw") {
+		t.Fatalf("raport nadal pokazuje etykiety identyfikatorow:\n%s", md)
+	}
+	if strings.Contains(md, "s01") || strings.Contains(md, "s02") {
+		t.Fatalf("surowe identyfikatory spanow w raporcie:\n%s", md)
+	}
+	if !strings.Contains(md, "> chcę być blisko, a duszę się") {
+		t.Error("brak cytatu dowodowego przy hipotezie")
+	}
+	if !strings.Contains(md, "> w niedzielę było zupełnie inaczej") ||
+		!strings.Contains(md, "— przeczy: Konflikt wewnetrzny") {
+		t.Error("kontrdowod bez cytatu albo bez oznaczenia")
+	}
+}
+
+// Limit trzech cytatow na hipoteze: dowod ilustruje, nie przedrukowuje
+// transkrypcji.
+func TestCytatyMajaLimitTrzech(t *testing.T) {
+	res := wynikPelny()
+	res.Report.Constructs[0].Hypotheses[0].Supporting =
+		[]string{"s01", "s02", "s03", "s04"}
+	res.Spans = []ontology.TopicSpan{
+		{Span: ontology.Span{ID: "s01", QuoteVerbatim: "cytat pierwszy"}},
+		{Span: ontology.Span{ID: "s02", QuoteVerbatim: "cytat drugi"}},
+		{Span: ontology.Span{ID: "s03", QuoteVerbatim: "cytat trzeci"}},
+		{Span: ontology.Span{ID: "s04", QuoteVerbatim: "cytat czwarty"}},
+	}
+	md := RenderMarkdown(ontologiaZUkladem(t), res, RenderInput{})
+	for _, chce := range []string{"cytat pierwszy", "cytat drugi", "cytat trzeci"} {
+		if !strings.Contains(md, chce) {
+			t.Errorf("brak %q", chce)
+		}
+	}
+	if strings.Contains(md, "cytat czwarty") {
+		t.Error("czwarty cytat przekracza limit")
+	}
+}
+
+// Raport wychodzi w jezyku KARTOTEKI: chrome po angielsku, tytuly z
+// title_en/label_en, fallback na polski tam, gdzie autor nie przetlumaczyl.
+func TestRaportPoAngielsku(t *testing.T) {
+	o := ontologiaZProfilem(t, `report_profile:
+  layout:
+    - id: bilans
+      title: "Bilans sesji"
+      title_en: "Session balance"
+      kind: summary
+    - id: konflikty
+      title: "Konflikty"
+      title_en: "Conflicts"
+      kind: constructs
+      constructs: [konflikt]
+    - id: pytania
+      title: "Pytania i niewiadome"
+      kind: questions
+`)
+	o.Constructs["konflikt"].LabelEN = "Inner conflict"
+	res := wynikPelny()
+	md := RenderMarkdown(o, res, RenderInput{
+		SummaryShort: "Session essence.", Language: "en-US",
+	})
+
+	for _, chce := range []string{
+		"## Session balance",
+		"## Conflicts",
+		"### Inner conflict",
+		"**Hypothesis A**",
+		"interpretation",
+		"confidence 60%",
+		// pytania nie maja title_en — fallback na tytul autorski
+		"## Pytania i niewiadome",
+		// zasob (no_fit) nie ma label_en — fallback na label_pl,
+		// w doklejonej sekcji z chrome EN
+		"## Outside the current taxonomy",
+		"- Zasob",
+		"Worth checking:",
+	} {
+		if !strings.Contains(md, chce) {
+			t.Errorf("brak %q w raporcie EN:\n%s", chce, md)
+		}
+	}
+	for _, nieChce := range []string{"Hipoteza", "pewność", "Warto sprawdzić"} {
+		if strings.Contains(md, nieChce) {
+			t.Errorf("polski chrome %q w raporcie EN", nieChce)
+		}
+	}
+}
+
+// Instrukcja jezykowa trafia do promptu S4 wylacznie dla jezykow
+// niepolskich.
+func TestJezykRaportuWPrompcieS4(t *testing.T) {
+	var b strings.Builder
+	appendGenerativeGuidance(&b, SynthesisInput{Language: "en-US"})
+	if !strings.Contains(b.String(), "JEZYK RAPORTU: en-US") {
+		t.Fatalf("brak instrukcji jezykowej: %s", b.String())
+	}
+	b.Reset()
+	appendGenerativeGuidance(&b, SynthesisInput{Language: "pl"})
+	if strings.Contains(b.String(), "JEZYK RAPORTU") {
+		t.Fatal("instrukcja jezykowa dla polskiego jest zbedna")
+	}
+}
+

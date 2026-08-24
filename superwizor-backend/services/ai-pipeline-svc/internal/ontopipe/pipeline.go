@@ -29,7 +29,7 @@ import (
 const (
 	PromptVersionS1  = "s1/1.0.0"
 	PromptVersionS2  = "s2/1.1.0" // confidence wymagane w schemacie
-	PromptVersionS4  = "s4/1.4.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
+	PromptVersionS4  = "s4/1.5.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	ValidatorVersion = "r1-r10/1.0.0"
 	// PipelineVersion trafia do reports.pipeline_version.
 	PipelineVersion = "ontology_s1s5"
@@ -83,6 +83,10 @@ type Input struct {
 	// Ontology to AKTYWNA wersja dla modalnosci. Potok nie siega po nia
 	// sam — dostaje ja od wolajacego, ktory rozstrzygnal przelacznik.
 	Ontology *ontology.Ontology
+	// Language to jezyk raportu z kartoteki (sessions.report_language).
+	// Proza S4 i chrome renderera wychodza w tym jezyku; ontologia moze
+	// byc w innym. Pusty = polski.
+	Language string
 }
 
 // Result to wynik calego przebiegu.

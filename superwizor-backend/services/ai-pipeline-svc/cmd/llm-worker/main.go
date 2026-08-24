@@ -460,7 +460,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		// Baner jest czescia ARTEFAKTU, nie UI: raport bywa kopiowany,
 		// eksportowany i ogladany poza aplikacja, a wtedy oznaczenie
 		// spoza tresci nie istnieje.
-		report.ReportMarkdown = experimentalBanner(kod, ver) + report.ReportMarkdown
+		report.ReportMarkdown = experimentalBanner(kod, ver, session.ReportLanguage) + report.ReportMarkdown
 		report.Title = "[EKSPERYMENT] " + report.Title
 		reportJSON, err = ontologyReportJSON(report)
 		if err != nil {

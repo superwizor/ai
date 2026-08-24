@@ -85,6 +85,7 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 		}
 	}
 	si := SynthesisInput{
+		Language:     in.Language,
 		Claims:       res.Approved,
 		Patterns:     res.Patterns,
 		Degraded:     res.Degraded,

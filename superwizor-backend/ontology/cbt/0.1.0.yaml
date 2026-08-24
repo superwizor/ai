@@ -8,6 +8,9 @@
 # M3 (quantities stated_only dla "% wiary"), forced_status (core_belief).
 # Pochodzenie treści: soczewka czatu CBT + dokument 14 (referencje w dok. 11).
 
+# Tlumaczenia EN (label_en/title_en, 2026-08-24): robocze, do przegladu
+# na sesji autoryzacyjnej razem z reszta szkicu. Fallback: brak label_en
+# renderuje label_pl — luka jest widoczna w raporcie, nie ukryta.
 modality: cbt
 version: 0.1.0
 approved_by: []                 # PUSTE do autoryzacji — blokuje prod (CI)
@@ -16,6 +19,7 @@ constructs:
 
   automatic_thought:
     label_pl: "Myśl automatyczna"
+    label_en: "Automatic thought"
     definition: >
       Konkretna, sytuacyjna, dosłowna wypowiedź w pierwszej osobie.
       Przytaczana DOSŁOWNIE ze spanu — nigdy tłumaczona na język
@@ -29,6 +33,7 @@ constructs:
 
   emotion:
     label_pl: "Emocja"
+    label_en: "Emotion"
     definition: >
       JEDNO słowo. Konstrukcja "czuję, że..." prawie zawsze wprowadza MYŚL.
       Kanon listy = decyzja ekspercka (dok. 14, D1/14).
@@ -40,6 +45,7 @@ constructs:
 
   cognitive_distortion:
     label_pl: "Zniekształcenie poznawcze"
+    label_en: "Cognitive distortion"
     definition: "Etykieta WYŁĄCZNIE z listy; zjawisko spoza listy = no_fit, nie własna nazwa."
     kind: category
     multi_label: true           # M2: jeden span może nieść kilka zniekształceń; benchmark F1 per etykieta
@@ -60,6 +66,7 @@ constructs:
 
   intermediate_belief:
     label_pl: "Przekonanie pośredniczące"
+    label_en: "Intermediate belief"
     definition: >
       Reguła ponadsytuacyjna w jednej z trzech FORM; zapis w tej formie,
       nie opisowo. Drabina: wymaga >= 2 myśli automatycznych w tym samym
@@ -71,6 +78,7 @@ constructs:
 
   core_belief:
     label_pl: "Przekonanie kluczowe"
+    label_en: "Core belief"
     definition: >
       Globalne, absolutne twierdzenie o sobie/innych/świecie. Kategoria
       OBOWIĄZKOWA — pomyłka bezradność/bezwartościowość zmienia
@@ -84,6 +92,7 @@ constructs:
 
   compensatory_strategy:
     label_pl: "Strategia kompensacyjna"
+    label_en: "Compensatory strategy"
     definition: >
       Zachowanie chroniące przed uruchomieniem przekonania kluczowego.
       Nazywać strategią, nie "mechanizmem obronnym" (inny model teoretyczny).
@@ -97,6 +106,7 @@ constructs:
 
   cbt_episode:
     label_pl: "Epizod poznawczy (model 5-elementowy)"
+    label_en: "Cognitive episode (5-part model)"
     definition: >
       Oś każdej analizy: sytuacja -> myśl automatyczna -> emocja ->
       zachowanie -> konsekwencja. Konsekwencja krótkoterminowa wyjaśnia,
@@ -146,22 +156,27 @@ report_profile:
   layout:
     - id: podsumowanie
       title: "Podsumowanie sesji"
+      title_en: "Session summary"
       kind: summary
     - id: obserwacje
       title: "Wnikliwe obserwacje"
+      title_en: "Insightful observations"
       kind: constructs
       constructs: [automatic_thought, cognitive_distortion, emotion,
                    compensatory_strategy]
     - id: watki
       title: "Wątki do pogłębienia"
+      title_en: "Threads to explore"
       kind: constructs
       constructs: [intermediate_belief, core_belief]
     - id: konceptualizacja
       title: "Konceptualizacja poznawcza"
+      title_en: "Cognitive conceptualization"
       kind: constructs
       constructs: [cbt_episode]
     - id: plan_dzialania
       title: "Plan działania klienta"
+      title_en: "Client action plan"
       kind: suggestions
       guidance: >
         2-4 zadania w duchu CBT. PRIORYTETOWO rozwijaj zadania ustalone
@@ -170,6 +185,7 @@ report_profile:
         klinicznych — zadania maja byc bezpieczne do pokazania klientowi.
     - id: interwencje
       title: "Propozycje interwencji"
+      title_en: "Suggested interventions"
       kind: interventions
       guidance: >
         1-2 techniki CBT warunkowo (np. restrukturyzacja poznawcza,
@@ -177,7 +193,9 @@ report_profile:
         Scenariusz z przykladowymi pytaniami terapeuty.
     - id: superwizja
       title: "Czego można było nie zauważyć"
+      title_en: "What might have been missed"
       kind: overlooked
     - id: pytania
       title: "Pytania i niewiadome"
+      title_en: "Questions and unknowns"
       kind: questions

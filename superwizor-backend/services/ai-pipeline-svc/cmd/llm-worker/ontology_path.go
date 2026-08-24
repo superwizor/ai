@@ -171,6 +171,7 @@ func runOntologyPipeline(
 		SessionID:  session.ID.String(),
 		Transcript: transcriptText,
 		Ontology:   o,
+		Language:   session.ReportLanguage,
 	})
 	stats := TokenStats{
 		InputTokens:  int32(res.Usage.InputTokens),
@@ -215,6 +216,7 @@ func runOntologyPipeline(
 	// nie omija potoku — pokazuje material policzony niezaleznie od niego.
 	payload.ReportMarkdown = ontopipe.RenderMarkdown(o, res, ontopipe.RenderInput{
 		SummaryShort: metadataPayload.SummaryShort,
+		Language:     session.ReportLanguage,
 	})
 	return payload, res, stats, nil
 }

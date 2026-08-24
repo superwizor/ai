@@ -32,6 +32,7 @@ func TestS4NieMaDostepuDoTranskrypcji(t *testing.T) {
 		"Claims": true, "Patterns": true, "Degraded": true,
 		"Insufficient": true, "NoFit": true, "Corrections": true,
 		"PastSpanIDs":     true,
+		"Language":              true, // tag jezykowy raportu — zero materialu sesji
 		"WantSuggestions": true, "WantInterventions": true,
 		"SuggestionsGuidance": true, "InterventionsGuidance": true,
 	}

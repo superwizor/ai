@@ -39,7 +39,7 @@ func TestKodModalnosciNormalizowany(t *testing.T) {
 // nieść wszystko, co czytelnik zobaczy poza aplikacją — na czym powstał
 // i że nie służy do pracy klinicznej.
 func TestBanerNiesieWersjeIZakaz(t *testing.T) {
-	b := experimentalBanner("CBT", "0.1.0")
+	b := experimentalBanner("CBT", "0.1.0", "pl")
 	for _, oczekiwane := range []string{"EKSPERYMENT", "0.1.0", "CBT",
 		"Nie służy do pracy klinicznej", "art. 50"} {
 		if !strings.Contains(b, oczekiwane) {
@@ -89,3 +89,17 @@ func TestZamowienieBezPublikacjiNieZostaje(t *testing.T) {
 		t.Error("wycofanie stoi poza galezia bledu publikacji")
 	}
 }
+
+// Raport wychodzi w jezyku kartoteki — baner tez (2026-08-24).
+func TestBanerEksperymentuPoAngielsku(t *testing.T) {
+	b := experimentalBanner("CBT", "0.1.0", "en-US")
+	for _, oczekiwane := range []string{"EXPERIMENT", "Not for clinical use", "0.1.0", "CBT"} {
+		if !strings.Contains(b, oczekiwane) {
+			t.Fatalf("baner EN bez %q: %s", oczekiwane, b)
+		}
+	}
+	if strings.Contains(b, "EKSPERYMENT") {
+		t.Fatalf("baner EN zawiera polski wariant: %s", b)
+	}
+}
+

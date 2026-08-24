@@ -24,9 +24,18 @@ import (
 //
 // Kompozycja jest wlasnoscia ONTOLOGII, nie promptu: edytuje sie ja w
 // Ontology Studio, przechodzi przez wersjonowanie i four-eyes jak kazda
-// inna zmiana, a diff K4 ja pokazuje. To odpowiedz na pytanie "jak
-// edytowac sekcje raportu" — nie przez prompt, ktory jest baza legacy,
-// tylko przez profil w tresci, ktora i tak podlega przegladowi.
+// inna zmiana, a diff K4 ja pokazuje.
+//
+// ══ Jezyk raportu (2026-08-24) ══
+//
+// Raport wychodzi W JEZYKU KARTOTEKI (sessions.report_language), nie w
+// jezyku ontologii. Ontologia moze byc polska (szkic CBT), a kartoteka
+// angielska — proza S4 dostaje instrukcje jezykowa, a caly chrome
+// renderera (naglowki, etykiety, baner trybu ekstraktywnego) przechodzi
+// przez tabele `chrome`. Tytuly sekcji ukladu i etykiety konstruktow
+// pochodza z ontologii: dla en uzywamy `title_en`/`label_en`, gdy autor
+// je podal, z fallbackiem na wersje polska — brak tlumaczenia jest
+// widoczny w raporcie, wiec sam sie zglasza ekspertowi.
 
 // RenderInput to dane spoza wyniku potoku, ktore raport wolno pokazac.
 type RenderInput struct {
@@ -35,52 +44,163 @@ type RenderInput struct {
 	// (takze eksperymentalnego), wiec sekcja nie omija potoku — pokazuje
 	// material, ktory istnieje niezaleznie od niego.
 	SummaryShort string
+	// Language to jezyk raportu z kartoteki (sessions.report_language,
+	// np. "pl", "en-US"). Pusty = polski (zgodnosc wsteczna).
+	Language string
 }
 
-// statusPL nazywa status epistemiczny w jezyku raportu.
+// chrome to WSZYSTKIE stale napisy renderera w jednym jezyku.
 //
-// Rozroznienie ma byc WIDOCZNE: terapeuta czyta raport, zeby wiedziec,
-// co jest zapisem, a co interpretacja. Ukrycie tej roznicy w jednolitej
-// prozie znosi glowna wartosc formatu.
-var statusPL = map[ontology.EpistemicStatus]string{
-	ontology.StatusObservation:           "obserwacja",
-	ontology.StatusInterpretation:        "interpretacja",
-	ontology.StatusTheoreticalHypothesis: "hipoteza teoretyczna",
-	ontology.StatusOpenQuestion:          "pytanie otwarte",
-	ontology.StatusInsufficientData:      "brak wystarczających danych",
-	ontology.StatusNoFit:                 "poza taksonomią",
+// Jedna struktura zamiast rozsypanych literalow: dodanie napisu bez
+// tlumaczenia nie ma jak przejsc niezauwazone, bo pole musi istniec w
+// obu instancjach.
+type chrome struct {
+	statusy map[ontology.EpistemicStatus]string
+
+	extractiveBanner string
+	pozostale        string
+	pytania          string
+	wzorce           string
+	pozaTaksonomia   string
+	kotwice          string
+	bilans           string
+	rozwijaCel       string // fmt: label, target
+	opieraSie        string // fmt: label, verify_first
+	stopkaWarunkowa  string
+	przeczy          string // fmt: label (po cytacie kontrdowodu)
+	noFitOdnotowane  string // fmt: label
+	brakDanych       string
+	hipoteza         string // fmt: id
+	pewnosc          string // fmt: %.0f
+	wartoSprawdzic   string // fmt: pytanie
+	noFitWstep       string
+}
+
+var chromePL = chrome{
+	statusy: map[ontology.EpistemicStatus]string{
+		ontology.StatusObservation:           "obserwacja",
+		ontology.StatusInterpretation:        "interpretacja",
+		ontology.StatusTheoreticalHypothesis: "hipoteza teoretyczna",
+		ontology.StatusOpenQuestion:          "pytanie otwarte",
+		ontology.StatusInsufficientData:      "brak wystarczających danych",
+		ontology.StatusNoFit:                 "poza taksonomią",
+	},
+	extractiveBanner: "> **Raport w trybie ekstraktywnym.** Synteza nie przeszła " +
+		"weryfikacji wyjścia, więc poniżej znajdziesz zatwierdzone kategorie " +
+		"wraz z cytatami, bez prozy interpretacyjnej.\n\n",
+	pozostale:       "Pozostałe obserwacje",
+	pytania:         "Pytania i niewiadome",
+	wzorce:          "Powiązania i wzorce",
+	pozaTaksonomia:  "Poza obecną taksonomią",
+	kotwice:         "**Kotwice pamięciowe**\n\n",
+	bilans:          "Bilans sesji",
+	rozwijaCel:      "Rozwija: %s. Cel: %s.\n\n",
+	opieraSie:       "Opiera się na: %s. Zanim zastosujesz, zweryfikuj: %s\n\n",
+	stopkaWarunkowa: "_Propozycje warunkowe — decyzja i odpowiedzialność należą do terapeuty._\n\n",
+	przeczy:         "— przeczy: %s",
+	noFitOdnotowane: "- %s: zjawisko nie mieści się w taksonomii — odnotowane bez etykiety\n",
+	brakDanych:      "Na obecnym etapie brak wystarczających danych.\n\n",
+	hipoteza:        "**Hipoteza %s** _(%s",
+	pewnosc:         ", pewność %.0f%%",
+	wartoSprawdzic:  "- Warto sprawdzić: %s\n",
+	noFitWstep: "W materiale pojawiły się zjawiska, których obecna ontologia " +
+		"nie obejmuje. Zostały odnotowane bez nadawania im kategorii:\n\n",
+}
+
+var chromeEN = chrome{
+	statusy: map[ontology.EpistemicStatus]string{
+		ontology.StatusObservation:           "observation",
+		ontology.StatusInterpretation:        "interpretation",
+		ontology.StatusTheoreticalHypothesis: "theoretical hypothesis",
+		ontology.StatusOpenQuestion:          "open question",
+		ontology.StatusInsufficientData:      "insufficient data",
+		ontology.StatusNoFit:                 "outside the taxonomy",
+	},
+	extractiveBanner: "> **Extractive-mode report.** The synthesis did not pass " +
+		"output verification, so below you will find the approved categories " +
+		"with quotes, without interpretive prose.\n\n",
+	pozostale:       "Other observations",
+	pytania:         "Questions and unknowns",
+	wzorce:          "Connections and patterns",
+	pozaTaksonomia:  "Outside the current taxonomy",
+	kotwice:         "**Memory anchors**\n\n",
+	bilans:          "Session summary",
+	rozwijaCel:      "Builds on: %s. Goal: %s.\n\n",
+	opieraSie:       "Based on: %s. Before applying, verify: %s\n\n",
+	stopkaWarunkowa: "_Conditional suggestions — the decision and responsibility rest with the therapist._\n\n",
+	przeczy:         "— contradicts: %s",
+	noFitOdnotowane: "- %s: the phenomenon does not fit the taxonomy — noted without a label\n",
+	brakDanych:      "Insufficient data at this stage.\n\n",
+	hipoteza:        "**Hypothesis %s** _(%s",
+	pewnosc:         ", confidence %.0f%%",
+	wartoSprawdzic:  "- Worth checking: %s\n",
+	noFitWstep: "The material contains phenomena the current ontology does not " +
+		"cover. They are noted without assigning categories:\n\n",
+}
+
+// chromeFor wybiera tabele napisow po jezyku raportu.
+//
+// Polski jest domyslny (pusty tag = zgodnosc wsteczna); KAZDY inny tag
+// dostaje angielski chrome — proza S4 i tak pisze w zadanym jezyku, a
+// angielskie etykiety sa zrozumialym mianownikiem dla tagow, ktorych
+// nie tlumaczymy (de, fr, ...), w przeciwienstwie do polskich.
+func chromeFor(lang string) chrome {
+	l := strings.ToLower(strings.TrimSpace(lang))
+	if l == "" || l == "pl" || strings.HasPrefix(l, "pl-") {
+		return chromePL
+	}
+	return chromeEN
+}
+
+func jestEN(lang string) bool {
+	l := strings.ToLower(strings.TrimSpace(lang))
+	return !(l == "" || l == "pl" || strings.HasPrefix(l, "pl-"))
 }
 
 // RenderMarkdown sklada raport z wyniku potoku.
 func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 	var b strings.Builder
+	ch := chromeFor(in.Language)
+	en := jestEN(in.Language)
+
+	// Cytaty spanow po identyfikatorze — hipotezy przywoluja dowody
+	// CYTATEM, nie identyfikatorem (feedback 2026-08-24: "Dane za: s08"
+	// nie mowi terapeucie nic).
+	cytaty := map[string]string{}
+	for _, s := range res.Spans {
+		cytaty[s.ID] = s.QuoteVerbatim
+	}
 
 	if res.Extractive {
 		// Tryb ekstraktywny musi byc OZNACZONY w samym raporcie, nie
 		// tylko w telemetrii — i PRZED kompozycja: ostrzezenie nie jest
 		// sekcja, ktorej kolejnosc profil moglby zepchnac na dol.
-		b.WriteString("> **Raport w trybie ekstraktywnym.** Synteza nie przeszła " +
-			"weryfikacji wyjścia, więc poniżej znajdziesz zatwierdzone kategorie " +
-			"wraz z cytatami, bez prozy interpretacyjnej.\n\n")
+		b.WriteString(ch.extractiveBanner)
 	}
 
 	if o.ReportProfile != nil && len(o.ReportProfile.Layout) > 0 {
-		renderLayout(&b, o, res, in)
+		renderLayout(&b, o, res, in, ch, en, cytaty)
 		return b.String()
 	}
 
 	for _, sekcja := range sectionOrder(o) {
 		switch sekcja {
 		case ontology.SectionSessionSummary:
-			renderSummary(&b, in.SummaryShort)
+			renderSummary(&b, ch, in.SummaryShort)
 		case ontology.SectionInterpretive:
-			renderInterpretive(&b, o, res, nil)
+			renderInterpretive(&b, o, res, nil, ch, en, cytaty)
 		case ontology.SectionPatterns:
-			renderPatterns(&b, o, res)
+			renderTitled(&b, ch.wzorce, func(bb *strings.Builder) bool {
+				return renderPatternsBody(bb, o, res, en)
+			})
 		case ontology.SectionOpenQuestions:
-			renderQuestions(&b, o, res)
+			renderTitled(&b, ch.pytania, func(bb *strings.Builder) bool {
+				return renderQuestionsBody(bb, o, res, ch, en)
+			})
 		case ontology.SectionOutOfTaxonomy:
-			renderNoFit(&b, o, res)
+			renderTitled(&b, ch.pozaTaksonomia, func(bb *strings.Builder) bool {
+				return renderNoFitBody(bb, o, res, ch, en)
+			})
 		}
 	}
 	return b.String()
@@ -93,7 +213,8 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 // a pytania, wzmianki o wzorcach i no_fit — jesli uklad ich nie
 // przewidzial — sa doklejane z tytulami domyslnymi. Ekspert steruje
 // KSZTALTEM, nie tym, co terapeuta zobaczy.
-func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in RenderInput) {
+func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in RenderInput,
+	ch chrome, en bool, cytaty map[string]string) {
 	przypisane := map[string]bool{}
 	pokryte := map[string]bool{}
 	for _, sec := range o.ReportProfile.Layout {
@@ -104,34 +225,35 @@ func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in Rende
 	}
 
 	for _, sec := range o.ReportProfile.Layout {
+		tytul := tytulSekcji(sec, en)
 		switch sec.Kind {
 		case ontology.LayoutSummary:
-			renderSummarySection(b, sec.Title, in.SummaryShort, res)
+			renderSummarySection(b, ch, tytul, in.SummaryShort, res)
 		case ontology.LayoutConstructs:
 			naleza := map[string]bool{}
 			for _, id := range sec.Constructs {
 				naleza[id] = true
 			}
-			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
-				return renderInterpretive(bb, o, res, naleza)
+			renderTitled(b, tytul, func(bb *strings.Builder) bool {
+				return renderInterpretive(bb, o, res, naleza, ch, en, cytaty)
 			})
 		case ontology.LayoutSuggestions:
-			renderSuggestions(b, o, sec.Title, res.Report.Suggestions)
+			renderSuggestions(b, o, ch, en, tytul, res.Report.Suggestions)
 		case ontology.LayoutInterventions:
-			renderInterventions(b, o, sec.Title, res.Report.Interventions)
+			renderInterventions(b, o, ch, en, tytul, res.Report.Interventions)
 		case ontology.LayoutOverlooked:
-			renderOverlooked(b, o, sec.Title, res)
+			renderOverlooked(b, o, ch, en, tytul, res)
 		case ontology.LayoutQuestions:
-			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
-				return renderQuestionsBody(bb, o, res)
+			renderTitled(b, tytul, func(bb *strings.Builder) bool {
+				return renderQuestionsBody(bb, o, res, ch, en)
 			})
 		case ontology.LayoutPatterns:
-			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
-				return renderPatternsBody(bb, o, res)
+			renderTitled(b, tytul, func(bb *strings.Builder) bool {
+				return renderPatternsBody(bb, o, res, en)
 			})
 		case ontology.LayoutOutOfTaxonomy:
-			renderTitled(b, sec.Title, func(bb *strings.Builder) bool {
-				return renderNoFitBody(bb, o, res)
+			renderTitled(b, tytul, func(bb *strings.Builder) bool {
+				return renderNoFitBody(bb, o, res, ch, en)
 			})
 		}
 	}
@@ -146,23 +268,23 @@ func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in Rende
 		}
 	}
 	if maNieprzypisane {
-		renderTitled(b, "Pozostałe obserwacje", func(bb *strings.Builder) bool {
-			return renderInterpretive(bb, o, res, nieprzypisane)
+		renderTitled(b, ch.pozostale, func(bb *strings.Builder) bool {
+			return renderInterpretive(bb, o, res, nieprzypisane, ch, en, cytaty)
 		})
 	}
 	if !pokryte[ontology.LayoutQuestions] {
-		renderTitled(b, "Pytania i niewiadome", func(bb *strings.Builder) bool {
-			return renderQuestionsBody(bb, o, res)
+		renderTitled(b, ch.pytania, func(bb *strings.Builder) bool {
+			return renderQuestionsBody(bb, o, res, ch, en)
 		})
 	}
 	if !pokryte[ontology.LayoutPatterns] {
-		renderTitled(b, "Powiązania i wzorce", func(bb *strings.Builder) bool {
-			return renderPatternsBody(bb, o, res)
+		renderTitled(b, ch.wzorce, func(bb *strings.Builder) bool {
+			return renderPatternsBody(bb, o, res, en)
 		})
 	}
 	if !pokryte[ontology.LayoutOutOfTaxonomy] {
-		renderTitled(b, "Poza obecną taksonomią", func(bb *strings.Builder) bool {
-			return renderNoFitBody(bb, o, res)
+		renderTitled(b, ch.pozaTaksonomia, func(bb *strings.Builder) bool {
+			return renderNoFitBody(bb, o, res, ch, en)
 		})
 	}
 }
@@ -183,7 +305,7 @@ func renderTitled(b *strings.Builder, title string, body func(*strings.Builder) 
 // Kotwice wybiera KOD: cytaty dowodowe twierdzen o najwyzszej pewnosci,
 // bez powtorzen spanow, maksymalnie cztery. Zaden model nie decyduje,
 // co jest kotwica — dowod juz przeszedl weryfikacje mechaniczna i S3.
-func renderSummarySection(b *strings.Builder, title, summary string, res Result) {
+func renderSummarySection(b *strings.Builder, ch chrome, title, summary string, res Result) {
 	kotwice := pickAnchors(res.Approved, 4)
 	if strings.TrimSpace(summary) == "" && len(kotwice) == 0 {
 		return
@@ -194,7 +316,7 @@ func renderSummarySection(b *strings.Builder, title, summary string, res Result)
 		b.WriteString("\n\n")
 	}
 	if len(kotwice) > 0 {
-		b.WriteString("**Kotwice pamięciowe**\n\n")
+		b.WriteString(ch.kotwice)
 		for _, k := range kotwice {
 			fmt.Fprintf(b, "> %s\n\n", k.Quote)
 		}
@@ -226,30 +348,31 @@ func pickAnchors(claims []ontology.Claim, limit int) []anchor {
 	return out
 }
 
-func renderSuggestions(b *strings.Builder, o *ontology.Ontology, title string, sug []Suggestion) {
+func renderSuggestions(b *strings.Builder, o *ontology.Ontology, ch chrome, en bool,
+	title string, sug []Suggestion) {
 	if len(sug) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "## %s\n\n", title)
 	for _, s := range sug {
 		fmt.Fprintf(b, "**%s**\n\n", s.Title)
-		fmt.Fprintf(b, "Rozwija: %s. Cel: %s.\n\n", labelFor(o, s.BasisConstruct), s.Target)
+		fmt.Fprintf(b, ch.rozwijaCel, labelFor(o, s.BasisConstruct, en), s.Target)
 		fmt.Fprintf(b, "%s\n\n", s.Instruction)
 	}
 }
 
-func renderInterventions(b *strings.Builder, o *ontology.Ontology, title string, iv []Intervention) {
+func renderInterventions(b *strings.Builder, o *ontology.Ontology, ch chrome, en bool,
+	title string, iv []Intervention) {
 	if len(iv) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "## %s\n\n", title)
 	for _, i := range iv {
 		fmt.Fprintf(b, "**%s**\n\n", i.Name)
-		fmt.Fprintf(b, "Opiera się na: %s. Zanim zastosujesz, zweryfikuj: %s\n\n",
-			labelFor(o, i.BasisConstruct), i.VerifyFirst)
+		fmt.Fprintf(b, ch.opieraSie, labelFor(o, i.BasisConstruct, en), i.VerifyFirst)
 		fmt.Fprintf(b, "%s\n\n", i.Scenario)
 	}
-	b.WriteString("_Propozycje warunkowe — decyzja i odpowiedzialność należą do terapeuty._\n\n")
+	b.WriteString(ch.stopkaWarunkowa)
 }
 
 // renderOverlooked to "czego mozna bylo nie zauwazyc" — zlozone w KODZIE
@@ -257,7 +380,8 @@ func renderInterventions(b *strings.Builder, o *ontology.Ontology, title string,
 // twierdzen, zjawiska poza taksonomia, konstrukty zdegradowane. To sa
 // dokladnie funkcje D1 ("ten fragment przeczy...", "tego moglas nie
 // zauwazyc") zebrane w jedno miejsce.
-func renderOverlooked(b *strings.Builder, o *ontology.Ontology, title string, res Result) {
+func renderOverlooked(b *strings.Builder, o *ontology.Ontology, ch chrome, en bool,
+	title string, res Result) {
 	var tmp strings.Builder
 	widziane := map[string]bool{}
 	for _, c := range res.Approved {
@@ -266,14 +390,14 @@ func renderOverlooked(b *strings.Builder, o *ontology.Ontology, title string, re
 				continue
 			}
 			widziane[q.SpanID] = true
-			fmt.Fprintf(&tmp, "> %s\n\n— przeczy: %s\n\n", q.Quote, labelFor(o, c.ConstructID))
+			fmt.Fprintf(&tmp, "> %s\n\n"+ch.przeczy+"\n\n", q.Quote, labelFor(o, c.ConstructID, en))
 		}
 	}
 	for _, id := range res.NoFit {
-		fmt.Fprintf(&tmp, "- %s: zjawisko nie mieści się w taksonomii — odnotowane bez etykiety\n", labelFor(o, id))
+		fmt.Fprintf(&tmp, ch.noFitOdnotowane, labelFor(o, id, en))
 	}
 	for _, d := range res.Degraded {
-		fmt.Fprintf(&tmp, "- %s: %s\n", labelFor(o, d.ConstructID), d.To)
+		fmt.Fprintf(&tmp, "- %s: %s\n", labelFor(o, d.ConstructID, en), d.To)
 	}
 	if tmp.Len() == 0 {
 		return
@@ -311,11 +435,11 @@ func sectionOrder(o *ontology.Ontology) []string {
 	return out
 }
 
-func renderSummary(b *strings.Builder, summary string) {
+func renderSummary(b *strings.Builder, ch chrome, summary string) {
 	if strings.TrimSpace(summary) == "" {
 		return
 	}
-	b.WriteString("## Bilans sesji\n\n")
+	fmt.Fprintf(b, "## %s\n\n", ch.bilans)
 	b.WriteString(strings.TrimSpace(summary))
 	b.WriteString("\n\n")
 }
@@ -324,7 +448,8 @@ func renderSummary(b *strings.Builder, summary string) {
 // wskazanych (uklad), nil = wszystkie (kompozycja domyslna). Zwraca, czy
 // cokolwiek wypisano. W trybie ukladu naglowki konstruktow schodza
 // poziom nizej (###), bo sekcje ukladu zajmuja poziom ##.
-func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result, tylko map[string]bool) bool {
+func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result,
+	tylko map[string]bool, ch chrome, en bool, cytaty map[string]string) bool {
 	naglowek := "## %s\n\n"
 	if tylko != nil {
 		naglowek = "### %s\n\n"
@@ -335,34 +460,53 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result, ty
 			continue
 		}
 		cokolwiek = true
-		fmt.Fprintf(b, naglowek, labelFor(o, cr.ConstructID))
+		fmt.Fprintf(b, naglowek, labelFor(o, cr.ConstructID, en))
 
 		if len(cr.Hypotheses) == 0 {
 			// Pole bez twierdzen renderuje sie jako ZAPROSZENIE, nie jako
 			// blad. Raport wypelniony w 100% jest sygnalem alarmowym.
-			b.WriteString("Na obecnym etapie brak wystarczających danych.\n\n")
+			b.WriteString(ch.brakDanych)
 		}
 
 		for _, h := range cr.Hypotheses {
-			st := statusPL[ontology.EpistemicStatus(h.EpistemicStatus)]
+			st := ch.statusy[ontology.EpistemicStatus(h.EpistemicStatus)]
 			if st == "" {
 				st = h.EpistemicStatus
 			}
-			fmt.Fprintf(b, "**Hipoteza %s** _(%s", h.ID, st)
+			fmt.Fprintf(b, ch.hipoteza, h.ID, st)
 			if h.Confidence > 0 {
-				fmt.Fprintf(b, ", pewność %.0f%%", h.Confidence*100)
+				fmt.Fprintf(b, ch.pewnosc, h.Confidence*100)
 			}
 			b.WriteString(")_\n\n")
 			fmt.Fprintf(b, "%s\n\n", h.Claim)
 
-			if len(h.Supporting) > 0 {
-				fmt.Fprintf(b, "- Dane za: %s\n", strings.Join(h.Supporting, ", "))
+			// Dowody CYTATEM, nie identyfikatorem (2026-08-24: "Dane za:
+			// s08, s28" nie mowi terapeucie nic). Cytaty przeszly
+			// weryfikacje mechaniczna w S1 — kod tylko je przywoluje.
+			// Limit trzech na hipoteze: dowod ma ilustrowac, nie
+			// przedrukowywac transkrypcji.
+			wypisane := 0
+			for _, id := range h.Supporting {
+				q := strings.TrimSpace(cytaty[id])
+				if q == "" {
+					continue
+				}
+				fmt.Fprintf(b, "> %s\n\n", q)
+				wypisane++
+				if wypisane == 3 {
+					break
+				}
 			}
-			if len(h.Contradicting) > 0 {
-				// Dane przeciw sa FUNKCJA raportu, nie jego defektem —
-				// "ten fragment przeczy pierwszej hipotezie" to jedna z
-				// rzeczy, po ktore terapeuta siega.
-				fmt.Fprintf(b, "- Dane przeciw: %s\n", strings.Join(h.Contradicting, ", "))
+			// Dane przeciw sa FUNKCJA raportu, nie jego defektem —
+			// "ten fragment przeczy pierwszej hipotezie" to jedna z
+			// rzeczy, po ktore terapeuta siega. Cytat + oznaczenie,
+			// zeby kontrdowodu nie dalo sie pomylic z poparciem.
+			for _, id := range h.Contradicting {
+				q := strings.TrimSpace(cytaty[id])
+				if q == "" {
+					continue
+				}
+				fmt.Fprintf(b, "> %s\n\n"+ch.przeczy+"\n\n", q, labelFor(o, cr.ConstructID, en))
 			}
 			b.WriteString("\n")
 		}
@@ -370,25 +514,12 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result, ty
 	return cokolwiek
 }
 
-// renderPatterns agreguje meta-obserwacje w jedna sekcje.
-//
-// Nazwa "Powiazania i wzorce" za dok. 11 §4. Kazda wzmianka jest
-// podpisana konstruktem, bo wyrwana z kontekstu przestaje mowic, CZEGO
-// dotyczy powtarzalnosc. Same wzorce S1.5 tu nie wchodza: wzorzec nigdy
-// nie jest teza i moze wystapic wylacznie jako wzmianka, ktora przeszla
-// S4 i V5.
-func renderPatterns(b *strings.Builder, o *ontology.Ontology, res Result) {
-	renderTitled(b, "Powiązania i wzorce", func(bb *strings.Builder) bool {
-		return renderPatternsBody(bb, o, res)
-	})
-}
-
-func renderPatternsBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
+func renderPatternsBody(b *strings.Builder, o *ontology.Ontology, res Result, en bool) bool {
 	cokolwiek := false
 	for _, cr := range res.Constructsy() {
 		for _, p := range cr.PatternNotices {
 			cokolwiek = true
-			fmt.Fprintf(b, "- **%s:** %s\n", labelFor(o, cr.ConstructID), p)
+			fmt.Fprintf(b, "- **%s:** %s\n", labelFor(o, cr.ConstructID, en), p)
 		}
 	}
 	if cokolwiek {
@@ -397,61 +528,65 @@ func renderPatternsBody(b *strings.Builder, o *ontology.Ontology, res Result) bo
 	return cokolwiek
 }
 
-// renderQuestions agreguje niewiadome i pytania na kolejna sesje.
-//
-// Format przestrzeni hipotez traktuje pola bez danych jako ZAPROSZENIE
-// ("co warto sprawdzic"), nie blad — sekcja zbiera je w jednym miejscu,
-// zeby terapeuta przygotowujacy kolejna sesje nie zbieral ich po calym
-// dokumencie.
-func renderQuestions(b *strings.Builder, o *ontology.Ontology, res Result) {
-	renderTitled(b, "Pytania i niewiadome", func(bb *strings.Builder) bool {
-		return renderQuestionsBody(bb, o, res)
-	})
-}
-
-func renderQuestionsBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
+func renderQuestionsBody(b *strings.Builder, o *ontology.Ontology, res Result,
+	ch chrome, en bool) bool {
 	cokolwiek := false
 	for _, cr := range res.Constructsy() {
 		if len(cr.UnknownYet) == 0 && len(cr.NextSessionQuestions) == 0 {
 			continue
 		}
 		cokolwiek = true
-		fmt.Fprintf(b, "**%s**\n\n", labelFor(o, cr.ConstructID))
+		fmt.Fprintf(b, "**%s**\n\n", labelFor(o, cr.ConstructID, en))
 		for _, u := range cr.UnknownYet {
 			fmt.Fprintf(b, "- %s\n", u)
 		}
 		for _, q := range cr.NextSessionQuestions {
-			fmt.Fprintf(b, "- Warto sprawdzić: %s\n", q)
+			fmt.Fprintf(b, ch.wartoSprawdzic, q)
 		}
 		b.WriteString("\n")
 	}
 	return cokolwiek
 }
 
-func renderNoFit(b *strings.Builder, o *ontology.Ontology, res Result) {
-	renderTitled(b, "Poza obecną taksonomią", func(bb *strings.Builder) bool {
-		return renderNoFitBody(bb, o, res)
-	})
-}
-
-func renderNoFitBody(b *strings.Builder, o *ontology.Ontology, res Result) bool {
+func renderNoFitBody(b *strings.Builder, o *ontology.Ontology, res Result,
+	ch chrome, en bool) bool {
 	if len(res.NoFit) == 0 {
 		return false
 	}
-	b.WriteString("W materiale pojawiły się zjawiska, których obecna ontologia " +
-		"nie obejmuje. Zostały odnotowane bez nadawania im kategorii:\n\n")
+	b.WriteString(ch.noFitWstep)
 	for _, id := range res.NoFit {
-		fmt.Fprintf(b, "- %s\n", labelFor(o, id))
+		fmt.Fprintf(b, "- %s\n", labelFor(o, id, en))
 	}
 	b.WriteString("\n")
 	return true
 }
 
-func labelFor(o *ontology.Ontology, id string) string {
-	if c := o.Constructs[id]; c != nil && c.LabelPL != "" {
+// labelFor zwraca etykiete konstruktu w jezyku raportu.
+//
+// Fallback na label_pl jest SWIADOMY: polska etykieta w angielskim
+// raporcie jest widoczna od razu i sama zglasza brak tlumaczenia
+// ekspertowi — identyfikator techniczny nie zglasza niczego.
+func labelFor(o *ontology.Ontology, id string, en bool) string {
+	c := o.Constructs[id]
+	if c == nil {
+		return id
+	}
+	if en && c.LabelEN != "" {
+		return c.LabelEN
+	}
+	if c.LabelPL != "" {
 		return c.LabelPL
 	}
 	return id
+}
+
+// tytulSekcji zwraca tytul sekcji ukladu w jezyku raportu, z tym samym
+// swiadomym fallbackiem co labelFor.
+func tytulSekcji(sec ontology.LayoutSection, en bool) string {
+	if en && sec.TitleEN != "" {
+		return sec.TitleEN
+	}
+	return sec.Title
 }
 
 // Constructsy zwraca sekcje raportu w kolejnosci deterministycznej.

@@ -224,6 +224,16 @@ func buildS4Prompt(o *ontology.Ontology) string {
 // jest jednak nasza i niezbywalna: pole basis_construct wymusza ja
 // schematem, a zdanie tutaj tlumaczy modelowi, PO CO ono jest.
 func appendGenerativeGuidance(b *strings.Builder, in SynthesisInput) {
+	// Jezyk raportu = jezyk KARTOTEKI, nie ontologii (2026-08-24,
+	// kartoteka en z polskim szkicem CBT). Instrukcja pada zawsze, gdy
+	// tag jest niepolski — takze dla jezykow, ktorych chrome renderera
+	// nie tlumaczy: proza i tak ma wyjsc w jezyku terapeuty.
+	if l := strings.ToLower(strings.TrimSpace(in.Language)); l != "" &&
+		l != "pl" && !strings.HasPrefix(l, "pl-") {
+		fmt.Fprintf(b, "\n\nJEZYK RAPORTU: %s. Caly tekst raportu (hipotezy, "+
+			"pytania, wzmianki o wzorcach, propozycje) piszesz w tym jezyku. "+
+			"Cytaty dowodowe zostaja w brzmieniu oryginalnym.\n", in.Language)
+	}
 	if in.WantSuggestions {
 		b.WriteString("\n\nPROPOZYCJE MIEDZY SESJAMI (pole `suggestions`, 2-3 pozycje):\n" +
 			"Kazda ROZWIJA zatwierdzone ustalenia — pole basis_construct wskazuje, " +

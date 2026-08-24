@@ -62,6 +62,9 @@ type SynthesisInput struct {
 	// material zrodlowy: Guidance* to tresc EKSPERCKA z ontologii
 	// (wersjonowana, po four-eyes), a nie nic z sesji. Pola przechodza
 	// przez test refleksji SWIADOMIE.
+	// Language to jezyk, w ktorym S4 ma PISAC (raport wychodzi w jezyku
+	// kartoteki). Nie niesie materialu sesji — sam tag jezykowy.
+	Language              string
 	WantSuggestions       bool
 	WantInterventions     bool
 	SuggestionsGuidance   string
