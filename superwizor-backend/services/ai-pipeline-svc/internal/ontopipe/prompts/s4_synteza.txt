@@ -78,3 +78,9 @@ REGUŁY
     Gdy dzisiejszy materiał NIE potwierdza wcześniejszego ustalenia —
     nie pisz nic o ciągłości. Ewentualne pytanie o to, czy wątek jest
     nadal żywy, wpisz w `next_session_questions`.
+
+12. NIGDY nie wpisuj identyfikatorów spanów do zdań. Ani `(s04)`, ani
+    `(s0820:s42)`, ani „jak w s01". Odnośniki należą WYŁĄCZNIE do pól
+    `supporting` i `contradicting` — raport pokazuje czytelnikowi CYTAT,
+    nie numer katalogowy. Terapeuta czytający „(s04)" nie ma jak
+    sprawdzić, o co chodzi; cytat mówi sam za siebie.

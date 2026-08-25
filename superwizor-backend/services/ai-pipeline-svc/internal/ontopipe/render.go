@@ -2,6 +2,7 @@ package ontopipe
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -497,7 +498,7 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result,
 				fmt.Fprintf(b, ch.pewnosc, h.Confidence*100)
 			}
 			b.WriteString(")_\n\n")
-			fmt.Fprintf(b, "%s\n\n", h.Claim)
+			fmt.Fprintf(b, "%s\n\n", bezOdnosnikow(h.Claim))
 
 			// Dowody CYTATEM, nie identyfikatorem (2026-08-24: "Dane za:
 			// s08, s28" nie mowi terapeucie nic). Cytaty przeszly
@@ -578,6 +579,29 @@ func renderNoFitBody(b *strings.Builder, o *ontology.Ontology, res Result,
 	}
 	b.WriteString("\n")
 	return true
+}
+
+// odnosnikWProzie lapie identyfikator spanu wpisany w zdanie:
+// `(s04)`, `(s01, s12)`, `(s0820:s42)`. Wzorzec jest WASKI — celuje w
+// nawias z samymi odnosnikami, zeby nie zjesc nawiasu z trescia.
+var odnosnikWProzie = regexp.MustCompile(
+	`\s*\(s\d{2,4}(?::s\d+)?(?:\s*,\s*s\d{2,4}(?::s\d+)?)*\)`)
+
+// bezOdnosnikow usuwa identyfikatory spanow z prozy.
+//
+// Prompt tego zakazuje (regula 12), ale zakaz w prompcie jest prosba, a
+// nie gwarancja — i model ja lamie tym chetniej, im wiecej adresow
+// zobaczy w wejsciu. Po wprowadzeniu kontekstu miedzysesyjnego liczba
+// odnosnikow w prozie skoczyla z zera do trzydziestu trzech na raport
+// (pomiar 25.08). Dla terapeuty „(s04)" jest numerem katalogowym, po
+// ktorym nie ma jak niczego sprawdzic — cytat pod hipoteza mowi sam za
+// siebie, wiec odnosnik jest wylacznie szumem.
+func bezOdnosnikow(s string) string {
+	out := odnosnikWProzie.ReplaceAllString(s, "")
+	// Usuniecie odnosnika zostawia czasem spacje przed kropka.
+	out = strings.ReplaceAll(out, " .", ".")
+	out = strings.ReplaceAll(out, " ,", ",")
+	return strings.TrimSpace(out)
 }
 
 // labelFor zwraca etykiete konstruktu w jezyku raportu.

@@ -528,3 +528,49 @@ func TestCytatHistorycznyPoAngielsku(t *testing.T) {
 		t.Fatalf("data historyczna nie po angielsku:\n%s", md)
 	}
 }
+
+// Pomiar 25.08: po wprowadzeniu kontekstu miedzysesyjnego liczba
+// identyfikatorow spanow w PROZIE skoczyla z zera do trzydziestu trzech
+// na raport — model zaczal odwzorowywac adresy, ktore zobaczyl w
+// wejsciu. Dla terapeuty „(s04)" jest numerem katalogowym bez wartosci;
+// pod hipoteza i tak stoi cytat.
+func TestOdnosnikiSpanowZnikajaZProzy(t *testing.T) {
+	przypadki := []struct{ wejscie, oczekiwane string }{
+		{"Klient dystansuje się (s04).", "Klient dystansuje się."},
+		{"Widać to w dwóch miejscach (s01, s12) i wraca dziś.",
+			"Widać to w dwóch miejscach i wraca dziś."},
+		{"Wątek wrócił po poprzedniej sesji (s0820:s42).",
+			"Wątek wrócił po poprzedniej sesji."},
+		{"Bez odnośników zdanie zostaje nietknięte.",
+			"Bez odnośników zdanie zostaje nietknięte."},
+		// Nawias z TRESCIA musi przetrwac — wzorzec celuje w same
+		// identyfikatory, nie w kazdy nawias.
+		{"Para (małżeństwo od 12 lat) rozmawia rzeczowo.",
+			"Para (małżeństwo od 12 lat) rozmawia rzeczowo."},
+		{"Napięcie rośnie (sesja poprzednia była spokojna).",
+			"Napięcie rośnie (sesja poprzednia była spokojna)."},
+	}
+	for _, p := range przypadki {
+		if got := bezOdnosnikow(p.wejscie); got != p.oczekiwane {
+			t.Errorf("bezOdnosnikow(%q)\n = %q\n chcemy %q", p.wejscie, got, p.oczekiwane)
+		}
+	}
+}
+
+// Scrubber musi dzialac na PROZIE renderowanego raportu, nie tylko
+// w izolacji — inaczej poprawka istnieje i nic nie robi.
+func TestRaportNieNiesieOdnosnikowWProzie(t *testing.T) {
+	res := wynikPelny()
+	res.Spans = []ontology.TopicSpan{
+		{Span: ontology.Span{ID: "s01", QuoteVerbatim: "duszę się"}},
+	}
+	res.Report.Constructs[0].Hypotheses[0].Claim =
+		"Napięcie wraca po poprzedniej sesji (s01) i rośnie (s0820:s42)."
+	md := RenderMarkdown(ontologiaZUkladem(t), res, RenderInput{})
+	if strings.Contains(md, "(s01)") || strings.Contains(md, "(s0820:s42)") {
+		t.Fatalf("odnosniki zostaly w raporcie:\n%s", md)
+	}
+	if !strings.Contains(md, "Napięcie wraca po poprzedniej sesji i rośnie.") {
+		t.Fatalf("zdanie po czyszczeniu wyglada zle:\n%s", md)
+	}
+}
