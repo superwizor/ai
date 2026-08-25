@@ -8,7 +8,10 @@ timestamp: 2026-08-25T09:30:00+02:00
 
 # 65 — F7: kontekst międzysesyjny potoku ontologicznego
 
-**Status:** zatwierdzony kierunkowo (2026-08-25). Implementacja nie rozpoczęta.
+**Status:** F7a WDROŻONE I ZWERYFIKOWANE NA PRODUKCJI, F7b-1/F7b-2
+wdrożone (2026-08-25). Pozostaje F7b-3 (kanał ciągłości hipotez + V8)
+i F7b-4 (benchmark powtarzalności). Sekcje 1–5 opisują ZAMIAR; sekcja 9
+— co faktycznie powstało i czym różni się od zamiaru.
 **Zależności:** potok S1–S5 w trybie eksperymentalnym (plan 16 / dok. 11),
 migracja 000093 (report_spans / report_claims / report_patterns),
 FIFO per kartoteka w kolejce mobilnej (2026-08-24).
@@ -209,32 +212,58 @@ per wątek, jak dziś per wzmianka.
 
 ## 6. Kolejność wdrożenia
 
-| Krok | Zakres | Uwagi |
+| Krok | Zakres | Stan |
 |---|---|---|
-| F7a-1 | migracja topics w report_spans + zapis od wdrożenia | mała, bez ryzyka |
-| F7a-2 | S0 loader okna + run_context (N2) + bariera kolejności (N4) | rdzeń |
-| F7a-3 | S2/R2/R5 + enum adresów historycznych + V1 | ożywia min_evidence.sessions |
-| F7a-4 | S4 PastClaims + renderer dat | ciągłość ustaleń |
-| F7a-5 | kanarki: Gestalt `unfinished_business` na ≥2 sesjach jednej kartoteki | dowód życia |
-| F7b-1 | migracja pgvector + indeksowanie po przebiegu | zasilanie bez konsumpcji |
-| F7b-2 | retrieval w S0 + progi + run_context | za flagą organizacji |
-| F7b-3 | kanał ciągłości S4 + `kind: continuity` + V8 | pełny cykl życia hipotezy |
-| F7b-4 | benchmark: powtarzalność retrieval (dwa przebiegi, ta sama selekcja) | bramka przed szerszym włączeniem |
+| F7a-1 | migracja topics w report_spans + zapis od wdrożenia | **ZROBIONE** (000097) |
+| F7a-2 | S0 loader okna + run_context (N2) + bariera kolejności (N4) | **ZROBIONE** (000098) |
+| F7a-3 | S2/R2/R5 + adresy historyczne + V1 | **ZROBIONE** (s2/1.2.0) |
+| F7a-4 | S4 PriorFindings + renderer dat + V7 | **ZROBIONE** (s4/1.6.0) |
+| F7a-5 | kanarek końca do końca | **ZROBIONE** — raport 5b703f65, dwa datowane cytaty |
+| F7b-1 | indeks + zasilanie po przebiegu | **ZROBIONE** (000099) |
+| F7b-2 | retrieval w S0 + progi + run_context | **ZROBIONE** (000100) |
+| F7b-3 | kanał ciągłości S4 + `kind: continuity` + V8 | otwarte |
+| F7b-4 | benchmark powtarzalności retrieval | otwarte — bramka przed produkcją |
 
-Każdy krok osobno deployowalny i kanarkowalny; F7b w całości za flagą.
+Każdy krok osobno deployowalny i kanarkowalny.
 
-## 7. Punkty decyzyjne (przed startem odpowiednich kroków)
+## 7. Punkty decyzyjne — ROZSTRZYGNIĘTE
 
-1. **W (głębokość okna F7a)** — propozycja 3; alternatywa: pełna historia
-   z twardym budżetem K/S.
-2. **Zasięg kontekstu S2** — tylko konstrukty z progiem `sessions`
-   (rekomendacja) vs wszystkie.
-3. **Model embeddingów** — Vertex multilingual, wymiar 768; potwierdzić
-   dostępność w europe-central2 i koszt.
-4. **k i próg podobieństwa F7b** — startowo k=8 / próg z kalibracji;
-   wchodzi do pipeline_version.
-5. **Sekcja ciągłości w układach** — czy PPT/CBT dostają ją w szkicach od
-   razu, czy po pierwszych kanarkach F7b.
+1. **W (głębokość okna)** — **3 sesje**, budżety K=60 twierdzeń /
+   S=120 spanów. Przycięcia liczone i zapisywane.
+2. **Zasięg kontekstu S2** — historia zawężona do spanów, które
+   uziemiały **ten sam konstrukt**. Ostrzejsze niż rekomendacja
+   („konstrukty z progiem sessions"): S2 jest wołane osobno na konstrukt
+   właśnie po to, by nie mieszać poziomów pojęciowych, a pokazanie
+   każdemu konstruktowi całej historii cofnęłoby ten rozdział i
+   pomnożyło koszt przez liczbę konstruktów ontologii.
+3. **Model embeddingów** — **text-embedding-005** (768, wielojęzyczny),
+   ten sam, którego od dawna używa legacy-RAG. pgvector 0.8.1 był już
+   zainstalowany. Reużycie znanego modelu zamiast nowej zależności:
+   ta sama przestrzeń wektorowa, koszt zmierzony w produkcji
+   (~$0.0001/wywołanie).
+4. **k i próg** — k=8, próg podobieństwa 0.55, max 6 sesji źródłowych.
+   **Wartości startowe**, jawnie oznaczone jako do kalibracji: każdy
+   odrzucony sąsiad jest liczony (`semantic_below_threshold`), każdy
+   przyjęty zapisuje swoje `similarity`.
+5. **Sekcja ciągłości w układach** — odłożone do F7b-3, razem z V8.
+
+### 7a. Decyzja dodana w trakcie: kto dostaje semantykę
+
+Wyszukiwanie semantyczne jest **domyślnie włączone na powierzchni
+eksperymentalnej** — organizacja z raportami eksperymentalnymi ma je
+w tych raportach bez osobnego wpisu w konfiguracji. Raport
+**produkcyjny** wymaga jawnej flagi `SEMANTIC_CONTEXT_ENABLED`.
+
+Uzasadnienie: raport eksperymentalny z definicji nie służy do pracy
+klinicznej — powstaje na ontologii bez autoryzacji ekspertów właśnie po
+to, żeby było co kalibrować. Organizacja, która go włączyła, zgodziła
+się już oglądać wyniki niezautoryzowanego wnioskowania; dołożenie tam
+niedeterministycznej selekcji nie zmienia charakteru tej zgody. Materiał
+kliniczny zostaje przy decyzji człowieka.
+
+Odwrotne rozwiązanie (osobny wpis dla każdej organizacji) byłoby
+sprzeczne z intencją: zapomniany wpis wyglądałby jak „semantyka nic nie
+znajduje", czyli jak ubogi wynik, a nie jak brak konfiguracji.
 
 ## 8. Ryzyka i mitygacje (podsumowanie)
 
@@ -246,3 +275,109 @@ Każdy krok osobno deployowalny i kanarkowalny; F7b w całości za flagą.
 | Przetwarzanie poza kolejnością psuje ciągłość | N4: bariera per kartoteka w workerze + FIFO mobilne (już jest) |
 | Koszt kontekstu rozsadza prompt S2/S4 | twarde budżety K/S + przycięcia logowane do run_context |
 | Historia sprzed migracji bez topics | uczciwe zero (nie liczy się do rekurencji), bez dorabiania wstecz |
+
+---
+
+## 9. Co faktycznie powstało (2026-08-25)
+
+Sekcje 1–8 opisują zamiar. Ta opisuje implementację — łącznie z tym,
+czym różni się od planu i czego plan nie przewidział.
+
+### 9.1 Ścieżka danych, krok po kroku
+
+**Zapis (każdy przebieg ontologiczny):**
+
+1. `Persist` zapisuje spany **razem z hasłami tematycznymi** (000097) —
+   bez nich rekurencja międzysesyjna nie miałaby z czego się policzyć.
+2. `Persist` zwraca `PersistResult.ClaimIDs` — identyfikatory powstają
+   dopiero przy zapisie, a indeks musi mieć na co wskazać.
+3. `indexInference` liczy wektory dla zatwierdzonych twierdzeń i
+   opublikowanych hipotez, zapisuje je do `report_inference_index`
+   (000099) z klasą potoku, modelem embeddingów i adresem wpisu.
+
+**Odczyt (przed S2):**
+
+4. `loadPastContext` — okno W=3 sesji wstecz, klasa potoku zgodna
+   z bieżącym przebiegiem, spany ryzyka wykluczone w zapytaniu (T22),
+   sesje w toku pominięte i policzone (N4).
+5. `dolaczSemantyczne` — jeśli włączone: wektor ze streszczenia
+   i tematów call-1 (już spseudonimizowanych), top-k sąsiadów spoza
+   okna, próg 0.55, limit sesji źródłowych, deduplikacja wobec okna.
+6. Wynik trafia do `PastContext`; każdy element niesie swój kanał
+   (`window` / `semantic`) i — dla semantyki — podobieństwo.
+
+**Konsumpcja:**
+
+7. **S2** dostaje blok „USTALENIA Z POPRZEDNICH SESJI" tego konstruktu
+   i oddzielony blok fragmentów historycznych (adres `sMMDD:sNN`).
+8. **S3** — jedna mapa spanów dla całego przebiegu, więc R2 liczy
+   odrębne sesje (`min_evidence.sessions` żyje), R5 honoruje
+   `about_past` spanu historycznego, a nowa reguła
+   `R2_no_current_span` wymaga co najmniej jednego dowodu z bieżącej
+   sesji.
+9. **S4** dostaje ustalenia konstruktów w grze i oznaczenie
+   „· SPOTKANIE DD.MM" przy cytatach historycznych; enum dozwolonych
+   spanów obejmuje adresy historyczne.
+10. **S5** — `V7_ciaglosc_bez_zakotwiczenia`: zdanie o powrocie wątku
+    bez cytatu z tamtego spotkania jest naruszeniem; przycięcie tnie
+    to zdanie, nie cały raport.
+11. **Renderer** — cytat historyczny z datą w języku raportu
+    („(21.08)" / „(Aug 21)"), identyfikatory spanów usuwane z prozy.
+12. **Proweniencja** — `report_run_context` (co przebieg zobaczył,
+    z kanałem i podobieństwem) + `report_run_context_stats` (czego nie
+    pokazaliśmy: budżety, pominięte sesje, odrzucenia progiem).
+
+### 9.2 Czego plan nie przewidział — pięć wad znalezionych kanarkami
+
+Wszystkie przeszły przez komplet zielonych testów jednostkowych.
+Wspólny mianownik: **awaria wyglądająca jak ubogi, ale poprawny wynik**.
+
+1. **Persist nie umiał dowiązać cytatu z wcześniejszej sesji.**
+   Pub/Sub ponawiał cały przebieg co 6 minut, zostawiając duplikat
+   raportu za każdym razem. Naprawa: adres `sMMDD:sNN` rozwiązuje się
+   przez `(session_id, span_ref)` do ORYGINALNEGO wiersza spanu.
+2. **Enum S4 nie zawierał adresów historycznych.** Reguła V7 była
+   NIE DO SPEŁNIENIA: prosiliśmy model o zdanie o ciągłości i
+   zabranialiśmy jedynego sposobu jego uzasadnienia. Osiem naruszeń na
+   przebieg → jedno po naprawie.
+3. **Identyfikatory spanów wyciekały do prozy** („Klient dystansuje
+   się (s04)"): 33 na raport z kontekstem, 0 bez. Model odwzorowywał
+   adresy widziane w wejściu. Naprawa: reguła 12 w prompcie + scrubber
+   w rendererze (wzorzec wąski, nawiasy z treścią przechodzą).
+4. **`source_claim_id` puste we wszystkich wierszach indeksu.**
+   Zapytanie F7b-2 tego wymaga, więc wyszukiwanie nie znalazłoby nigdy
+   niczego, a liczniki pokazałyby „0 znalezionych, 0 poniżej progu" —
+   nieodróżnialne od braku historii.
+5. **Klasa potoku brana z `pipeline.Pipeline`** dawała „ontology" także
+   dla eksperymentu (stempel eksperymentalny dokłada się osobno), więc
+   filtr klasy nie trafiałby w nic.
+
+Wniosek operacyjny: **każdy mechanizm kontekstu ma licznik odróżniający
+„nic nie było" od „coś nie zadziałało"**. To nie jest metryka poboczna,
+tylko jedyna obrona przed awarią, która wygląda jak poprawność.
+
+### 9.3 Wersje i migracje
+
+| Element | Wersja / numer |
+|---|---|
+| topics w report_spans | migracja 000097 |
+| report_run_context + stats | migracja 000098 |
+| report_inference_index | migracja 000099 |
+| similarity + liczniki semantyczne | migracja 000100 |
+| prompt S2 (blok ustaleń) | s2/1.2.0 |
+| prompt S4 (ciągłość, zakaz odnośników) | s4/1.7.0 |
+| nowe reguły walidatora | R2_no_current_span, V7_ciaglosc_bez_zakotwiczenia |
+| model embeddingów | text-embedding-005 (768) |
+| parametry selekcji | W=3, K=60, S=120, k=8, próg 0.55, max 6 sesji |
+
+### 9.4 Co zostało
+
+- **F7b-3**: kanał ciągłości dla hipotez (`kind: continuity` w układzie,
+  historia pewności, V8 pilnujące, że przeszła hipoteza nie staje się
+  dowodem). Indeks już zbiera hipotezy — czeka na konsumenta.
+- **F7b-4**: benchmark powtarzalności retrievalu. **Bramka przed
+  włączeniem semantyki dla raportów produkcyjnych**: dopóki dwa
+  przebiegi na tym samym materiale nie dadzą tej samej selekcji,
+  niedeterministyczna bramka nie ma wstępu do materiału klinicznego.
+- **Kalibracja progu** na danych z `similarity` i
+  `semantic_below_threshold`.

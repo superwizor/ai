@@ -335,10 +335,12 @@ func TestSemantykaDokladaDoOkna(t *testing.T) {
 	}
 	// Klasa potoku po obu stronach granicy: eksperyment widzi wylacznie
 	// eksperymentalna historie, produkcja wylacznie produkcyjna.
-	if !strings.Contains(kod, "PipelineExperimental)") {
+	// Klasa potoku plus znacznik przebiegu (F7b-2 + domyslka na
+	// powierzchni eksperymentalnej): to samo wywolanie niesie oba.
+	if !strings.Contains(kod, "PipelineExperimental, true)") {
 		t.Error("galaz eksperymentalna pyta indeks bez swojej klasy")
 	}
-	if !strings.Contains(kod, "appconfig.PipelineOntology)") {
+	if !strings.Contains(kod, "appconfig.PipelineOntology, false)") {
 		t.Error("galaz produkcyjna pyta indeks bez swojej klasy")
 	}
 	// Okno ZAWSZE pierwsze.

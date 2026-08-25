@@ -60,7 +60,7 @@ const (
 // normalnym wynikiem, nie awaria.
 func dolaczSemantyczne(ctx context.Context, logger *slog.Logger, session *SessionContext,
 	past *ontopipe.PastContext, streszczenie string, tematy []string,
-	klasaPotoku string) *ontopipe.PastContext {
+	klasaPotoku string, eksperymentalny bool) *ontopipe.PastContext {
 
 	if past == nil || dbPool == nil {
 		return past
@@ -68,7 +68,7 @@ func dolaczSemantyczne(ctx context.Context, logger *slog.Logger, session *Sessio
 	if pipelineConfig == nil {
 		return past
 	}
-	if !pipelineConfig.SemanticContextEnabled(ctx, session.OrganizationID) {
+	if !semantykaWlaczona(ctx, session.OrganizationID, eksperymentalny) {
 		return past
 	}
 	past.Stats.SemanticEnabled = true
@@ -219,6 +219,36 @@ func dolaczSemantyczne(ctx context.Context, logger *slog.Logger, session *Sessio
 		"dodane_ustalenia", dodane, "ponizej_progu", ponizejProgu,
 		"sesji_zrodlowych", len(sesje), "prog", progPodobienstwa)
 	return past
+}
+
+// semantykaWlaczona rozstrzyga, czy przebieg moze pytac indeks.
+//
+// ══ Dwie drogi, celowo nierowne ══
+//
+// 1. Jawna flaga organizacji — obowiazuje ZAWSZE, takze dla raportow
+//    produkcyjnych. To jest decyzja o materiale klinicznym i musi byc
+//    podjeta przez czlowieka.
+//
+// 2. Domyslnie WLACZONA na powierzchni eksperymentalnej: organizacja,
+//    ktora ma raporty eksperymentalne, ma tez wyszukiwanie semantyczne
+//    w TYCH raportach, bez osobnego wpisu w konfiguracji.
+//
+// Dlaczego druga droga jest bezpieczna, a pierwsza nadal potrzebna:
+// raport eksperymentalny z definicji NIE SLUZY do pracy klinicznej —
+// powstaje na ontologii bez autoryzacji ekspertow wlasnie po to, zeby
+// bylo co kalibrowac. Organizacja, ktora go wlaczyla, juz zgodzila sie
+// ogladac wyniki niezautoryzowanego wnioskowania; dolozenie tam
+// niedeterministycznej selekcji nie zmienia charakteru tej zgody.
+// Raport produkcyjny to co innego i zostaje przy jawnej decyzji.
+//
+// Bez tego rozroznienia byloby odwrotnie do intencji: kazda nowa
+// organizacja eksperymentalna wymagalaby PAMIETANIA o drugim wpisie,
+// a zapomniany wpis wygladalby jak „semantyka nic nie znajduje".
+func semantykaWlaczona(ctx context.Context, org uuid.UUID, eksperymentalny bool) bool {
+	if pipelineConfig.SemanticContextEnabled(ctx, org) {
+		return true
+	}
+	return eksperymentalny && pipelineConfig.ExperimentalReportsEnabled(ctx, org)
 }
 
 // wczytajTwierdzeniaPoID czyta wskazane twierdzenia razem z data ich

@@ -465,7 +465,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		// potokiem i sa juz spseudonimizowane.
 		pastContext = dolaczSemantyczne(ctx, logger, session, pastContext,
 			metadataPayload.SummaryShort, metadataPayload.RAGThemes,
-			PipelineExperimental)
+			PipelineExperimental, true)
 		report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
 			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 		if err != nil {
@@ -493,7 +493,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			pastContext = loadPastContext(ctx, logger, session, false)
 			pastContext = dolaczSemantyczne(ctx, logger, session, pastContext,
 				metadataPayload.SummaryShort, metadataPayload.RAGThemes,
-				appconfig.PipelineOntology)
+				appconfig.PipelineOntology, false)
 			report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
 				transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 			if err != nil {
