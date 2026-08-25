@@ -19,6 +19,7 @@
 | 1.2 | 2026-08-22 | Głębia wnioskowania (specyfikacja pełna: `13_Glebia_Wnioskowania.md`): (a) S1.5 — dowody wzorcowe (deterministyczne, cytowalne obiekty `pattern`); (b) S2b — etap integracji między-konstruktowej nad zatwierdzonymi twierdzeniami + walidacja R8 (w tym monotoniczność statusu R8d); (c) rozwarstwienie R4 per status epistemiczny (obserwacje: entailment; hipotezy: test spójności + marker abdukcyjny); (d) dwustronna kalibracja abstencji (przeoczenie symetryczne do zmyślenia); (e) metryki głębi w benchmarku (recall ustaleń eksperckich, nietrywialność, pokrycie integracyjne); (f) tickety T13–T18; sekcja raportu „Powiązania i wzorce". |
 | 1.3 | 2026-08-22 | Rozszerzenia metaschematu z analizy CBT (specyfikacja pełna: `14_Modalnosc_CBT_Analiza_Dopasowania.md`): (a) **M1** — konstrukty kompozytowe `kind: composite` (typowane sloty, `min_complete_slots`, `insufficient_data` per slot) + pole `forced_status`; (b) **M2** — `multi_label: true` (benchmark: F1 per etykieta zamiast accuracy); (c) **M3** — polityka kwantyfikacji `quantities: stated_only` + nowa reguła walidatora **R9** (wartość liczbowa bez spanu = twarde odrzucenie; fabrykacja liczb = 0 w benchmarku); (d) **M4** — szósty typ relacji `mediacja` (role trigger/mediator/outcome) + **S2c**: deterministyczna detekcja cykli w grafie zwalidowanych relacji (zero LLM); (e) typ referencji dowodowej `entry_ref` (dane strukturalne z aplikacji towarzyszącej); (f) polityka treści ryzyka w potoku raportu — spany ryzyka wyłączone z wnioskowania (S2/S2b/S2c/S1.5), render sekcji za flagą do opinii doradcy (dokument 14, sekcja 7); tickety T19–T27. |
 | 1.4 | 2026-08-22 | Rozszerzenia przekrojowe z analizy modalności psychodynamicznej i Gestalt (specyfikacja pełna: `15_Modalnosci_Psychodynamiczna_Gestalt.md`): (a) **R10** — twarda granica terapeuty: zakaz inferencji o stanach wewnętrznych użytkownika; treści o doświadczeniu terapeuty wyłącznie jako `entry_ref` jego autorstwa (wdrażane natychmiast — luka istnieje w PPT); (b) pola spanu **`interaction_frame`** (rama/adresat wypowiedzi — materiał przeniesieniowy, eksperymenty Gestalt) i **`observed_by`** (obserwacja terapeuty o kliencie vs samoopis); (c) siódmy typ relacji **`paralela`** (analogia strukturalna) z obostrzeniami: twardy `theoretical_hypothesis`, próg precyzji ≥ 0,85, flaga wyłączenia per modalność; (d) deterministyczny wzorzec **`latency`** w S1.5 (znaczniki ciszy z chunkera 600 ms — zero nowej infrastruktury); (e) **protokół osiągalności** w benchmarku: recall liczony względem ustaleń wyprowadzalnych z transkryptu, „sufit pokrycia" raportowany per modalność; (f) **M5** — opcjonalny `report_profile` per modalność (wagi sekcji, ton S4); deklaracja `therapist_boundary` w metaschemacie; tickety T28–T36. |
+| 1.5 | 2026-08-25 | Zmiana doboru modelu: **S2 i S4 przechodzą z Pro na Flash** (S1 był na Flash od początku), po spełnieniu warunku benchmarku z sekcji 2a. Motywacja kosztowa: $0,45 wobec $0,028 za raport legacy, przy czym rachunek robi S2 wołane raz na konstrukt. Uzasadnienie merytoryczne: budżet myślenia był już zerowy/minimalny na wszystkich etapach, więc jakość niosą schemat i kod (enumy, weryfikacja cytatów, R1–R10, V1–V7), a nie klasa modelu. Przy okazji naprawione dwie rzeczy, które ta zmiana ujawniła: (a) etap potoku był rozpoznawany po nazwie modelu — `LLMRequest` niesie teraz jawne pole `Stage`; (b) koszt przebiegu ontologicznego był liczony po stawce modelu potoku legacy, zaniżając każdy raport eksperymentalny ok. 3,7× przez pięć tygodni — wycena idzie teraz za potokiem. Wiersze historyczne nietknięte. |
 
 ---
 
@@ -72,7 +73,8 @@ Diagnoza z sekcji 2 nie jest usterką konkretnego wdrożenia, lecz właściwośc
 Wnioski architektoniczne (wiążące dla przyszłych zmian):
 
 - Wiedza parametryczna jest traktowana jako **prior** (kompetencja językowa, generowanie kandydatów) — nigdy jako źródło prawdy o taksonomii.
-- **Rationale doboru modeli per etap:** zadania niewymagające wiedzy domenowej idą na model mniejszy — S1 (ekstrakcja cytatów: operacja czysto językowa) i R4 (entailment: pytanie logiczno-językowe) na Flash; **jedyny etap dotykający teorii (S2) idzie na Pro i dostaje całą wiedzę domenową w kontekście** (wyciągi kanoniczne L1 + ontologia L2 w całości, bez selekcji retrievalem). Przyszłe optymalizacje kosztowe nie mogą przenieść S2 na model mniejszy ani wprowadzić selekcji kontekstu bez przejścia benchmarku (sekcja 8).
+- **Rationale doboru modeli per etap (zmienione 2026-08-25 — patrz niżej):** zadania niewymagające wiedzy domenowej idą na model mniejszy — S1 (ekstrakcja cytatów: operacja czysto językowa) i R4 (entailment: pytanie logiczno-językowe) na Flash. Etap dotykający teorii (S2) dostaje **całą wiedzę domenową w kontekście** (wyciągi kanoniczne L1 + ontologia L2 w całości, bez selekcji retrievalem) — i to, a nie klasa modelu, jest właściwym zabezpieczeniem. Warunek pozostaje w mocy: optymalizacja kosztowa nie może wprowadzić selekcji kontekstu S2 ani przenieść S2 na model mniejszy **bez przejścia benchmarku** (sekcja 8).
+- **S2 i S4 na Flash od 2026-08-25.** Warunek z poprzedniego akapitu został spełniony, nie obejściony: benchmark A/B na tej samej sesji jest częścią zmiany. Powód: S2 jest wołane raz na konstrukt (14 wywołań dla PPT), za każdym razem z pełną listą spanów, i to tam szedł cały rachunek — raport eksperymentalny na Pro kosztował ok. **$0,45** wobec $0,028 za raport legacy, szesnastokrotnie więcej. Dlaczego zmiana jest do obrony: budżet myślenia był już wyłączony na każdym etapie (Flash 0, Pro 128 = minimum, które Pro w ogóle przyjmuje), więc potok nigdy nie opierał się na długim wnioskowaniu modelu — jakości pilnują enumy w schemacie, mechaniczna weryfikacja cytatów, walidator R1–R10 i weryfikator V1–V7. Kryteria odrzucenia zmiany (sekcja 8): spadek liczby zatwierdzonych twierdzeń, przesunięcie rozkładu odrzuceń R1–R10, wzrost naruszeń V1–V7 albo wpadnięcie raportu w tryb ekstraktywny. Raport, któremu terapeuta nie ufa, nie jest tańszy — jest bezużyteczny.
 - **S2 nigdy nie konsumuje wyników RAG.** RAG dostarcza tekst o teorii, nie strukturę teorii (sekcja 2, wiersz 7); obsługuje wyłącznie warstwę edukacyjną `A4_EDU` i warsztat ekspertów. Warstwy wiedzy (L0 biblioteka źródeł → L1 wyciągi kanoniczne → L2 ontologia → L3 indeksy pochodne), manifest korpusu, licencje i pipeline ingestu — `12_Zarzadzanie_Wiedza_Domenowa.md`.
 - Fine-tuning per modalność pozostaje odrzucony (ADR-0YY, opcja B): przesuwa rozkład prawdopodobieństwa, ale nie daje gwarancji katalogu zamkniętego, a wiedza jako *dane w kontekście + ograniczenia strukturalne* jest audytowalna i wymienialna bez retrainingu.
 
@@ -273,7 +275,7 @@ S1.5 DOWODY WZORCOWE                           (Go — deterministyczne, nie LLM
    ze spanami; pełna proweniencja do spanów bazowych; nieobecności — v2
    │
    ▼
-S2  MAPOWANIE PER KONSTRUKT                    (Gemini Pro, T=0; osobne wywołanie
+S2  MAPOWANIE PER KONSTRUKT                    (Gemini Flash, T=0; osobne wywołanie
    na typ konstruktu — nigdy „cała konceptualizacja naraz";
    rationale doboru modelu: sekcja 2a — jedyny etap dotykający teorii)
    wejście:  spans[] + CAŁOŚĆ wiedzy kanonicznej dla konstruktu:
@@ -333,7 +335,8 @@ S3  WALIDATOR DZIEDZINOWY                      (Go — deterministyczny, nie LLM
    wynik: approved_claims[] + rejected[] (z powodami — do telemetrii i benchmarku)
    │
    ▼
-S2b INTEGRACJA MIĘDZY-KONSTRUKTOWA             (Gemini Pro, T=0;
+S2b INTEGRACJA MIĘDZY-KONSTRUKTOWA             (niewdrożone; przy wdrożeniu
+                                                dobór modelu jak S2, T=0;
    specyfikacja: dokument 13, sekcja 4; za flagą REPORT_RELATIONS_ENABLED — D2/13)
    wejście: approved_claims[] + patterns[] + L1/L2 dla występujących konstruktów
    — S2b NIE WIDZI TRANSKRYPTU (inwersja antykonfabulacyjna jak w S4)
@@ -373,7 +376,7 @@ S2c DETEKCJA CYKLI                             (Go — deterministyczna, ZERO LL
    algorytmicznie z już zwalidowanych krawędzi
    │
    ▼
-S4  SYNTEZA RAPORTU                            (Gemini Pro)
+S4  SYNTEZA RAPORTU                            (Gemini Flash)
    wejście: WYŁĄCZNIE approved_claims[] + approved_relations[] + patterns[]
    + cycles[] — S4 NIE MA DOSTĘPU DO TRANSKRYPTU; generator pisze język,
    nie decyduje o treści
