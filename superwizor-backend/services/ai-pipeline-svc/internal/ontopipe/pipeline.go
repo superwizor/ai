@@ -47,6 +47,12 @@ type LLM interface {
 }
 
 type LLMRequest struct {
+	// Stage nazywa etap potoku ("S1", "S2", "S4"). Osobne pole, bo model
+	// NIE jest identyfikatorem etapu: od 2026-08-25 wszystkie trzy chodza
+	// na Flash, a wczesniej S2 i S4 dzielily Pro. Kod, ktory rozpoznawal
+	// etap po `Model`, przez cala te historie dzialal przypadkiem i
+	// przewrocil sie przy zmianie modelu.
+	Stage        string
 	Model        string
 	SystemPrompt string
 	UserContent  string
@@ -61,19 +67,53 @@ type LLMResponse struct {
 	Truncated    bool
 }
 
-// Modele per etap (dok. 11 sekcja 2a — rationale doboru).
+// Modele per etap.
 //
-// S1 i R4 na Flash: ekstrakcja cytatow to operacja czysto jezykowa, a
-// entailment pytanie logiczno-jezykowe. Zaden z nich nie dotyka teorii.
+// ══ Historia tej decyzji ══
 //
-// S2 na Pro i z CALA wiedza domenowa w kontekscie — to jedyny etap
-// dotykajacy taksonomii. Przyszle optymalizacje kosztowe NIE MOGA
-// przeniesc S2 na model mniejszy ani wprowadzic selekcji kontekstu bez
-// przejscia benchmarku (sekcja 8).
+// Dok. 11 §2a stawial S2 na Pro „z CALA wiedza domenowa w kontekscie",
+// z jawnym zastrzezeniem: optymalizacje kosztowe NIE MOGA przeniesc S2
+// na model mniejszy BEZ PRZEJSCIA BENCHMARKU. Przenosimy — i wlasnie
+// dlatego benchmark jest czescia tej zmiany, nie obietnica na potem.
+//
+// ══ Dlaczego to jest do obrony ══
+//
+// Potok od poczatku NIE OPIERA SIE na rozumowaniu modelu. Myslenie jest
+// wylaczone na kazdym etapie (Pro dostawal 128 tokenow, czyli minimum
+// jakie przyjmuje, Flash zero) wlasnie dlatego, ze etapy sa
+// strukturalne: S1 kopiuje cytaty i tak sprawdzane mechanicznie, S2
+// wybiera z ENUMU kategorii i moze wskazac tylko istniejacy span, S4
+// przepisuje zatwierdzone byty pod okiem V1-V7. Wieksza inteligencja
+// modelu ma tu malo miejsca, zeby sie ujawnic — pilnuje go schemat
+// i kod, nie zdolnosc do dlugiego wnioskowania.
+//
+// ══ Ile to kosztowalo ══
+//
+// S2 jest wolane RAZ NA KONSTRUKT (14 wywolan dla szkicu PPT), za
+// kazdym razem z pelna lista spanow sesji. To tam szedl caly rachunek:
+// raport eksperymentalny na Pro kosztowal okolo $0,45 wobec $0,028 za
+// raport legacy — szesnastokrotnie wiecej.
+//
+// ══ Czego pilnowac ══
+//
+// Benchmark porownuje TE SAMA sesje przed i po: liczbe zatwierdzonych
+// twierdzen, rozklad odrzucen R1-R10, naruszenia V1-V7 i to, czy raport
+// nie wpadl w tryb ekstraktywny. Spadek jakosci na ktorymkolwiek z tych
+// wymiarow uniewaznia oszczednosc — raport, ktoremu terapeuta nie ufa,
+// nie jest tanszy, tylko bezuzyteczny.
 const (
 	ModelExtraction = "gemini-2.5-flash"
-	ModelMapping    = "gemini-2.5-pro"
-	ModelSynthesis  = "gemini-2.5-pro"
+	ModelMapping    = "gemini-2.5-flash"
+	ModelSynthesis  = "gemini-2.5-flash"
+)
+
+// Nazwy etapow. Sa stale wlasnie dlatego, ze modele nie sa: etap to
+// miejsce w potoku, model to dzisiejsza decyzja kosztowa i te dwie
+// rzeczy musza dac sie rozroznic w telemetrii i w testach.
+const (
+	StageExtraction = "S1"
+	StageMapping    = "S2"
+	StageSynthesis  = "S4"
 )
 
 // Input to material wejsciowy calego potoku.

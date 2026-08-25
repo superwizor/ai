@@ -273,7 +273,7 @@ func TestTrybEkstraktywnyPoDwochRegeneracjach(t *testing.T) {
 	bazowy := f.handler
 	prob := 0
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			prob++
 			// Uparcie podnosi status: zrodlo ma interpretation.
 			return jsonS4("konflikt", "A", "Klient przeżywa napięcie.", "observation", "s01"), nil
@@ -307,7 +307,7 @@ func TestRegeneracjaDostajeNaruszeniaDoPoprawy(t *testing.T) {
 	bazowy := f.handler
 	prob := 0
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			prob++
 			if prob == 1 {
 				return jsonS4("konflikt", "A", "Klient przeżywa napięcie.", "observation", "s01"), nil
@@ -330,7 +330,7 @@ func TestRegeneracjaDostajeNaruszeniaDoPoprawy(t *testing.T) {
 	var drugaTresc string
 	n := 0
 	for _, req := range f.Zapytal {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			n++
 			if n == 2 {
 				drugaTresc = req.UserContent
@@ -572,7 +572,7 @@ func TestPrzycinanieRatujeResztePrezy(t *testing.T) {
 	f := domyslnaAtrapa(t)
 	bazowy := f.handler
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			// Dwie hipotezy: druga uparcie podnosi status.
 			return `{"constructs":[{"construct_id":"konflikt","hypotheses":[` +
 				`{"id":"A","claim":"Materiał daje się czytać jako napięcie.",` +
@@ -620,7 +620,7 @@ func TestPrzycinanieNieRatujeGdyWszystkoWadliwe(t *testing.T) {
 	f := domyslnaAtrapa(t)
 	bazowy := f.handler
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			return jsonS4("konflikt", "A", "Klient przeżywa napięcie.", "observation", "s01"), nil
 		}
 		return bazowy(req)
@@ -775,7 +775,7 @@ func TestV5NaWzmianceNieDajeTrybuEkstraktywnego(t *testing.T) {
 	f := domyslnaAtrapa(t)
 	bazowy := f.handler
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelSynthesis && konstruktZPromptu(req.SystemPrompt) == "" {
+		if req.Stage == StageSynthesis {
 			// Kazda proba: hipoteza CZYSTA + wzmianka o wzorcu, ktorego
 			// S1.5 nie policzyl (V5 na notatce, bez HypothesisID).
 			return `{"constructs":[{"construct_id":"konflikt","hypotheses":[{"id":"A",` +

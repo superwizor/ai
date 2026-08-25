@@ -127,12 +127,14 @@ func jsonS4(constructID, hypID, claim, status, spanID string) string {
 // domyslnaAtrapa zwraca poprawny przebieg calego potoku.
 func domyslnaAtrapa(t *testing.T) *fakeLLM {
 	t.Helper()
-	// UWAGA: rozroznianie etapow po req.Model NIE DZIALA — ModelMapping i
-	// ModelSynthesis to celowo ten sam model (oba Pro, dok. 11 sekcja 2a).
-	// Etap poznajemy po prompcie: tylko S2 niesie naglowek KONSTRUKT.
+	// Etap poznajemy po req.Stage, NIGDY po req.Model. Do 2026-08-25 ta
+	// atrapa rozgalezialaby sie na modelu i dzialala tylko dopoki S1
+	// mial inny model niz reszta; przejscie calego potoku na Flash
+	// sprawilo, ze pierwszy przypadek lapal wszystko i S2 dostawalo
+	// odpowiedz S1. Stage jest niezalezny od decyzji kosztowych.
 	return &fakeLLM{handler: func(req LLMRequest) (string, error) {
 		switch {
-		case req.Model == ModelExtraction:
+		case req.Stage == StageExtraction:
 			return jsonS1(t), nil
 		case konstruktZPromptu(req.SystemPrompt) != "":
 			switch konstruktZPromptu(req.SystemPrompt) {

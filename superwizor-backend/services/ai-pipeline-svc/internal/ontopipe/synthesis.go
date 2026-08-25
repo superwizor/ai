@@ -177,6 +177,7 @@ func Synthesize(ctx context.Context, llm LLM, o *ontology.Ontology, in Synthesis
 	pb.WriteString(prompt)
 	appendGenerativeGuidance(&pb, in)
 	resp, err := llm.GenerateJSON(ctx, LLMRequest{
+		Stage:        StageSynthesis,
 		Model:        ModelSynthesis,
 		SystemPrompt: pb.String(),
 		UserContent:  renderSynthesisInput(in),

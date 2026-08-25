@@ -78,7 +78,7 @@ func TestS4NieDostajeTranskrypcjiWTresci(t *testing.T) {
 	// wyciekloby razem z nia.
 	const tylkoWTranskrypcji = "Co się dzieje, kiedy czuje pan to duszenie?"
 	for _, req := range f.Zapytal {
-		if req.Model != ModelSynthesis {
+		if req.Stage != StageSynthesis {
 			continue
 		}
 		if strings.Contains(req.UserContent, tylkoWTranskrypcji) {
@@ -114,13 +114,44 @@ func TestRunCalyPotok(t *testing.T) {
 	}
 }
 
+// TestKazdeZadanieNiesieEtap pilnuje niezmiennika wprowadzonego razem z
+// przejsciem calego potoku na Flash: etap MUSI byc jawny w zadaniu.
+//
+// Wczesniej etap rozpoznawano po `Model`, co dzialalo tylko dopoki S1
+// mial inny model niz S2 i S4. Gdy wszystkie trzy zrownaly sie na Flash,
+// telemetria i atrapy zaczely brac S2 za S1. Nowe wywolanie modelu bez
+// ustawionego Stage odtworzyloby dokladnie ten blad, wiec pusty Stage
+// jest bledem testu, a nie drobiazgiem.
+func TestKazdeZadanieNiesieEtap(t *testing.T) {
+	widziane := map[string]int{}
+	base := domyslnaAtrapa(t)
+	inner := base.handler
+	base.handler = func(req LLMRequest) (string, error) {
+		if req.Stage == "" {
+			t.Errorf("zadanie bez etapu (model %q) — telemetria per etap zgubi to wywolanie", req.Model)
+		}
+		widziane[req.Stage]++
+		return inner(req)
+	}
+	if _, err := Run(context.Background(), base, Input{
+		SessionID: "sess-1", Transcript: testTranskrypcja, Ontology: testO(t),
+	}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, etap := range []string{StageExtraction, StageMapping, StageSynthesis} {
+		if widziane[etap] == 0 {
+			t.Errorf("etap %s nie wystapil ani razu: %v", etap, widziane)
+		}
+	}
+}
+
 // TestS1OdsiewaCytatNieistniejacy: span z cytatem, ktorego nie ma w
 // zapisie, NIE MOZE opuscic S1.
 func TestS1OdsiewaCytatNieistniejacy(t *testing.T) {
 	f := domyslnaAtrapa(t)
 	bazowy := f.handler
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelExtraction {
+		if req.Stage == StageExtraction {
 			return `{"spans":[{"span_id":"s01","quote_verbatim":"Nigdy tego nie powiedziałem, a jednak tu jest.","speaker":"Klient","kind":"declarative","observed_by":"self","about_past":false,"risk_content":false,"topics":["x"]}]}`, nil
 		}
 		return bazowy(req)
@@ -180,7 +211,7 @@ func TestZasobDegradowanyGdyKonfliktOdpadl(t *testing.T) {
 	f := domyslnaAtrapa(t)
 	bazowy := f.handler
 	f.handler = func(req LLMRequest) (string, error) {
-		if req.Model == ModelMapping && konstruktZPromptu(req.SystemPrompt) == "konflikt" {
+		if req.Stage == StageMapping && konstruktZPromptu(req.SystemPrompt) == "konflikt" {
 			return `{"construct_id":"konflikt","claims":[],"insufficient_data":true,"no_fit":false}`, nil
 		}
 		return bazowy(req)

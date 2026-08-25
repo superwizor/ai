@@ -2795,6 +2795,37 @@ type provenance struct {
 	Validator       string
 }
 
+// modelDoWyceny wskazuje model, po ktorego stawkach liczymy koszt
+// przebiegu.
+//
+// ══ Dlaczego to nie moze byc jedna stala ══
+//
+// `geminiModel` opisuje potok legacy. Potok ontologiczny ma wlasne
+// modele w ontopipe i przez piec tygodni chodzil na Pro, a koszt
+// zapisywal po stawkach Flash — kazdy raport eksperymentalny byl w
+// bazie okolo 3,7 raza tanszy niz naprawde. Nikt tego nie zauwazyl, bo
+// zaniżona liczba nadal wyglada jak koszt.
+//
+// ══ Gdy etapy sie rozjada ══
+//
+// Dzis S1, S2 i S4 dziela jeden model, wiec jedna nazwa opisuje caly
+// przebieg. Gdyby ktorykolwiek etap dostal inny model, `Usage` nie ma
+// jak rozbic tokenow miedzy nie (nie zlicza per model), a wybranie
+// jednej z dwoch nazw dawaloby liczbe pewna z wygladu i falszywa co do
+// tresci. Wtedy wolimy NULL i glosny blad niz cichy szacunek.
+func modelDoWyceny(prov provenance) string {
+	if prov.Pipeline == appconfig.PipelineLegacy || prov.Pipeline == "" {
+		return geminiModel
+	}
+	if ontopipe.ModelExtraction != ontopipe.ModelMapping ||
+		ontopipe.ModelMapping != ontopipe.ModelSynthesis {
+		// Pusta nazwa nie jest w cenniku, wiec llmcost zwroci blad,
+		// koszt pojdzie jako NULL, a log powie dlaczego.
+		return ""
+	}
+	return ontopipe.ModelSynthesis
+}
+
 // pipelineProvenance sklada slad dla jednej generacji.
 func pipelineProvenance(d pipelineDecision) provenance {
 	p := provenance{Pipeline: d.Pipeline}
@@ -2835,13 +2866,31 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	// 2026-08-20 this line used gemini-2.5-pro rates ($1.25/$5.00 per
 	// million) for a gemini-2.5-flash workload, overstating every row it
 	// ever wrote. Historical rows are NOT corrected here (plan section 6).
-	costUSD, costErr := llmcost.CostUSD(geminiModel,
+	//
+	// The rate is keyed to the model THIS RUN used, not to the legacy
+	// constant. Both mistakes have already happened here, in opposite
+	// directions: pricing Flash at Pro rates overstated legacy rows, and
+	// pricing the ontology pipeline — which ran on Pro until 2026-08-25 —
+	// at the legacy Flash constant understated every experimental report
+	// by roughly 3.7x. The second error was invisible precisely because
+	// the number looked plausible.
+	modelWyceny := modelDoWyceny(prov)
+	costUSD, costErr := llmcost.CostUSD(modelWyceny,
 		int64(tokenStats.InputTokens), int64(tokenStats.OutputTokens), time.Now())
 	if costErr != nil {
 		// An unpriced model must not silently record $0 — that would make
 		// the spend dashboards quietly wrong. Store NULL and shout.
 		slog.ErrorContext(ctx, "llm cost: model not in price table — storing NULL cost",
-			"error", costErr, "model", geminiModel)
+			"error", costErr, "model", modelWyceny)
+	}
+
+	// Kolumna llm_model musi zgadzac sie z tym, po czym liczylismy koszt
+	// — inaczej rachunek da sie odtworzyc tylko z pamieci o tym, ktory
+	// potok kiedy chodzil na czym. Gdy etapy maja rozne modele, wpisujemy
+	// klase potoku zamiast zmyslonej pojedynczej nazwy.
+	modelDoZapisu := modelWyceny
+	if modelDoZapisu == "" {
+		modelDoZapisu = "mieszany:" + prov.Pipeline
 	}
 
 	roleInferenceJSON, _ := json.Marshal(report.SpeakerRoleInference)
@@ -2858,7 +2907,7 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		reportID, session.ID, transID, session.ModalityID,
 		ciphertext, encDEK, report.Title, report.SummaryShort,
 		nil, nil, roleInferenceJSON,
-		geminiModel,
+		modelDoZapisu,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), nullableCost(costUSD, costErr),
 		prov.Pipeline, nullableText(prov.OntologyVersion), promptVersionsJSON(prov.PromptVersions),

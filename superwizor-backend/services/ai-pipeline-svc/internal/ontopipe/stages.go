@@ -36,6 +36,7 @@ type s1Output struct {
 // powiedzial prawde o jego tresci.
 func ExtractSpans(ctx context.Context, llm LLM, in Input, u *Usage) ([]ontology.TopicSpan, []string, error) {
 	resp, err := llm.GenerateJSON(ctx, LLMRequest{
+		Stage:        StageExtraction,
 		Model:        ModelExtraction,
 		SystemPrompt: promptS1,
 		UserContent:  "TRANSKRYPCJA SESJI:\n" + in.Transcript,
@@ -147,6 +148,7 @@ func MapConstruct(ctx context.Context, llm LLM, o *ontology.Ontology, constructI
 	}
 
 	resp, err := llm.GenerateJSON(ctx, LLMRequest{
+		Stage:        StageMapping,
 		Model:        ModelMapping,
 		SystemPrompt: buildS2Prompt(o, constructID, past),
 		UserContent:  renderSpans(usable, past.SpansForConstruct(constructID)),
