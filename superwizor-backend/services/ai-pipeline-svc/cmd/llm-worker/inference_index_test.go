@@ -4,9 +4,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/superwizor-ai/backend/pkg/ontology"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/ontopipe"
 )
+
+// idTwierdzen udaje identyfikatory nadane przy zapisie — rownolegle
+// do res.Approved, tak jak zwraca je Persist.
+func idTwierdzen() []uuid.UUID {
+	return []uuid.UUID{
+		uuid.MustParse("aaaaaaaa-0000-0000-0000-000000000001"),
+		uuid.MustParse("aaaaaaaa-0000-0000-0000-000000000002"),
+	}
+}
 
 func wynikDoIndeksu() ontopipe.Result {
 	return ontopipe.Result{
@@ -33,7 +44,7 @@ func wynikDoIndeksu() ontopipe.Result {
 // pierwsze zapytanie, ktore o tym zapomni, zamieni powtorzona
 // interpretacje w uzasadnienie.
 func TestIndeksRozdzielaPoziomy(t *testing.T) {
-	wpisy := zbierzWpisy(wynikDoIndeksu())
+	wpisy := zbierzWpisy(wynikDoIndeksu(), idTwierdzen())
 
 	var claims, hipotezy int
 	for _, w := range wpisy {
@@ -57,7 +68,7 @@ func TestIndeksRozdzielaPoziomy(t *testing.T) {
 // Kategoria wchodzi do tekstu wektora: „blizkosc-autonomia" niesie sens,
 // po ktorym watek ma sie odnalezc za pol roku.
 func TestTekstWektoraNiesieKategorie(t *testing.T) {
-	for _, w := range zbierzWpisy(wynikDoIndeksu()) {
+	for _, w := range zbierzWpisy(wynikDoIndeksu(), idTwierdzen()) {
 		if w.kind != "claim" {
 			continue
 		}
@@ -72,8 +83,8 @@ func TestTekstWektoraNiesieKategorie(t *testing.T) {
 // to na nim stoi idempotencja zapisu (Pub/Sub potrafi dostarczyc
 // zdarzenie powtornie).
 func TestAdresyWpisowSaStabilne(t *testing.T) {
-	a := zbierzWpisy(wynikDoIndeksu())
-	b := zbierzWpisy(wynikDoIndeksu())
+	a := zbierzWpisy(wynikDoIndeksu(), idTwierdzen())
+	b := zbierzWpisy(wynikDoIndeksu(), idTwierdzen())
 	if len(a) != len(b) {
 		t.Fatalf("rozna liczba wpisow: %d vs %d", len(a), len(b))
 	}
@@ -88,6 +99,51 @@ func TestAdresyWpisowSaStabilne(t *testing.T) {
 	for _, w := range a {
 		if w.kind == "hypothesis" && !strings.Contains(w.itemRef, "/") {
 			t.Errorf("adres hipotezy bez konstruktu: %q", w.itemRef)
+		}
+	}
+}
+
+// Wiersz indeksu MUSI wskazywac twierdzenie, ktore opisuje.
+//
+// Kanarek 25.08: indeks zasilal sie poprawnie pod kazdym innym wzgledem
+// (model, klasa, wymiary, brak duplikatow), ale source_claim_id bylo
+// puste we WSZYSTKICH wierszach — bo identyfikatory powstaja dopiero
+// przy zapisie. Zapytanie F7b-2 wymaga tej kolumny, wiec wyszukiwanie
+// semantyczne nie znalazloby nigdy niczego, wygladajac przy tym na
+// „brak historii".
+func TestWpisTwierdzeniaWskazujeTwierdzenie(t *testing.T) {
+	wpisy := zbierzWpisy(wynikDoIndeksu(), idTwierdzen())
+	znaleziono := false
+	for _, w := range wpisy {
+		if w.kind != "claim" {
+			if w.claimID != nil {
+				t.Errorf("hipoteza dostala odnosnik do twierdzenia (%v) — poziomy sie mieszaja", w.claimID)
+			}
+			continue
+		}
+		znaleziono = true
+		if w.claimID == nil {
+			t.Fatal("wpis twierdzenia bez source_claim_id — wyszukiwanie nie mialoby czego wczytac")
+		}
+		if w.claimID.String() != "aaaaaaaa-0000-0000-0000-000000000001" {
+			t.Errorf("zly identyfikator: %v", w.claimID)
+		}
+	}
+	if !znaleziono {
+		t.Fatal("brak wpisu twierdzenia w indeksie")
+	}
+}
+
+// Brak identyfikatorow (np. starsza sciezka) nie moze wywrocic
+// indeksowania — wpis powstaje, tylko bez odnosnika.
+func TestBrakIdentyfikatorowNiePsujeIndeksu(t *testing.T) {
+	wpisy := zbierzWpisy(wynikDoIndeksu(), nil)
+	if len(wpisy) == 0 {
+		t.Fatal("bez identyfikatorow nie powstal zaden wpis")
+	}
+	for _, w := range wpisy {
+		if w.claimID != nil {
+			t.Errorf("skad odnosnik bez identyfikatorow: %v", w.claimID)
 		}
 	}
 }

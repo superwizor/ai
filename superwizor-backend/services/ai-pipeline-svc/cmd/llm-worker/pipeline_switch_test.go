@@ -298,8 +298,15 @@ func TestIndeksSemantycznyWolanyZWlasciwaKlasa(t *testing.T) {
 	}
 	kod := string(src)
 
-	if !strings.Contains(kod, "indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline)") {
+	if !strings.Contains(kod, "indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline,") {
 		t.Error("indeks wnioskowania nie jest zasilany albo dostaje zla klase potoku")
+	}
+	// Identyfikatory twierdzen z zapisu MUSZA dojechac do indeksu —
+	// bez nich wiersz nie wskazuje twierdzenia i wyszukiwanie
+	// semantyczne zwraca pustke nieodroznialna od braku historii
+	// (kanarek 25.08).
+	if !strings.Contains(kod, "zapis.ClaimIDs)") {
+		t.Error("indeks nie dostaje identyfikatorow twierdzen z Persist")
 	}
 	// Kolejnosc: PO zapisie grafu twierdzen. Indeksujemy to, co
 	// faktycznie stalo sie czescia raportu.

@@ -106,7 +106,7 @@ func wynikDoZapisu() Result {
 func zapiszTestowo(t *testing.T) *fakeDB {
 	t.Helper()
 	db := &fakeDB{}
-	err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+	_, err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
 		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
 	}, wynikDoZapisu())
 	if err != nil {
@@ -293,7 +293,7 @@ func TestZapisKontekstuPrzebiegu(t *testing.T) {
 			ClaimsShown: 1, ClaimsDropped: 4, SpansShown: 1, SpansDropped: 9,
 		},
 	}
-	if err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+	if _, err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
 		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
 		Past: past,
 	}, wynikDoZapisu()); err != nil {
@@ -380,7 +380,7 @@ func TestProweniencjaSpanuZWczesniejszejSesji(t *testing.T) {
 	res.Approved[0].Evidence = append(res.Approved[0].Evidence,
 		ontology.QuoteRef{SpanID: "s0820:s42", Quote: "wtedy też o tym mówił"})
 
-	err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+	_, err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
 		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
 		Past: &PastContext{Spans: []PastSpan{{
 			Addr: "s0820:s42", SessionID: sesjaHist, Quote: "wtedy też o tym mówił",
@@ -421,7 +421,7 @@ func TestNiepokazanyAdresHistorycznyToBlad(t *testing.T) {
 	res.Approved[0].Evidence = append(res.Approved[0].Evidence,
 		ontology.QuoteRef{SpanID: "s0101:s99", Quote: "nigdy tego nie było"})
 
-	err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+	_, err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
 		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
 		Past: &PastContext{Spans: []PastSpan{{Addr: "s0820:s42", SessionID: uuid.New()}}},
 	}, res)
@@ -458,7 +458,7 @@ func TestRejestrKontekstuNiesieKanalIPodobienstwo(t *testing.T) {
 			SemanticEnabled: true, SemanticFound: 1, SemanticBelowThreshold: 5,
 		},
 	}
-	if err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+	if _, err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
 		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
 		Past: past,
 	}, wynikDoZapisu()); err != nil {

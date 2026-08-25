@@ -565,10 +565,11 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		if perr != nil {
 			return fmt.Errorf("parse transcript id: %w", perr)
 		}
-		if perr := ontopipe.Persist(ctx, workerDB{}, crypto, ontopipe.PersistInput{
+		zapis, perr := ontopipe.Persist(ctx, workerDB{}, crypto, ontopipe.PersistInput{
 			ReportID: repID, SessionID: session.ID, TranscriptID: transID,
 			Past: pastContext,
-		}, ontoRes); perr != nil {
+		}, ontoRes)
+		if perr != nil {
 			logger.Error("persist grafu twierdzen (transient — pubsub will retry)", "error", perr)
 			return fmt.Errorf("persist ontopipe: %w", perr)
 		}
@@ -585,7 +586,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		// (stempel eksperymentalny doklada sie osobno, wyzej), wiec
 		// filtr klasy w F7b nie trafialby w nic — a wygladaloby to jak
 		// brak historii, nie jak blad.
-		indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline)
+		// Identyfikatory twierdzen powstaja DOPIERO przy zapisie, wiec
+		// indeks dostaje je z wyniku Persist. Bez nich wiersz indeksu nie
+		// ma jak wskazac twierdzenia, ktore opisuje — a wyszukiwanie
+		// semantyczne zwracaloby wtedy pustke nieodroznialna od „brak
+		// historii" (zlapane kanarkiem 25.08).
+		indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline, zapis.ClaimIDs)
 	}
 
 	// Raport eksperymentalny KONCZY SIE TUTAJ.

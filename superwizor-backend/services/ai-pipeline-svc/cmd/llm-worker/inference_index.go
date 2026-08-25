@@ -45,7 +45,7 @@ type wpisIndeksu struct {
 //
 // Twierdzenia i hipotezy ida osobno i sa OZNACZONE — rozdzial poziomow
 // (dok. 65 §N1) zaczyna sie tutaj, a nie dopiero w zapytaniu.
-func zbierzWpisy(res ontopipe.Result) []wpisIndeksu {
+func zbierzWpisy(res ontopipe.Result, claimIDs []uuid.UUID) []wpisIndeksu {
 	var out []wpisIndeksu
 
 	for i, c := range res.Approved {
@@ -58,17 +58,26 @@ func zbierzWpisy(res ontopipe.Result) []wpisIndeksu {
 		if kat := strings.Join(c.Categories, ", "); kat != "" {
 			tekst = kat + ": " + tekst
 		}
+		// Identyfikator twierdzenia powstaje przy ZAPISIE, wiec przychodzi
+		// z zewnatrz, rownolegle do res.Approved. Jego brak nie jest
+		// szczegolem: bez niego wiersz indeksu nie wskazuje twierdzenia,
+		// a wyszukiwanie semantyczne (F7b-2) nie ma czego wczytac.
+		var cid *uuid.UUID
+		if i < len(claimIDs) {
+			id := claimIDs[i]
+			cid = &id
+		}
 		out = append(out, wpisIndeksu{
 			kind: "claim",
-			// Twierdzenia nie maja wlasnego identyfikatora w wyniku
-			// potoku (dostaja go dopiero przy zapisie), wiec adresem
-			// jest pozycja w liscie zatwierdzonych — stabilna w obrebie
-			// raportu, bo kolejnosc wynika z porzadku konstruktow.
+			// Adresem jest pozycja w liscie zatwierdzonych — stabilna
+			// w obrebie raportu, bo kolejnosc wynika z porzadku
+			// konstruktow. Sluzy idempotencji zapisu.
 			itemRef:     fmt.Sprintf("c%d", i),
 			constructID: c.ConstructID,
 			status:      string(c.Status),
 			confidence:  c.Confidence,
 			tekst:       tekst,
+			claimID:     cid,
 		})
 	}
 
@@ -93,12 +102,13 @@ func zbierzWpisy(res ontopipe.Result) []wpisIndeksu {
 
 // indexInference liczy wektory i zapisuje je do report_inference_index.
 func indexInference(ctx context.Context, logger *slog.Logger, session *SessionContext,
-	reportID uuid.UUID, res ontopipe.Result, pipelineVersion string) {
+	reportID uuid.UUID, res ontopipe.Result, pipelineVersion string,
+	claimIDs []uuid.UUID) {
 
 	if dbPool == nil {
 		return
 	}
-	wpisy := zbierzWpisy(res)
+	wpisy := zbierzWpisy(res, claimIDs)
 	if len(wpisy) == 0 {
 		return
 	}

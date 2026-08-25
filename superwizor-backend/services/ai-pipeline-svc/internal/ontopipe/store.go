@@ -55,12 +55,24 @@ type PersistInput struct {
 // Odrzucenia ida do bazy nawet gdy raport sie udal: progi przegladu z
 // dok. 11 sekcja 8.3 (R5 > 5% miesiecznie, no_fit > 10% kwartalnie) to
 // zapytanie SQL, nie grep po Cloud Logging.
-func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Result) error {
+// PersistResult niesie to, co powstalo dopiero PRZY ZAPISIE.
+//
+// ClaimIDs sa ulozone rownolegle do res.Approved: i-te twierdzenie
+// dostalo i-ty identyfikator. Wolajacy potrzebuje ich, zeby cokolwiek
+// mogl do twierdzenia dowiazac — indeks semantyczny (F7b) bez tego
+// odsylal do nikad i wyszukiwanie nie znajdowaloby NICZEGO, wygladajac
+// przy tym na „brak historii".
+type PersistResult struct {
+	ClaimIDs []uuid.UUID
+}
+
+func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Result) (PersistResult, error) {
+	var wynik PersistResult
 	spanUUID := map[string]uuid.UUID{}
 	for _, s := range res.Spans {
 		ct, dek, err := crypto.Encrypt(ctx, []byte(s.QuoteVerbatim))
 		if err != nil {
-			return fmt.Errorf("ontopipe: szyfrowanie cytatu %s: %w", s.ID, err)
+			return wynik, fmt.Errorf("ontopipe: szyfrowanie cytatu %s: %w", s.ID, err)
 		}
 		// Hasla tematyczne ida do bazy od migracji 000097: rekurencja
 		// MIEDZYSESYJNA liczy sie na sumie sesji, wiec material, z ktorego
@@ -86,7 +98,7 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			string(s.ObservedBy), s.AboutPast, s.RiskContent, s.SilenceBeforeMs,
 			tematy)
 		if err != nil {
-			return fmt.Errorf("ontopipe: zapis spanu %s: %w", s.ID, err)
+			return wynik, fmt.Errorf("ontopipe: zapis spanu %s: %w", s.ID, err)
 		}
 		spanUUID[s.ID] = id
 	}
@@ -107,7 +119,7 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			var err error
 			rct, rdek, err = crypto.Encrypt(ctx, []byte(c.Reasoning))
 			if err != nil {
-				return fmt.Errorf("ontopipe: szyfrowanie uzasadnienia %s: %w", c.ConstructID, err)
+				return wynik, fmt.Errorf("ontopipe: szyfrowanie uzasadnienia %s: %w", c.ConstructID, err)
 			}
 		}
 		kat := c.Categories
@@ -122,17 +134,18 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			in.ReportID, c.ConstructID, kat, string(c.Status), c.Confidence,
 			rct, rdek, c.Etiological)
 		if err != nil {
-			return fmt.Errorf("ontopipe: zapis twierdzenia %s: %w", c.ConstructID, err)
+			return wynik, fmt.Errorf("ontopipe: zapis twierdzenia %s: %w", c.ConstructID, err)
 		}
+		wynik.ClaimIDs = append(wynik.ClaimIDs, claimID)
 
 		for _, q := range c.Evidence {
 			if err := linkEvidence(ctx, db, claimID, spanUUID, historyczne, q.SpanID, "support"); err != nil {
-				return err
+				return wynik, err
 			}
 		}
 		for _, q := range c.CounterEvidence {
 			if err := linkEvidence(ctx, db, claimID, spanUUID, historyczne, q.SpanID, "counter"); err != nil {
-				return err
+				return wynik, err
 			}
 		}
 	}
@@ -146,7 +159,7 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			RETURNING id`,
 			in.ReportID, p.ID, string(p.Type), p.Topics, p.Method, p.MethodVersion, p.Sessions)
 		if err != nil {
-			return fmt.Errorf("ontopipe: zapis wzorca %s: %w", p.ID, err)
+			return wynik, fmt.Errorf("ontopipe: zapis wzorca %s: %w", p.ID, err)
 		}
 		for _, sid := range p.SpanIDs {
 			u, ok := spanUUID[sid]
@@ -156,7 +169,7 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			if err := db.Exec(ctx, `
 				INSERT INTO report_pattern_spans (pattern_id, span_id)
 				VALUES ($1,$2) ON CONFLICT DO NOTHING`, pid, u); err != nil {
-				return fmt.Errorf("ontopipe: proweniencja wzorca %s: %w", p.ID, err)
+				return wynik, fmt.Errorf("ontopipe: proweniencja wzorca %s: %w", p.ID, err)
 			}
 		}
 	}
@@ -170,7 +183,7 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 	for _, r := range res.Rejected {
 		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID,
 			r.ConstructID, string(r.Reason), r.Detail, r.Claim); err != nil {
-			return fmt.Errorf("ontopipe: zapis odrzucenia %s: %w", r.Reason, err)
+			return wynik, fmt.Errorf("ontopipe: zapis odrzucenia %s: %w", r.Reason, err)
 		}
 	}
 	// Degradacje i naruszenia wyjscia ida do tego samego rejestru: to
@@ -183,11 +196,11 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID, d.ConstructID,
 			string(ontology.ReasonRequires),
 			"degradacja -> "+d.To+"; "+d.Detail, nil); err != nil {
-			return fmt.Errorf("ontopipe: zapis degradacji %s: %w", d.ConstructID, err)
+			return wynik, fmt.Errorf("ontopipe: zapis degradacji %s: %w", d.ConstructID, err)
 		}
 	}
 	if err := zapiszKontekstPrzebiegu(ctx, db, in); err != nil {
-		return err
+		return wynik, err
 	}
 	for _, v := range res.Violations {
 		// Naruszenie S5 dotyczy PROZY, wiec tresc bierzemy z hipotezy.
@@ -204,10 +217,10 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		}
 		if err := zapiszOdrzucenie(ctx, db, crypto, in.ReportID,
 			v.ConstructID, string(v.Rule), v.Detail, jakoClaim); err != nil {
-			return fmt.Errorf("ontopipe: zapis naruszenia %s: %w", v.Rule, err)
+			return wynik, fmt.Errorf("ontopipe: zapis naruszenia %s: %w", v.Rule, err)
 		}
 	}
-	return nil
+	return wynik, nil
 }
 
 // zapiszKontekstPrzebiegu utrwala, CO ten przebieg zobaczyl z sesji
