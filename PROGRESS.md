@@ -111,10 +111,11 @@ calej prozy — rozstrzyga ponowna weryfikacja przycietego raportu,
 2264fe10). Kanarki na rev 00129: EN komplet (naglowki angielskie,
 36 cytatow, zero DaneZa), PL komplet 8 sekcji z proza (18 hipotez,
 60 cytatow, V5+V2 przyciete zamiast trybu ekstraktywnego).
-OTWARTE: F7 kontekst miedzysesyjny (RAG o pelnej proweniencji na
-report_spans/claims/patterns — szkic architektury przedstawiony,
-czeka na decyzje produktowe: glebokosc okna, konstrukty z progiem
-sessions, sekcja ciaglosci); bramka "modalnosc bez ontologii" w
+OTWARTE: F7 kontekst miedzysesyjny — plan SPISANY i zatwierdzony
+kierunkowo: docs/65_PLAN_F7_KONTEKST_MIEDZYSESYJNY.md (F7a okno
+deterministyczne + F7b indeks semantyczny pgvector; niezmienniki
+N1-N5, w tym: przeszla hipoteza nigdy nie jest dowodem, retrieval w
+run_context, konfiguracja wersjonowana); implementacja od F7a-1; bramka "modalnosc bez ontologii" w
 maybeDualRun wychodzi bez zapisu pominiecia (ciche skip_reason);
 brak bramki jezykowej w dual-run (decyzja produktowa).
 
