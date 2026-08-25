@@ -152,6 +152,25 @@ uruchamia R2 (sesje!), R5 (about_past) i V1 bez zmiany ich kodu;
 min_evidence.sessions przestal byc martwym zapisem; NOWA regula
 R2_no_current_span (twierdzenie musi miec dowod z biezacej sesji);
 renderer datuje cytat historyczny (21.08 / Aug 21). s2/1.2.0.
+F7b-1 i F7b-2 ZROBIONE (25.08): indeks semantyczny na pgvector 0.8.1
+(byl juz zainstalowany) z modelem text-embedding-005 (ten sam, co
+legacy-RAG — ta sama przestrzen wektorowa, koszt znany). Migracje
+000099 (report_inference_index) i 000100 (similarity + liczniki
+semantyczne). Retrieval DOKLADA do okna, nigdy go nie zastepuje;
+kwerenda ze streszczenia i tematow call-1 (juz spseudonimizowanych).
+Semantyka DOMYSLNIE wlaczona na powierzchni eksperymentalnej (org
+z REPORT_EXPERIMENTAL_ENABLED dostaje ja bez osobnego wpisu), raport
+produkcyjny wymaga jawnej flagi — uzasadnienie w docs/65 §7a.
+Flaga wlaczona jawnie dla 3da34bab.
+Kanarek F7b-1 zlapal, ze source_claim_id bylo puste we wszystkich
+wierszach (zapytanie F7b-2 tego wymaga — wyszukiwanie nie znalazloby
+NIGDY niczego, wygladajac na brak historii); naprawione: Persist
+zwraca ClaimIDs.
+docs/65 przepisane z planu na stan faktyczny (§9: sciezka danych,
+piec wad znalezionych kanarkami, tabela wersji).
+ZOSTAJE: F7b-3 (kanal ciaglosci hipotez + V8), F7b-4 (benchmark
+powtarzalnosci — BRAMKA przed semantyka w raportach produkcyjnych).
+
 F7a-5 ZROBIONE (kanarek 25.08, rev 00132, raport 5b703f65): kontekst
 zaladowany (okno=3, 2 sesje, 37 twierdzen + 43 spany, zero przyciec),
 report_run_context ma wpisy z OBU sesji zrodlowych, w tresci raportu
