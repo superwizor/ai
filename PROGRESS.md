@@ -117,9 +117,17 @@ w llm-workerze (okno W=3, budzety K=60/S=120, adresy 's0821:s07',
 granice T22 i klasy potoku w zapytaniach), bariera N4 (sesja w toku
 pomijana i liczona, bez czekania). Kontekst jest LADOWANY i ZAPISYWANY,
 jeszcze NIE konsumowany przez prompty — tresc raportow bez zmian.
-NASTEPNE: F7a-3 (S2 blok ustalen + enum adresow historycznych + R2
-liczace sesje + V1), potem F7a-4 (S4 PastClaims + daty w rendererze),
-F7a-5 (kanarek Gestalt unfinished_business na >=2 sesjach).
+F7a-3 ZROBIONE (82a6e23b): S2 dostaje blok ustalen TEGO konstruktu +
+oddzielone fragmenty historyczne (adres sMMDD:sNN); jedna mapa spanow
+uruchamia R2 (sesje!), R5 (about_past) i V1 bez zmiany ich kodu;
+min_evidence.sessions przestal byc martwym zapisem; NOWA regula
+R2_no_current_span (twierdzenie musi miec dowod z biezacej sesji);
+renderer datuje cytat historyczny (21.08 / Aug 21). s2/1.2.0.
+NASTEPNE: F7a-4 (S4 PastClaims — proza o ciaglosci watku), potem
+F7a-5 (kanarek: Gestalt unfinished_business na >=2 sesjach jednej
+kartoteki). UWAGA przy kanarku: kontekst historyczny wymaga, by
+poprzednie sesje mialy raporty TEJ SAMEJ klasy potoku (eksperymentalne
+widza tylko eksperymentalne).
 OTWARTE poza F7: bramka "modalnosc bez ontologii" w
 maybeDualRun wychodzi bez zapisu pominiecia (ciche skip_reason);
 brak bramki jezykowej w dual-run (decyzja produktowa).
