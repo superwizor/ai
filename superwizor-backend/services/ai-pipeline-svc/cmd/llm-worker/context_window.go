@@ -404,25 +404,23 @@ func wczytajSpanyDowodowe(ctx context.Context, claims []ontopipe.PastClaim,
 
 	// Adresy nieodszyfrowanych spanow znikaja z list dowodow — inaczej
 	// twierdzenie wskazywaloby na cytat, ktorego w prompcie nie ma.
+	// Rozstrzyga OBECNOSC w wyniku, nie sam fakt zobaczenia wiersza:
+	// `widziane` znaczy „adres juz przetwarzany", a to co innego niz
+	// „cytat jest czytelny".
+	czytelneAdresy := make(map[string]bool, len(spany))
+	for _, s := range spany {
+		czytelneAdresy[s.Addr] = true
+	}
 	for id, adresy := range poClaimach {
 		var czytelne []string
 		for _, a := range adresy {
-			if widziane[a] && maSpan(spany, a) {
+			if czytelneAdresy[a] {
 				czytelne = append(czytelne, a)
 			}
 		}
 		poClaimach[id] = czytelne
 	}
 	return spany, poClaimach, nil
-}
-
-func maSpan(spany []ontopipe.PastSpan, addr string) bool {
-	for _, s := range spany {
-		if s.Addr == addr {
-			return true
-		}
-	}
-	return false
 }
 
 // wczytajTematySesji zbiera hasla wszystkich uzytecznych spanow okna.
