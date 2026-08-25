@@ -111,11 +111,16 @@ calej prozy — rozstrzyga ponowna weryfikacja przycietego raportu,
 2264fe10). Kanarki na rev 00129: EN komplet (naglowki angielskie,
 36 cytatow, zero DaneZa), PL komplet 8 sekcji z proza (18 hipotez,
 60 cytatow, V5+V2 przyciete zamiast trybu ekstraktywnego).
-OTWARTE: F7 kontekst miedzysesyjny — plan SPISANY i zatwierdzony
-kierunkowo: docs/65_PLAN_F7_KONTEKST_MIEDZYSESYJNY.md (F7a okno
-deterministyczne + F7b indeks semantyczny pgvector; niezmienniki
-N1-N5, w tym: przeszla hipoteza nigdy nie jest dowodem, retrieval w
-run_context, konfiguracja wersjonowana); implementacja od F7a-1; bramka "modalnosc bez ontologii" w
+F7 (docs/65): F7a-1 i F7a-2 ZROBIONE (8d8a4244) — migracje 000097
+(report_spans.topics) i 000098 (report_run_context + _stats), loader S0
+w llm-workerze (okno W=3, budzety K=60/S=120, adresy 's0821:s07',
+granice T22 i klasy potoku w zapytaniach), bariera N4 (sesja w toku
+pomijana i liczona, bez czekania). Kontekst jest LADOWANY i ZAPISYWANY,
+jeszcze NIE konsumowany przez prompty — tresc raportow bez zmian.
+NASTEPNE: F7a-3 (S2 blok ustalen + enum adresow historycznych + R2
+liczace sesje + V1), potem F7a-4 (S4 PastClaims + daty w rendererze),
+F7a-5 (kanarek Gestalt unfinished_business na >=2 sesjach).
+OTWARTE poza F7: bramka "modalnosc bez ontologii" w
 maybeDualRun wychodzi bez zapisu pominiecia (ciche skip_reason);
 brak bramki jezykowej w dual-run (decyzja produktowa).
 
