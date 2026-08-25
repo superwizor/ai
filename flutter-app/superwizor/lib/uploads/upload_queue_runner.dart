@@ -856,16 +856,33 @@ class UploadQueueRunner {
   }
 
   /// Brings the `_analysisSubs` map into sync with the current queue
-  /// snapshot: open a Firestore subscription for every
-  /// phase=completed row that has a sessionId and isn't already
-  /// subscribed; cancel subscriptions for rows that no longer exist
-  /// or have been moved out of `completed`.
+  /// snapshot: open a Firestore subscription for every row that ma
+  /// sessionId i nie jest jeszcze obserwowany; cancel subscriptions for
+  /// rows that no longer exist.
+  ///
+  /// ══ Dlaczego KAZDY wiersz z sessionId, a nie tylko `completed` ══
+  ///
+  /// Wiersz z sessionId ZNACZY, ze serwer utworzyl juz sesje
+  /// (CreateAudioUpload, Option E). Jesli ta sesja doszla do konca —
+  /// ma transkrypcje i raport — to bajty DOTARLY, niezaleznie od tego,
+  /// co lokalny wiersz zdazyl o sobie zapisac. Lokalny stan jest wtedy
+  /// przeterminowana ksiegowoscia, nie prawda o nagraniu.
+  ///
+  /// Do 2026-08-25 obserwowalismy wylacznie wiersze `completed`, wiec
+  /// wiersz, ktory utknal (albo przeszedl w `failed`), nie mial JAK sie
+  /// dowiedziec, ze jego sesja dawno jest gotowa. U testera wygladalo to
+  /// tak: nagranie 132 min lezalo na serwerze z gotowym raportem, a
+  /// aplikacja od czterech dni pokazywala „Sesja nie mogla zostac
+  /// wgrana" i proponowala ponowienie czegos, co sie udalo.
+  ///
+  /// Falszywy alarm o UTRACIE NAGRANIA jest gorszy niz brak alarmu:
+  /// kosztuje zaufanie do kazdego kolejnego komunikatu aplikacji.
   void _reconcileAnalysisSubscriptions() {
     if (_sessionStatusStream == null) return;
     final all = _queue.all();
     final activeLocalIds = <String>{};
     for (final row in all) {
-      if (row.phase != UploadPhase.completed || row.sessionId == null) {
+      if (row.sessionId == null) {
         continue;
       }
       activeLocalIds.add(row.localId);
@@ -891,8 +908,15 @@ class UploadQueueRunner {
     final sub = stream(sid).listen(
       (status) async {
         debugPrint('[upload-runner] analysis status localId=${row.localId} '
-            'sessionId=$sid status=$status');
+            'sessionId=$sid status=$status phase=${row.phase.name}');
         if (status != 'done' && status != 'failed') return;
+        if (row.phase != UploadPhase.completed) {
+          // Wiersz mowil co innego niz serwer — i to serwer ma racje,
+          // bo trzyma audio. Zapisujemy to jawnie, zeby przy diagnozie
+          // nie trzeba bylo zgadywac, czemu blad zniknal sam.
+          debugPrint('[upload-runner] wiersz ${row.localId} '
+              '(${row.phase.name}) rozstrzygniety stanem serwera: $status');
+        }
         // Terminal — refresh the consumer caches then drop the row.
         try {
           await _onAnalysisComplete?.call(row);

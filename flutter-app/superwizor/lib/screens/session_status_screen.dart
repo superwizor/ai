@@ -126,6 +126,19 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       SessionStatusScreen.currentlyViewedSessionId = _resolvedSessionId;
     }
     
+    // Pierwszy odczyt kolejki MUSI pójść z ręki: `ref.listen` reaguje
+    // wyłącznie na ZMIANY, a wiersz terminalny (failed) już się nie
+    // zmieni. Bez tego ekran otwarty na takim wierszu zostawał na
+    // początkowym „Audio czeka w kolejce do uploadu" i twierdził, że
+    // trwa coś, co dawno padło (2026-08-25).
+    if (widget.localId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final rows = ref.read(pendingUploadsStreamProvider).value;
+        if (rows != null) _onQueueSnapshot(rows);
+      });
+    }
+
     _checkScaleAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),

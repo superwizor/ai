@@ -530,4 +530,93 @@ void main() {
       await runner.dispose();
     });
   });
+
+  group('stan serwera rozstrzyga o wierszu (2026-08-25)', () {
+    // Incydent testera: nagranie 132 min bylo na serwerze z gotowym
+    // raportem (sesja COMPLETED), a aplikacja przez cztery dni pokazywala
+    // „Sesja nie mogla zostac wgrana" i proponowala ponowienie czegos, co
+    // sie udalo. Powod: obserwowalismy wylacznie wiersze `completed`, wiec
+    // wiersz, ktory utknal albo padl, nie mial JAK dowiedziec sie o stanie
+    // swojej sesji.
+    test('wiersz failed z sessionId znika, gdy sesja jest gotowa', () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      PendingUpload? domkniety;
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        sessionStatusStream: (_) => Stream.value('done'),
+        onAnalysisComplete: (row) async => domkniety = row,
+      );
+      await runner.start();
+      // Wiersz w stanie terminalnej porazki, ale z sesja utworzona
+      // wczesniej przez CreateAudioUpload.
+      await queue.enqueue(_seed('stary').copyWith(
+        phase: UploadPhase.failed,
+        sessionId: 'sess-stary',
+        lastError: 'source_file_missing: /var/.../raw.flac',
+        terminatedAt: DateTime.now().toUtc(),
+      ));
+      await runner.kick();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(queue.getById('stary'), isNull,
+          reason: 'stan serwera (sesja gotowa) ma rozstrzygac o wierszu');
+      expect(domkniety?.localId, 'stary',
+          reason: 'konsument dostaje sygnal, zeby odswiezyc kartoteke');
+      await runner.dispose();
+    });
+
+    // Sesja, ktorej serwer NIE domknal, nie moze cicho zniknac —
+    // to jest prawdziwa awaria i ma zostac widoczna.
+    test('wiersz failed zostaje, gdy sesja wciaz sie przetwarza', () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        sessionStatusStream: (_) => Stream.value('analyzing'),
+      );
+      await runner.start();
+      await queue.enqueue(_seed('wtoku').copyWith(
+        phase: UploadPhase.failed,
+        sessionId: 'sess-wtoku',
+        terminatedAt: DateTime.now().toUtc(),
+      ));
+      await runner.kick();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(queue.getById('wtoku'), isNotNull);
+      expect(queue.getById('wtoku')!.phase, UploadPhase.failed);
+      await runner.dispose();
+    });
+
+    // Wiersz BEZ sessionId nie ma czego pytac: serwer o takim nagraniu
+    // nie wie, wiec porazka zostaje porazka.
+    test('wiersz failed bez sessionId zostaje', () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      var pytania = 0;
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        sessionStatusStream: (_) {
+          pytania++;
+          return Stream.value('done');
+        },
+      );
+      await runner.start();
+      await queue.enqueue(_seed('bezsesji').copyWith(
+        phase: UploadPhase.failed,
+        terminatedAt: DateTime.now().toUtc(),
+      ));
+      await runner.kick();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(queue.getById('bezsesji'), isNotNull);
+      expect(pytania, 0, reason: 'nie ma o co pytac bez identyfikatora sesji');
+      await runner.dispose();
+    });
+  });
+
 }
