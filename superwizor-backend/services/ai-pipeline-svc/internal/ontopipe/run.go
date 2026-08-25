@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -117,6 +118,39 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 		NoFit:        res.NoFit,
 		PastSpanIDs:  pastIDs,
 	}
+	// Ciaglosc miedzysesyjna (F7a-4). Ustalenia dostaja WYLACZNIE
+	// konstrukty bedace w grze: raport pisze o tym, co dzis ma
+	// zatwierdzone twierdzenia, a ustalenie konstruktu, ktory dzis nie
+	// wystapil, nie ma sie do czego dokleic. Nieobecnosc watku jest
+	// osobnym pytaniem i osobnym kanalem (F7b).
+	if in.Past != nil {
+		wGrze := map[string]bool{}
+		for _, c := range res.Approved {
+			wGrze[c.ConstructID] = true
+		}
+		for _, f := range in.Past.Claims {
+			if !wGrze[f.ConstructID] {
+				continue
+			}
+			si.PriorFindings = append(si.PriorFindings, PriorFinding{
+				ConstructID: f.ConstructID,
+				Categories:  f.Categories,
+				Status:      f.Status,
+				Confidence:  f.Confidence,
+				SessionDate: f.SessionDate,
+				Evidence:    f.Evidence,
+			})
+		}
+		// Mapa adres -> data zasila oznaczenia w wejsciu S4 i regule V7.
+		// Wypelniamy ja niezaleznie od PriorFindings: hipoteza moze
+		// cytowac span historyczny takze wtedy, gdy jego ustalenie
+		// odpadlo przy filtrze konstruktow w grze.
+		si.EarlierSessionSpans = map[string]time.Time{}
+		for _, ps := range in.Past.Spans {
+			si.EarlierSessionSpans[ps.Addr] = ps.SessionDate
+		}
+	}
+
 	// Sekcje generacyjne zamawia UKLAD ontologii — nie kod. Modalnosc
 	// bez layoutu (albo bez tych rodzajow) nie placi za generacje,
 	// ktorej nie wyrenderuje.

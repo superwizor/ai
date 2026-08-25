@@ -92,7 +92,7 @@ var chromePL = chrome{
 		ontology.StatusInsufficientData:      "brak wystarczających danych",
 		ontology.StatusNoFit:                 "poza taksonomią",
 	},
-	dateFmt:          "02.01",
+	dateFmt: "02.01",
 	extractiveBanner: "> **Raport w trybie ekstraktywnym.** Synteza nie przeszła " +
 		"weryfikacji wyjścia, więc poniżej znajdziesz zatwierdzone kategorie " +
 		"wraz z cytatami, bez prozy interpretacyjnej.\n\n",
@@ -124,7 +124,7 @@ var chromeEN = chrome{
 		ontology.StatusInsufficientData:      "insufficient data",
 		ontology.StatusNoFit:                 "outside the taxonomy",
 	},
-	dateFmt:          "Jan 2",
+	dateFmt: "Jan 2",
 	extractiveBanner: "> **Extractive-mode report.** The synthesis did not pass " +
 		"output verification, so below you will find the approved categories " +
 		"with quotes, without interpretive prose.\n\n",

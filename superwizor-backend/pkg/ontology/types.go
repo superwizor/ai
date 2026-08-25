@@ -91,7 +91,7 @@ type Ontology struct {
 
 // Construct to jedna kategoria/kompozyt taksonomii.
 type Construct struct {
-	LabelPL    string   `yaml:"label_pl"`
+	LabelPL string `yaml:"label_pl"`
 	// LabelEN to etykieta dla raportow w jezyku angielskim (raport
 	// wychodzi w jezyku KARTOTEKI, nie ontologii). Opcjonalna — brak
 	// tlumaczenia renderuje label_pl, co samo zglasza luke ekspertowi.

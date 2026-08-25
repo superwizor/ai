@@ -31,22 +31,22 @@ import (
 type RejectReason string
 
 const (
-	ReasonEnum         RejectReason = "R1_enum"
-	ReasonCoverage     RejectReason = "R2_coverage"
-	ReasonRequires     RejectReason = "R3_requires"
-	ReasonEtiology     RejectReason = "R5_etiology"
-	ReasonIsNot        RejectReason = "R6_is_not"
-	ReasonNoFit        RejectReason = "R7_no_fit"
-	ReasonQuantity     RejectReason = "R9_quantity"
-	ReasonTherapist    RejectReason = "R10_therapist_boundary"
-	ReasonUnknownSpan  RejectReason = "R2_unknown_span"
+	ReasonEnum        RejectReason = "R1_enum"
+	ReasonCoverage    RejectReason = "R2_coverage"
+	ReasonRequires    RejectReason = "R3_requires"
+	ReasonEtiology    RejectReason = "R5_etiology"
+	ReasonIsNot       RejectReason = "R6_is_not"
+	ReasonNoFit       RejectReason = "R7_no_fit"
+	ReasonQuantity    RejectReason = "R9_quantity"
+	ReasonTherapist   RejectReason = "R10_therapist_boundary"
+	ReasonUnknownSpan RejectReason = "R2_unknown_span"
 	// ReasonNoCurrentSpan: twierdzenie oparte WYLACZNIE na spanach z
 	// wczesniejszych sesji (F7a-3). Raport opisuje TE sesje — ustalenie
 	// bez ani jednego dowodu z biezacego materialu jest przepisaniem
 	// starego wniosku, a nie obserwacja o dzisiejszym spotkaniu.
 	ReasonNoCurrentSpan RejectReason = "R2_no_current_span"
-	ReasonRiskSpan     RejectReason = "T22_risk_span"
-	ReasonForcedStatus RejectReason = "R1_forced_status"
+	ReasonRiskSpan      RejectReason = "T22_risk_span"
+	ReasonForcedStatus  RejectReason = "R1_forced_status"
 )
 
 // Rejection to jedno odrzucone twierdzenie z powodem.

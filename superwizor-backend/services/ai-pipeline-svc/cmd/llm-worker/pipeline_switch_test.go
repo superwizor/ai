@@ -281,4 +281,3 @@ func TestKontekstMiedzysesyjnyJestWolanyIZapisywany(t *testing.T) {
 		t.Error("kontekst nie trafia do ontopipe.Persist — raport bez zapisu swojego wejscia")
 	}
 }
-

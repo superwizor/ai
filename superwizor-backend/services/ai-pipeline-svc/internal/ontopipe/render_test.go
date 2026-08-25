@@ -480,7 +480,6 @@ func TestJezykRaportuWPrompcieS4(t *testing.T) {
 	}
 }
 
-
 // Cytat z wczesniejszej sesji MUSI trafic do raportu z data.
 //
 // Bez tego odnosnik `s0821:s07` wypadalby po cichu (nie ma go wsrod

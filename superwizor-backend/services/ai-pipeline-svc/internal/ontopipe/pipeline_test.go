@@ -34,9 +34,16 @@ func TestS4NieMaDostepuDoTranskrypcji(t *testing.T) {
 	dozwolone := map[string]bool{
 		"Claims": true, "Patterns": true, "Degraded": true,
 		"Insufficient": true, "NoFit": true, "Corrections": true,
-		"PastSpanIDs":     true,
-		"Language":              true, // tag jezykowy raportu — zero materialu sesji
-		"WantSuggestions": true, "WantInterventions": true,
+		"PastSpanIDs": true,
+		"Language":    true, // tag jezykowy raportu — zero materialu sesji
+		// Ustalenia z poprzednich SPOTKAN: metadane (konstrukt,
+		// kategoria, status, pewnosc, data) i ADRESY cytatow. Zadnej
+		// prozy poprzedniego raportu i zadnej transkrypcji — cytaty
+		// docieraja do S4 wylacznie przez zatwierdzone twierdzenia
+		// tego przebiegu.
+		"PriorFindings":       true,
+		"EarlierSessionSpans": true,
+		"WantSuggestions":     true, "WantInterventions": true,
 		"SuggestionsGuidance": true, "InterventionsGuidance": true,
 	}
 	ty := reflect.TypeOf(SynthesisInput{})

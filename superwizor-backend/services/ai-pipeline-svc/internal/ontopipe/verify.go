@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -35,6 +36,11 @@ const (
 	// zostana przyciete. Zlanie obu w jeden kod kasowalo cale sekcje,
 	// ktore wystarczylo przyciac.
 	VRuleUnknownConstruct VRule = "V4_konstrukt_spoza_przebiegu"
+	// VRuleContinuity: zdanie o powrocie watku bez ani jednego cytatu
+	// z wczesniejszego spotkania (F7a-4). Ten sam ksztalt co V3
+	// (geneza) i V5 (marker abdukcyjny): jezyk deklaruje cos o
+	// materiale, wiec material musi to niesc.
+	VRuleContinuity VRule = "V7_ciaglosc_bez_zakotwiczenia"
 )
 
 // Violation to jedno naruszenie. Detail trafia z powrotem do S4 przy
@@ -112,7 +118,8 @@ func Verify(o *ontology.Ontology, rep Report, in SynthesisInput, spans map[strin
 		foreign := foreignTerms(o, cr.ConstructID, approved)
 
 		for _, h := range cr.Hypotheses {
-			naruszenia := verifyHypothesis(o, cr, h, approved, allowedSpans, spans, foreign)
+			naruszenia := verifyHypothesis(o, cr, h, approved, allowedSpans, spans,
+				foreign, in.EarlierSessionSpans)
 			// Tresc doklejamy TUTAJ, a nie w kazdej regule z osobna:
 			// inaczej dodanie nowej reguly cicho gubiloby material do
 			// strojenia, bo nikt by o tym nie pamietal.
@@ -134,7 +141,8 @@ func Verify(o *ontology.Ontology, rep Report, in SynthesisInput, spans map[strin
 
 func verifyHypothesis(o *ontology.Ontology, cr ConstructReport, h Hypothesis,
 	approved []ontology.Claim, allowedSpans map[string]bool,
-	spans map[string]ontology.Span, foreign []string) []Violation {
+	spans map[string]ontology.Span, foreign []string,
+	earlier map[string]time.Time) []Violation {
 
 	var out []Violation
 
@@ -195,6 +203,21 @@ func verifyHypothesis(o *ontology.Ontology, cr ConstructReport, h Hypothesis,
 			Rule: VRuleHierarchy, ConstructID: cr.ConstructID, HypothesisID: h.ID,
 			Detail: fmt.Sprintf("status podniesiony: zrodlo ma %s, raport pisze %s",
 				src.Status, h.EpistemicStatus),
+		})
+	}
+
+	// ── V7: ciaglosc miedzysesyjna wymaga cytatu z tamtej sesji ──
+	//
+	// „Ten watek wraca" jest twierdzeniem O HISTORII. Bez cytatu ze
+	// spotkania, do ktorego sie odwoluje, jest fabrykacja tego samego
+	// rodzaju co liczba bez pokrycia (V6) — brzmi jak obserwacja
+	// podluzna, a jest domyslem.
+	if marker := firstTermPresent(h.Claim, continuityMarkers); marker != "" &&
+		len(earlier) > 0 && !anySpanFromEarlier(h.Supporting, earlier) {
+		out = append(out, Violation{
+			Rule: VRuleContinuity, ConstructID: cr.ConstructID, HypothesisID: h.ID,
+			Detail: fmt.Sprintf("zdanie o ciaglosci (%q) bez cytatu z wczesniejszego "+
+				"spotkania", marker),
 		})
 	}
 
@@ -295,6 +318,19 @@ func assertiveness(s ontology.EpistemicStatus) int {
 	default:
 		return 0
 	}
+}
+
+// anySpanFromEarlier mowi, czy hipoteza cytuje span z wczesniejszego
+// spotkania. Zrodlem prawdy jest mapa pokazana temu przebiegowi, nie
+// ksztalt identyfikatora — format adresu moze sie zmienic, kontrakt
+// „pokazalismy ten span jako historyczny" nie.
+func anySpanFromEarlier(ids []string, earlier map[string]time.Time) bool {
+	for _, id := range ids {
+		if _, ok := earlier[id]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func anySpanAboutPast(ids []string, spans map[string]ontology.Span) bool {
@@ -403,6 +439,25 @@ var etiologyMarkers = []string{
 	"wczesne doświadczenia", "ukształtowa", "uksztaltowa", "wyniosl", "wyniosł",
 	"wyniosla", "wyniosła", "ma korzenie", "sięga korzeniami", "siega korzeniami",
 	"jako dziecko", "u zrodel", "u źródeł",
+}
+
+// continuityMarkers to jezyk POWROTU WATKU miedzy spotkaniami.
+//
+// Rozmyslnie waskie: „wraca" w zdaniu o powrocie do domu nie jest
+// twierdzeniem podluznym, wiec markery celuja w sformulowania o
+// powtarzalnosci MIEDZY SPOTKANIAMI, nie w kazde uzycie slowa.
+var continuityMarkers = []string{
+	"poprzedniej sesji", "poprzednim spotkaniu", "poprzedniego spotkania",
+	"wczesniejszej sesji", "wczesniejszym spotkaniu",
+	"od poprzedniej", "od ostatniej sesji", "od ostatniego spotkania",
+	"wraca kolejny raz", "wraca ponownie", "powraca kolejny",
+	"kolejne spotkanie z rzedu", "kolejna sesja z rzedu",
+	"kolejny raz z rzedu", "utrzymuje sie miedzy sesjami",
+	"utrzymuje się między sesjami", "od kilku spotkan", "od kilku spotkań",
+	"jak poprzednio", "tak jak wczesniej", "tak jak wcześniej",
+	// warianty EN (raport w jezyku kartoteki)
+	"previous session", "earlier session", "last session",
+	"returns again", "recurring across sessions", "since the last session",
 }
 
 var abductiveMarkers = []string{

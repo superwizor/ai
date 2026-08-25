@@ -29,7 +29,7 @@ import (
 const (
 	PromptVersionS1  = "s1/1.0.0"
 	PromptVersionS2  = "s2/1.2.0" // blok ustalen z poprzednich sesji (F7a-3)
-	PromptVersionS4  = "s4/1.5.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
+	PromptVersionS4  = "s4/1.6.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	ValidatorVersion = "r1-r10/1.0.0"
 	// PipelineVersion trafia do reports.pipeline_version.
 	PipelineVersion = "ontology_s1s5"

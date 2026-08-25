@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -808,5 +809,109 @@ func TestV5NaWzmianceNieDajeTrybuEkstraktywnego(t *testing.T) {
 	if len(konflikt.PatternNotices) != 0 {
 		t.Fatalf("wzmianka bez wzorca miala zostac przycieta: %v",
 			konflikt.PatternNotices)
+	}
+}
+
+// ── F7a-4: V7, ciaglosc miedzysesyjna ──
+
+func wejscieZHistoria() SynthesisInput {
+	return SynthesisInput{
+		Claims: []ontology.Claim{{
+			ConstructID: "konflikt",
+			Categories:  []string{"blizkosc-autonomia"},
+			Status:      ontology.StatusInterpretation,
+			Evidence: []ontology.QuoteRef{
+				{SpanID: "s01", Quote: "duszę się"},
+				{SpanID: "s0821:s07", Quote: "wtedy też się dusiłem"},
+			},
+		}},
+		EarlierSessionSpans: map[string]time.Time{
+			"s0821:s07": time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC),
+		},
+	}
+}
+
+func raportZHipoteza(claim string, supporting ...string) Report {
+	return Report{Constructs: []ConstructReport{{
+		ConstructID: "konflikt",
+		Hypotheses: []Hypothesis{{
+			ID: "A", Claim: claim, Supporting: supporting,
+			EpistemicStatus: "interpretation", Confidence: 0.6,
+		}},
+	}}}
+}
+
+// Zdanie o powrocie watku BEZ cytatu z tamtego spotkania jest
+// twierdzeniem o historii, ktorego nikt nie sprawdzil.
+func TestV7_CiaglascBezCytatuHistorycznego(t *testing.T) {
+	in := wejscieZHistoria()
+	spans := map[string]ontology.Span{
+		"s01":       {ID: "s01", QuoteVerbatim: "duszę się", SessionID: "dzis"},
+		"s0821:s07": {ID: "s0821:s07", QuoteVerbatim: "wtedy też się dusiłem", SessionID: "wczesniej"},
+	}
+	rep := raportZHipoteza(
+		"Napięcie utrzymuje się między sesjami i wraca ponownie.", "s01")
+	if v := Verify(testO(t), rep, in, spans); !maNaruszenie(v, VRuleContinuity) {
+		t.Fatalf("V7 nie zlapal ciaglosci bez zakotwiczenia: %v", v)
+	}
+}
+
+// Ta sama teza Z cytatem z tamtego spotkania przechodzi — o to chodzi
+// w calym F7a.
+func TestV7_CiaglascZCytatemHistorycznymPrzechodzi(t *testing.T) {
+	in := wejscieZHistoria()
+	spans := map[string]ontology.Span{
+		"s01":       {ID: "s01", QuoteVerbatim: "duszę się", SessionID: "dzis"},
+		"s0821:s07": {ID: "s0821:s07", QuoteVerbatim: "wtedy też się dusiłem", SessionID: "wczesniej"},
+	}
+	rep := raportZHipoteza(
+		"Napięcie utrzymuje się między sesjami.", "s01", "s0821:s07")
+	if v := Verify(testO(t), rep, in, spans); maNaruszenie(v, VRuleContinuity) {
+		t.Fatalf("V7 odrzucil zakotwiczona ciaglosc: %v", v)
+	}
+}
+
+// Potok jednosesyjny: regula SPI. Bez tego kazde zdanie ze slowem
+// „wraca" padaloby w raportach, ktore nie maja zadnej historii.
+func TestV7_SpiBezKontekstuHistorycznego(t *testing.T) {
+	in := SynthesisInput{Claims: []ontology.Claim{{
+		ConstructID: "konflikt",
+		Categories:  []string{"blizkosc-autonomia"},
+		Status:      ontology.StatusInterpretation,
+		Evidence:    []ontology.QuoteRef{{SpanID: "s01", Quote: "duszę się"}},
+	}}}
+	spans := map[string]ontology.Span{
+		"s01": {ID: "s01", QuoteVerbatim: "duszę się", SessionID: "dzis"},
+	}
+	rep := raportZHipoteza("Temat wraca ponownie w tej rozmowie.", "s01")
+	if v := Verify(testO(t), rep, in, spans); maNaruszenie(v, VRuleContinuity) {
+		t.Fatalf("V7 zadzialal bez kontekstu historycznego: %v", v)
+	}
+}
+
+// Ustalenia i oznaczenia MUSZA byc widoczne w wejsciu S4 — model czyta
+// tekst, nie strukture Go.
+func TestWejscieS4NiesieUstaleniaIOznaczenia(t *testing.T) {
+	in := wejscieZHistoria()
+	in.PriorFindings = []PriorFinding{{
+		ConstructID: "konflikt",
+		Categories:  []string{"blizkosc-autonomia"},
+		Status:      ontology.StatusInterpretation,
+		Confidence:  0.7,
+		SessionDate: time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC),
+		Evidence:    []string{"s0821:s07"},
+	}}
+	tekst := renderSynthesisInput(in)
+	for _, chce := range []string{
+		"USTALENIA Z POPRZEDNICH SPOTKAN",
+		"21.08 | konflikt: blizkosc-autonomia",
+		// Oznaczenie przy cytacie: bez niego model nie wie, ze ten
+		// konkretny cytat jest z innego spotkania.
+		"s0821:s07 · SPOTKANIE 21.08",
+		"NIE dowod",
+	} {
+		if !strings.Contains(tekst, chce) {
+			t.Errorf("wejscie S4 bez %q:\n%s", chce, tekst)
+		}
 	}
 }

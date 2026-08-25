@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -58,6 +59,25 @@ type SynthesisInput struct {
 	// Corrections to naruszenia V1-V6 z poprzedniej proby. Puste przy
 	// pierwszym przebiegu.
 	Corrections []Violation
+	// PriorFindings to USTALENIA z wczesniejszych sesji dla konstruktow
+	// bedacych w grze (F7a-4).
+	//
+	// UWAGA na sasiedztwo nazw: `PastSpanIDs` wyzej znaczy „spany
+	// mowiace o PRZESZLOSCI klienta" (dziecinstwo — brama R5/V3), a to
+	// pole znaczy „ustalenia z POPRZEDNICH SPOTKAN". Dwie rozne rzeczy
+	// i dwie rozne reguly.
+	//
+	// Metadane, nie proza: kategoria, status, pewnosc, data i ADRESY
+	// cytatow. Zdania z poprzedniego raportu tu nie wchodza — model
+	// powtarzajacy wlasna interpretacje sprzed tygodnia brzmialby z
+	// kazdym powtorzeniem pewniej, a nowego dowodu by nie przybylo
+	// (dok. 65 §N1).
+	PriorFindings []PriorFinding
+	// EarlierSessionSpans mapuje adres spanu historycznego na date jego
+	// sesji. Sluzy do OZNACZENIA cytatu w wejsciu S4 i jest jedynym
+	// zrodlem prawdy dla V7 — dzieki temu regula nie zgaduje po
+	// ksztalcie identyfikatora.
+	EarlierSessionSpans map[string]time.Time
 	// Zamowienia sekcji generacyjnych (uklad M5). Flagi i wytyczne, nie
 	// material zrodlowy: Guidance* to tresc EKSPERCKA z ontologii
 	// (wersjonowana, po four-eyes), a nie nic z sesji. Pola przechodza
@@ -69,6 +89,19 @@ type SynthesisInput struct {
 	WantInterventions     bool
 	SuggestionsGuidance   string
 	InterventionsGuidance string
+}
+
+// PriorFinding to jedno ustalenie z wczesniejszej sesji.
+type PriorFinding struct {
+	ConstructID string
+	Categories  []string
+	Status      ontology.EpistemicStatus
+	Confidence  float64
+	SessionDate time.Time
+	// Evidence to ADRESY spanow (`s0821:s07`), nie ich tresc: cytaty
+	// przychodza do S4 razem z zatwierdzonymi twierdzeniami, wiec drugi
+	// raz w prompcie bylyby tylko kosztem.
+	Evidence []string
 }
 
 // Suggestion to jedna propozycja miedzy sesjami (uklad M5).
@@ -186,6 +219,19 @@ func clampConfidence(v float64) float64 {
 	}
 }
 
+// sesjaMark oznacza cytat pochodzacy z wczesniejszego spotkania.
+//
+// Oznaczenie jest w TEKSCIE wejscia, nie tylko w metadanych, bo model
+// czyta tekst: bez niego zdanie „mowil o tym takze wczesniej" bralo by
+// sie z niczego albo nie powstaloby wcale.
+func sesjaMark(spanID string, in SynthesisInput) string {
+	d, ok := in.EarlierSessionSpans[spanID]
+	if !ok {
+		return ""
+	}
+	return " · SPOTKANIE " + d.Format("02.01")
+}
+
 // allowedSpanIDs zbiera spany, na ktore S4 wolno sie powolac: wylacznie
 // te, ktore niosa zatwierdzone twierdzenia.
 func allowedSpanIDs(in SynthesisInput) []string {
@@ -247,10 +293,23 @@ func renderSynthesisInput(in SynthesisInput) string {
 			i, c.ConstructID, strings.Join(c.Categories, ", "), c.Status, c.Confidence)
 		fmt.Fprintf(&b, "     uzasadnienie: %s\n", c.Reasoning)
 		for _, q := range c.Evidence {
-			fmt.Fprintf(&b, "     ZA  [%s%s]: %q\n", q.SpanID, pastMark(q.SpanID, past), q.Quote)
+			fmt.Fprintf(&b, "     ZA  [%s%s%s]: %q\n", q.SpanID,
+				pastMark(q.SpanID, past), sesjaMark(q.SpanID, in), q.Quote)
 		}
 		for _, q := range c.CounterEvidence {
 			fmt.Fprintf(&b, "     PRZECIW [%s]: %q\n", q.SpanID, q.Quote)
+		}
+	}
+	if len(in.PriorFindings) > 0 {
+		b.WriteString("\nUSTALENIA Z POPRZEDNICH SPOTKAN (tlo ciaglosci, NIE dowod):\n")
+		for _, f := range in.PriorFindings {
+			kat := strings.Join(f.Categories, ", ")
+			if kat == "" {
+				kat = "(bez kategorii)"
+			}
+			fmt.Fprintf(&b, "- %s | %s: %s [%s, pewnosc %.2f] cytaty: %s\n",
+				f.SessionDate.Format("02.01"), f.ConstructID, kat, f.Status,
+				f.Confidence, strings.Join(f.Evidence, ", "))
 		}
 	}
 	if len(in.Patterns) > 0 {

@@ -348,4 +348,3 @@ func TestBezKontekstuBezWpisow(t *testing.T) {
 		t.Fatalf("przebieg bez kontekstu zapisal liczniki (%d)", n)
 	}
 }
-

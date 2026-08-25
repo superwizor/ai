@@ -102,4 +102,3 @@ func TestBanerEksperymentuPoAngielsku(t *testing.T) {
 		t.Fatalf("baner EN zawiera polski wariant: %s", b)
 	}
 }
-
