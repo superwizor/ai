@@ -281,3 +281,32 @@ func TestKontekstMiedzysesyjnyJestWolanyIZapisywany(t *testing.T) {
 		t.Error("kontekst nie trafia do ontopipe.Persist — raport bez zapisu swojego wejscia")
 	}
 }
+
+// Indeks semantyczny (F7b-1) musi byc WOLANY, a klasa potoku ma isc
+// z prov.Pipeline — czyli z tej samej wartosci, ktora trafia do
+// reports.pipeline_version.
+//
+// Uzycie `pipeline.Pipeline` dawaloby "ontology" takze dla eksperymentu
+// (stempel eksperymentalny doklada sie osobno), wiec pozniejszy filtr
+// klasy nie trafialby w nic — i wygladaloby to jak brak historii, nie
+// jak blad. Ta sama klasa pomylki co dwukrotnie przeoczone uprawnienie
+// publikacji: kod istnieje, testy przechodza, a w produkcji cisza.
+func TestIndeksSemantycznyWolanyZWlasciwaKlasa(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("odczyt main.go: %v", err)
+	}
+	kod := string(src)
+
+	if !strings.Contains(kod, "indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline)") {
+		t.Error("indeks wnioskowania nie jest zasilany albo dostaje zla klase potoku")
+	}
+	// Kolejnosc: PO zapisie grafu twierdzen. Indeksujemy to, co
+	// faktycznie stalo sie czescia raportu.
+	iPersist := strings.Index(kod, "ontopipe.Persist(ctx,")
+	iIndex := strings.Index(kod, "indexInference(ctx,")
+	if iPersist < 0 || iIndex < 0 || iIndex < iPersist {
+		t.Error("indeksowanie przed zapisem grafu albo brak wywolania")
+	}
+}
+

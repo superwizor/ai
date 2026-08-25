@@ -563,6 +563,20 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			logger.Error("persist grafu twierdzen (transient — pubsub will retry)", "error", perr)
 			return fmt.Errorf("persist ontopipe: %w", perr)
 		}
+		// Indeks semantyczny (F7b-1) — WYLACZNIE zasilanie. Retrieval
+		// przychodzi w F7b-2 za flaga organizacji, wiec ten zapis niczego
+		// dzis nie zmienia w raportach; buduje material, bez ktorego
+		// wyszukiwanie w dniu wlaczenia bylo by puste.
+		//
+		// Po Persist, nie przed: indeksujemy to, co faktycznie stalo sie
+		// czescia raportu.
+		// Klasa potoku bierze sie z prov.Pipeline — DOKLADNIE tej
+		// wartosci, ktora trafia do reports.pipeline_version. Uzycie
+		// pipeline.Pipeline dawalo "ontology" takze dla eksperymentu
+		// (stempel eksperymentalny doklada sie osobno, wyzej), wiec
+		// filtr klasy w F7b nie trafialby w nic — a wygladaloby to jak
+		// brak historii, nie jak blad.
+		indexInference(ctx, logger, session, repID, ontoRes, prov.Pipeline)
 	}
 
 	// Raport eksperymentalny KONCZY SIE TUTAJ.
