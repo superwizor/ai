@@ -103,9 +103,20 @@ auto-nawigacji), dedupe kart w kartotece po sesjach RENDEROWANYCH.
 invalidate cache sesji + zywy refresh otwartego ekranu (TTL 1 h
 ukrywal drugi raport do godziny). Studio promptow: konflikt wersji
 (wspolny licznik system+chat) = dedykowany komunikat + samonaprawa.
-OTWARTE: bramka "modalnosc bez ontologii" w maybeDualRun wychodzi bez
-zapisu pominiecia (ciche skip_reason); raport eksperymentalny dziala
-na sesjach EN bez bramki jezykowej (decyzja produktowa).
+2026-08-25: jezyk raportu = jezyk kartoteki (s4/1.5.0, chrome pl/en,
+label_en/title_en w metaschemacie, szkic CBT przetlumaczony roboczo);
+cytaty zamiast "Dane za: sNN" (limit 3/hipoteze, kontrdowod z
+"— przeczy:"); fix bramki ekstraktywnej (V5 na wzmiance nie kasuje juz
+calej prozy — rozstrzyga ponowna weryfikacja przycietego raportu,
+2264fe10). Kanarki na rev 00129: EN komplet (naglowki angielskie,
+36 cytatow, zero DaneZa), PL komplet 8 sekcji z proza (18 hipotez,
+60 cytatow, V5+V2 przyciete zamiast trybu ekstraktywnego).
+OTWARTE: F7 kontekst miedzysesyjny (RAG o pelnej proweniencji na
+report_spans/claims/patterns — szkic architektury przedstawiony,
+czeka na decyzje produktowe: glebokosc okna, konstrukty z progiem
+sessions, sekcja ciaglosci); bramka "modalnosc bez ontologii" w
+maybeDualRun wychodzi bez zapisu pominiecia (ciche skip_reason);
+brak bramki jezykowej w dual-run (decyzja produktowa).
 
 
 ### Ontologia F2/M5+ — uklad nazwanych sekcji (main, db67ff91, 2026-08-24)
