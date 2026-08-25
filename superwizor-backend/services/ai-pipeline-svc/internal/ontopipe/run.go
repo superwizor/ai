@@ -38,9 +38,30 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 	res.Spans = spans
 	res.S1Rejected = s1rejected
 
+	// Jedna mapa spanow dla calego przebiegu: waliduje po niej R2/R5/R9,
+	// klasyfikator i weryfikator V1. Spany historyczne wchodza tu pod
+	// SWOIM adresem (`s0821:s07`), wiec wszystkie te reguly dzialaja na
+	// nich bez zmiany — R2 liczy sesje po `SessionID`, R5 pyta o
+	// `AboutPast`, a V1 przyjmuje odnosnik, bo span istnieje.
 	spanByID := map[string]ontology.Span{}
 	for _, s := range spans {
 		spanByID[s.ID] = s.Span
+	}
+	if in.Past != nil {
+		for _, ps := range in.Past.Spans {
+			spanByID[ps.Addr] = ontology.Span{
+				ID:            ps.Addr,
+				SessionID:     ps.SessionID.String(),
+				SessionAt:     ps.SessionDate,
+				Speaker:       ps.Speaker,
+				QuoteVerbatim: ps.Quote,
+				Kind:          ps.Kind,
+				ObservedBy:    ps.ObservedBy,
+				AboutPast:     ps.AboutPast,
+				// RiskContent zostaje false: loader nie ma jak wciagnac
+				// spanu ryzyka (T22 jest warunkiem zapytania).
+			}
+		}
 	}
 
 	// ── S1.5 ── deterministyczne, bez LLM
@@ -56,7 +77,7 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 
 	approvedConstructs := map[string]bool{}
 	for _, id := range orderByRequires(o, categories) {
-		stage, err := MapConstruct(ctx, llm, o, id, spans, &res.Usage)
+		stage, err := MapConstruct(ctx, llm, o, id, spans, in.Past, &res.Usage)
 		if err != nil {
 			return res, err
 		}
@@ -66,6 +87,9 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 		v := o.Validate3(stage, ontology.ValidateOptions{
 			Spans:              spanByID,
 			ApprovedConstructs: approvedConstructs,
+			// Zakotwiczenie w biezacej sesji: twierdzenie zlozone
+			// wylacznie z historii opisuje tamta sesje, nie te.
+			CurrentSessionID: in.SessionID,
 		})
 		if len(v.Approved) > 0 {
 			approvedConstructs[id] = true

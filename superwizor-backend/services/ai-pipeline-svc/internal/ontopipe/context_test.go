@@ -81,3 +81,30 @@ func TestUstaleniaPerKonstruktNajnowszePierwsze(t *testing.T) {
 		t.Fatal("najnowsze ustalenie nie jest pierwsze")
 	}
 }
+
+// S2 widzi WYLACZNIE spany, ktore uziemialy TEN konstrukt.
+//
+// Rozdzial poziomow pojeciowych jest powodem, dla ktorego S2 jest wolane
+// osobno na konstrukt — pokazanie kazdemu konstruktowi calej historii
+// cofneloby ten rozdzial i pomnozylo koszt przez liczbe konstruktow.
+func TestSpanyHistoryczneZawezoneDoKonstruktu(t *testing.T) {
+	p := &PastContext{
+		Claims: []PastClaim{
+			{ID: uuid.New(), ConstructID: "konflikt", SessionDate: data(21),
+				Evidence: []string{"s0821:s07"}},
+			{ID: uuid.New(), ConstructID: "zasob", SessionDate: data(21),
+				Evidence: []string{"s0821:s09"}},
+		},
+		Spans: []PastSpan{
+			{Addr: "s0821:s07", SessionDate: data(21), Quote: "o konflikcie"},
+			{Addr: "s0821:s09", SessionDate: data(21), Quote: "o zasobie"},
+		},
+	}
+	got := p.SpansForConstruct("konflikt")
+	if len(got) != 1 || got[0].Addr != "s0821:s07" {
+		t.Fatalf("spany konstruktu = %v, chcemy wylacznie s0821:s07", got)
+	}
+	if len(p.SpansForConstruct("nieznany")) != 0 {
+		t.Error("konstrukt bez historii dostal spany")
+	}
+}

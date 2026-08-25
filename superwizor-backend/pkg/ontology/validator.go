@@ -40,6 +40,11 @@ const (
 	ReasonQuantity     RejectReason = "R9_quantity"
 	ReasonTherapist    RejectReason = "R10_therapist_boundary"
 	ReasonUnknownSpan  RejectReason = "R2_unknown_span"
+	// ReasonNoCurrentSpan: twierdzenie oparte WYLACZNIE na spanach z
+	// wczesniejszych sesji (F7a-3). Raport opisuje TE sesje — ustalenie
+	// bez ani jednego dowodu z biezacego materialu jest przepisaniem
+	// starego wniosku, a nie obserwacja o dzisiejszym spotkaniu.
+	ReasonNoCurrentSpan RejectReason = "R2_no_current_span"
 	ReasonRiskSpan     RejectReason = "T22_risk_span"
 	ReasonForcedStatus RejectReason = "R1_forced_status"
 )
@@ -99,6 +104,14 @@ type ValidateOptions struct {
 	// wczesniejszych etapow, bo kolejnosc walidacji konstruktow jest
 	// jego decyzja.
 	ApprovedConstructs map[string]bool
+	// CurrentSessionID to sesja, ktorej dotyczy raport (F7a-3).
+	//
+	// Od kontekstu miedzysesyjnego `Spans` niesie takze spany sesji
+	// WCZESNIEJSZYCH — dzieki temu prog `min_evidence.sessions` w ogole
+	// da sie spelnic. Ale raport opisuje sesje biezaca, wiec twierdzenie
+	// musi miec w niej choc jeden dowod. Puste = potok jednosesyjny,
+	// regula spi (zgodnosc wsteczna).
+	CurrentSessionID string
 }
 
 // Validate stosuje reguly R1-R10 do wyniku jednego etapu S2.
@@ -229,6 +242,24 @@ func (o *Ontology) checkClaim(c *Construct, cl Claim, opts ValidateOptions) (Rej
 		}
 		spanIDs[q.SpanID] = true
 	}
+	// Zakotwiczenie w BIEZACEJ sesji (F7a-3). Kolejnosc ma znaczenie:
+	// sprawdzamy przed progami dowodowymi, bo twierdzenie o cudzej sesji
+	// nie staje sie twierdzeniem o tej przez spelnienie progu.
+	if opts.CurrentSessionID != "" && len(spanIDs) > 0 {
+		maBiezacy := false
+		for id := range spanIDs {
+			if opts.Spans[id].SessionID == opts.CurrentSessionID {
+				maBiezacy = true
+				break
+			}
+		}
+		if !maBiezacy {
+			return rej(ReasonNoCurrentSpan,
+				"twierdzenie oparte wylacznie na spanach z wczesniejszych sesji — "+
+					"raport opisuje sesje biezaca")
+		}
+	}
+
 	if me := c.MinEvidence; me != nil {
 		if len(spanIDs) < me.Spans {
 			return rej(ReasonCoverage, "spanow %d, wymagane %d", len(spanIDs), me.Spans)

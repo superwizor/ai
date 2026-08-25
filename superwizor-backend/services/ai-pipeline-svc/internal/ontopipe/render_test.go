@@ -3,6 +3,7 @@ package ontopipe
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -479,3 +480,52 @@ func TestJezykRaportuWPrompcieS4(t *testing.T) {
 	}
 }
 
+
+// Cytat z wczesniejszej sesji MUSI trafic do raportu z data.
+//
+// Bez tego odnosnik `s0821:s07` wypadalby po cichu (nie ma go wsrod
+// spanow biezacej sesji), a hipoteza o ciaglosci zostawalaby bez
+// dowodu — czyli dokladnie tak, jak wygladalby blad.
+func TestCytatHistorycznyMaDate(t *testing.T) {
+	res := wynikPelny()
+	res.Spans = []ontology.TopicSpan{
+		{Span: ontology.Span{ID: "s01", QuoteVerbatim: "dzisiejsza wypowiedź"}},
+	}
+	res.Report.Constructs[0].Hypotheses[0].Supporting = []string{"s01", "s0821:s07"}
+	past := &PastContext{Spans: []PastSpan{{
+		Addr:        "s0821:s07",
+		SessionDate: time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC),
+		Quote:       "wtedy mówił inaczej",
+	}}}
+
+	md := RenderMarkdown(ontologiaZUkladem(t), res, RenderInput{Past: past})
+	if !strings.Contains(md, "> (21.08) wtedy mówił inaczej") {
+		t.Fatalf("brak datowanego cytatu historycznego:\n%s", md)
+	}
+	if !strings.Contains(md, "> dzisiejsza wypowiedź") {
+		t.Error("cytat z biezacej sesji nie powinien dostac daty")
+	}
+	if strings.Contains(md, "s0821:s07") {
+		t.Error("surowy adres historyczny wyciekl do raportu")
+	}
+}
+
+// Ten sam cytat w raporcie angielskim — data w formacie czytelnym dla
+// odbiorcy, nie polskim.
+func TestCytatHistorycznyPoAngielsku(t *testing.T) {
+	res := wynikPelny()
+	res.Spans = nil
+	res.Report.Constructs[0].Hypotheses[0].Supporting = []string{"s0821:s07"}
+	past := &PastContext{Spans: []PastSpan{{
+		Addr:        "s0821:s07",
+		SessionDate: time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC),
+		Quote:       "he said otherwise then",
+	}}}
+
+	md := RenderMarkdown(ontologiaZUkladem(t), res, RenderInput{
+		Past: past, Language: "en-US",
+	})
+	if !strings.Contains(md, "> (Aug 21) he said otherwise then") {
+		t.Fatalf("data historyczna nie po angielsku:\n%s", md)
+	}
+}

@@ -99,7 +99,7 @@ func schemaS1() map[string]any {
 // a nie wlasciwe teoretycznie — i to model, nie ekspert, decydowalby
 // wtedy, ktora definicja obowiazuje. RAG jest wlasciwym narzedziem dla
 // A4_EDU (tekst teorii), nie dla klasyfikacji.
-func buildS2Prompt(o *ontology.Ontology, constructID string) string {
+func buildS2Prompt(o *ontology.Ontology, constructID string, past *PastContext) string {
 	c := o.Constructs[constructID]
 	if c == nil {
 		// Nie panikujemy: wolajacy dostanie blad ze SchemaForConstruct,
@@ -192,6 +192,7 @@ func buildS2Prompt(o *ontology.Ontology, constructID string) string {
 	if c.ForcedStatus != "" {
 		fmt.Fprintf(&b, "\nSTATUS WYMUSZONY: %s — schemat nie dopuszcza innego.\n", c.ForcedStatus)
 	}
+	appendPastFindings(&b, past, constructID)
 	return b.String()
 }
 
@@ -250,6 +251,47 @@ func appendGenerativeGuidance(b *strings.Builder, in SynthesisInput) {
 			b.WriteString(in.InterventionsGuidance + "\n")
 		}
 	}
+}
+
+// appendPastFindings dokleja ustalenia TEGO konstruktu z wczesniejszych
+// sesji (F7a-3, dok. 65 §4.3).
+//
+// ══ Po co model ma je widziec ══
+//
+// Bez nich prog `min_evidence.sessions` byl niespelnialny z definicji:
+// jedna sesja to jedna sesja, wiec konstrukty wymagajace ciaglosci
+// (np. `unfinished_business` w Gestalt) zawsze konczyly w
+// `insufficient_data`. Z nimi model moze wskazac ten sam watek w dwoch
+// sesjach i prog staje sie egzekwowalny.
+//
+// ══ Czego tu nie ma ══
+//
+// Prozy poprzednich raportow. Ustalenie jest podane jako KATEGORIA
+// i ADRESY cytatow, nie jako gotowe zdanie do przepisania — inaczej
+// model powtarzalby wlasna interpretacje sprzed tygodnia i z kazdym
+// powtorzeniem brzmiala by pewniej (dok. 65 §N1).
+func appendPastFindings(b *strings.Builder, past *PastContext, constructID string) {
+	ustalenia := past.ClaimsForConstruct(constructID)
+	if len(ustalenia) == 0 {
+		return
+	}
+	b.WriteString("\n\nUSTALENIA Z POPRZEDNICH SESJI (ten sam konstrukt)\n")
+	for _, u := range ustalenia {
+		kat := strings.Join(u.Categories, ", ")
+		if kat == "" {
+			kat = "(bez kategorii)"
+		}
+		fmt.Fprintf(b, "  - %s: %s [%s, pewnosc %.0f%%] — cytaty: %s\n",
+			u.SessionDate.Format("02.01"), kat, u.Status,
+			u.Confidence*100, strings.Join(u.Evidence, ", "))
+	}
+	b.WriteString(
+		"Te ustalenia sa TLEM, nie trescia do przepisania. Wolno powolac sie na " +
+			"cytat historyczny (adres `sMMDD:sNN`) razem z cytatem z DZISIEJSZEJ " +
+			"sesji, gdy watek faktycznie wraca — wtedy twierdzenie ma pokrycie w " +
+			"dwoch sesjach.\n" +
+			"KAZDE twierdzenie musi miec co najmniej jeden cytat z dzisiejszej " +
+			"sesji: raport opisuje TE sesje, nie poprzednie.\n")
 }
 
 // schemaS4 buduje schemat raportu ZAWEZONY DO KONKRETNEGO PRZEBIEGU.

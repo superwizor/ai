@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -139,7 +142,7 @@ func TestS2NieWidziSpanowRyzyka(t *testing.T) {
 		{Span: ontology.Span{ID: "s99", QuoteVerbatim: trescRyzyka, Speaker: "Klient",
 			RiskContent: true}},
 	}
-	if _, err := MapConstruct(context.Background(), f, testO(t), "konflikt", spans, &Usage{}); err != nil {
+	if _, err := MapConstruct(context.Background(), f, testO(t), "konflikt", spans, nil, &Usage{}); err != nil {
 		t.Fatalf("MapConstruct: %v", err)
 	}
 	for _, req := range f.Zapytal {
@@ -189,5 +192,73 @@ func TestZasobDegradowanyGdyKonfliktOdpadl(t *testing.T) {
 		if r.ConstructID == "zasob" && r.Reason == ontology.ReasonRequires {
 			t.Fatal("zasob zostal odrzucony zamiast zdegradowany")
 		}
+	}
+}
+
+// ── F7a-3: ustalenia z poprzednich sesji w wejsciu S2 ──
+
+func kontekstTestowy() *PastContext {
+	d := time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC)
+	return &PastContext{
+		Claims: []PastClaim{{
+			ID: uuid.New(), ConstructID: "konflikt", SessionDate: d,
+			Categories: []string{"blizkosc-autonomia"},
+			Status:     ontology.StatusInterpretation, Confidence: 0.7,
+			Evidence: []string{"s0821:s07"},
+		}},
+		Spans: []PastSpan{{
+			Addr: "s0821:s07", SessionDate: d, Speaker: "Klient",
+			Kind: ontology.SpanDeclarative, Quote: "wtedy też się dusiłem",
+		}},
+	}
+}
+
+// Prompt S2 niesie ustalenia TEGO konstruktu — bez nich prog
+// `min_evidence.sessions` jest niespelnialny z definicji.
+func TestPromptS2NiesieUstaleniaHistoryczne(t *testing.T) {
+	p := buildS2Prompt(testO(t), "konflikt", kontekstTestowy())
+	for _, chce := range []string{
+		"USTALENIA Z POPRZEDNICH SESJI",
+		"21.08", "blizkosc-autonomia", "s0821:s07",
+		// Zakotwiczenie w biezacej sesji musi byc POWIEDZIANE modelowi,
+		// nie tylko egzekwowane po fakcie przez walidator.
+		"co najmniej jeden cytat z dzisiejszej",
+	} {
+		if !strings.Contains(p, chce) {
+			t.Errorf("prompt bez %q", chce)
+		}
+	}
+	// Konstrukt bez historii nie dostaje pustej sekcji.
+	if strings.Contains(buildS2Prompt(testO(t), "zasob", kontekstTestowy()),
+		"USTALENIA Z POPRZEDNICH SESJI") {
+		t.Error("konstrukt bez ustalen dostal pusty naglowek")
+	}
+	// Potok jednosesyjny: zero sladu po bloku.
+	if strings.Contains(buildS2Prompt(testO(t), "konflikt", nil),
+		"USTALENIA Z POPRZEDNICH SESJI") {
+		t.Error("prompt bez kontekstu niesie blok historyczny")
+	}
+}
+
+// Fragmenty historyczne sa ODDZIELONE od dzisiejszych i inaczej
+// zaadresowane — model nie ma jak pomylic materialu z dwoch sesji.
+func TestWejscieS2OddzielaFragmentyHistoryczne(t *testing.T) {
+	spany := []ontology.TopicSpan{{Span: ontology.Span{
+		ID: "s01", Speaker: "Klient", Kind: ontology.SpanDeclarative,
+		QuoteVerbatim: "duszę się",
+	}}}
+	tresc := renderSpans(spany, kontekstTestowy().SpansForConstruct("konflikt"))
+
+	iBiezace := strings.Index(tresc, "FRAGMENTY SESJI:")
+	iHistoria := strings.Index(tresc, "FRAGMENTY WCZESNIEJSZYCH SESJI")
+	if iBiezace < 0 || iHistoria < 0 || iHistoria < iBiezace {
+		t.Fatalf("brak rozdzialu bloków albo zla kolejnosc:\n%s", tresc)
+	}
+	if !strings.Contains(tresc, "[s0821:s07 | 21.08 | Klient | declarative] wtedy też się dusiłem") {
+		t.Errorf("fragment historyczny bez adresu albo bez daty:\n%s", tresc)
+	}
+	// Bez kontekstu wejscie wyglada dokladnie jak przed F7a.
+	if strings.Contains(renderSpans(spany, nil), "WCZESNIEJSZYCH") {
+		t.Error("potok jednosesyjny dostal pusty naglowek historyczny")
 	}
 }

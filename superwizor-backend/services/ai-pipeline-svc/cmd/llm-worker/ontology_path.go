@@ -219,6 +219,9 @@ func runOntologyPipeline(
 	payload.ReportMarkdown = ontopipe.RenderMarkdown(o, res, ontopipe.RenderInput{
 		SummaryShort: metadataPayload.SummaryShort,
 		Language:     session.ReportLanguage,
+		// Bez kontekstu renderer nie znalazlby tresci cytatu
+		// historycznego i odnosnik zniknalby z raportu po cichu.
+		Past: past,
 	})
 	return payload, res, stats, nil
 }

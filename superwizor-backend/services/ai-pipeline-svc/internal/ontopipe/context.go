@@ -142,6 +142,45 @@ func (p *PastContext) ClaimsForConstruct(constructID string) []PastClaim {
 	return out
 }
 
+// SpansForConstruct zwraca spany, ktore uziemialy DANY konstrukt
+// w poprzednich sesjach.
+//
+// Zawezenie do konstruktu jest decyzja projektowa, nie oszczednoscia:
+// S2 jest wolane osobno na konstrukt wlasnie po to, zeby nie mieszac
+// poziomow pojeciowych. Pokazanie wszystkich spanow historycznych
+// kazdemu konstruktowi cofneloby ten rozdzial — i przy okazji
+// mnozyloby koszt przez liczbe konstruktow ontologii.
+func (p *PastContext) SpansForConstruct(constructID string) []PastSpan {
+	if p == nil {
+		return nil
+	}
+	chciane := map[string]bool{}
+	for _, c := range p.Claims {
+		if c.ConstructID != constructID {
+			continue
+		}
+		for _, addr := range c.Evidence {
+			chciane[addr] = true
+		}
+	}
+	if len(chciane) == 0 {
+		return nil
+	}
+	var out []PastSpan
+	for _, s := range p.Spans {
+		if chciane[s.Addr] {
+			out = append(out, s)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if !out[i].SessionDate.Equal(out[j].SessionDate) {
+			return out[i].SessionDate.After(out[j].SessionDate)
+		}
+		return out[i].Addr < out[j].Addr
+	})
+	return out
+}
+
 // TopicSessionCounts liczy, w ilu WCZESNIEJSZYCH sesjach wystapilo
 // kazde haslo. Wejscie rekurencji miedzysesyjnej (S1.5, F7a-3).
 func (p *PastContext) TopicSessionCounts() map[string]int {

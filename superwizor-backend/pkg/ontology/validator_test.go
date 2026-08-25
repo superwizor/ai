@@ -337,3 +337,121 @@ func TestInsufficientDataNieJestBledem(t *testing.T) {
 		t.Error("insufficient_data nie zostalo odnotowane")
 	}
 }
+
+// ── F7a-3: prog miedzysesyjny i zakotwiczenie w biezacej sesji ──
+
+// spanZSesji buduje span z jawna sesja i data (kontekst miedzysesyjny).
+func spanHistoryczny(id, sesja string, oPrzeszlosci bool) Span {
+	s := spanZwykly(id, sesja)
+	s.AboutPast = oPrzeszlosci
+	return s
+}
+
+// min_evidence.sessions BYL NIESPELNIALNY przed F7a: potok widzial
+// jedna sesje, wiec konstrukt wymagajacy ciaglosci (Gestalt
+// `unfinished_business`: 3 spany z 2 sesji) zawsze konczyl w
+// insufficient_data. Ten test pilnuje, ze prog dziala w obie strony.
+func TestR2_ProgSesjiSpelnionyKontekstemHistorycznym(t *testing.T) {
+	o := wczytajSeed(t, "gestalt")
+	opts := opcje(
+		spanZwykly("s1", "biezaca"),
+		spanZwykly("s2", "biezaca"),
+		spanHistoryczny("s0821:s07", "wczesniejsza", false),
+	)
+	opts.CurrentSessionID = "biezaca"
+	opts.ApprovedConstructs["contact_cycle_phase"] = true
+
+	res := StageResult{ConstructID: "unfinished_business", Claims: []Claim{{
+		ConstructID: "unfinished_business",
+		Evidence:    dowody("s1", "s2", "s0821:s07"),
+		Status:      StatusInterpretation,
+	}}}
+	v := o.Validate3(res, opts)
+	if len(v.Approved) != 1 {
+		t.Fatalf("twierdzenie odrzucone mimo dwoch sesji w dowodach: %v", v.Rejected)
+	}
+}
+
+func TestR2_ProgSesjiNiespelnionyBezHistorii(t *testing.T) {
+	o := wczytajSeed(t, "gestalt")
+	opts := opcje(
+		spanZwykly("s1", "biezaca"),
+		spanZwykly("s2", "biezaca"),
+		spanZwykly("s3", "biezaca"),
+	)
+	opts.CurrentSessionID = "biezaca"
+	opts.ApprovedConstructs["contact_cycle_phase"] = true
+
+	res := StageResult{ConstructID: "unfinished_business", Claims: []Claim{{
+		ConstructID: "unfinished_business",
+		Evidence:    dowody("s1", "s2", "s3"),
+		Status:      StatusInterpretation,
+	}}}
+	if r := pierwszyPowod(t, o.Validate3(res, opts)); r != ReasonCoverage {
+		t.Errorf("powod = %s, oczekiwano %s (trzy spany, ale jedna sesja)",
+			r, ReasonCoverage)
+	}
+}
+
+// Twierdzenie zlozone WYLACZNIE z historii opisuje tamta sesje, nie te.
+// Bez tej reguly kontekst miedzysesyjny pozwalalby przepisac stary
+// wniosek do dzisiejszego raportu bez ani jednego dowodu z dzisiaj.
+func TestR2_TwierdzenieBezSpanuBiezacejSesji(t *testing.T) {
+	o := wczytajSeed(t, "ppt")
+	opts := opcje(
+		spanHistoryczny("s0821:s07", "wczesniejsza", false),
+		spanHistoryczny("s0814:s02", "starsza", false),
+	)
+	opts.CurrentSessionID = "biezaca"
+
+	res := StageResult{ConstructID: "actual_capacity_primary", Claims: []Claim{{
+		ConstructID: "actual_capacity_primary",
+		Categories:  []string{"zaufanie"},
+		Evidence:    dowody("s0821:s07", "s0814:s02"),
+		Status:      StatusInterpretation,
+	}}}
+	if r := pierwszyPowod(t, o.Validate3(res, opts)); r != ReasonNoCurrentSpan {
+		t.Errorf("powod = %s, oczekiwano %s", r, ReasonNoCurrentSpan)
+	}
+}
+
+// Potok jednosesyjny (CurrentSessionID puste) dziala jak przed F7a —
+// regula spi, zgodnosc wsteczna zachowana.
+func TestR2_ZakotwiczenieSpiBezIdentyfikatoraSesji(t *testing.T) {
+	o := wczytajSeed(t, "ppt")
+	opts := opcje(spanZwykly("s1", "jakas"), spanZwykly("s2", "jakas"))
+
+	res := StageResult{ConstructID: "actual_capacity_primary", Claims: []Claim{{
+		ConstructID: "actual_capacity_primary",
+		Categories:  []string{"zaufanie"},
+		Evidence:    dowody("s1", "s2"),
+		Status:      StatusInterpretation,
+	}}}
+	if v := o.Validate3(res, opts); len(v.Approved) != 1 {
+		t.Fatalf("zgodnosc wsteczna zlamana: %v", v.Rejected)
+	}
+}
+
+// R5: span historyczny mowiacy WPROST o przeszlosci uzasadnia
+// twierdzenie etiologiczne tak samo jak span z dzisiejszej sesji —
+// klient opowiedzial o dziecinstwie dwa tygodnie temu, nie dzisiaj.
+func TestR5_HistorycznySpanOPrzeszlosciUzasadniaEtiologie(t *testing.T) {
+	o := wczytajSeed(t, "ppt")
+	opts := opcje(
+		spanZwykly("s1", "biezaca"),
+		spanHistoryczny("s0814:s02", "starsza", true),
+	)
+	opts.CurrentSessionID = "biezaca"
+
+	res := StageResult{ConstructID: "actual_capacity_primary", Claims: []Claim{{
+		ConstructID: "actual_capacity_primary",
+		Categories:  []string{"zaufanie"},
+		Evidence:    dowody("s1", "s0814:s02"),
+		Status:      StatusInterpretation,
+		Etiological: true,
+	}}}
+	if v := o.Validate3(res, opts); len(v.Approved) != 1 {
+		t.Fatalf("etiologia odrzucona mimo historycznego spanu o przeszlosci: %v",
+			v.Rejected)
+	}
+}

@@ -131,7 +131,7 @@ type s2Output struct {
 // nawet do przeczytania, wiec nie moze na nich wnioskowac. Filtrowanie
 // dopiero w walidatorze byloby slabsze — tresc juz bylaby w kontekscie.
 func MapConstruct(ctx context.Context, llm LLM, o *ontology.Ontology, constructID string,
-	spans []ontology.TopicSpan, u *Usage) (ontology.StageResult, error) {
+	spans []ontology.TopicSpan, past *PastContext, u *Usage) (ontology.StageResult, error) {
 
 	schema, err := o.SchemaForConstruct(constructID, ontology.SchemaOptions{})
 	if err != nil {
@@ -148,8 +148,8 @@ func MapConstruct(ctx context.Context, llm LLM, o *ontology.Ontology, constructI
 
 	resp, err := llm.GenerateJSON(ctx, LLMRequest{
 		Model:        ModelMapping,
-		SystemPrompt: buildS2Prompt(o, constructID),
-		UserContent:  renderSpans(usable),
+		SystemPrompt: buildS2Prompt(o, constructID, past),
+		UserContent:  renderSpans(usable, past.SpansForConstruct(constructID)),
 		Schema:       schema,
 		MaxTokens:    4096,
 	})
@@ -233,11 +233,23 @@ func toQuoteRefs(qs []s2Quote) []ontology.QuoteRef {
 
 // renderSpans sklada material dla S2. Spany numerowane identyfikatorem,
 // zeby model mial czym sie odwolac w evidence.
-func renderSpans(spans []ontology.TopicSpan) string {
+func renderSpans(spans []ontology.TopicSpan, historyczne []PastSpan) string {
 	var b strings.Builder
 	b.WriteString("FRAGMENTY SESJI:\n")
 	for _, s := range spans {
 		fmt.Fprintf(&b, "[%s | %s | %s] %s\n", s.ID, s.Speaker, s.Kind, s.QuoteVerbatim)
+	}
+	if len(historyczne) == 0 {
+		return b.String()
+	}
+	// Blok historyczny jest ODDZIELONY i inaczej zaadresowany
+	// (`s0821:s07` zamiast `s07`), zeby model nie mogl pomylic materialu
+	// dzisiejszego z wczesniejszym ani przy cytowaniu, ani przy
+	// liczeniu pokrycia.
+	b.WriteString("\nFRAGMENTY WCZESNIEJSZYCH SESJI (kontekst ciaglosci):\n")
+	for _, s := range historyczne {
+		fmt.Fprintf(&b, "[%s | %s | %s | %s] %s\n",
+			s.Addr, s.SessionDate.Format("02.01"), s.Speaker, s.Kind, s.Quote)
 	}
 	return b.String()
 }

@@ -47,6 +47,11 @@ type RenderInput struct {
 	// Language to jezyk raportu z kartoteki (sessions.report_language,
 	// np. "pl", "en-US"). Pusty = polski (zgodnosc wsteczna).
 	Language string
+	// Past to kontekst miedzysesyjny pokazany temu przebiegowi (F7a).
+	// Renderer potrzebuje go, zeby cytat historyczny przywolany przez
+	// S4 mial TRESC i DATE — bez tego odnosnik `s0821:s07` wypadalby
+	// z raportu po cichu, bo nie ma go wsrod spanow biezacej sesji.
+	Past *PastContext
 }
 
 // chrome to WSZYSTKIE stale napisy renderera w jednym jezyku.
@@ -57,6 +62,8 @@ type RenderInput struct {
 type chrome struct {
 	statusy map[ontology.EpistemicStatus]string
 
+	// dateFmt to format daty cytatu historycznego (referencyjny czas Go).
+	dateFmt          string
 	extractiveBanner string
 	pozostale        string
 	pytania          string
@@ -85,6 +92,7 @@ var chromePL = chrome{
 		ontology.StatusInsufficientData:      "brak wystarczających danych",
 		ontology.StatusNoFit:                 "poza taksonomią",
 	},
+	dateFmt:          "02.01",
 	extractiveBanner: "> **Raport w trybie ekstraktywnym.** Synteza nie przeszła " +
 		"weryfikacji wyjścia, więc poniżej znajdziesz zatwierdzone kategorie " +
 		"wraz z cytatami, bez prozy interpretacyjnej.\n\n",
@@ -116,6 +124,7 @@ var chromeEN = chrome{
 		ontology.StatusInsufficientData:      "insufficient data",
 		ontology.StatusNoFit:                 "outside the taxonomy",
 	},
+	dateFmt:          "Jan 2",
 	extractiveBanner: "> **Extractive-mode report.** The synthesis did not pass " +
 		"output verification, so below you will find the approved categories " +
 		"with quotes, without interpretive prose.\n\n",
@@ -169,6 +178,16 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 	cytaty := map[string]string{}
 	for _, s := range res.Spans {
 		cytaty[s.ID] = s.QuoteVerbatim
+	}
+	// Cytat z wczesniejszej sesji dostaje DATE. Bez niej terapeuta
+	// czytalby material sprzed tygodni jako wypowiedz z dzisiejszego
+	// spotkania — a to zmienia znaczenie kazdego zdania, ktore sie na
+	// nim opiera.
+	if in.Past != nil {
+		for _, ps := range in.Past.Spans {
+			cytaty[ps.Addr] = fmt.Sprintf("(%s) %s",
+				ps.SessionDate.Format(ch.dateFmt), ps.Quote)
+		}
 	}
 
 	if res.Extractive {
