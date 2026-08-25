@@ -370,7 +370,51 @@ tylko jedyna obrona przed awarią, która wygląda jak poprawność.
 | model embeddingów | text-embedding-005 (768) |
 | parametry selekcji | W=3, K=60, S=120, k=8, próg 0.55, max 6 sesji |
 
-### 9.4 Co zostało
+### 9.4 Kanarek F7b-2: kanał działa, ale brakuje mu ciągu
+
+Przebieg na kartotece „Janek Johny" (CBT, 7 sesji), cel = sesja #7,
+okno = #6/#5/#4 (bez raportów eksperymentalnych, więc zero twierdzeń
+z okna), zaindeksowana sesja #3 — poza oknem, jedyne możliwe źródło.
+
+Co zadziałało:
+
+- `semantic_enabled=true` — reguła włączania otworzyła ścieżkę,
+- **8 twierdzeń znalezionych semantycznie**, podobieństwo 0.587–0.655,
+  **1 odrzucone progiem** (0.55 realnie pracuje, margines wąski),
+- wszystkie z sesji **spoza okna**, zapisane w rejestrze z kanałem
+  `semantic` i własnym podobieństwem — atrybucja jednoznaczna,
+- trafienia dotyczyły DOKŁADNIE tych konstruktów, które były w grze
+  (automatic_thought, cognitive_distortion, emotion,
+  intermediate_belief) — retrieval był trafny tematycznie.
+
+Czego nie było: **ani jednego cytatu historycznego w twierdzeniach**
+(26 dowodów, wszystkie z sesji bieżącej) i ani jednego datowanego
+cytatu w raporcie.
+
+To NIE jest awaria — S2 zobaczył historię i jej nie użył, bo nic go do
+tego nie zmuszało. Wniosek jest projektowy, nie techniczny:
+
+**Kontekst międzysesyjny ma dziś strukturalny ciąg tylko tam, gdzie
+ontologia deklaruje próg `min_evidence.sessions`.** Deklaruje go
+wyłącznie gestaltowskie `unfinished_business`. W CBT i PPT historia
+jest ofertą, którą model przyjmuje albo nie — a prompt mówi tylko
+„wolno się powołać".
+
+Dwa kierunki, obie decyzje eksperckie, nie inżynierskie:
+
+1. Dopisać próg `sessions` konstruktom, dla których dowód
+   międzysesyjny ma znaczenie kliniczne (np. `core_belief` w CBT —
+   przekonanie kluczowe z definicji nie powstaje w jednej sesji).
+2. Uczynić kanał ciągłości (F7b-3) głównym konsumentem historii —
+   „ten wątek wraca" należy do prozy S4, nie do dowodu S2.
+
+Hipoteza poboczna do sprawdzenia: ten przebieg był ANGIELSKI, a blok
+„USTALENIA Z POPRZEDNICH SESJI" jest w prompcie po polsku. Kanarek F7a-5
+na kartotece polskiej (PPT) dał cytaty historyczne; ten nie. Dwie różnice
+naraz (język i brak progu), więc przyczyny nie da się rozstrzygnąć bez
+osobnego przebiegu.
+
+### 9.5 Co zostało
 
 - **F7b-3**: kanał ciągłości dla hipotez (`kind: continuity` w układzie,
   historia pewności, V8 pilnujące, że przeszła hipoteza nie staje się

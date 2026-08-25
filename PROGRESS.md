@@ -168,6 +168,16 @@ NIGDY niczego, wygladajac na brak historii); naprawione: Persist
 zwraca ClaimIDs.
 docs/65 przepisane z planu na stan faktyczny (§9: sciezka danych,
 piec wad znalezionych kanarkami, tabela wersji).
+Kanarek F7b-2 (raport f336af8a, kartoteka Janek Johny CBT): semantyka
+DZIALA — 8 twierdzen z sesji SPOZA okna, podobienstwo 0.587-0.655,
+1 odrzucone progiem, kanal i podobienstwo w rejestrze, trafienia
+dokladnie w konstrukty w grze. ALE zero cytatow historycznych
+w twierdzeniach: S2 zobaczyl historie i jej nie uzyl, bo nic go nie
+zmuszalo. Wniosek projektowy (docs/65 §9.4): kontekst ma strukturalny
+ciag tylko tam, gdzie ontologia deklaruje min_evidence.sessions —
+dzis wylacznie Gestalt unfinished_business. DECYZJA EKSPERCKA: dopisac
+prog `sessions` konstruktom miedzysesyjnym (np. core_belief w CBT) albo
+oprzec sie na kanale ciaglosci F7b-3.
 ZOSTAJE: F7b-3 (kanal ciaglosci hipotez + V8), F7b-4 (benchmark
 powtarzalnosci — BRAMKA przed semantyka w raportach produkcyjnych).
 
