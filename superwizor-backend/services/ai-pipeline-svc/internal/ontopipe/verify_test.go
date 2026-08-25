@@ -915,3 +915,53 @@ func TestWejscieS4NiesieUstaleniaIOznaczenia(t *testing.T) {
 		}
 	}
 }
+
+// Kanarek 25.08: S4 dostawal ustalenia z poprzednich spotkan i regule
+// „ciaglosc tylko z cytatem", ale enum dozwolonych spanow nie zawieral
+// ANI JEDNEGO adresu historycznego. Model nie mial jak spelnic reguly —
+// osiem zdan o ciaglosci padlo na V7 w jednym przebiegu.
+func TestSchematS4DopuszczaAdresyHistoryczne(t *testing.T) {
+	// Scenariusz DOKLADNIE z kanarka: kontekst historyczny zostal
+	// pokazany przebiegowi, ale S2 nie oparl na nim zadnego
+	// zatwierdzonego twierdzenia. Wczesniejsza wersja tego testu brala
+	// wejscie, w ktorym adres siedzial w dowodach twierdzenia — czyli
+	// trafial do enumu STARA sciezka i test przechodzil takze bez
+	// poprawki (sprawdzone przez celowe zepsucie).
+	in := SynthesisInput{
+		Claims: []ontology.Claim{{
+			ConstructID: "konflikt",
+			Categories:  []string{"blizkosc-autonomia"},
+			Status:      ontology.StatusInterpretation,
+			Evidence:    []ontology.QuoteRef{{SpanID: "s01", Quote: "duszę się"}},
+		}},
+		EarlierSessionSpans: map[string]time.Time{
+			"s0821:s07": time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	schemat := schemaS4(in)
+	props := schemat["properties"].(map[string]any)
+	konstrukty := props["constructs"].(map[string]any)
+	items := konstrukty["items"].(map[string]any)
+	hip := items["properties"].(map[string]any)["hypotheses"].(map[string]any)
+	hitems := hip["items"].(map[string]any)["properties"].(map[string]any)
+	sup := hitems["supporting"].(map[string]any)
+	enum, ok := sup["items"].(map[string]any)["enum"].([]any)
+	if !ok {
+		t.Fatal("brak enumu spanow w schemacie S4")
+	}
+	var maHistoryczny, maBiezacy bool
+	for _, e := range enum {
+		if e == "s0821:s07" {
+			maHistoryczny = true
+		}
+		if e == "s01" {
+			maBiezacy = true
+		}
+	}
+	if !maHistoryczny {
+		t.Errorf("enum bez adresu historycznego — regula V7 jest nie do spelnienia: %v", enum)
+	}
+	if !maBiezacy {
+		t.Errorf("enum zgubil span biezacej sesji: %v", enum)
+	}
+}

@@ -236,6 +236,23 @@ func sesjaMark(spanID string, in SynthesisInput) string {
 // te, ktore niosa zatwierdzone twierdzenia.
 func allowedSpanIDs(in SynthesisInput) []string {
 	set := map[string]bool{}
+	// Spany z WCZESNIEJSZYCH SPOTKAN sa cytowalne (F7a-4, kanarek 25.08).
+	//
+	// Bez nich prosilismy o niemozliwe: blok USTALENIA Z POPRZEDNICH
+	// SPOTKAN zaprasza do napisania, ze watek wraca, a enum nie
+	// dopuszczal ANI JEDNEGO adresu historycznego — wiec zdania
+	// o ciaglosci nie mialy czym sie podeprzec i V7 kasowal je co do
+	// jednego (osiem na jednym przebiegu). Model nie mial jak spelnic
+	// reguly, ktora mu postawilismy.
+	//
+	// Bezpieczenstwo zostaje: te spany przeszly weryfikacje mechaniczna
+	// S1 w swojej sesji, sa w mapie przebiegu (V1 je zna) i w rejestrze
+	// run_context. Ugruntowanie hipotezy nadal sprawdza V4c po
+	// zatwierdzonym twierdzeniu, wiec cytat historyczny sam z siebie
+	// nie utworzy tezy.
+	for addr := range in.EarlierSessionSpans {
+		set[addr] = true
+	}
 	for _, c := range in.Claims {
 		for _, q := range c.Evidence {
 			set[q.SpanID] = true
