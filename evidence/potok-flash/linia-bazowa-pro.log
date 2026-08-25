@@ -1,0 +1,35 @@
+LINIA BAZOWA — przebieg na Gemini 2.5 Pro, zamrozona 2026-08-25
+sesja f748208d-7ad3-4fcd-87f0-234ec6905173, kartoteka 'PPT terapia par - exp', sesja #2
+
+WYMIAR                     A (odniesienie)        B (nowy)              
+---------------------------------------------------------------------
+raport                     a0b25a9d               a0b25a9d              
+model zapisany             gemini-2.5-flash       gemini-2.5-flash      
+potok                      ontology_s1s5_experimental ontology_s1s5_experimental
+zatwierdzone twierdzenia   21                     21                    
+konstrukty z twierdzeniem  11                     11                    
+powiazania dowodowe        59                     59                    
+tryb ekstraktywny          false                  false                 
+ustalenia z historii       18                     18                    
+tokeny wej/wyj             121523/34528           121523/34528          
+sekundy                    298                    298                   
+koszt zapisany             $0.1228                $0.1228               
+model faktyczny            gemini-2.5-pro         gemini-2.5-flash      
+koszt wg cennika           $0.4972                $0.1228               
+  (!) raport A ma w bazie zapisane "gemini-2.5-flash", ale liczony byl na "gemini-2.5-pro" — kolumna sprzed naprawy wyceny
+
+ODRZUCENIA (R1-R10 walidator, V1-V7 weryfikator)
+  R2_coverage                    4      4     
+  R5_etiology                    2      2     
+  V3_etiologia                   1      1     
+  V6_liczba_bez_pokrycia         1      1     
+  V7_ciaglosc_bez_zakotwiczenia  2      2     
+
+WERDYKT (kryteria z komentarza przy stalych modeli w ontopipe)
+  OK      liczba zatwierdzonych twierdzen: 21 -> 21
+  OK      raport nie wpadl w tryb ekstraktywny
+  OK      powiazania dowodowe: 59 -> 59
+  OK      kontekst miedzysesyjny: 18 -> 18 ustalen
+  OK      rozklad odrzucen: 0 regul pogorszonych
+
+WYNIK: brak regresji na mierzonych wymiarach.

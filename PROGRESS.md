@@ -89,6 +89,55 @@ Gotchas:
 
 ## In progress
 
+### Potok wnioskowania na Flash — CZEKA NA WDROZENIE — 2026-08-25
+
+Galaz `perf/potok-flash` (2 commity, niezmergowana). S2 i S4 przeszly z
+Gemini Pro na Flash; S1 byl na Flash od poczatku.
+
+Powod: raport eksperymentalny kosztowal $0,4972 wobec $0,028 za legacy
+(17,8x). Rachunek robi S2 — wolane raz na konstrukt, 14 razy dla PPT, za
+kazdym razem z pelna lista spanow. Po zmianie te same tokeny kosztuja
+$0,1228, czyli 4,05x taniej.
+
+Dok. 11 sekcja 2a ZABRANIAL tej zmiany bez benchmarku. Warunek jest
+spelniany, nie obchodzony — benchmark A/B jest czescia zmiany. Dokument
+podniesiony do wersji 1.5.
+
+Nastepny krok: **merge do main + push** (deploy leci z pusha na main,
+`.github/workflows/ci.yml`), potem kanarek i benchmark.
+
+Narzedzia gotowe w scratchpadzie sesji:
+- `bench/bench -model-a=gemini-2.5-pro <A> <B>` — porownanie A/B; czyta
+  stawki z `pkg/llmcost` (bez kopii cennika), wypisuje werdykt po
+  kryteriach z komentarza przy stalych modeli w ontopipe.
+- `kanarek/kanarek -session <uuid> -transcript <uuid>` — zamawia raport
+  eksperymentalny. Omija dobowy limit 5, bo limit stoi na sciezce
+  zamawiania (dual-run i RPC), a nie w konsumencie — to narzedzie
+  operatorskie, nie sciezka uzytkownika.
+
+Linia bazowa (Pro) zamrozona w `evidence/potok-flash/linia-bazowa-pro.log`:
+raport a0b25a9d, sesja f748208d (PPT terapia par - exp, sesja #2),
+21 twierdzen / 11 konstruktow / 59 powiazan dowodowych / 18 ustalen z
+historii, 121523+34528 tokenow, 298 s, odrzucenia R2_coverage 4,
+R5_etiology 2, V3 1, V6 1, V7 2, bez trybu ekstraktywnego.
+
+Kryteria odrzucenia zmiany: mniej zatwierdzonych twierdzen, wiecej
+naruszen ktorejkolwiek reguly, mniej powiazan dowodowych, utrata
+kontekstu miedzysesyjnego albo tryb ekstraktywny.
+
+Przy okazji naprawione dwie rzeczy, ktore ta zmiana ujawnila:
+1. Etap potoku rozpoznawano po nazwie modelu. Dzialalo, dopoki S1 mial
+   inny model niz S2/S4; po zrownaniu na Flash atrapa w testach
+   oddawala odpowiedz S1 na zapytanie S2 i szesc testow padlo bez
+   zadnego bledu w kodzie produkcyjnym. `LLMRequest` niesie teraz pole
+   `Stage` (S1/S2/S4), niezalezne od decyzji kosztowych.
+2. Koszt liczono po stalej modelu potoku LEGACY takze dla przebiegow
+   ontologicznych — kazdy raport eksperymentalny byl w bazie ~3,7x
+   tanszy niz naprawde przez piec tygodni. Wycena idzie teraz za
+   potokiem; `llm_model` zapisuje model faktycznie uzyty. Wiersze
+   historyczne NIETKNIETE (swiadomie — patrz dok. 11 v1.5).
+
+
 ### iOS 1.0.8 (build 57) WYSLANE DO RECENZJI APPLE — 2026-08-25
 
 Naprawa potwierdzona przez testera, wiec build 57 poszedl na produkcje.
