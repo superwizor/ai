@@ -152,6 +152,22 @@ uruchamia R2 (sesje!), R5 (about_past) i V1 bez zmiany ich kodu;
 min_evidence.sessions przestal byc martwym zapisem; NOWA regula
 R2_no_current_span (twierdzenie musi miec dowod z biezacej sesji);
 renderer datuje cytat historyczny (21.08 / Aug 21). s2/1.2.0.
+F7a-5 ZROBIONE (kanarek 25.08, rev 00132, raport 5b703f65): kontekst
+zaladowany (okno=3, 2 sesje, 37 twierdzen + 43 spany, zero przyciec),
+report_run_context ma wpisy z OBU sesji zrodlowych, w tresci raportu
+DWA datowane cytaty historyczne „(20.08)", proza o ciaglosci sie
+obronila, V7 spadl z 8 naruszen do 1, brak trybu ekstraktywnego.
+Kanarek znalazl po drodze TRZY wady, kazda naprawiona:
+ - 6ed7aaf4: Persist nie umial dowiazac cytatu z wczesniejszej sesji
+   (Pub/Sub ponawial caly przebieg co 6 min, 6 duplikatow raportu —
+   usuniete; wiadomosc-trucizne zdjeto seekiem),
+ - 8138ce1c: enum S4 nie zawieral adresow historycznych, wiec regula V7
+   byla NIE DO SPELNIENIA (8 naruszen na przebieg),
+ - identyfikatory spanow wyciekaly do prozy (33 na raport z kontekstem,
+   0 bez) — regula 12 + scrubber w rendererze, s4/1.7.0.
+CALY F7a ZAMKNIETY. Nastepne: F7b (indeks semantyczny, docs/65 §5) —
+regula F7b to V8, V7 zajety.
+
 F7a-4 ZROBIONE (7fed7581): S4 dostaje USTALENIA Z POPRZEDNICH SPOTKAN
 (konstrukty w grze) + oznaczenie „· SPOTKANIE 21.08" przy cytatach
 historycznych; NOWA regula V7_ciaglosc_bez_zakotwiczenia (zdanie
