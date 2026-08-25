@@ -89,6 +89,20 @@ Gotchas:
 
 ## In progress
 
+### iOS 1.0.8 (build 57) WYSLANE DO RECENZJI APPLE — 2026-08-25
+
+Naprawa potwierdzona przez testera, wiec build 57 poszedl na produkcje.
+Wersja 1.0.8 istniala jako szkic od 19.08 (na sprzedazy 1.0.7); podpiety
+build 57, zgloszenie 99dde0d0 w stanie WAITING_FOR_REVIEW.
+releaseType=AFTER_APPROVAL — po zatwierdzeniu wyda sie SAMO.
+Notatki „Co nowego" zostaly te z 19.08 (ogolne: poprawki wizualne,
+stabilnosc) — do zmiany przez wlasciciela, jesli maja opisywac
+konkretne naprawy kolejki wgran.
+UWAGA operacyjna: PATCH submitted=true zwrocil 500 przy pierwszej
+probie, a stan mimo to zostal READY_FOR_REVIEW (nie wyslany) — ponowienie
+przeszlo (HTTP 200). Przy nastepnym wydaniu: po 500 SPRAWDZAC stan,
+nie zakladac ani sukcesu, ani porazki.
+
 ### Flutter: build 57 — stan serwera rozstrzyga o wierszu (2026-08-25)
 
 Zgloszenie testera na buildzie 56: nagranie 132 min lezalo na serwerze
