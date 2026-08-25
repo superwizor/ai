@@ -123,9 +123,16 @@ uruchamia R2 (sesje!), R5 (about_past) i V1 bez zmiany ich kodu;
 min_evidence.sessions przestal byc martwym zapisem; NOWA regula
 R2_no_current_span (twierdzenie musi miec dowod z biezacej sesji);
 renderer datuje cytat historyczny (21.08 / Aug 21). s2/1.2.0.
-NASTEPNE: F7a-4 (S4 PastClaims — proza o ciaglosci watku), potem
-F7a-5 (kanarek: Gestalt unfinished_business na >=2 sesjach jednej
-kartoteki). UWAGA przy kanarku: kontekst historyczny wymaga, by
+F7a-4 ZROBIONE (7fed7581): S4 dostaje USTALENIA Z POPRZEDNICH SPOTKAN
+(konstrukty w grze) + oznaczenie „· SPOTKANIE 21.08" przy cytatach
+historycznych; NOWA regula V7_ciaglosc_bez_zakotwiczenia (zdanie
+o powrocie watku bez cytatu z tamtego spotkania = naruszenie, przyciecie
+per hipoteza); regula spi w potoku jednosesyjnym. s4/1.6.0, regula 11
+w prompcie. UWAGA: V7 zajety — regula F7b dostaje V8 (docs/65 §5.4).
+NASTEPNE: F7a-5 — kanarek konca do konca. Wymaga materialu: kartoteka
+z >=2 sesjami majacymi raporty TEJ SAMEJ klasy potoku (eksperymentalne
+widza tylko eksperymentalne), najlepiej Gestalt z progiem
+unfinished_business sessions:2. UWAGA przy kanarku: kontekst historyczny wymaga, by
 poprzednie sesje mialy raporty TEJ SAMEJ klasy potoku (eksperymentalne
 widza tylko eksperymentalne).
 OTWARTE poza F7: bramka "modalnosc bez ontologii" w

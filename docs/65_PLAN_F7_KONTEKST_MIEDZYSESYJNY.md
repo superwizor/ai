@@ -62,8 +62,8 @@ Wyciągnięta hipoteza wchodzi wyłącznie do dedykowanego kanału ciągłości,
 z sufitem statusu nie wyższym niż źródłowy (V4 rozciągnięte na czas).
 Pewność wolno podnieść tylko NOWYM materiałem z bieżącej sesji; samo
 odnalezienie wątku bez nowego dowodu produkuje co najwyżej pytanie otwarte.
-Egzekwuje nowa reguła weryfikatora **V7**: proza cytująca przeszłą hipotezę
-jako uzasadnienie = naruszenie. Bez N1 system automatyzuje konfirmację —
+Egzekwuje nowa reguła weryfikatora **V8**: proza cytująca przeszłą hipotezę
+jako uzasadnienie = naruszenie (V7 zajęty w F7a-4 — patrz §5.4). Bez N1 system automatyzuje konfirmację —
 wyciąga własną wczorajszą interpretację, powtarza ją, jutro wyciąga
 „pewniejszą" (pętla samowzmacniania).
 
@@ -195,7 +195,11 @@ każdym przywołaniu, jawna adnotacja „bez nowego dowodu w tej sesji" tam,
 gdzie N1 zablokował podniesienie. Układ bez tej sekcji → kanał ciągłości
 wyłączony (guidance przez ontologię, jak suggestions/interventions).
 
-### 5.4 V7 (nowa reguła weryfikatora)
+### 5.4 V8 (nowa reguła weryfikatora)
+
+**Numeracja:** V7 został zajęty w F7a-4 (`V7_ciaglosc_bez_zakotwiczenia`
+— zdanie o powrocie wątku bez cytatu z tamtego spotkania). Reguła F7b
+dostaje numer V8.
 
 Proza, która: (a) cytuje przeszłą hipotezę jako dowód, (b) podnosi pewność
 wątku bez nowego spanu z bieżącej sesji, (c) odwołuje się do wątku
@@ -214,7 +218,7 @@ per wątek, jak dziś per wzmianka.
 | F7a-5 | kanarki: Gestalt `unfinished_business` na ≥2 sesjach jednej kartoteki | dowód życia |
 | F7b-1 | migracja pgvector + indeksowanie po przebiegu | zasilanie bez konsumpcji |
 | F7b-2 | retrieval w S0 + progi + run_context | za flagą organizacji |
-| F7b-3 | kanał ciągłości S4 + `kind: continuity` + V7 | pełny cykl życia hipotezy |
+| F7b-3 | kanał ciągłości S4 + `kind: continuity` + V8 | pełny cykl życia hipotezy |
 | F7b-4 | benchmark: powtarzalność retrieval (dwa przebiegi, ta sama selekcja) | bramka przed szerszym włączeniem |
 
 Każdy krok osobno deployowalny i kanarkowalny; F7b w całości za flagą.
@@ -236,7 +240,7 @@ Każdy krok osobno deployowalny i kanarkowalny; F7b w całości za flagą.
 
 | Ryzyko | Mitygacja |
 |---|---|
-| Pętla samowzmacniania interpretacji | N1 + V7 (hipoteza ≠ dowód; pewność tylko za nowy span) |
+| Pętla samowzmacniania interpretacji | N1 + V8 (hipoteza ≠ dowód; pewność tylko za nowy span) |
 | Niedeterministyczny selektor psuje audyt i benchmark | N2 (run_context) + N3 (wersjonowana konfiguracja) + deterministyczne tie-breaki |
 | Wyciek treści przez wektory | N5: pgvector w tej samej instancji, pseudonimizacja przed embeddingiem, zero indeksowania T22 |
 | Przetwarzanie poza kolejnością psuje ciągłość | N4: bariera per kartoteka w workerze + FIFO mobilne (już jest) |
