@@ -87,6 +87,13 @@ type Input struct {
 	// Proza S4 i chrome renderera wychodza w tym jezyku; ontologia moze
 	// byc w innym. Pusty = polski.
 	Language string
+	// Past to kontekst wczesniejszych sesji tej kartoteki (S0, plan F7a).
+	//
+	// Nil = potok jednosesyjny; to NIE jest stan wyjatkowy, tylko
+	// normalny dla pierwszej sesji kartoteki i dla przebiegow sprzed
+	// wdrozenia okna. Wolajacy laduje kontekst (ma baze i klucze),
+	// potok go wylacznie konsumuje — ta sama zasada co z ontologia.
+	Past *PastContext
 }
 
 // Result to wynik calego przebiegu.

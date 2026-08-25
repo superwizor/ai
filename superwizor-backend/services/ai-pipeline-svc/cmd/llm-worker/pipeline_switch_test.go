@@ -246,3 +246,39 @@ func TestPrzelacznikJestWolanyWSciezceProdukcyjnej(t *testing.T) {
 		}
 	}
 }
+
+// Kontekst miedzysesyjny (S0, plan F7a-2) musi byc WOLANY w obu
+// galeziach ontologicznych i doniesiony az do zapisu proweniencji.
+//
+// Ta sama klasa bledu co przy przelaczniku 22.08 i przy uprawnieniu
+// publikacji llm-workera (dwukrotnie): kod istnial, testy jednostkowe
+// przechodzily, a w produkcji nikt go nie wolal. Loader bez wywolania
+// daje raport jednosesyjny, ktory wyglada dokladnie tak samo jak raport
+// z kontekstem — cisza jest tu nierozroznialna od poprawnosci.
+func TestKontekstMiedzysesyjnyJestWolanyIZapisywany(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("odczyt main.go: %v", err)
+	}
+	kod := string(src)
+
+	// Eksperyment i produkcja: rozne wartosci flagi klasy potoku, bo
+	// twierdzenia niosa slownictwo swojej ontologii i mieszanie klas
+	// wpuszczaloby szkic do materialu klinicznego.
+	if !strings.Contains(kod, "loadPastContext(ctx, logger, session, true)") {
+		t.Error("galaz eksperymentalna nie laduje kontekstu miedzysesyjnego")
+	}
+	if !strings.Contains(kod, "loadPastContext(ctx, logger, session, false)") {
+		t.Error("galaz produkcyjna nie laduje kontekstu miedzysesyjnego")
+	}
+	// Kontekst MUSI dojechac do potoku...
+	if strings.Count(kod, "metadataPayload, o, pastContext)") != 2 {
+		t.Error("kontekst nie trafia do runOntologyPipeline w obu galeziach")
+	}
+	// ...i do zapisu: co przebieg zobaczyl, jest czescia proweniencji
+	// raportu (dok. 65 §N2), a nie metryka poboczna.
+	if !strings.Contains(kod, "Past: pastContext,") {
+		t.Error("kontekst nie trafia do ontopipe.Persist — raport bez zapisu swojego wejscia")
+	}
+}
+

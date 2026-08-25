@@ -435,6 +435,10 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		report     ReportPayload
 		ontoRes    ontopipe.Result
 		ontoActive *ontology.Ontology
+		// Kontekst miedzysesyjny (S0, plan F7a). Zyje az do Persist:
+		// zapis TEGO, co przebieg zobaczyl, jest czescia proweniencji
+		// raportu, nie metryka poboczna (dok. 65 §N2).
+		pastContext *ontopipe.PastContext
 	)
 	if eksperyment != nil {
 		// Jedyna bramka, ktora ten tryb omija, to AKTYWNA WERSJA.
@@ -452,8 +456,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		}
 		pipeline = pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: ver}
 		ontoActive = o
+		// Przebieg eksperymentalny widzi wylacznie kontekst
+		// eksperymentalny — twierdzenia niosa slownictwo swojej
+		// ontologii, a ta nie jest zatwierdzona.
+		pastContext = loadPastContext(ctx, logger, session, true)
 		report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
-			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o)
+			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 		if err != nil {
 			return failGen(err, "ontopipe_experimental")
 		}
@@ -476,8 +484,9 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		} else {
 			pipeline.OntologyVersion = ver
 			ontoActive = o
+			pastContext = loadPastContext(ctx, logger, session, false)
 			report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
-				transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o)
+				transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 			if err != nil {
 				return failGen(err, "ontopipe")
 			}
@@ -549,6 +558,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		}
 		if perr := ontopipe.Persist(ctx, workerDB{}, crypto, ontopipe.PersistInput{
 			ReportID: repID, SessionID: session.ID, TranscriptID: transID,
+			Past: pastContext,
 		}, ontoRes); perr != nil {
 			logger.Error("persist grafu twierdzen (transient — pubsub will retry)", "error", perr)
 			return fmt.Errorf("persist ontopipe: %w", perr)

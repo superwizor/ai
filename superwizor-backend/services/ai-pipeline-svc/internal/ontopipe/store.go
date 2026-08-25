@@ -38,6 +38,10 @@ type PersistInput struct {
 	ReportID     uuid.UUID
 	SessionID    uuid.UUID
 	TranscriptID uuid.UUID
+	// Past to kontekst miedzysesyjny POKAZANY temu przebiegowi.
+	// Zapisujemy go razem z grafem twierdzen, bo to ta sama sprawa:
+	// z czego powstal ten raport (dok. 65 §N2).
+	Past *PastContext
 }
 
 // Persist zapisuje spany, twierdzenia, wzorce i odrzucenia.
@@ -57,17 +61,29 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		if err != nil {
 			return fmt.Errorf("ontopipe: szyfrowanie cytatu %s: %w", s.ID, err)
 		}
+		// Hasla tematyczne ida do bazy od migracji 000097: rekurencja
+		// MIEDZYSESYJNA liczy sie na sumie sesji, wiec material, z ktorego
+		// S1.5 liczy wzorce, musi przetrwac przebieg. Wczesniej zostawaly
+		// wylacznie wzorce wynikowe — a z nich nie da sie policzyc niczego
+		// nowego, gdy dojdzie kolejna sesja.
+		tematy := s.Topics
+		if tematy == nil {
+			tematy = []string{}
+		}
 		id, err := db.QueryUUID(ctx, `
 			INSERT INTO report_spans (session_id, transcript_id, span_ref,
 			       quote_ciphertext, quote_encrypted_dek, speaker, kind,
-			       observed_by, about_past, risk_content, silence_before_ms)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			       observed_by, about_past, risk_content, silence_before_ms,
+			       topics)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (transcript_id, span_ref) DO UPDATE
 			   SET quote_ciphertext = EXCLUDED.quote_ciphertext,
-			       quote_encrypted_dek = EXCLUDED.quote_encrypted_dek
+			       quote_encrypted_dek = EXCLUDED.quote_encrypted_dek,
+			       topics = EXCLUDED.topics
 			RETURNING id`,
 			in.SessionID, in.TranscriptID, s.ID, ct, dek, s.Speaker, string(s.Kind),
-			string(s.ObservedBy), s.AboutPast, s.RiskContent, s.SilenceBeforeMs)
+			string(s.ObservedBy), s.AboutPast, s.RiskContent, s.SilenceBeforeMs,
+			tematy)
 		if err != nil {
 			return fmt.Errorf("ontopipe: zapis spanu %s: %w", s.ID, err)
 		}
@@ -159,6 +175,9 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			return fmt.Errorf("ontopipe: zapis degradacji %s: %w", d.ConstructID, err)
 		}
 	}
+	if err := zapiszKontekstPrzebiegu(ctx, db, in); err != nil {
+		return err
+	}
 	for _, v := range res.Violations {
 		// Naruszenie S5 dotyczy PROZY, wiec tresc bierzemy z hipotezy.
 		var jakoClaim *ontology.Claim
@@ -176,6 +195,65 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			v.ConstructID, string(v.Rule), v.Detail, jakoClaim); err != nil {
 			return fmt.Errorf("ontopipe: zapis naruszenia %s: %w", v.Rule, err)
 		}
+	}
+	return nil
+}
+
+// zapiszKontekstPrzebiegu utrwala, CO ten przebieg zobaczyl z sesji
+// wczesniejszych (dok. 65 §N2, migracja 000098).
+//
+// Zapis idzie w tej samej sciezce co graf twierdzen, bo odpowiada na to
+// samo pytanie: z czego powstal ten raport. Rozdzielenie ich oznaczaloby,
+// ze raport moze istniec bez zapisu swojego wejscia — a wtedy audyt
+// konczy sie na „model widzial cos z poprzednich sesji".
+//
+// ON CONFLICT DO NOTHING, bo caly Persist jest idempotentny: Pub/Sub
+// potrafi dostarczyc to samo zdarzenie drugi raz.
+func zapiszKontekstPrzebiegu(ctx context.Context, db DB, in PersistInput) error {
+	past := in.Past
+	if past == nil {
+		return nil
+	}
+	for _, c := range past.Claims {
+		if err := db.Exec(ctx, `
+			INSERT INTO report_run_context (report_id, item_kind, channel,
+			       source_session_id, item_ref, construct_id)
+			VALUES ($1,'claim','window',$2,$3,$4)
+			ON CONFLICT (report_id, item_kind, item_ref) DO NOTHING`,
+			in.ReportID, c.SessionID, c.ID.String(), c.ConstructID); err != nil {
+			return fmt.Errorf("ontopipe: zapis kontekstu (twierdzenie %s): %w", c.ID, err)
+		}
+	}
+	for _, sp := range past.Spans {
+		if err := db.Exec(ctx, `
+			INSERT INTO report_run_context (report_id, item_kind, channel,
+			       source_session_id, item_ref)
+			VALUES ($1,'span','window',$2,$3)
+			ON CONFLICT (report_id, item_kind, item_ref) DO NOTHING`,
+			in.ReportID, sp.SessionID, sp.Addr); err != nil {
+			return fmt.Errorf("ontopipe: zapis kontekstu (span %s): %w", sp.Addr, err)
+		}
+	}
+	// Liczniki ida ZAWSZE, takze gdy okno nic nie znalazlo: zero
+	// zaladowanych sesji przy dwoch pominietych nieukonczonych to inna
+	// historia niz zero, bo kartoteka nie ma przeszlosci.
+	st := past.Stats
+	if err := db.Exec(ctx, `
+		INSERT INTO report_run_context_stats (report_id, window_size,
+		       sessions_loaded, sessions_skipped_unfinished,
+		       claims_shown, claims_dropped_budget,
+		       spans_shown, spans_dropped_budget)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		ON CONFLICT (report_id) DO UPDATE
+		   SET sessions_loaded = EXCLUDED.sessions_loaded,
+		       sessions_skipped_unfinished = EXCLUDED.sessions_skipped_unfinished,
+		       claims_shown = EXCLUDED.claims_shown,
+		       claims_dropped_budget = EXCLUDED.claims_dropped_budget,
+		       spans_shown = EXCLUDED.spans_shown,
+		       spans_dropped_budget = EXCLUDED.spans_dropped_budget`,
+		in.ReportID, st.WindowSize, st.SessionsLoaded, st.SessionsSkippedUnfinished,
+		st.ClaimsShown, st.ClaimsDropped, st.SpansShown, st.SpansDropped); err != nil {
+		return fmt.Errorf("ontopipe: zapis licznikow kontekstu: %w", err)
 	}
 	return nil
 }

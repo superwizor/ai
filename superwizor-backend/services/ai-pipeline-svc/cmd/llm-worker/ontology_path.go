@@ -165,6 +165,7 @@ func runOntologyPipeline(
 	transcriptText string,
 	metadataPayload ReportPayload,
 	o *ontology.Ontology,
+	past *ontopipe.PastContext,
 ) (ReportPayload, ontopipe.Result, TokenStats, error) {
 
 	res, err := ontopipe.Run(ctx, vertexLLM{logger}, ontopipe.Input{
@@ -172,6 +173,7 @@ func runOntologyPipeline(
 		Transcript: transcriptText,
 		Ontology:   o,
 		Language:   session.ReportLanguage,
+		Past:       past,
 	})
 	stats := TokenStats{
 		InputTokens:  int32(res.Usage.InputTokens),

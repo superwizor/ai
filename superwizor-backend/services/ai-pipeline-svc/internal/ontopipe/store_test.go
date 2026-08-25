@@ -65,7 +65,8 @@ func wynikDoZapisu() Result {
 		Spans: []ontology.TopicSpan{
 			{Span: ontology.Span{ID: "s01", QuoteVerbatim: "chcę być blisko",
 				Speaker: "Klient", Kind: ontology.SpanDeclarative,
-				ObservedBy: ontology.ObservedBySelf}},
+				ObservedBy: ontology.ObservedBySelf},
+				Topics: []string{"zwiazek", "blizkosc"}},
 			{Span: ontology.Span{ID: "s99", QuoteVerbatim: "myślę, żeby to zakończyć",
 				Speaker: "Klient", RiskContent: true}},
 		},
@@ -245,3 +246,106 @@ func TestOdrzuceniaNiosaUzasadnienie(t *testing.T) {
 		t.Error("naruszenie weryfikatora S5 nie trafilo do rejestru z trescia")
 	}
 }
+
+// Hasla tematyczne musza trafic do bazy (migracja 000097, plan F7a-1).
+//
+// Bez nich rekurencja MIEDZYSESYJNA nie ma z czego sie policzyc:
+// zostawaly wylacznie wzorce wynikowe jednej sesji, a z nich nie da sie
+// wyprowadzic niczego, gdy dojdzie sesja kolejna.
+func TestZapisHaselTematycznych(t *testing.T) {
+	db := zapiszTestowo(t)
+	spany := db.doTabeli("report_spans")
+	if len(spany) == 0 {
+		t.Fatal("brak zapisow spanow")
+	}
+	if !strings.Contains(spany[0].sql, "topics") {
+		t.Fatalf("zapytanie nie zapisuje hasel:\n%s", spany[0].sql)
+	}
+	znalezione := false
+	for _, a := range spany[0].args {
+		if lista, ok := a.([]string); ok && len(lista) == 2 &&
+			lista[0] == "zwiazek" && lista[1] == "blizkosc" {
+			znalezione = true
+		}
+	}
+	if !znalezione {
+		t.Fatalf("hasla nie poszly w argumentach: %v", spany[0].args)
+	}
+}
+
+// Kontekst miedzysesyjny POKAZANY przebiegowi jest utrwalany razem
+// z grafem twierdzen (dok. 65 §N2, migracja 000098).
+func TestZapisKontekstuPrzebiegu(t *testing.T) {
+	db := &fakeDB{}
+	sesjaHist := uuid.New()
+	claimHist := uuid.New()
+	past := &PastContext{
+		Claims: []PastClaim{{
+			ID: claimHist, SessionID: sesjaHist, ConstructID: "konflikt",
+			Status: ontology.StatusInterpretation, Confidence: 0.7,
+			Evidence: []string{"s0821:s07"},
+		}},
+		Spans: []PastSpan{{
+			Addr: "s0821:s07", SessionID: sesjaHist, Quote: "wtedy też tak było",
+		}},
+		Stats: PastStats{
+			WindowSize: 3, SessionsLoaded: 2, SessionsSkippedUnfinished: 1,
+			ClaimsShown: 1, ClaimsDropped: 4, SpansShown: 1, SpansDropped: 9,
+		},
+	}
+	if err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
+		Past: past,
+	}, wynikDoZapisu()); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	wpisy := db.doTabeli("report_run_context")
+	if len(wpisy) != 2 {
+		t.Fatalf("oczekiwano wpisu twierdzenia i spanu, jest %d", len(wpisy))
+	}
+	var maClaim, maSpan bool
+	for _, w := range wpisy {
+		if strings.Contains(w.sql, "'claim'") {
+			maClaim = true
+			if w.args[2] != claimHist.String() {
+				t.Errorf("adres twierdzenia = %v", w.args[2])
+			}
+		}
+		if strings.Contains(w.sql, "'span'") {
+			maSpan = true
+			if w.args[2] != "s0821:s07" {
+				t.Errorf("adres spanu = %v, chcemy adres miedzysesyjny", w.args[2])
+			}
+		}
+	}
+	if !maClaim || !maSpan {
+		t.Error("kontekst zapisany bez rozdzielenia poziomow claim/span")
+	}
+
+	// Liczniki: "czego nie pokazalismy" tez jest proweniencja.
+	stats := db.doTabeli("report_run_context_stats")
+	if len(stats) != 1 {
+		t.Fatalf("liczniki kontekstu zapisane %d razy", len(stats))
+	}
+	if stats[0].args[3] != 1 {
+		t.Errorf("pominiete sesje w toku = %v, chcemy 1", stats[0].args[3])
+	}
+	if stats[0].args[5] != 4 || stats[0].args[7] != 9 {
+		t.Errorf("liczniki przyciecia = %v / %v, chcemy 4 / 9",
+			stats[0].args[5], stats[0].args[7])
+	}
+}
+
+// Potok jednosesyjny nie zapisuje NICZEGO do rejestru kontekstu — brak
+// wiersza znaczy "nie bylo kontekstu", a nie "kontekst byl pusty".
+func TestBezKontekstuBezWpisow(t *testing.T) {
+	db := zapiszTestowo(t)
+	if n := len(db.doTabeli("report_run_context")); n != 0 {
+		t.Fatalf("przebieg bez kontekstu zapisal %d wpisow", n)
+	}
+	if n := len(db.doTabeli("report_run_context_stats")); n != 0 {
+		t.Fatalf("przebieg bez kontekstu zapisal liczniki (%d)", n)
+	}
+}
+
