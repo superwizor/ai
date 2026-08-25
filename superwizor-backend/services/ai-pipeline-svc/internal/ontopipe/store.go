@@ -3,6 +3,7 @@ package ontopipe
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -90,6 +91,16 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		spanUUID[s.ID] = id
 	}
 
+	// Rozwiazywanie adresow miedzysesyjnych (F7a-3).
+	//
+	// Twierdzenie moze cytowac span z WCZESNIEJSZEJ sesji (`s0820:s42`).
+	// Taki span ma juz swoj wiersz w report_spans — zapisany przy
+	// przebiegu tamtej sesji — wiec proweniencja wskazuje na ORYGINAL,
+	// nie na kopie. Bez tego Persist konczyl bledem „span spoza
+	// zapisanych", a Pub/Sub ponawial CALY przebieg co szesc minut,
+	// zostawiajac za kazdym razem kolejny raport (kanarek F7a-5).
+	historyczne := historyczneSpany(ctx, db, in.Past)
+
 	for _, c := range res.Approved {
 		var rct, rdek []byte
 		if c.Reasoning != "" {
@@ -115,12 +126,12 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		}
 
 		for _, q := range c.Evidence {
-			if err := linkEvidence(ctx, db, claimID, spanUUID, q.SpanID, "support"); err != nil {
+			if err := linkEvidence(ctx, db, claimID, spanUUID, historyczne, q.SpanID, "support"); err != nil {
 				return err
 			}
 		}
 		for _, q := range c.CounterEvidence {
-			if err := linkEvidence(ctx, db, claimID, spanUUID, q.SpanID, "counter"); err != nil {
+			if err := linkEvidence(ctx, db, claimID, spanUUID, historyczne, q.SpanID, "counter"); err != nil {
 				return err
 			}
 		}
@@ -308,9 +319,58 @@ func zapiszOdrzucenie(ctx context.Context, db DB, crypto Crypto, reportID uuid.U
 		kategorie, statusStr, confidence, spany)
 }
 
+// historyczneSpany zwraca funkcje odwzorowujaca adres miedzysesyjny na
+// istniejacy wiersz report_spans.
+//
+// Wyniki sa zapamietywane: jedno twierdzenie potrafi cytowac ten sam
+// span co drugie, a zapytanie do bazy na kazde wystapienie byloby
+// czystym marnotrawstwem.
+func historyczneSpany(ctx context.Context, db DB, past *PastContext) func(string) (uuid.UUID, bool) {
+	cache := map[string]uuid.UUID{}
+	return func(addr string) (uuid.UUID, bool) {
+		if past == nil {
+			return uuid.Nil, false
+		}
+		if id, ok := cache[addr]; ok {
+			return id, true
+		}
+		i := strings.Index(addr, ":")
+		if i < 0 {
+			return uuid.Nil, false
+		}
+		var sesja uuid.UUID
+		znaleziony := false
+		for _, ps := range past.Spans {
+			if ps.Addr == addr {
+				sesja, znaleziony = ps.SessionID, true
+				break
+			}
+		}
+		if !znaleziony {
+			// Adres spoza kontekstu POKAZANEGO temu przebiegowi. To nie
+			// jest span historyczny, tylko wymyslony — blad nizej jest
+			// wtedy wlasciwa reakcja.
+			return uuid.Nil, false
+		}
+		id, err := db.QueryUUID(ctx, `
+			SELECT id FROM report_spans
+			 WHERE session_id = $1 AND span_ref = $2
+			 ORDER BY created_at DESC LIMIT 1`, sesja, addr[i+1:])
+		if err != nil {
+			return uuid.Nil, false
+		}
+		cache[addr] = id
+		return id, true
+	}
+}
+
 func linkEvidence(ctx context.Context, db DB, claimID uuid.UUID,
-	spanUUID map[string]uuid.UUID, spanRef, rola string) error {
+	spanUUID map[string]uuid.UUID, historyczny func(string) (uuid.UUID, bool),
+	spanRef, rola string) error {
 	u, ok := spanUUID[spanRef]
+	if !ok {
+		u, ok = historyczny(spanRef)
+	}
 	if !ok {
 		// Walidator juz odrzuca twierdzenia wskazujace nieznany span
 		// (R2_unknown_span), wiec tutaj to nie moze sie zdarzyc — ale

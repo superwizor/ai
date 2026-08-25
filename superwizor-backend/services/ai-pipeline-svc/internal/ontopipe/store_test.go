@@ -348,3 +348,71 @@ func TestBezKontekstuBezWpisow(t *testing.T) {
 		t.Fatalf("przebieg bez kontekstu zapisal liczniki (%d)", n)
 	}
 }
+
+// Kanarek F7a-5 (25.08): twierdzenie zbudowane na spanie z WCZESNIEJSZEJ
+// sesji wywracalo Persist bledem „span spoza zapisanych", bo mapa spanow
+// tego przebiegu zna wylacznie spany biezacej sesji. Skutek byl gorszy
+// niz sam blad: Pub/Sub ponawial CALY przebieg co szesc minut, za kazdym
+// razem zostawiajac kolejny raport tej samej sesji.
+//
+// Span historyczny ma juz swoj wiersz w report_spans — proweniencja ma
+// wskazywac ORYGINAL, nie kopie.
+func TestProweniencjaSpanuZWczesniejszejSesji(t *testing.T) {
+	db := &fakeDB{}
+	sesjaHist := uuid.New()
+	res := wynikDoZapisu()
+	res.Approved[0].Evidence = append(res.Approved[0].Evidence,
+		ontology.QuoteRef{SpanID: "s0820:s42", Quote: "wtedy też o tym mówił"})
+
+	err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
+		Past: &PastContext{Spans: []PastSpan{{
+			Addr: "s0820:s42", SessionID: sesjaHist, Quote: "wtedy też o tym mówił",
+		}}},
+	}, res)
+	if err != nil {
+		t.Fatalf("Persist odrzucil span historyczny: %v", err)
+	}
+
+	// Rozwiazanie MUSI isc do bazy po istniejacy wiersz tamtej sesji.
+	var szukano bool
+	for _, z := range db.zapisy {
+		if strings.Contains(z.sql, "FROM report_spans") &&
+			strings.Contains(z.sql, "span_ref") {
+			szukano = true
+			if z.args[0] != sesjaHist {
+				t.Errorf("szukano w sesji %v, chcemy %v", z.args[0], sesjaHist)
+			}
+			if z.args[1] != "s42" {
+				t.Errorf("szukano refa %v, chcemy s42 (bez prefiksu daty)", z.args[1])
+			}
+		}
+	}
+	if !szukano {
+		t.Fatal("brak zapytania o istniejacy span historyczny")
+	}
+	// Dowod ma trafic do tabeli proweniencji jak kazdy inny.
+	if n := len(db.doTabeli("report_claim_evidence")); n < 3 {
+		t.Errorf("wpisow proweniencji %d, oczekiwano co najmniej 3", n)
+	}
+}
+
+// Adres, ktorego w kontekscie NIE POKAZANO, zostaje bledem: to nie jest
+// span historyczny, tylko wymyslony.
+func TestNiepokazanyAdresHistorycznyToBlad(t *testing.T) {
+	db := &fakeDB{}
+	res := wynikDoZapisu()
+	res.Approved[0].Evidence = append(res.Approved[0].Evidence,
+		ontology.QuoteRef{SpanID: "s0101:s99", Quote: "nigdy tego nie było"})
+
+	err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
+		Past: &PastContext{Spans: []PastSpan{{Addr: "s0820:s42", SessionID: uuid.New()}}},
+	}, res)
+	if err == nil {
+		t.Fatal("Persist przyjal odnosnik do spanu spoza pokazanego kontekstu")
+	}
+	if !strings.Contains(err.Error(), "s0101:s99") {
+		t.Errorf("blad nie nazywa winnego odnosnika: %v", err)
+	}
+}
