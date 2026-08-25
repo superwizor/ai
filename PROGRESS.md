@@ -89,6 +89,21 @@ Gotchas:
 
 ## In progress
 
+### Flutter: build 57 — stan serwera rozstrzyga o wierszu (2026-08-25)
+
+Zgloszenie testera na buildzie 56: nagranie 132 min lezalo na serwerze
+jako ukonczona sesja z raportem (21 sie, 131 min), a aplikacja czwarty
+dzien pokazywala „Sesja nie mogla zostac wgrana". Trzy ekrany dawaly trzy
+rozne odpowiedzi (baner: porazka, status: „czeka w kolejce", po sekundzie:
+„Gotowe!" + raport). Przyczyna: stan serwera obserwowalismy WYLACZNIE dla
+wierszy `completed`, wiec wiersz zawieszony/failed nie mial jak dowiedziec
+sie, ze jego sesja jest gotowa. Fix: kazdy wiersz z sessionId jest
+rozstrzygany stanem serwera (done -> wiersz znika bez alarmu; w toku albo
+brak sessionId -> porazka zostaje). Drugi blad tej samej klasy:
+SessionStatusScreen czytal kolejke tylko przez ref.listen (reaguje na
+ZMIANY), wiec wiersz terminalny zostawal na poczatkowym „Audio czeka
+w kolejce" — pierwszy odczyt idzie teraz z reki. Build 57 w TestFlight.
+
 ### Flutter: kolejka wgrań + widocznosc raportow eksperymentalnych (main, 2026-08-24)
 
 Buildy 55 i 56 w TestFlight (upload potwierdzony). 55: PathNotFound
