@@ -47,6 +47,9 @@ type PastSpan struct {
 	// (R5) dokladnie tak samo jak dla spanow biezacej sesji.
 	AboutPast bool
 	Topics    []string
+	// Channel jak w PastClaim: span wchodzi tym samym kanalem co
+	// twierdzenie, ktore go przywiodlo.
+	Channel string
 }
 
 // PastClaim to zatwierdzone twierdzenie z wczesniejszej sesji.
@@ -62,6 +65,14 @@ type PastClaim struct {
 	// tresc jest w PastContext.Spans, zeby ten sam cytat nie
 	// powtarzal sie w prompcie przy kilku twierdzeniach.
 	Evidence []string
+	// Channel mowi, SKAD to ustalenie sie wzielo: "window" (okno
+	// deterministyczne, F7a) albo "semantic" (indeks, F7b).
+	// Pusty = window, dla zgodnosci wstecznej.
+	Channel string
+	// Similarity to podobienstwo kosinusowe wobec zapytania. Ma sens
+	// WYLACZNIE dla kanalu semantycznego; dla okna zostaje zerem, bo
+	// tam selekcja nie ma miary i udawanie, ze ma, myli przy strojeniu.
+	Similarity float64
 }
 
 // PastSessionTopics to hasla jednej wczesniejszej sesji.
@@ -87,6 +98,15 @@ type PastStats struct {
 	ClaimsDropped             int
 	SpansShown                int
 	SpansDropped              int
+	// SemanticEnabled odroznia „flaga wylaczona" od „nic nie
+	// znaleziono". Bez tego zero trafien semantycznych bylo by
+	// nieodroznialne od niewlaczonego wyszukiwania.
+	SemanticEnabled bool
+	SemanticFound   int
+	// SemanticBelowThreshold to sasiedzi odrzuceni progiem. Liczba jest
+	// materialem do kalibracji (F7b-4): duzo odrzuconych przy zerze
+	// przyjetych znaczy „prog za wysoki", a nie „brak historii".
+	SemanticBelowThreshold int
 }
 
 // PastContext to komplet kontekstu miedzysesyjnego jednego przebiegu.

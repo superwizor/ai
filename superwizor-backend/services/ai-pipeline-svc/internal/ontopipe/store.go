@@ -226,12 +226,17 @@ func zapiszKontekstPrzebiegu(ctx context.Context, db DB, in PersistInput) error 
 		return nil
 	}
 	for _, c := range past.Claims {
+		var podobienstwo any
+		if c.Similarity > 0 {
+			podobienstwo = c.Similarity
+		}
 		if err := db.Exec(ctx, `
 			INSERT INTO report_run_context (report_id, item_kind, channel,
-			       source_session_id, item_ref, construct_id)
-			VALUES ($1,'claim','window',$2,$3,$4)
+			       source_session_id, item_ref, construct_id, similarity)
+			VALUES ($1,'claim',$2,$3,$4,$5,$6)
 			ON CONFLICT (report_id, item_kind, item_ref) DO NOTHING`,
-			in.ReportID, c.SessionID, c.ID.String(), c.ConstructID); err != nil {
+			in.ReportID, kanal(c.Channel), c.SessionID, c.ID.String(),
+			c.ConstructID, podobienstwo); err != nil {
 			return fmt.Errorf("ontopipe: zapis kontekstu (twierdzenie %s): %w", c.ID, err)
 		}
 	}
@@ -239,9 +244,9 @@ func zapiszKontekstPrzebiegu(ctx context.Context, db DB, in PersistInput) error 
 		if err := db.Exec(ctx, `
 			INSERT INTO report_run_context (report_id, item_kind, channel,
 			       source_session_id, item_ref)
-			VALUES ($1,'span','window',$2,$3)
+			VALUES ($1,'span',$2,$3,$4)
 			ON CONFLICT (report_id, item_kind, item_ref) DO NOTHING`,
-			in.ReportID, sp.SessionID, sp.Addr); err != nil {
+			in.ReportID, kanal(sp.Channel), sp.SessionID, sp.Addr); err != nil {
 			return fmt.Errorf("ontopipe: zapis kontekstu (span %s): %w", sp.Addr, err)
 		}
 	}
@@ -253,20 +258,36 @@ func zapiszKontekstPrzebiegu(ctx context.Context, db DB, in PersistInput) error 
 		INSERT INTO report_run_context_stats (report_id, window_size,
 		       sessions_loaded, sessions_skipped_unfinished,
 		       claims_shown, claims_dropped_budget,
-		       spans_shown, spans_dropped_budget)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		       spans_shown, spans_dropped_budget,
+		       semantic_enabled, semantic_found, semantic_below_threshold)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		ON CONFLICT (report_id) DO UPDATE
 		   SET sessions_loaded = EXCLUDED.sessions_loaded,
 		       sessions_skipped_unfinished = EXCLUDED.sessions_skipped_unfinished,
 		       claims_shown = EXCLUDED.claims_shown,
 		       claims_dropped_budget = EXCLUDED.claims_dropped_budget,
 		       spans_shown = EXCLUDED.spans_shown,
-		       spans_dropped_budget = EXCLUDED.spans_dropped_budget`,
+		       spans_dropped_budget = EXCLUDED.spans_dropped_budget,
+		       semantic_enabled = EXCLUDED.semantic_enabled,
+		       semantic_found = EXCLUDED.semantic_found,
+		       semantic_below_threshold = EXCLUDED.semantic_below_threshold`,
 		in.ReportID, st.WindowSize, st.SessionsLoaded, st.SessionsSkippedUnfinished,
-		st.ClaimsShown, st.ClaimsDropped, st.SpansShown, st.SpansDropped); err != nil {
+		st.ClaimsShown, st.ClaimsDropped, st.SpansShown, st.SpansDropped,
+		st.SemanticEnabled, st.SemanticFound, st.SemanticBelowThreshold); err != nil {
 		return fmt.Errorf("ontopipe: zapis licznikow kontekstu: %w", err)
 	}
 	return nil
+}
+
+// kanal domysla sie "window" dla wpisow bez jawnego kanalu.
+//
+// Zgodnosc wsteczna: wpisy sprzed F7b nie niosly tej informacji, bo
+// kanal byl jeden. Milczenie znaczy wiec okno, a nie „nieznany".
+func kanal(k string) string {
+	if k == "" {
+		return "window"
+	}
+	return k
 }
 
 // zapiszOdrzucenie zapisuje jeden wpis rejestru wraz z trescia.

@@ -56,6 +56,17 @@ const (
 	// eksperymentalnych na terapeute na dobe. Potok wieloetapowy na Pro
 	// jest drogi, a dual-run podwaja koszt kazdej sesji.
 	KeyReportExperimentalDailyLimit = "REPORT_EXPERIMENTAL_DAILY_LIMIT"
+	// KeySemanticContextEnabled wlacza WYSZUKIWANIE SEMANTYCZNE w
+	// kontekscie miedzysesyjnym (F7b, dok. 65 §5.2).
+	//
+	// Okno deterministyczne (F7a) dziala zawsze i nie podlega tej
+	// fladze — tam selekcja wynika z daty i da sie ja odtworzyc
+	// z parametrow. Flaga chroni to, czego odtworzyc sie nie da:
+	// dobor sasiadow w przestrzeni wektorowej. Wlaczamy per
+	// organizacje, bo dopoki nie ma zmierzonej powtarzalnosci
+	// (F7b-4), niedeterministyczna bramka nie ma prawa decydowac
+	// o tresci raportu klinicznego.
+	KeySemanticContextEnabled = "SEMANTIC_CONTEXT_ENABLED"
 )
 
 // KeyReportPipeline zwraca klucz przelacznika potoku raportu dla jednej
@@ -372,6 +383,12 @@ func (r *Reader) ExperimentalDailyLimit(ctx context.Context, org uuid.UUID) int6
 		return 0
 	}
 	return n
+}
+
+// SemanticContextEnabled mowi, czy organizacja ma wlaczone
+// wyszukiwanie semantyczne w kontekscie miedzysesyjnym.
+func (r *Reader) SemanticContextEnabled(ctx context.Context, org uuid.UUID) bool {
+	return r.Bool(ctx, KeySemanticContextEnabled, org)
 }
 
 func (r *Reader) ChatEnabled(ctx context.Context, org uuid.UUID) bool {

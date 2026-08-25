@@ -304,18 +304,29 @@ func TestZapisKontekstuPrzebiegu(t *testing.T) {
 	if len(wpisy) != 2 {
 		t.Fatalf("oczekiwano wpisu twierdzenia i spanu, jest %d", len(wpisy))
 	}
+	// Asercje po TRESCI argumentow, nie po ich pozycji: kolejnosc
+	// kolumn w tym zapytaniu juz raz sie zmienila (dodanie kanalu
+	// w F7b-2) i test padl na przesunieciu indeksu, a nie na regresji.
+	maArgument := func(w zapis, szukane any) bool {
+		for _, a := range w.args {
+			if a == szukane {
+				return true
+			}
+		}
+		return false
+	}
 	var maClaim, maSpan bool
 	for _, w := range wpisy {
 		if strings.Contains(w.sql, "'claim'") {
 			maClaim = true
-			if w.args[2] != claimHist.String() {
-				t.Errorf("adres twierdzenia = %v", w.args[2])
+			if !maArgument(w, claimHist.String()) {
+				t.Errorf("brak adresu twierdzenia w argumentach: %v", w.args)
 			}
 		}
 		if strings.Contains(w.sql, "'span'") {
 			maSpan = true
-			if w.args[2] != "s0821:s07" {
-				t.Errorf("adres spanu = %v, chcemy adres miedzysesyjny", w.args[2])
+			if !maArgument(w, "s0821:s07") {
+				t.Errorf("brak adresu miedzysesyjnego spanu w argumentach: %v", w.args)
 			}
 		}
 	}
@@ -328,12 +339,17 @@ func TestZapisKontekstuPrzebiegu(t *testing.T) {
 	if len(stats) != 1 {
 		t.Fatalf("liczniki kontekstu zapisane %d razy", len(stats))
 	}
-	if stats[0].args[3] != 1 {
-		t.Errorf("pominiete sesje w toku = %v, chcemy 1", stats[0].args[3])
+	// Liczniki tez sprawdzamy po tresci — kolumn w tej tabeli przybywa
+	// (F7b-2 dolozyl trzy) i pozycje sie przesuwaja.
+	liczniki := map[int]bool{}
+	for _, a := range stats[0].args {
+		if n, ok := a.(int); ok {
+			liczniki[n] = true
+		}
 	}
-	if stats[0].args[5] != 4 || stats[0].args[7] != 9 {
-		t.Errorf("liczniki przyciecia = %v / %v, chcemy 4 / 9",
-			stats[0].args[5], stats[0].args[7])
+	if !liczniki[1] || !liczniki[4] || !liczniki[9] {
+		t.Errorf("liczniki (pominiete=1, przyciete twierdzenia=4, spany=9) "+
+			"nie trafily do zapisu: %v", stats[0].args)
 	}
 }
 
@@ -414,5 +430,91 @@ func TestNiepokazanyAdresHistorycznyToBlad(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "s0101:s99") {
 		t.Errorf("blad nie nazywa winnego odnosnika: %v", err)
+	}
+}
+
+// Kanal i podobienstwo musza trafic do rejestru (F7b-2, dok. 65 §N2).
+//
+// Bez kanalu nie da sie odpowiedziec na pytanie, ktore zadaje strojenie:
+// „co DOLOZYLA semantyka". Bez podobienstwa nie da sie odroznic „progu
+// za wysokiego" od „braku materialu".
+func TestRejestrKontekstuNiesieKanalIPodobienstwo(t *testing.T) {
+	db := &fakeDB{}
+	sesjaOkno, sesjaSem := uuid.New(), uuid.New()
+	past := &PastContext{
+		Claims: []PastClaim{
+			{ID: uuid.New(), SessionID: sesjaOkno, ConstructID: "konflikt",
+				Evidence: []string{"s0820:s01"}},
+			{ID: uuid.New(), SessionID: sesjaSem, ConstructID: "zasob",
+				Evidence: []string{"s0301:s09"},
+				Channel:  "semantic", Similarity: 0.72},
+		},
+		Spans: []PastSpan{
+			{Addr: "s0820:s01", SessionID: sesjaOkno},
+			{Addr: "s0301:s09", SessionID: sesjaSem, Channel: "semantic"},
+		},
+		Stats: PastStats{
+			WindowSize: 3, SessionsLoaded: 1,
+			SemanticEnabled: true, SemanticFound: 1, SemanticBelowThreshold: 5,
+		},
+	}
+	if err := Persist(context.Background(), db, fakeCrypto{}, PersistInput{
+		ReportID: uuid.New(), SessionID: uuid.New(), TranscriptID: uuid.New(),
+		Past: past,
+	}, wynikDoZapisu()); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var okno, semantyka int
+	var podobienstwoZapisane bool
+	for _, z := range db.doTabeli("report_run_context") {
+		for _, a := range z.args {
+			switch v := a.(type) {
+			case string:
+				if v == "window" {
+					okno++
+				}
+				if v == "semantic" {
+					semantyka++
+				}
+			case float64:
+				if v == 0.72 {
+					podobienstwoZapisane = true
+				}
+			}
+		}
+	}
+	if okno != 2 {
+		t.Errorf("wpisow z kanalu okna = %d, chcemy 2", okno)
+	}
+	if semantyka != 2 {
+		t.Errorf("wpisow z kanalu semantycznego = %d, chcemy 2", semantyka)
+	}
+	if !podobienstwoZapisane {
+		t.Error("podobienstwo trafienia semantycznego nie trafilo do rejestru")
+	}
+
+	// Liczniki: „zero trafien" ma trzy rozne znaczenia i musza byc
+	// rozroznialne po fakcie.
+	stats := db.doTabeli("report_run_context_stats")
+	if len(stats) != 1 {
+		t.Fatalf("liczniki zapisane %d razy", len(stats))
+	}
+	if stats[0].args[8] != true {
+		t.Errorf("flaga semantyki = %v, chcemy true", stats[0].args[8])
+	}
+	if stats[0].args[10] != 5 {
+		t.Errorf("odrzuconych progiem = %v, chcemy 5", stats[0].args[10])
+	}
+}
+
+// Wpis bez jawnego kanalu to OKNO — zgodnosc wsteczna dla wierszy
+// sprzed F7b, gdy kanal byl jeden i nikt go nie zapisywal.
+func TestBrakKanaluZnaczyOkno(t *testing.T) {
+	if got := kanal(""); got != "window" {
+		t.Errorf("kanal(\"\") = %q, chcemy window", got)
+	}
+	if got := kanal("semantic"); got != "semantic" {
+		t.Errorf("kanal zmienil jawna wartosc na %q", got)
 	}
 }

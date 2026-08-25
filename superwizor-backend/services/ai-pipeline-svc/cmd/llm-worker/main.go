@@ -460,6 +460,12 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		// eksperymentalny — twierdzenia niosa slownictwo swojej
 		// ontologii, a ta nie jest zatwierdzona.
 		pastContext = loadPastContext(ctx, logger, session, true)
+		// Semantyka DOKLADA do okna (F7b-2) — nigdy go nie zastepuje.
+		// Kwerenda ze streszczenia i tematow call-1: powstaly przed
+		// potokiem i sa juz spseudonimizowane.
+		pastContext = dolaczSemantyczne(ctx, logger, session, pastContext,
+			metadataPayload.SummaryShort, metadataPayload.RAGThemes,
+			PipelineExperimental)
 		report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
 			transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 		if err != nil {
@@ -485,6 +491,9 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			pipeline.OntologyVersion = ver
 			ontoActive = o
 			pastContext = loadPastContext(ctx, logger, session, false)
+			pastContext = dolaczSemantyczne(ctx, logger, session, pastContext,
+				metadataPayload.SummaryShort, metadataPayload.RAGThemes,
+				appconfig.PipelineOntology)
 			report, ontoRes, tokenStats, err = runOntologyPipeline(ctx, logger, session,
 				transcriptfmt.FormatSpeakerTurns(workChunks), metadataPayload, o, pastContext)
 			if err != nil {

@@ -310,3 +310,35 @@ func TestIndeksSemantycznyWolanyZWlasciwaKlasa(t *testing.T) {
 	}
 }
 
+// Semantyka (F7b-2) musi DOKLADAC do okna, nie zastepowac go — i musi
+// byc wolana w obu galeziach z wlasciwa klasa potoku.
+//
+// Kolejnosc w zrodle jest tu trescia, nie stylem: gdyby semantyka szla
+// przed oknem albo zamiast niego, jeden zle dobrany prog odcinalby caly
+// kontekst po cichu, a raport wygladalby jak raport bez historii.
+func TestSemantykaDokladaDoOkna(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("odczyt main.go: %v", err)
+	}
+	kod := string(src)
+
+	if strings.Count(kod, "dolaczSemantyczne(ctx, logger, session, pastContext,") != 2 {
+		t.Error("semantyka nie jest wolana w obu galeziach ontologicznych")
+	}
+	// Klasa potoku po obu stronach granicy: eksperyment widzi wylacznie
+	// eksperymentalna historie, produkcja wylacznie produkcyjna.
+	if !strings.Contains(kod, "PipelineExperimental)") {
+		t.Error("galaz eksperymentalna pyta indeks bez swojej klasy")
+	}
+	if !strings.Contains(kod, "appconfig.PipelineOntology)") {
+		t.Error("galaz produkcyjna pyta indeks bez swojej klasy")
+	}
+	// Okno ZAWSZE pierwsze.
+	iOkno := strings.Index(kod, "loadPastContext(ctx, logger, session, true)")
+	iSem := strings.Index(kod, "dolaczSemantyczne(ctx, logger, session, pastContext,")
+	if iOkno < 0 || iSem < 0 || iSem < iOkno {
+		t.Error("semantyka wolana przed oknem albo w ogole")
+	}
+}
+
