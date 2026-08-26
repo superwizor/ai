@@ -89,7 +89,7 @@ Gotchas:
 
 ## In progress
 
-### Potok wnioskowania na Flash — CZEKA NA WDROZENIE — 2026-08-25
+### Potok wnioskowania na Flash — WDROZONE 2026-08-26, benchmark w toku
 
 Galaz `perf/potok-flash` (2 commity, niezmergowana). S2 i S4 przeszly z
 Gemini Pro na Flash; S1 byl na Flash od poczatku.
@@ -103,8 +103,25 @@ Dok. 11 sekcja 2a ZABRANIAL tej zmiany bez benchmarku. Warunek jest
 spelniany, nie obchodzony — benchmark A/B jest czescia zmiany. Dokument
 podniesiony do wersji 1.5.
 
-Nastepny krok: **merge do main + push** (deploy leci z pusha na main,
-`.github/workflows/ci.yml`), potem kanarek i benchmark.
+WDROZONE 2026-08-26 15:57 — rewizja `llm-worker-00138-xuf`.
+
+PULAPKA, ktora prawie zepsula pomiar: push na main NIE wdraza
+llm-workera. CI (`ci.yml`) stawia tylko uslugi Cloud Run, m.in.
+`ai-pipeline-svc`; `llm-worker` i workery STT to Cloud Functions gen2
+stawiane terraformem. Po zielonym CI potok nadal liczyl na Pro, bo
+rewizja llm-workera byla sprzed commita. Wdrozenie zawezone:
+
+    cd infra/environments/staging && terragrunt apply \
+      -target=module.cloud_functions.google_cloudfunctions2_function.llm_worker
+
+Zawezenie bylo swiadome: pelny apply przepakowuje WSZYSTKIE workery
+(`null_resource.package_functions` ma `always_run = timestamp()`) i
+wypchnalby przy okazji commit `19e886f2` — lancuch STT
+elevenlabs→deepgram→chirp, lezacy niewdrozony od 31.07. To osobna
+decyzja, nie doklada sie jej do zmiany modelu.
+
+NIEWDROZONE, czeka na decyzje: `19e886f2` (lancuch STT), 3 workery
+powiadomien, subskrypcja `analytics_bq`.
 
 Narzedzia gotowe w scratchpadzie sesji:
 - `bench/bench -model-a=gemini-2.5-pro <A> <B>` — porownanie A/B; czyta
