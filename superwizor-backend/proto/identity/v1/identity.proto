@@ -595,6 +595,13 @@ message AcceptInvitationRequest {
   // (InvitationPreview.requires_pairing_code). 6 digits; spaces
   // tolerated. 5 wrong attempts block the invitation.
   string pairing_code = 10;
+  // Wymagany dla zaproszeń THERAPIST i ORG_ADMIN, IGNOROWANY dla
+  // PATIENT (docs/43 §4 — konto klienta jest pseudonimowe i e-mail jest
+  // jego jedynym identyfikatorem). Ścieżka samodzielnej rejestracji
+  // terapeuty wymaga numeru „ze względów bezpieczeństwa", więc
+  // akceptacja zaproszenia nie może być furtką pozwalającą założyć
+  // konto personelu bez niego.
+  string phone_number = 11;
 }
 
 message GetInvitationPreviewRequest {

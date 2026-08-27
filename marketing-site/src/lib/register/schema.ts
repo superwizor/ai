@@ -159,14 +159,22 @@ const acceptInviteBase = z.object({
     .optional()
     .or(z.literal("")),
   uiLanguage: z.enum(["pl", "en"]),
+  // Optional in the base so the shared form type carries the field;
+  // the staff schema below makes it required, the PATIENT one leaves
+  // it out entirely (pseudonymous account — docs/43 §4).
+  phoneNumber: z.string().optional(),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
 });
 
-// THERAPIST / ORG_ADMIN invites: first/last name stay required.
+// THERAPIST / ORG_ADMIN invites: first/last name stay required, and so
+// does the phone number — the self-registration path calls it "potrzebny
+// ze względów bezpieczeństwa", so accepting an invitation must not be the
+// back door that creates a staff account without one.
 export const acceptInviteSchema = acceptInviteBase.extend({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  phoneNumber: requiredPhone,
 });
 
 // PATIENT invites (docs/43 §4): the client account is pseudonymous —

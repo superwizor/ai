@@ -18,7 +18,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -39,7 +39,7 @@ import {
   type InvitationPreview,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { openAppWithSso } from "@/lib/auth/open-app-sso";
-import { Checkbox, FieldShell, RadioGroup, Select, TextInput } from "@/components/forms/Field";
+import { Checkbox, FieldShell, PhoneInput, RadioGroup, Select, TextInput } from "@/components/forms/Field";
 import {
   getModalityCatalog,
   type ModalityRow,
@@ -133,6 +133,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<AcceptInviteForm>({
     // PATIENT invites redirect to /register/client above, but if one
@@ -240,7 +241,11 @@ export function AcceptInviteForm({ token }: { token: string }) {
         // names for them; the backend ignores the fields anyway.
         ...(isPatientInvite
           ? {}
-          : { firstName: data.firstName ?? "", lastName: data.lastName ?? "" }),
+          : {
+              firstName: data.firstName ?? "",
+              lastName: data.lastName ?? "",
+              phoneNumber: data.phoneNumber ?? "",
+            }),
         defaultModalityId: data.modalityId,
         uiLanguage: data.uiLanguage,
         timezone: tz,
@@ -429,6 +434,40 @@ export function AcceptInviteForm({ token }: { token: string }) {
               <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
             </FieldShell>
           </div>
+        )}
+
+        {/* Telefon tylko dla personelu — konto klienta jest pseudonimowe
+            (docs/43 §4), a ścieżka samodzielnej rejestracji terapeuty
+            wymaga numeru „ze względów bezpieczeństwa". Bez tego pola
+            akceptacja zaproszenia była furtką omijającą ten wymóg. */}
+        {!isPatientInvite && (
+          <FieldShell
+            id="phoneNumber"
+            label={t("phoneNumber")}
+            required
+            error={
+              errors.phoneNumber?.message === "phone-required"
+                ? tErr("phoneRequired")
+                : errors.phoneNumber
+                ? tErr("phoneInvalid")
+                : undefined
+            }
+          >
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phoneNumber"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  error={!!errors.phoneNumber}
+                  defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                  placeholder={t("phoneNumberPlaceholder")}
+                />
+              )}
+            />
+          </FieldShell>
         )}
 
         {preview?.requiresPairingCode && (

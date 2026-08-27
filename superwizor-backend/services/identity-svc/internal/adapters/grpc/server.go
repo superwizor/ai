@@ -57,7 +57,14 @@ func NewServer(pool *pgxpool.Pool, queries db.Querier, auth TokenVerifier, versi
 		version:       version,
 		emailer:       NoopEmailSender{},
 		collector:     collector,
-		acceptURLBase: "https://app.superwizor.ai",
+		// superwizor.ai, nie app.superwizor.ai: strona /accept-invite
+		// żyje na marketing-site. Na app.superwizor.ai ten adres zwraca
+		// 404, więc stary default oznaczał martwe linki w zaproszeniach
+		// przy każdym deployu, który nie ustawił ACCEPT_URL_BASE.
+		// CI go ustawia (ci.yml), ale default musi być bezpieczny sam z
+		// siebie — precedens billing-svc pokazuje, jak łatwo zmienna
+		// wypada z --set-env-vars.
+		acceptURLBase: "https://superwizor.ai",
 	}
 }
 

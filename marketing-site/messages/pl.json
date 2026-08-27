@@ -1274,8 +1274,8 @@
       "step": "Krok",
       "finishMetaTitle": "Dokończ profil",
       "finishTitle": "Dokończ swój profil",
-      "finishSubhead": "Witaj {firstName}. Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto.",
-      "finishGenericSubhead": "Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto."
+      "finishSubhead": "Witaj {firstName}. Uzupełnij dane, aby aktywować konto.",
+      "finishGenericSubhead": "Uzupełnij dane, aby aktywować konto."
     },
     "organization": {
       "metaTitle": "Rejestracja organizacji",

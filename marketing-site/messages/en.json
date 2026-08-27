@@ -1274,8 +1274,8 @@
       "step": "Step",
       "finishMetaTitle": "Finish your profile",
       "finishTitle": "Finish your profile",
-      "finishSubhead": "Hi {firstName}. Pick a therapeutic modality and interface language to activate your account.",
-      "finishGenericSubhead": "Pick a therapeutic modality and interface language to activate your account."
+      "finishSubhead": "Hi {firstName}. Complete your details to activate your account.",
+      "finishGenericSubhead": "Complete your details to activate your account."
     },
     "organization": {
       "metaTitle": "Organization sign-up",

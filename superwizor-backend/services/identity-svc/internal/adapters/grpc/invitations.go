@@ -428,9 +428,22 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 		}
 	}
 
-	// Marketing consent + optional default modality.
-	if req.HasMarketingConsent || req.DefaultModalityId != "" {
+	// Numer telefonu dla zaproszeń personelu. PATIENT go nie dostaje —
+	// konto klienta jest pseudonimowe (docs/43 §4), więc tu obowiązuje
+	// ta sama zasada co dla first_name/last_name wyżej: pole jest
+	// ignorowane, a nie odrzucane, żeby stary klient nie wywracał
+	// akceptacji.
+	phone := strings.TrimSpace(req.PhoneNumber)
+	if inv.InvitedRole == "PATIENT" {
+		phone = ""
+	}
+
+	// Marketing consent + optional default modality + telefon.
+	if req.HasMarketingConsent || req.DefaultModalityId != "" || phone != "" {
 		updParams := db.UpdateProfileParams{ID: user.ID}
+		if phone != "" {
+			updParams.PhoneNumber = &phone
+		}
 		if req.HasMarketingConsent {
 			t := true
 			updParams.HasMarketingConsent = &t
