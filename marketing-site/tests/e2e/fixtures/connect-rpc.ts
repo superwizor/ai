@@ -375,3 +375,69 @@ export async function mockTrackEvents(
 
   return { getCaptured: () => captured };
 }
+
+// ── Invitations (docs/39, docs/43) ─────────────────────────────────
+
+/**
+ * Mock identity.v1.IdentityService/GetInvitationPreview.
+ * Defaults to a THERAPIST invite — the variant that must collect a
+ * phone number. Pass `{ invitedRole: "USER_ROLE_PATIENT" }` for the
+ * pseudonymous client variant.
+ */
+export async function mockGetInvitationPreview(
+  page: Page,
+  overrides: Record<string, unknown> = {},
+) {
+  await page.route(
+    /identity\.v1\.IdentityService\/GetInvitationPreview/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          email: "zaproszony@example.com",
+          invitedRole: "USER_ROLE_THERAPIST",
+          organizationName: "Klinika Testowa",
+          inviterFirstName: "Maciek",
+          requiresPairingCode: false,
+          ...overrides,
+        }),
+      });
+    },
+  );
+}
+
+/**
+ * Mock identity.v1.IdentityService/AcceptInvitation.
+ * Returns the captured request so specs can assert what the form sent —
+ * phone_number in particular (see accept-invite-phone.spec.ts).
+ */
+export async function mockAcceptInvitation(
+  page: Page,
+  overrides: Record<string, unknown> = {},
+): Promise<{ getCaptured: () => Record<string, unknown> | null }> {
+  let captured: Record<string, unknown> | null = null;
+
+  await page.route(
+    /identity\.v1\.IdentityService\/AcceptInvitation/,
+    async (route) => {
+      captured = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          user: {
+            id: "user-uuid-invited",
+            email: "zaproszony@example.com",
+            firstName: "Jan",
+            lastName: "Zaproszony",
+            role: "USER_ROLE_THERAPIST",
+          },
+          ...overrides,
+        }),
+      });
+    },
+  );
+
+  return { getCaptured: () => captured };
+}
