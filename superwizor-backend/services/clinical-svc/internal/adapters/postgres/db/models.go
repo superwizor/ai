@@ -1681,7 +1681,7 @@ type VAnalyticsSessionFreq struct {
 	MedianDurationS float64     `json:"median_duration_s"`
 }
 
-// Liczniki zużycia tokenów sprowadzone do JEDNEGO zakresu na (subskrypcja, okres): per-terapeuta gdy istnieją, org-level w przeciwnym razie (migracja 000102, zgodnie z kolejnością rozstrzygania w ReserveCredit). utilization_pct jest ilorazem POJEDYNCZEGO wiersza — agregując po organizacji licz SUM(tokens_used)/SUM(tokens_limit), nie AVG(utilization_pct).
+// Liczniki zużycia tokenów sprowadzone do JEDNEGO zakresu na (subskrypcja, okres): org-level gdy istnieje, per-terapeuta w przeciwnym razie (migracja 000102). Odwrotnie niż w ReserveCredit — panel mierzy zużycie ORGANIZACJI, a liczniki seatowe są mintowane leniwie, więc ich suma limitów nie jest limitem organizacji. utilization_pct jest ilorazem POJEDYNCZEGO wiersza — agregując po organizacji licz SUM(tokens_used)/SUM(tokens_limit), nie AVG(utilization_pct).
 type VAnalyticsTokenUtil struct {
 	SubscriptionID uuid.UUID      `json:"subscription_id"`
 	OrganizationID uuid.UUID      `json:"organization_id"`

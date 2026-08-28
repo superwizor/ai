@@ -160,12 +160,32 @@ kluczy na locale), `pnpm test` 123/123; `admin-analytics.spec.ts` 12/12
 z nowa asercja na skale procentow (przy przywroconym `* 100` pada z
 "200.00%"). Zrzuty ekranu zakladek Jakosc AI / Koszty / Lejek tamze.
 
-PULAPKA: migracji **nie uruchomiono** — brak lokalnego Postgresa. Przed
-merge: `migrate up` na lokalnej bazie, `sqlc generate` juz zrobione
-(widok ma nowe kolumny `report_count`, `stt_model`, a `GetCohortRetention`
-zwraca `cohort_size`), potem `go build ./...`. Deploy: clinical-svc to
-Cloud Run, wiec CI go wdroży po merge do main, ale **migracje trzeba
-zaaplikowac osobno** — bez nich handler poleci na starych widokach.
+MIGRACJE ZWERYFIKOWANE LOKALNIE (2026-08-28). Postawiony PostgreSQL 17
++ pgvector na porcie 55432 (osobno od cloud-sql-proxy, ktory siedzi na
+5432 i jest wpiety w staging — celowo nietkniety). Wynik:
+- `migrate up` od ZERA przez wszystkie 102 migracje: czysto, `dirty = f`;
+- `down 2` + `up` z powrotem: czysto, wiec rollback dziala;
+- `go test ./...` z DATABASE_URL, czyli z AKTYWNYM testem integracyjnym:
+  wszystkie 30 zapytan analityki wykonuje sie na prawdziwej bazie,
+  wraz z asercjami na format etykiety, jeden wiersz kosztu na sesje
+  i NULL dla nieznanego stt_model.
+
+Przy okazji, sprawdzone zapytaniem, nie z glowy: stara maska 'YYYY-IW'
+psula sie na DWA sposoby. Rozbicie — 1.01.2027 nalezy do tygodnia ISO 53
+roku 2026, ale dostawal etykiete '2027-53' i ladowal na koncu osi.
+Sklejenie — etykieta '2028-52' obejmuje ZARAZEM 1-2 stycznia 2028
+(tydzien ISO 52/2027) i 25-31 grudnia 2028 (tydzien ISO 52/2028), czyli
+sesje z odstepem jedenastu miesiecy sumowaly sie w jeden slupek. To samo
+w 2029 i 2030. Wczesniejszy opis w tym pliku podawal zly przyklad.
+
+DEPLOY: `ci.yml` na push do `main` buduje obraz `superwizor-migrator`,
+robi `gcloud run jobs deploy db-migrator` i `jobs execute --wait`
+(krok "Deploy and Run Migration Job", linia 206) — a DOPIERO POTEM
+wdraza Cloud Run, w tym clinical-svc (linia 347). Czyli schemat idzie
+przed kodem, a nieudana migracja wywala pipeline i blokuje deploy.
+Migracji NIE trzeba aplikowac recznie — wczesniejsza notatka w tym
+miejscu byla bledna i mylila to z Cloud Functions (llm-worker,
+stt-worker), ktore faktycznie stawia terragrunt, nie CI.
 
 ODLOZONE swiadomie: nazwy pol proto `kpi_monthly_*` i `kpi_failure_rate_7d`
 zostaja (zmiana lamie kontrakt, etykiety dla uzytkownika juz mowia prawde);

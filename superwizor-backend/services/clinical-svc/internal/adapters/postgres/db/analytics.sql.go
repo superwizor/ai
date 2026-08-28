@@ -1486,11 +1486,22 @@ WHERE s.created_at >= NOW() - INTERVAL '7 days'
 //
 //  1. ETYKIETA TYGODNIA to `TO_CHAR(…, 'IYYY-IW')`, nigdy `'YYYY-IW'`.
 //     IYYY to rok ISO, YYYY kalendarzowy — te kalendarze rozjeżdżają się
-//     na przełomie roku. 28.12.2026 należy do tygodnia ISO 1 roku 2027;
-//     maska 'YYYY-IW' dała mu etykietę '2026-01', czyli wsadziła go do
-//     słupka ze stycznia 2026. Przy poprawnej masce etykiety sortują się
-//     leksykograficznie tak samo jak chronologicznie, więc GROUP BY 1 /
-//     ORDER BY 1 po etykiecie jest bezpieczne.
+//     na przełomie roku i stara maska psuła to na dwa sposoby naraz
+//     (sprawdzone zapytaniem na bazie, nie z głowy):
+//
+//     ROZBICIE: 1.01.2027 należy do tygodnia ISO 53 roku 2026, ale 'YYYY-IW'
+//     daje mu '2027-53'. Jeden tydzień kalendarzowy rozpada się więc na
+//     '2026-53' i '2027-53', a to drugie ląduje na samym końcu osi, za
+//     '2027-01' i całą resztą roku.
+//
+//     SKLEJENIE: etykieta '2028-52' obejmuje ZARAZEM 1–2 stycznia 2028
+//     (tydzień ISO 52 roku 2027) i 25–31 grudnia 2028 (tydzień ISO 52
+//     roku 2028). Sesje z odstępem jedenastu miesięcy sumują się w jeden
+//     słupek. To samo zdarza się w latach 2029 i 2030.
+//
+//     Przy poprawnej masce (IYYY, IW) para (rok ISO, numer tygodnia) jest
+//     unikalna i sortuje się leksykograficznie tak samo jak chronologicznie,
+//     więc GROUP BY 1 / ORDER BY 1 po etykiecie jest bezpieczne.
 //
 //  2. KUBEŁKOWANIE JEST W `Europe/Warsaw`, nie w UTC. `date_trunc` i
 //     `EXTRACT` na wartości timestamptz liczą w strefie sesji bazy, czyli
