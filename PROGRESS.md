@@ -91,9 +91,22 @@ Gotchas:
 
 ### Poprawnosc liczb w /admin/analytics — GALAZ GOTOWA, MIGRACJE NIEURUCHOMIONE (2026-08-28)
 
-Galaz `fix/analytics-poprawnosc-liczb` (od `main`). Audyt panelu wykazal
-75 potwierdzonych bledow w 8 klasach; ta galaz naprawia wszystkie poza
-swiadomie odlozonymi (nizej).
+Galaz `fix/analytics-poprawnosc-liczb` (od `main`), zmergowana i wypchnieta.
+Audyt panelu wykazal 75 potwierdzonych bledow, raport grupuje je w sekcje A-I.
+
+SPROSTOWANIE licznika: pierwsza wersja tego wpisu i raport mowily "8 z 8 klas
+naprawionych". To bylo zawyzone — sekcja F ("Pierwszy i ostatni slupek nie sa
+porownywalne") zostala wtedy NIETKNIETA w calosci. Wyszlo to dopiero, gdy
+operator zapytal, czemu sparkline WAU w kafelku ma jedna kropke, a sparkline
+sesji obok — linie z dwoma punktami. To nie byl artefakt renderowania, tylko
+wprost ten blad: GetWauTrend porownywal z `since` POCZATEK tygodnia z widoku,
+a GetSessionsTrend porownuje kazda sesje, wiec tydzien zawierajacy `since`
+wypadal z pierwszego, a w drugim zostawal obciety.
+
+Domkniete osobna galezia `fix/analytics-wyrownanie-okna-tygodnia` (nizej).
+Z sekcji F zostaja nadal DWA punkty, swiadomie nieruszone: biezacy, niepelny
+tydzien rysuje sie na rowni z pelnymi, a puste tygodnie znikaja z wykresow
+liniowych zamiast pokazac zero.
 
 Co sie zmienilo, w skrocie:
 
@@ -207,6 +220,32 @@ wymagany w schemacie formularza, wiec bramka `hasExtras` zawsze przepuszcza
 UpdateProfile z telefonem i zgoda marketingowa. Problem jest taki, ze plik
 .sql klamie o tym, co robi kod, i nastepne `sqlc generate` wywali build
 w czterech call-site'ach. Osobne zadanie.
+
+### Wyrownanie okna tygodniowego w analityce (2026-08-28)
+
+Galaz `fix/analytics-wyrownanie-okna-tygodnia`. Dwa zapytania czytajace
+kolumne `week` prosto z widokow (GetWauTrend, GetSatisfactionTrend)
+porownywaly ja z surowym `since`, a `since` z selektora to dowolny instant
+(np. piatek 22:51). Poniedzialek tygodnia, w ktorym zaczyna sie zakres, jest
+wczesniejszy niz `since`, wiec CALY ten kubelek wypadal — podczas gdy
+zapytania idace po `created_at` ten sam tydzien zostawialy, obciety.
+
+Widac to bylo golym okiem w panelu: przy zakresie "7 dni" kafelek WAU miał
+sparkline z jedna kropka (Recharts nie ma czego polaczyc przy jednym punkcie),
+a kafelek sesji obok — linie z dwoma. Zmierzone na bazie: dla tego samego
+`since` WAU zwracalo 1 tydzien, sesje 2.
+
+Poprawka to wyrownanie `since` do poczatku jego tygodnia:
+`week >= date_trunc('week', since AT TIME ZONE 'Europe/Warsaw') AT TIME ZONE 'Europe/Warsaw'`.
+
+Test regresji w analytics_db_test.go ("Weekly window covers the same weeks"):
+wstawia dwie sesje po obu stronach granicy tygodnia, zakotwiczone w poniedzialku,
+zeby wynik nie zalezal od dnia uruchomienia, i porownuje ZBIORY etykiet z obu
+zapytan. Po cofnieciu poprawki pada z `expected: {2026-34, 2026-35}` /
+`actual: {2026-35}` — czyli dokladnie tym, co bylo na zrzucie.
+
+Dotknieta tylko warstwa SQL + wygenerowany Go; marketing-site nietkniety,
+wiec E2E nie bylo potrzebne. Dowod: evidence/analytics-poprawnosc/backend-wyrownanie-okna.log
 
 ### Potok wnioskowania na Flash — WDROZONE 2026-08-26, benchmark w toku
 
