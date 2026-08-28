@@ -183,7 +183,7 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		ratingID := uuid.New()
 		reportID := uuid.New()
 		transcriptID := uuid.New()
-		
+
 		// Create mock transcript
 		_, err = tx.Exec(ctx, `
 			INSERT INTO transcripts (id, session_id, language_code, stt_model, transcript_ciphertext, transcript_encrypted_dek)
@@ -212,7 +212,7 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		// Verify new analytics queries output correct aggregates
 		modalities, err := q.GetModalityDistribution(ctx, since)
 		require.NoError(t, err)
-		
+
 		var found bool
 		for _, m := range modalities {
 			if m.ModalityName == "CBT Test" {
@@ -257,5 +257,85 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		`, sessionID).Scan(&sttCost)
 		require.NoError(t, err)
 		assert.Nil(t, sttCost, "nieznany stt_model ma dawać NULL, nie 0")
+	})
+
+	// --- 3. Okno tygodniowe: WAU i sesje muszą pokrywać TE SAME tygodnie ---
+	//
+	// Regresja na rozjazd, który było widać w panelu: sparkline WAU rysował
+	// jedną kropkę obok sparkline'u sesji z dwoma punktami. Powód: GetWauTrend
+	// porównywał z `since` POCZĄTEK tygodnia z widoku, a GetSessionsTrend
+	// porównuje każdą sesję — więc tydzień, w którym zaczyna się zakres,
+	// wypadał z pierwszego, a w drugim zostawał obcięty.
+	t.Run("Weekly window covers the same weeks in WAU and sessions", func(t *testing.T) {
+		orgID := uuid.New()
+		_, err := tx.Exec(ctx, `INSERT INTO organizations (id, legal_name, type) VALUES ($1, $2, 'SOLO')`, orgID, "Week Boundary Org")
+		require.NoError(t, err)
+
+		therapistID := uuid.New()
+		_, err = tx.Exec(ctx, `
+			INSERT INTO users (id, role, organization_id, firebase_uid, email, first_name, last_name, ui_language, timezone, has_accepted_tos)
+			VALUES ($1, 'THERAPIST', $2, $3, $4, 'Week', 'Boundary', 'pl', 'Europe/Warsaw', true)
+		`, therapistID, orgID, "fb-week-"+uuid.New().String()[:8], "week-"+uuid.New().String()[:8]+"@przyklad.pl")
+		require.NoError(t, err)
+
+		modalityID := uuid.New()
+		_, err = tx.Exec(ctx, `
+			INSERT INTO modalities (id, system_code, display_name, therapist_ai_general_prompt, therapist_ai_section_prompts, patient_ai_general_prompt, patient_ai_section_prompts, is_supported, modality_type)
+			VALUES ($1, $2, 'Week Boundary', '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, true, 'therapy')
+		`, modalityID, "WB_"+uuid.New().String()[:8])
+		require.NoError(t, err)
+
+		patientFileID := uuid.New()
+		_, err = tx.Exec(ctx, `
+			INSERT INTO patient_files (id, therapist_id, modality_id, working_alias, process_type)
+			VALUES ($1, $2, $3, 'Patient WB', 'INDIVIDUAL')
+		`, patientFileID, therapistID, modalityID)
+		require.NoError(t, err)
+
+		// Dwie sesje po obu stronach granicy tygodnia, zakotwiczone w poniedziałku,
+		// żeby wynik nie zależał od dnia uruchomienia testu: sobota poprzedniego
+		// tygodnia i poniedziałek bieżącego.
+		// session_number jest unikalny w obrębie kartoteki (idx_sessions_patient_file_number).
+		for i, offset := range []string{"-2 days", "1 hour"} {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO sessions (id, therapist_id, patient_file_id, session_date, session_number,
+				                      duration_seconds, contact_form, status, created_at)
+				VALUES ($1, $2, $3, CURRENT_DATE, $4, 3000, 'ONLINE', 'COMPLETED',
+				        date_trunc('week', now() AT TIME ZONE 'Europe/Warsaw') AT TIME ZONE 'Europe/Warsaw' + $5::interval)
+			`, uuid.New(), therapistID, patientFileID, i+1, offset)
+			require.NoError(t, err)
+		}
+
+		// `since` celowo NIE na granicy tygodnia — piątek poprzedniego tygodnia.
+		var since time.Time
+		err = tx.QueryRow(ctx, `
+			SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Warsaw') AT TIME ZONE 'Europe/Warsaw'
+			       - interval '3 days'
+		`).Scan(&since)
+		require.NoError(t, err)
+
+		wau, err := q.GetWauTrend(ctx, since)
+		require.NoError(t, err)
+		sessions, err := q.GetSessionsTrend(ctx, since)
+		require.NoError(t, err)
+
+		weeksOf := func(labels []string) map[string]bool {
+			out := map[string]bool{}
+			for _, l := range labels {
+				out[l] = true
+			}
+			return out
+		}
+		var wauLabels, sessionLabels []string
+		for _, r := range wau {
+			wauLabels = append(wauLabels, r.Label)
+		}
+		for _, r := range sessions {
+			sessionLabels = append(sessionLabels, r.Label)
+		}
+
+		assert.Len(t, sessionLabels, 2, "obie sesje leżą po wybranym `since`, więc trend sesji ma dwa tygodnie")
+		assert.Equal(t, weeksOf(sessionLabels), weeksOf(wauLabels),
+			"WAU i sesje muszą pokrywać ten sam zestaw tygodni — inaczej sparkline'y w kafelkach obok siebie mają różną liczbę punktów")
 	})
 }

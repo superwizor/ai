@@ -101,11 +101,19 @@ WHERE u.email NOT LIKE '%@superwizor.test'
 -- CROSS-SERVICE READ: analytics-only
 -- `week` w widoku to instant lokalnej północy poniedziałku (000102),
 -- więc etykietę liczymy z powrotem w Europe/Warsaw.
+--
+-- `since` z selektora to dowolny instant (np. piątek 22:51), a `week` w widoku
+-- to poniedziałek. Surowe `week >= since` wycinało więc CAŁY tydzień, w którym
+-- zaczyna się zakres, podczas gdy zapytania idące po `created_at` ten sam
+-- tydzień zostawiały — obcięty. Przy zakresie „7 dni" dawało to sparkline WAU
+-- z jednym punktem obok sparkline'u sesji z dwoma. Wyrównujemy `since` do
+-- początku jego tygodnia, żeby oba zestawy tygodni były te same.
 SELECT
   TO_CHAR(week AT TIME ZONE 'Europe/Warsaw', 'IYYY-IW') AS label,
   active_therapists::float AS value
 FROM v_analytics_wau
-WHERE week >= sqlc.arg(since)::timestamptz
+WHERE week >= date_trunc('week', sqlc.arg(since)::timestamptz AT TIME ZONE 'Europe/Warsaw')
+                 AT TIME ZONE 'Europe/Warsaw'
 ORDER BY week ASC;
 
 -- name: GetSessionsTrend :many
@@ -344,11 +352,14 @@ WHERE NOT EXISTS (
 
 -- name: GetSatisfactionTrend :many
 -- CROSS-SERVICE READ: analytics-only
+-- Wyrównanie `since` do początku tygodnia — jak w GetWauTrend, i z tego
+-- samego powodu: to drugie zapytanie czytające `week` prosto z widoku.
 SELECT
   TO_CHAR(week AT TIME ZONE 'Europe/Warsaw', 'IYYY-IW') AS label,
   satisfaction_pct::float AS satisfaction_pct
 FROM v_analytics_satisfaction
-WHERE week >= sqlc.arg(since)::timestamptz
+WHERE week >= date_trunc('week', sqlc.arg(since)::timestamptz AT TIME ZONE 'Europe/Warsaw')
+                 AT TIME ZONE 'Europe/Warsaw'
 ORDER BY week ASC;
 
 -- name: GetIssueCategories :many
