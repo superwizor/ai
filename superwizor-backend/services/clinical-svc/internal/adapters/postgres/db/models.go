@@ -952,6 +952,9 @@ type ExperimentalReportRequest struct {
 	// NULL dla zamowien w locie i nieudanych. Oba liczą sie do dobowego limitu — oba kosztowaly wywolania modelu.
 	ReportID  pgtype.UUID `json:"report_id"`
 	CreatedAt time.Time   `json:"created_at"`
+	// Niepuste = raport NIE powstał mimo włączonego przełącznika. Takie wiersze NIE liczą się do dobowego limitu — inaczej odmowa z powodu limitu sama zużywałaby limit.
+	SkipReason *string `json:"skip_reason"`
+	SkipDetail *string `json:"skip_detail"`
 }
 
 type FcmToken struct {
@@ -1317,6 +1320,29 @@ type ReportClaimRejection struct {
 	EvidenceSpanRefs []string `json:"evidence_span_refs"`
 }
 
+type ReportInferenceIndex struct {
+	ID            uuid.UUID `json:"id"`
+	PatientFileID uuid.UUID `json:"patient_file_id"`
+	SessionID     uuid.UUID `json:"session_id"`
+	ReportID      uuid.UUID `json:"report_id"`
+	// claim = twierdzenie po walidacji S3 (może być dowodem). hypothesis = proza S4 (NIGDY dowodem — wyłącznie kanał ciągłości).
+	Kind            string      `json:"kind"`
+	SourceClaimID   pgtype.UUID `json:"source_claim_id"`
+	ItemRef         string      `json:"item_ref"`
+	ConstructID     string      `json:"construct_id"`
+	EpistemicStatus string      `json:"epistemic_status"`
+	Confidence      *float32    `json:"confidence"`
+	// Klasa potoku. Odczyt MUSI filtrować: raport produkcyjny nie widzi twierdzeń ze szkicu ontologii, a szkic kalibruje się na własnej historii.
+	PipelineVersion  string           `json:"pipeline_version"`
+	TextCiphertext   []byte           `json:"text_ciphertext"`
+	TextEncryptedDek []byte           `json:"text_encrypted_dek"`
+	Embedding        *pgvector.Vector `json:"embedding"`
+	// Wektory z różnych modeli leżą w różnych przestrzeniach — bez tej kolumny zmiana modelu cicho zmieniałaby wyniki wyszukiwania.
+	EmbeddingModel string      `json:"embedding_model"`
+	SessionAt      pgtype.Date `json:"session_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
 type ReportPattern struct {
 	ID            uuid.UUID `json:"id"`
 	ReportID      uuid.UUID `json:"report_id"`
@@ -1349,6 +1375,37 @@ type ReportRating struct {
 	AdminReviewStatus string `json:"admin_review_status"`
 }
 
+// Co przebieg zobaczył z poprzednich sesji (dok. 65 §N2). Warunek twardy dla F7b: bez zapisu wejścia niedeterministyczny retrieval jest nieaudytowalny.
+type ReportRunContext struct {
+	ID              uuid.UUID `json:"id"`
+	ReportID        uuid.UUID `json:"report_id"`
+	ItemKind        string    `json:"item_kind"`
+	Channel         string    `json:"channel"`
+	SourceSessionID uuid.UUID `json:"source_session_id"`
+	ItemRef         string    `json:"item_ref"`
+	ConstructID     *string   `json:"construct_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	// Podobieństwo kosinusowe (1 - odległość) dla kanału semantycznego. NULL dla okna deterministycznego — tam selekcja nie ma miary.
+	Similarity *float32 `json:"similarity"`
+}
+
+type ReportRunContextStat struct {
+	ReportID       uuid.UUID `json:"report_id"`
+	WindowSize     int32     `json:"window_size"`
+	SessionsLoaded int32     `json:"sessions_loaded"`
+	// Starsze sesje kartoteki wciąż przetwarzane w chwili przebiegu. Pomijane świadomie (nie czekamy — brak zakleszczenia), ale jawnie.
+	SessionsSkippedUnfinished int32     `json:"sessions_skipped_unfinished"`
+	ClaimsShown               int32     `json:"claims_shown"`
+	ClaimsDroppedBudget       int32     `json:"claims_dropped_budget"`
+	SpansShown                int32     `json:"spans_shown"`
+	SpansDroppedBudget        int32     `json:"spans_dropped_budget"`
+	CreatedAt                 time.Time `json:"created_at"`
+	SemanticEnabled           bool      `json:"semantic_enabled"`
+	SemanticFound             int32     `json:"semantic_found"`
+	// Sąsiedzi odrzuceni progiem. Materiał do kalibracji (F7b-4): dużo odrzuconych przy zerze przyjętych znaczy „próg za wysoki", a nie „brak historii".
+	SemanticBelowThreshold int32 `json:"semantic_below_threshold"`
+}
+
 type ReportSpan struct {
 	ID                uuid.UUID `json:"id"`
 	SessionID         uuid.UUID `json:"session_id"`
@@ -1365,6 +1422,8 @@ type ReportSpan struct {
 	RiskContent       bool      `json:"risk_content"`
 	SilenceBeforeMs   int32     `json:"silence_before_ms"`
 	CreatedAt         time.Time `json:"created_at"`
+	// Hasła tematyczne z S1 (1–3, mianownik). Wejście rekurencji międzysesyjnej w S1.5. Puste dla spanów sprzed migracji 000097 — takie spany nie liczą się do rekurencji i nie są uzupełniane wstecz.
+	Topics []string `json:"topics"`
 }
 
 // Therapist-authored document templates. A template composes typed SECTIONS over guardrailed executors — it is not a saved prompt (decision D7, docs/63 F10). Versions are append-only; sharing forks a version rather than linking to it.
@@ -1591,37 +1650,43 @@ type VAnalyticsPipelineLatency struct {
 }
 
 type VAnalyticsSatisfaction struct {
-	Week            pgtype.Interval `json:"week"`
-	TotalRatings    int64           `json:"total_ratings"`
-	Positive        int64           `json:"positive"`
-	Negative        int64           `json:"negative"`
-	SatisfactionPct pgtype.Numeric  `json:"satisfaction_pct"`
+	Week            interface{}    `json:"week"`
+	TotalRatings    int64          `json:"total_ratings"`
+	Positive        int64          `json:"positive"`
+	Negative        int64          `json:"negative"`
+	SatisfactionPct pgtype.Numeric `json:"satisfaction_pct"`
 }
 
+// Koszt jednostkowy sesji: jeden wiersz na sesję, która doczekała się raportu. STT wyceniane po transcripts.stt_model (migracja 000101), LLM sumowane po wszystkich generacjach raportu. Dodając dostawcę STT trzeba dopisać jego stawkę do CASE w tym widoku — inaczej stt_cost_usd wyjdzie NULL.
 type VAnalyticsSessionCost struct {
 	SessionID       uuid.UUID      `json:"session_id"`
 	TherapistID     uuid.UUID      `json:"therapist_id"`
 	OrganizationID  pgtype.UUID    `json:"organization_id"`
 	DurationSeconds *int32         `json:"duration_seconds"`
-	LlmInputTokens  *int32         `json:"llm_input_tokens"`
-	LlmOutputTokens *int32         `json:"llm_output_tokens"`
-	LlmCostUsd      pgtype.Numeric `json:"llm_cost_usd"`
+	LlmInputTokens  int64          `json:"llm_input_tokens"`
+	LlmOutputTokens int64          `json:"llm_output_tokens"`
+	LlmCostUsd      int64          `json:"llm_cost_usd"`
+	ReportCount     int32          `json:"report_count"`
+	SttModel        *string        `json:"stt_model"`
 	SttCostUsd      pgtype.Numeric `json:"stt_cost_usd"`
 	TotalCostUsd    pgtype.Numeric `json:"total_cost_usd"`
 	CreatedAt       time.Time      `json:"created_at"`
 }
 
 type VAnalyticsSessionFreq struct {
-	TherapistID     uuid.UUID       `json:"therapist_id"`
-	Week            pgtype.Interval `json:"week"`
-	SessionCount    int64           `json:"session_count"`
-	AvgDurationS    float64         `json:"avg_duration_s"`
-	MedianDurationS float64         `json:"median_duration_s"`
+	TherapistID     uuid.UUID   `json:"therapist_id"`
+	Week            interface{} `json:"week"`
+	SessionCount    int64       `json:"session_count"`
+	AvgDurationS    float64     `json:"avg_duration_s"`
+	MedianDurationS float64     `json:"median_duration_s"`
 }
 
+// Liczniki zużycia tokenów sprowadzone do JEDNEGO zakresu na (subskrypcja, okres): org-level gdy istnieje, per-terapeuta w przeciwnym razie (migracja 000102). Odwrotnie niż w ReserveCredit — panel mierzy zużycie ORGANIZACJI, a liczniki seatowe są mintowane leniwie, więc ich suma limitów nie jest limitem organizacji. utilization_pct jest ilorazem POJEDYNCZEGO wiersza — agregując po organizacji licz SUM(tokens_used)/SUM(tokens_limit), nie AVG(utilization_pct).
 type VAnalyticsTokenUtil struct {
 	SubscriptionID uuid.UUID      `json:"subscription_id"`
 	OrganizationID uuid.UUID      `json:"organization_id"`
+	TherapistID    pgtype.UUID    `json:"therapist_id"`
+	Scope          string         `json:"scope"`
 	PeriodStart    time.Time      `json:"period_start"`
 	PeriodEnd      time.Time      `json:"period_end"`
 	TokensLimit    int32          `json:"tokens_limit"`
@@ -1630,6 +1695,6 @@ type VAnalyticsTokenUtil struct {
 }
 
 type VAnalyticsWau struct {
-	Week             pgtype.Interval `json:"week"`
-	ActiveTherapists int64           `json:"active_therapists"`
+	Week             interface{} `json:"week"`
+	ActiveTherapists int64       `json:"active_therapists"`
 }

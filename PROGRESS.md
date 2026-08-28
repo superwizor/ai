@@ -89,6 +89,125 @@ Gotchas:
 
 ## In progress
 
+### Poprawnosc liczb w /admin/analytics — GALAZ GOTOWA, MIGRACJE NIEURUCHOMIONE (2026-08-28)
+
+Galaz `fix/analytics-poprawnosc-liczb` (od `main`). Audyt panelu wykazal
+75 potwierdzonych bledow w 8 klasach; ta galaz naprawia wszystkie poza
+swiadomie odlozonymi (nizej).
+
+Co sie zmienilo, w skrocie:
+
+- **Migracja 000101** — `v_analytics_session_cost` wycenia STT po
+  `transcripts.stt_model` (elevenlabs-scribe-v2 $0,22/h, deepgram-nova-3
+  $0,0092/min, chirp_3 $0,003/min dynamic batch) zamiast zaszytego
+  $0,016/min, i zwraca wiersz na SESJE, nie na raport. `reports` nie ma
+  UNIQUE(session_id), wiec kazda regeneracja doliczala pelny koszt STT
+  sesji od nowa.
+- **Migracja 000102** — kubelki tygodniowe w `Europe/Warsaw` (byly w UTC),
+  `v_analytics_pipeline_latency` liczy czas do PIERWSZEGO raportu (byl
+  JOIN mnozacy wiersze przez liczbe raportow), `v_analytics_token_util`
+  sprowadza liczniki do JEDNEGO zakresu na (subskrypcja, okres) — org-level
+  ma pierwszenstwo (uzasadnienie nizej) — i dostaje filtr
+  kont testowych, ktorego migracja 000045 swiadomie mu nie dala ("nie
+  wymaga filtra"); przez to organizacje E2E stały w panelu.
+- **analytics.sql** — `IYYY-IW` zamiast `YYYY-IW` w 13 miejscach (rok
+  gregorianski + tydzien ISO rozjezdzaja sie na przelomie roku i skleja
+  dwa rozne tygodnie w jeden slupek), wskazniki procentowe jako 0-100
+  zamiast ulamka, mianownik awaryjnosci = stany koncowe (COMPLETED +
+  FAILED), mianownik nieudanych uploadow = same proby (byl
+  initiated+failed, zbiory nierozlaczne), `sqlc.arg(since)` w 26
+  zapytaniach, ktore wczesniej ignorowaly TimeRangeSelector, koniec
+  `LIMIT 50` / `LIMIT 200` obcinajacych NAJNOWSZE dane.
+- **analytics.go** — `weekDiff` po prawdziwych datach ISO (bylo `*52`, a
+  rok ISO ma 52 albo 53 tygodnie), `retention30d` jako srednia WAZONA
+  liczebnoscia kohorty z kohortami zerowymi w mianowniku, krok 4 lejka
+  z tej samej populacji co reszta (bylo osobne zapytanie po golej tabeli
+  zdarzen, wiec lejek mogl sie rozszerzac), `GetRevenueTrend` fail-soft.
+
+PO PRZEGLADZIE ADWERSARYJNYM (31 agentow, 18 z 26 zarzutow potwierdzonych)
+doszly cztery poprawki wlasnych regresji — warto je znac, bo kazda byla
+kontrintuicyjna:
+
+- `period_start >= since` na licznikach tokenow BYLO ZLE. period_start to
+  poczatek CYKLU ROZLICZENIOWEGO, nie zdarzenie; przy zakresie "7 dni"
+  zostawaly tylko cykle rozpoczete w tym tygodniu (a wiec z zuzyciem
+  bliskim zeru), a plany roczne wypadaly ze WSZYSTKICH zakresow. Teraz
+  warunek nakladania sie okresow: `period_end >= since AND period_start <= now()`.
+- KPI retencji dostal WLASNE zapytanie `GetRetentionCohorts` ze stalym
+  oknem 26 tygodni. Liczony z macierzy cietej selektorem dawal 0% przy
+  "7 dniach", bo zadna kohorta nie byla jeszcze dojrzala. LEFT JOIN
+  zamiast INNER, zeby kohorta bez ANI JEDNEJ sesji weszla do mianownika.
+- W `v_analytics_token_util` pierwszenstwo ma licznik ORG-LEVEL, nie
+  per-terapeuta (odwrotnie niz w ReserveCredit). Liczniki seatowe sa
+  mintowane leniwie, wiec ich SUM(tokens_limit) to nie limit organizacji,
+  tylko limit foteli, ktore zdazyly sie obudzic — mianownik rosnacy
+  w trakcie okresu i zawyzajacy utylizacje.
+- `?? null` w heatmapach nie wystarczylo: callback etykiety mial
+  `cell.value === 0 ? "" : ...`, a `Number(null)` to 0, wiec puste komorki
+  dalej drukowaly "0%". Plus jawne `minValue: 0` na skali kolorow, bo bez
+  zer w danych skala zaczynala sie od najmniejszej ZMIERZONEJ wartosci.
+- **page.tsx / i18n** — koniec mnozenia procentow przez 100 po stronie
+  frontendu, puste komorki heatmap zamiast falszywego "0%", skrot
+  liczbowy na osi Y konsumpcji tokenow (etykiety byly ucinane), kurs
+  zapasowy 4,05 PLN/USD przestaje sie podpisywac jako "kurs NBP",
+  etykiety kafelkow kosztowych mowia "wybrany okres" zamiast "30 dni".
+
+Weryfikacja (dowody w `evidence/analytics-poprawnosc/`):
+`go build` + `go vet` + `go test ./...` zielone; nowy
+`analytics_weeks_test.go` (ISO + retencja wazona) — celowo zepsuty kod
+padal, po naprawie przechodzi; `pnpm typecheck`, `check:l10n` (1610
+kluczy na locale), `pnpm test` 123/123; `admin-analytics.spec.ts` 12/12
+z nowa asercja na skale procentow (przy przywroconym `* 100` pada z
+"200.00%"). Zrzuty ekranu zakladek Jakosc AI / Koszty / Lejek tamze.
+
+MIGRACJE ZWERYFIKOWANE LOKALNIE (2026-08-28). Postawiony PostgreSQL 17
++ pgvector na porcie 55432 (osobno od cloud-sql-proxy, ktory siedzi na
+5432 i jest wpiety w staging — celowo nietkniety). Wynik:
+- `migrate up` od ZERA przez wszystkie 102 migracje: czysto, `dirty = f`;
+- `down 2` + `up` z powrotem: czysto, wiec rollback dziala;
+- `go test ./...` z DATABASE_URL, czyli z AKTYWNYM testem integracyjnym:
+  wszystkie 30 zapytan analityki wykonuje sie na prawdziwej bazie,
+  wraz z asercjami na format etykiety, jeden wiersz kosztu na sesje
+  i NULL dla nieznanego stt_model.
+
+Przy okazji, sprawdzone zapytaniem, nie z glowy: stara maska 'YYYY-IW'
+psula sie na DWA sposoby. Rozbicie — 1.01.2027 nalezy do tygodnia ISO 53
+roku 2026, ale dostawal etykiete '2027-53' i ladowal na koncu osi.
+Sklejenie — etykieta '2028-52' obejmuje ZARAZEM 1-2 stycznia 2028
+(tydzien ISO 52/2027) i 25-31 grudnia 2028 (tydzien ISO 52/2028), czyli
+sesje z odstepem jedenastu miesiecy sumowaly sie w jeden slupek. To samo
+w 2029 i 2030. Wczesniejszy opis w tym pliku podawal zly przyklad.
+
+DEPLOY: `ci.yml` na push do `main` buduje obraz `superwizor-migrator`,
+robi `gcloud run jobs deploy db-migrator` i `jobs execute --wait`
+(krok "Deploy and Run Migration Job", linia 206) — a DOPIERO POTEM
+wdraza Cloud Run, w tym clinical-svc (linia 347). Czyli schemat idzie
+przed kodem, a nieudana migracja wywala pipeline i blokuje deploy.
+Migracji NIE trzeba aplikowac recznie — wczesniejsza notatka w tym
+miejscu byla bledna i mylila to z Cloud Functions (llm-worker,
+stt-worker), ktore faktycznie stawia terragrunt, nie CI.
+
+ODLOZONE swiadomie: nazwy pol proto `kpi_monthly_*` i `kpi_failure_rate_7d`
+zostaja (zmiana lamie kontrakt, etykiety dla uzytkownika juz mowia prawde);
+`GetRevenueTrend` nadal ma pola o mylacych nazwach, ale panel go nie
+renderuje; kafelki nie odrozniaja "0 z fail-soft" od prawdziwego zera;
+`GetActivationRate` przy krotkim zakresie jest z natury zanizony (konto
+zalozone wczoraj nie zdazylo sie aktywowac) — opisane w podpowiedzi
+kafelka zamiast bramki dojrzalosci, bo to decyzja produktowa.
+
+WYKRYTE PRZY OKAZJI, NIE NAPRAWIONE TUTAJ: `CreateUser` w
+identity-svc/queries/users.sql wstawia 10 kolumn, a wygenerowany
+users.sql.go tylko 8 — od commita `32eac303` (2026-07-28, "save current
+work"), ktory zmienil .sql i nie ruszyl generowanego pliku.
+
+To NIE jest utrata danych, sprawdzone: produkcja wykonuje stala z Go, a
+`CreateUserRequest` w proto w ogole nie ma tych pol. Rejestracja jest
+dwuetapowa z zalozenia (CreateUser -> UpdateProfile), a telefon jest
+wymagany w schemacie formularza, wiec bramka `hasExtras` zawsze przepuszcza
+UpdateProfile z telefonem i zgoda marketingowa. Problem jest taki, ze plik
+.sql klamie o tym, co robi kod, i nastepne `sqlc generate` wywali build
+w czterech call-site'ach. Osobne zadanie.
+
 ### Potok wnioskowania na Flash — WDROZONE 2026-08-26, benchmark w toku
 
 Galaz `perf/potok-flash` (2 commity, niezmergowana). S2 i S4 przeszly z
