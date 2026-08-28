@@ -1,0 +1,17 @@
+=== go build / vet / test (clinical-svc) ===
+?   	github.com/superwizor-ai/backend/services/clinical-svc	[no test files]
+?   	github.com/superwizor-ai/backend/services/clinical-svc/cmd/ontology-seed	[no test files]
+?   	github.com/superwizor-ai/backend/services/clinical-svc/cmd/purger	[no test files]
+?   	github.com/superwizor-ai/backend/services/clinical-svc/cmd/server	[no test files]
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/actionplan	(cached)
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc	(cached)
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres	(cached)
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db	(cached)
+?   	github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/pubsub	[no test files]
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/chat	(cached)
+ok  	github.com/superwizor-ai/backend/services/clinical-svc/internal/grouping	(cached)
+
+=== build pozostalych serwisow ===
+billing-svc    OK
+identity-svc   OK
+ingestion-svc  OK

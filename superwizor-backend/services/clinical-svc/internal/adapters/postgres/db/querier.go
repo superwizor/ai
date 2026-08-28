@@ -131,20 +131,36 @@ type Querier interface {
 	// distinguish "not found / not a patient" from success.
 	DeletePatientUser(ctx context.Context, id uuid.UUID) (int64, error)
 	// CROSS-SERVICE READ: analytics-only
-	// Uses separate subqueries to prevent row multiplication from 1:N joins
-	GetAIQualityKPIs(ctx context.Context) (GetAIQualityKPIsRow, error)
+	// Podzapytanie dla latencji, żeby JOIN 1:N nie mnożył wierszy sesji.
+	// Mianownik awaryjności to sesje w stanie KOŃCOWYM: COMPLETED + FAILED.
+	// Sesja w trakcie przetwarzania nie jest jeszcze ani sukcesem, ani porażką,
+	// a CANCELED to decyzja użytkownika, nie awaria systemu — trzymanie ich
+	// w mianowniku zaniżało wskaźnik tym bardziej, im więcej było ruchu.
+	// Wynik w procentach (0–100).
+	GetAIQualityKPIs(ctx context.Context, since time.Time) (GetAIQualityKPIsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetActivationRate(ctx context.Context) (float64, error)
+	GetActivationRate(ctx context.Context, since time.Time) (float64, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetActivationTimeHistogram(ctx context.Context) ([]GetActivationTimeHistogramRow, error)
+	// ORDER BY po najmniejszej liczbie godzin w kubełku — kubełki są rozłącznymi
+	// przedziałami, więc to je porządkuje chronologicznie. Bez tego kolejność
+	// słupków na osi X zależała od planu wykonania.
+	GetActivationTimeHistogram(ctx context.Context, since time.Time) ([]GetActivationTimeHistogramRow, error)
 	GetAudioUploadSize(ctx context.Context, id uuid.UUID) (*int64, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetAvgSessionDuration(ctx context.Context) (float64, error)
+	GetAvgSessionDuration(ctx context.Context, since time.Time) (float64, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetAvgTokenUtilization(ctx context.Context) (float64, error)
+	// Iloraz sum, nie średnia ilorazów: AVG(utilization_pct) dawał tej samej
+	// wagi organizacji z limitem 10 tys. tokenów co organizacji z limitem
+	// 10 mln. Widok od 000102 zwraca jeden zakres licznika na okres, więc
+	// sumy nie liczą tych samych tokenów dwa razy.
+	// Okres rozliczeniowy to PRZEDZIAL, nie zdarzenie punktowe. Filtr po samym
+	// period_start zostawialby tylko cykle rozpoczete wewnatrz okna — czyli te
+	// ledwie rozpoczete, z zuzyciem bliskim zeru — a dla planow rocznych nie
+	// zostawialby zadnego. Bierzemy liczniki, ktorych okres NACHODZI na okno.
+	GetAvgTokenUtilization(ctx context.Context, since time.Time) (float64, error)
 	// Lejek zaproszeń do aplikacji klienta. patient_file_id odróżnia
 	// zaproszenie klienta od zaproszenia terapeuty do organizacji.
-	GetClientInvitationFunnel(ctx context.Context) (GetClientInvitationFunnelRow, error)
+	GetClientInvitationFunnel(ctx context.Context, since time.Time) (GetClientInvitationFunnelRow, error)
 	// docs/39 PR13: fetch a note for the hard-delete authz check. Handler
 	// verifies patient_file_id belongs to the caller and kind = CLIENT_NOTE.
 	GetClientNoteForDelete(ctx context.Context, id uuid.UUID) (GetClientNoteForDeleteRow, error)
@@ -160,11 +176,24 @@ type Querier interface {
 	// Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
 	// client_hidden_at to sygnał odrzucenia — raport dotarł, ale klient go
 	// schował; bez tego widzielibyśmy tylko wysyłkę, nie odbiór.
-	GetClientSharingTrend(ctx context.Context) ([]GetClientSharingTrendRow, error)
+	//
+	// Etykieta jak wszędzie indziej ('IYYY-IW'). Wcześniej było 'MM-DD' bez
+	// roku, więc styczeń sortował się przed grudniem, a dwa tygodnie z różnych
+	// lat mogły się skleić. Okno bierze się z zakresu, nie z zaszytych 12 tygodni.
+	GetClientSharingTrend(ctx context.Context, since time.Time) ([]GetClientSharingTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetCohortRetention(ctx context.Context) ([]GetCohortRetentionRow, error)
+	// Bez LIMIT-u (poprzedni `LIMIT 200` obcinał NAJNOWSZE kohorty, bo sortowanie
+	// rosło od najstarszej). Zakres tnie po dacie rejestracji, więc macierz jest
+	// ograniczona kohortami z wybranego okresu, a nie przypadkowym progiem.
+	// `pct` w procentach (0–100); `cohort_size` wyjeżdża po to, żeby KPI retencji
+	// mogło ważyć kohorty ich liczebnością zamiast uśredniać ilorazy.
+	GetCohortRetention(ctx context.Context, since time.Time) ([]GetCohortRetentionRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetCostTrend(ctx context.Context, createdAt time.Time) ([]GetCostTrendRow, error)
+	// COALESCE na każdym składniku, żeby stos STT+LLM sumował się do linii Σ.
+	// Bez tego raport z niewycenialnym modelem (llm_cost_usd IS NULL, celowo —
+	// llm-worker nie zapisuje zera) wypadał ze średniej sumy, ale zostawał
+	// w średniej STT, i te trzy serie liczyły się na trzech różnych zbiorach.
+	GetCostTrend(ctx context.Context, since time.Time) ([]GetCostTrendRow, error)
 	// Compute the default session.name as production would set it on
 	// create. Used by ingestion-svc.CompleteAudioUpload when populating
 	// the column for a brand-new session. The COALESCE guards against
@@ -176,15 +205,25 @@ type Querier interface {
 	GetExpiredPatientUsers(ctx context.Context) ([]uuid.UUID, error)
 	GetExpiredSessions(ctx context.Context) ([]uuid.UUID, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetFailureRateTrend(ctx context.Context, createdAt time.Time) ([]GetFailureRateTrendRow, error)
+	// Wynik w procentach (0–100); mianownik jak w GetAIQualityKPIs — tylko
+	// stany końcowe. `total` też liczy stany końcowe, żeby tooltip zgadzał się
+	// z wykresem.
+	GetFailureRateTrend(ctx context.Context, since time.Time) ([]GetFailureRateTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetFunnelSteps(ctx context.Context) (GetFunnelStepsRow, error)
+	// Krok „przeczytanie raportu" liczony TU, a nie osobnym zapytaniem po
+	// gołej tabeli zdarzeń. Poprzednio pochodził z innej populacji (bez filtra
+	// kont testowych, bez sprawdzenia roli, bez okna czasowego), więc lejek
+	// potrafił się rozszerzać zamiast zwężać.
+	GetFunnelSteps(ctx context.Context, since time.Time) (GetFunnelStepsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetHourlyHeatmap(ctx context.Context) ([]GetHourlyHeatmapRow, error)
+	// DOW i HOUR w Europe/Warsaw. W UTC sesja o 21:30 czasu polskiego trafiała
+	// latem do kubełka 19:00, a sesja z poniedziałku 00:30 — do niedzieli.
+	// DOW 0 = niedziela, zgodnie z mapowaniem nazw dni na froncie.
+	GetHourlyHeatmap(ctx context.Context, since time.Time) ([]GetHourlyHeatmapRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetIssueCategories(ctx context.Context) ([]GetIssueCategoriesRow, error)
+	GetIssueCategories(ctx context.Context, since time.Time) ([]GetIssueCategoriesRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetLatencyTrend(ctx context.Context, sessionAt time.Time) ([]GetLatencyTrendRow, error)
+	GetLatencyTrend(ctx context.Context, since time.Time) ([]GetLatencyTrendRow, error)
 	// Optimistic-lock read. FOR UPDATE on the modality row serializes two
 	// concurrent admin saves on the same modality (the version check then
 	// decides the loser deterministically).
@@ -195,7 +234,7 @@ type Querier interface {
 	GetLatestSuggestionDismissForDimension(ctx context.Context, arg GetLatestSuggestionDismissForDimensionParams) (GetLatestSuggestionDismissForDimensionRow, error)
 	GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetModalityDistribution(ctx context.Context) ([]GetModalityDistributionRow, error)
+	GetModalityDistribution(ctx context.Context, since time.Time) ([]GetModalityDistributionRow, error)
 	// Org analytics (docs/38 §7) — per-therapist METADATA aggregates for
 	// the ORG_ADMIN dashboard. Hard privacy boundary (§7.3): counts,
 	// durations and dates only. No transcript/report/note content, no
@@ -205,10 +244,10 @@ type Querier interface {
 	// a point-in-time count of open kartoteki.
 	GetOrgTherapistMetrics(ctx context.Context, arg GetOrgTherapistMetricsParams) ([]GetOrgTherapistMetricsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetOverallSatisfactionRate(ctx context.Context) (float64, error)
+	GetOverallSatisfactionRate(ctx context.Context, since time.Time) (float64, error)
 	// Ile prób kodu parowania potrzebuje klient. Rozkład, nie średnia —
 	// interesuje nas ogon, czyli ci, którzy męczą się kilka razy.
-	GetPairingCodeFriction(ctx context.Context) ([]GetPairingCodeFrictionRow, error)
+	GetPairingCodeFriction(ctx context.Context, since time.Time) ([]GetPairingCodeFrictionRow, error)
 	// Kept for code paths that don't need user fields (e.g. internal
 	// authz/ownership checks). External callers use GetPatientFileWithUser.
 	GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error)
@@ -250,23 +289,35 @@ type Querier interface {
 	// address the recipient's Firestore inbox for live web-panel refresh.
 	GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (GetPatientUserEmailForFileRow, error)
 	// CROSS-SERVICE READ: analytics-only
+	// Migawka „teraz" — rozkład aktywnych subskrypcji nie ma okna czasowego.
 	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetPlatformFixedCosts(ctx context.Context) ([]GetPlatformFixedCostsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	// Aggregated rating counts for the admin feedback dashboard KPI cards.
-	GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error)
-	// CROSS-SERVICE READ: analytics-only
-	GetReadReportCount(ctx context.Context) (int64, error)
+	// Liczniki ocen do kafelków zakładki „Feedback raportów".
+	GetRatingsKPIs(ctx context.Context, since time.Time) (GetRatingsKPIsRow, error)
 	// Gdzie czytane są raporty. client_platform jest wypełniany przy
 	// każdym zdarzeniu klienckim, więc to działa od pierwszego dnia.
-	GetReadingPlatformSplit(ctx context.Context) ([]GetReadingPlatformSplitRow, error)
+	GetReadingPlatformSplit(ctx context.Context, since time.Time) ([]GetReadingPlatformSplitRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetRegistrationsDetail(ctx context.Context, createdAt time.Time) ([]GetRegistrationsDetailRow, error)
+	// Kolumny login_count i session_count nie mają własnego okna czasowego i
+	// nie potrzebują go: zewnętrzny WHERE zostawia tylko konta założone po
+	// `since`, a ani sesja, ani zdarzenie nie może powstać przed założeniem
+	// konta. Liczby są więc z definicji z wybranego okresu.
+	GetRegistrationsDetail(ctx context.Context, since time.Time) ([]GetRegistrationsDetailRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetRegistrationsTrend(ctx context.Context, createdAt time.Time) ([]GetRegistrationsTrendRow, error)
+	// Filtr kont wewnętrznych jest tu SZERSZY niż w pozostałych zapytaniach
+	// (adresy z '+', @superwizor.ai, konto założyciela). To celowe: liczba
+	// rejestracji trafia do mailingu, więc odsiewamy też własne konta robocze.
+	// Nie porównuj tej liczby wprost z pierwszym krokiem lejka — mianowniki
+	// są różne z założenia.
+	GetRegistrationsTrend(ctx context.Context, since time.Time) ([]GetRegistrationsTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetRelabelRate(ctx context.Context) (float64, error)
+	// Wynik w procentach (0–100). Dochodzi filtr kont testowych — bez niego
+	// wskaźnik liczył sesje z przebiegów E2E, które etykiet nie poprawiają.
+	// NOT EXISTS zamiast JOIN, bo analytics_events.therapist_id jest opcjonalne
+	// (zdarzenia systemowe) — INNER JOIN wyciąłby je z mianownika.
+	GetRelabelRate(ctx context.Context, since time.Time) (float64, error)
 	// Report-rating queries. Spec: docs/10_REPORT_CUSTOMIZATION.md §5.
 	// All paths assume the gRPC handler has already validated that the
 	// therapist owns the session that owns the report (auth happens at
@@ -276,37 +327,63 @@ type Querier interface {
 	// licznik przy zejściu aplikacji w tło, więc to czas AKTYWNY, a nie
 	// czas otwartego ekranu.
 	//
-	// Różnica started-finished to czytania przerwane: użytkownik otworzył
-	// raport i wyszedł bez domknięcia sesji czytania.
-	GetReportReadingStats(ctx context.Context) (GetReportReadingStatsRow, error)
+	// Różnica started-finished to czytania przerwane. Może wyjść ujemna na
+	// granicy okna (domknięcie czytania rozpoczętego przed `since`), dlatego
+	// kafelek na froncie klamruje ją do zera.
+	GetReportReadingStats(ctx context.Context, since time.Time) (GetReportReadingStatsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	// MRR snapshot: counts active subscriptions per plan tier
+	// Wejscie dla KPI „Retencja 30-dniowa". Osobne zapytanie od macierzy powyzej,
+	// bo ten wskaznik z definicji patrzy cztery tygodnie wstecz. Gdyby dzielil
+	// okno z TimeRangeSelectorem, przy zakresie „7 dni" ani jedna kohorta nie
+	// bylaby jeszcze dojrzala i kafelek pokazywalby 0% — liczbe wygladajaca
+	// wiarygodnie i falszywa. Okno jest wiec stale, tak jak w GetWAU.
+	//
+	// LEFT JOIN, nie INNER: kohorta, z ktorej NIKT nigdy nie nagral sesji, ma
+	// wrocic z pustym `week` i zerowym `pct`, zeby wejsc do MIANOWNIKA KPI.
+	// Przy INNER JOIN znikala z rachunku i zawyzala wynik.
+	GetRetentionCohorts(ctx context.Context) ([]GetRetentionCohortsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	// Migawka MRR per plan, nie trend — nazwa została z czasów, gdy miał nim
+	// być. Panel tego nie renderuje; handler traktuje ją fail-soft.
 	GetRevenueTrend(ctx context.Context) ([]GetRevenueTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetSatisfactionTrend(ctx context.Context, dollar_1 time.Time) ([]GetSatisfactionTrendRow, error)
+	GetSatisfactionTrend(ctx context.Context, since time.Time) ([]GetSatisfactionTrendRow, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetSessionDurationTrend(ctx context.Context, createdAt time.Time) ([]GetSessionDurationTrendRow, error)
+	GetSessionDurationTrend(ctx context.Context, since time.Time) ([]GetSessionDurationTrendRow, error)
 	GetSessionWithDetails(ctx context.Context, id uuid.UUID) (GetSessionWithDetailsRow, error)
 	GetSessionsForExport(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
 	// CROSS-SERVICE READ: analytics-only
+	// „W tym tygodniu" to tydzień KALENDARZOWY od poniedziałku czasu polskiego,
+	// zgodnie z opisem kafelka. Poprzednio liczyło kroczące 7 dni.
 	GetSessionsThisWeek(ctx context.Context) (int64, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetSessionsTrend(ctx context.Context, createdAt time.Time) ([]GetSessionsTrendRow, error)
+	GetSessionsTrend(ctx context.Context, since time.Time) ([]GetSessionsTrendRow, error)
 	// Used by CreatePatientFile to default the new patient's ui_language
 	// when the caller didn't pass one. Returns '' if the therapist row is
 	// somehow missing (shouldn't happen — auth interceptor would reject).
 	GetTherapistUILanguage(ctx context.Context, id uuid.UUID) (string, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetTokenUsageTrend(ctx context.Context, createdAt time.Time) ([]GetTokenUsageTrendRow, error)
+	GetTokenUsageTrend(ctx context.Context, since time.Time) ([]GetTokenUsageTrendRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetTokenUtilizationHeatmap(ctx context.Context) ([]GetTokenUtilizationHeatmapRow, error)
+	// Bez LIMIT-u. Poprzedni `ORDER BY 2 ASC LIMIT 50` obcinał NAJNOWSZE
+	// tygodnie, więc heatmapa pokazywała wiosnę, gdy panel stał na „7 dni".
+	// Nachodzenie okresu na okno, nie jego poczatek — patrz GetAvgTokenUtilization.
+	GetTokenUtilizationHeatmap(ctx context.Context, since time.Time) ([]GetTokenUtilizationHeatmapRow, error)
 	GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (Transcript, error)
 	GetTranscriptForRebuild(ctx context.Context, sessionID uuid.UUID) (GetTranscriptForRebuildRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetUnitEconomicsKPIs(ctx context.Context) (GetUnitEconomicsKPIsRow, error)
+	// Wszystkie trzy liczby z JEDNEGO okna — wybranego zakresu. Poprzednio
+	// średnia szła po całej historii, a sumy po zaszytych 30 dniach, więc
+	// trzy kafelki w jednym rzędzie opisywały trzy różne przedziały czasu.
+	GetUnitEconomicsKPIs(ctx context.Context, since time.Time) (GetUnitEconomicsKPIsRow, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetUploadFailuresTrend(ctx context.Context, occurredAt time.Time) ([]GetUploadFailuresTrendRow, error)
+	// Mianownik to SAME próby wgrania. Poprzednio było COUNT(*) po zbiorze
+	// {upload.initiated, upload.failed}, a te zdarzenia nie są rozłączne —
+	// jedno nieudane wgranie emituje oba, więc wskaźnik wychodził
+	// failed/(initiated+failed) i systematycznie zaniżał awaryjność.
+	// Wynik w procentach (0–100).
+	GetUploadFailuresTrend(ctx context.Context, since time.Time) ([]GetUploadFailuresTrendRow, error)
 	// first_name + last_name for a user (therapist), used by
 	// SavePatientNote to populate the action-plan e-mail's
 	// therapist_display_name. Both columns are NOT NULL on the users table
@@ -322,10 +399,44 @@ type Querier interface {
 	// yet (rare after the trial-signup bootstrap — but handled
 	// defensively in the caller as FailedPrecondition).
 	GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
+	// ─────────────────────────────────────────────────────────────────────
+	// Zapytania panelu /admin/analytics.
+	//
+	// Trzy konwencje obowiązujące w CAŁYM tym pliku — złamanie którejkolwiek
+	// daje liczbę, która wygląda wiarygodnie i jest zła:
+	//
+	// 1. ETYKIETA TYGODNIA to `TO_CHAR(…, 'IYYY-IW')`, nigdy `'YYYY-IW'`.
+	//    IYYY to rok ISO, YYYY kalendarzowy — te kalendarze rozjeżdżają się
+	//    na przełomie roku. 28.12.2026 należy do tygodnia ISO 1 roku 2027;
+	//    maska 'YYYY-IW' dała mu etykietę '2026-01', czyli wsadziła go do
+	//    słupka ze stycznia 2026. Przy poprawnej masce etykiety sortują się
+	//    leksykograficznie tak samo jak chronologicznie, więc GROUP BY 1 /
+	//    ORDER BY 1 po etykiecie jest bezpieczne.
+	//
+	// 2. KUBEŁKOWANIE JEST W `Europe/Warsaw`, nie w UTC. `date_trunc` i
+	//    `EXTRACT` na wartości timestamptz liczą w strefie sesji bazy, czyli
+	//    w praktyce w UTC — sesja z poniedziałku 00:30 czasu polskiego wpadała
+	//    do poprzedniego tygodnia, a wieczorna do złej godziny na heatmapie.
+	//    Granice wybranego zakresu ($1) zostają instantami i porównują się
+	//    z timestamptz bez konwersji.
+	//
+	// 3. WSKAŹNIK PROCENTOWY WYCHODZI JAKO 0–100, nie jako ułamek. Frontend
+	//    rysował ułamek pod etykietą „%", więc awaryjność 2% wyglądała na
+	//    wykresie jak 0,02% — przy KPI obok, który mnożył przez 100.
+	//
+	// Każde zapytanie, które ma sens w oknie czasowym, przyjmuje sqlc.arg(since)
+	// z TimeRangeSelector. Zapytania bez tego parametru (GetWAU,
+	// GetPlanDistribution, GetRevenueTrend) są migawkami z definicji i ich
+	// kafelki mówią to wprost.
+	// ─────────────────────────────────────────────────────────────────────
 	// CROSS-SERVICE READ: analytics-only
+	// Kroczące 7 dni Z DEFINICJI (Weekly Active Users) — celowo nie reaguje
+	// na TimeRangeSelector.
 	GetWAU(ctx context.Context) (int64, error)
 	// CROSS-SERVICE READ: analytics-only
-	GetWauTrend(ctx context.Context, dollar_1 time.Time) ([]GetWauTrendRow, error)
+	// `week` w widoku to instant lokalnej północy poniedziałku (000102),
+	// więc etykietę liczymy z powrotem w Europe/Warsaw.
+	GetWauTrend(ctx context.Context, since time.Time) ([]GetWauTrendRow, error)
 	// docs/39 PR13: the client removes their OWN note everywhere (including
 	// from the therapist if it was sent). Guarded to CLIENT_NOTE so a therapist
 	// note can never be destroyed through this path. Returns rows affected so

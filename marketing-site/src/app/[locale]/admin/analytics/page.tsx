@@ -56,15 +56,18 @@ const getContrastColor = (cell: any) => {
 export default function AnalyticsPage() {
   const t = useTranslations("admin.analytics");
   const locale = useLocale();
-  const { rate: plnRate, effectiveDate: plnDate, loading: plnLoading } = useNbpRate();
+  const { rate: plnRate, effectiveDate: plnDate, loading: plnLoading, isFallback: plnIsFallback } = useNbpRate();
   const [currency, setCurrency] = useState<"USD" | "PLN">("USD");
 
   // USD → PLN formatter
   const toPlnLabel = (usd: number, dec = 2) => {
     const pln = (usd * plnRate).toFixed(dec);
     const rateStr = plnRate.toFixed(2);
-    const dateStr = plnDate ? ` z ${plnDate}` : "";
-    return `≈ ${pln} PLN · kurs NBP ${rateStr}${dateStr}`;
+    // Kurs zapasowy to stała w kodzie, nie notowanie NBP — podpisanie go
+    // nazwą banku robi z przybliżenia fałszywie precyzyjną liczbę.
+    if (plnIsFallback && !plnLoading) return `≈ ${pln} PLN · ${t("rateFallback")} ${rateStr}`;
+    const dateStr = plnDate ? ` ${t("rateFrom")} ${plnDate}` : "";
+    return `≈ ${pln} PLN · ${t("rateNbp")} ${rateStr}${dateStr}`;
   };
 
   // PLN → USD formatter (used when currency is PLN)
@@ -280,6 +283,16 @@ export default function AnalyticsPage() {
   const hasNonZeroData = (arr: any[] | undefined, key: string) =>
     arr && arr.length > 0 && arr.some((item: any) => Number(item[key]) > 0);
 
+  // Skrót liczbowy na osi Y. Liczniki tokenów bywają siedmiocyfrowe, a przy
+  // ujemnym marginesie wykresu pełna etykieta wychodziła poza obszar i była
+  // renderowana ucięta ("00000" zamiast "500000").
+  const compactNumber = (value: number) => {
+    const trim = (n: number) => String(Number(n.toFixed(1)));
+    if (Math.abs(value) >= 1_000_000) return `${trim(value / 1_000_000)}M`;
+    if (Math.abs(value) >= 1_000) return `${trim(value / 1_000)}k`;
+    return String(value);
+  };
+
   // Helper selectors / formatters
   const wauSparkline = data.wauTrend.map((t) => t.value);
   const sessionsSparkline = data.sessionsTrend.map((t) => t.value);
@@ -373,7 +386,9 @@ export default function AnalyticsPage() {
     id: org,
     data: sortedWeeks.map((w) => ({
       x: w,
-      y: orgsMap[org][w] || 0,
+      // null, nie 0 — organizacja bez licznika w tym tygodniu nie miała
+      // zerowej utylizacji, tylko nie miała pomiaru. Nivo rysuje pustą komórkę.
+      y: orgsMap[org][w] ?? null,
     })),
   }));
 
@@ -382,7 +397,7 @@ export default function AnalyticsPage() {
   const cWeeksSet = new Set<string>();
   data.cohortRetention.forEach((item) => {
     if (!cohortsMap[item.cohort]) cohortsMap[item.cohort] = {};
-    cohortsMap[item.cohort][item.week] = item.pct * 100;
+    cohortsMap[item.cohort][item.week] = item.pct;
     cWeeksSet.add(item.week);
   });
   const sortedCWeeks = Array.from(cWeeksSet).sort();
@@ -390,7 +405,9 @@ export default function AnalyticsPage() {
     id: cohort,
     data: sortedCWeeks.map((w) => ({
       x: w,
-      y: cohortsMap[cohort][w] || 0,
+      // Kohorta nie mogła być aktywna przed własną rejestracją — te komórki
+      // są puste z definicji i nie mają prawa wyglądać jak zmierzone 0%.
+      y: cohortsMap[cohort][w] ?? null,
     })),
   }));
 
@@ -732,10 +749,13 @@ export default function AnalyticsPage() {
               info={t("kpi.readAbandonedInfo")}
               value={
                 Number(data.reportReading?.started ?? 0) > 0
-                  ? ((Number(data.reportReading!.started) -
-                      Number(data.reportReading!.finished)) /
-                      Number(data.reportReading!.started)) *
-                    100
+                  ? Math.max(
+                      0,
+                      ((Number(data.reportReading!.started) -
+                        Number(data.reportReading!.finished)) /
+                        Number(data.reportReading!.started)) *
+                        100,
+                    )
                   : 0
               }
               suffix=" %"
@@ -900,11 +920,9 @@ export default function AnalyticsPage() {
                 <span className="font-mono text-[10px] text-mist/60 uppercase">
                   1 USD = {plnRate.toFixed(4)} PLN
                 </span>
-                {plnDate && (
-                  <span className="font-mono text-[10px] text-mist/40">
-                    · NBP {plnDate}
-                  </span>
-                )}
+                <span className="font-mono text-[10px] text-mist/40">
+                  {plnIsFallback ? `· ${t("rateFallbackBadge")}` : plnDate ? `· NBP ${plnDate}` : "· NBP"}
+                </span>
               </div>
             ) : <div />}
 
@@ -985,11 +1003,11 @@ export default function AnalyticsPage() {
 
             <ChartCard title={t("chart.tokenUsage")} description={t("chart.tokenUsageDesc")} info={t("chart.tokenUsageInfo")} isEmpty={!hasNonZeroData(tokenUsageTrendData, "inputTokens")}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tokenUsageTrendData} margin={{ left: -20, right: 10, bottom: 0 }}>
+                <BarChart data={tokenUsageTrendData} margin={{ left: 0, right: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.glassBorder} opacity={0.2} />
                   <XAxis dataKey="label" stroke={chartTheme.mist} fontSize={10} tickLine={false} />
-                  <YAxis stroke={chartTheme.mist} fontSize={10} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <YAxis stroke={chartTheme.mist} fontSize={10} tickLine={false} tickFormatter={compactNumber} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => Number(value).toLocaleString(locale)} />
                   <Legend wrapperStyle={{ fontSize: 10, color: chartTheme.mist }} />
                   <Bar dataKey="inputTokens" name="Input" fill={chartTheme.mist} radius={[4, 4, 0, 0]} />
                   <Bar dataKey="outputTokens" name="Output" fill={chartTheme.ember} radius={[4, 4, 0, 0]} />
@@ -1011,10 +1029,14 @@ export default function AnalyticsPage() {
                   colors={{
                     type: "sequential",
                     scheme: "magma",
+                    // Bez jawnego minimum skala zaczyna sie od najmniejszej
+                    // ZMIERZONEJ wartosci, wiec 12% utylizacji wygladaloby
+                    // jak zero. Pusta komorka to `emptyColor`, nie kolor skali.
+                    minValue: 0,
                   }}
                   emptyColor="#555"
                   enableLabels={true}
-                  label={(cell: any) => cell.value === 0 ? "" : `${Number(cell.value).toFixed(0)}%`}
+                  label={(cell: any) => cell.value == null ? "" : `${Number(cell.value).toFixed(0)}%`}
                   labelTextColor={getContrastColor}
                   theme={{
                     tooltip: { container: { background: chartTheme.surfaceTeal, color: chartTheme.frost } },
@@ -1151,8 +1173,8 @@ export default function AnalyticsPage() {
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <KpiCard title={t("kpi.avgLatency")} info={t("kpi.avgLatencyInfo")} value={data.kpiAvgPipelineLatency / 60} suffix=" min" decimals={1} />
-            <KpiCard title={t("kpi.failureRate7d")} info={t("kpi.failureRate7dInfo")} value={data.kpiFailureRate7d * 100} suffix="%" decimals={2} />
-            <KpiCard title={t("kpi.relabelRate")} info={t("kpi.relabelRateInfo")} value={data.kpiRelabelRate * 100} suffix="%" decimals={1} />
+            <KpiCard title={t("kpi.failureRate7d")} info={t("kpi.failureRate7dInfo")} value={data.kpiFailureRate7d} suffix="%" decimals={2} />
+            <KpiCard title={t("kpi.relabelRate")} info={t("kpi.relabelRateInfo")} value={data.kpiRelabelRate} suffix="%" decimals={1} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1261,10 +1283,12 @@ export default function AnalyticsPage() {
                     colors={{
                       type: "sequential",
                       scheme: "blues",
+                      minValue: 0,
+                      maxValue: 100,
                     }}
                     emptyColor="#555"
                     enableLabels={true}
-                    label={(cell: any) => cell.value === 0 ? "" : `${Number(cell.value).toFixed(0)}%`}
+                    label={(cell: any) => cell.value == null ? "" : `${Number(cell.value).toFixed(0)}%`}
                     labelTextColor={getContrastColor}
                     theme={{
                       tooltip: { container: { background: chartTheme.surfaceTeal, color: chartTheme.frost } },

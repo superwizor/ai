@@ -34,8 +34,10 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 
 	// --- 1. Test Querying Views on Empty/Existing Database (Ensure NO division-by-zero crashes) ---
 	t.Run("Views query without errors on empty or existing database", func(t *testing.T) {
+		since := time.Now().AddDate(0, 0, -365)
+
 		// Test each views query method
-		_, err := q.GetActivationRate(ctx)
+		_, err := q.GetActivationRate(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetWAU(ctx)
@@ -44,10 +46,8 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		_, err = q.GetSessionsThisWeek(ctx)
 		assert.NoError(t, err)
 
-		_, err = q.GetOverallSatisfactionRate(ctx)
+		_, err = q.GetOverallSatisfactionRate(ctx, since)
 		assert.NoError(t, err)
-
-		since := time.Now().AddDate(0, 0, -365)
 
 		_, err = q.GetWauTrend(ctx, since)
 		assert.NoError(t, err)
@@ -64,16 +64,16 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		_, err = q.GetPlanDistribution(ctx)
 		assert.NoError(t, err)
 
-		_, err = q.GetUnitEconomicsKPIs(ctx)
+		_, err = q.GetUnitEconomicsKPIs(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetAvgTokenUtilization(ctx)
+		_, err = q.GetAvgTokenUtilization(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetCostTrend(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetTokenUtilizationHeatmap(ctx)
+		_, err = q.GetTokenUtilizationHeatmap(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetRevenueTrend(ctx)
@@ -82,16 +82,16 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		_, err = q.GetTokenUsageTrend(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetAIQualityKPIs(ctx)
+		_, err = q.GetAIQualityKPIs(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetRelabelRate(ctx)
+		_, err = q.GetRelabelRate(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetSatisfactionTrend(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetIssueCategories(ctx)
+		_, err = q.GetIssueCategories(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetLatencyTrend(ctx, since)
@@ -100,28 +100,28 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		_, err = q.GetFailureRateTrend(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetFunnelSteps(ctx)
+		_, err = q.GetFunnelSteps(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetReadReportCount(ctx)
+		_, err = q.GetCohortRetention(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetCohortRetention(ctx)
+		_, err = q.GetRetentionCohorts(ctx)
 		assert.NoError(t, err)
 
-		_, err = q.GetActivationTimeHistogram(ctx)
+		_, err = q.GetActivationTimeHistogram(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetHourlyHeatmap(ctx)
+		_, err = q.GetHourlyHeatmap(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetUploadFailuresTrend(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetModalityDistribution(ctx)
+		_, err = q.GetModalityDistribution(ctx, since)
 		assert.NoError(t, err)
 
-		_, err = q.GetAvgSessionDuration(ctx)
+		_, err = q.GetAvgSessionDuration(ctx, since)
 		assert.NoError(t, err)
 
 		_, err = q.GetSessionDurationTrend(ctx, since)
@@ -130,6 +130,8 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 
 	// --- 2. Insert mock data and verify views calculations ---
 	t.Run("Views aggregate mock data correctly", func(t *testing.T) {
+		since := time.Now().AddDate(0, 0, -365)
+
 		initialWAU, err := q.GetWAU(ctx)
 		require.NoError(t, err)
 
@@ -203,12 +205,12 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify satisfaction view returns valid satisfactionRate
-		satisfactionRate, err := q.GetOverallSatisfactionRate(ctx)
+		satisfactionRate, err := q.GetOverallSatisfactionRate(ctx, since)
 		require.NoError(t, err)
 		assert.True(t, satisfactionRate > 0)
 
 		// Verify new analytics queries output correct aggregates
-		modalities, err := q.GetModalityDistribution(ctx)
+		modalities, err := q.GetModalityDistribution(ctx, since)
 		require.NoError(t, err)
 		
 		var found bool
@@ -221,7 +223,7 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		}
 		assert.True(t, found, "CBT Test modality should be present in distribution")
 
-		avgDuration, err := q.GetAvgSessionDuration(ctx)
+		avgDuration, err := q.GetAvgSessionDuration(ctx, since)
 		require.NoError(t, err)
 		assert.Greater(t, avgDuration, float64(0))
 
@@ -230,5 +232,30 @@ func TestIntegration_AnalyticsViews(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, durationTrend)
 		assert.Greater(t, durationTrend[0].Value, float64(0))
+
+		// Etykieta tygodnia musi być rokiem ISO + numerem tygodnia ISO
+		// (migracja 000101/000102). Maska 'YYYY-IW' mieszała rok kalendarzowy
+		// z tygodniem ISO i na przełomie roku sklejała dwa różne tygodnie.
+		assert.Regexp(t, `^\d{4}-\d{2}$`, durationTrend[0].Label,
+			"etykieta tygodnia powinna mieć format IYYY-IW")
+
+		// Koszt sesji: jeden wiersz na SESJĘ, nie na raport. Regeneracja
+		// raportu nie ma prawa doliczyć transkrypcji drugi raz.
+		var costRows int
+		err = tx.QueryRow(ctx, `
+			SELECT count(*)::int FROM v_analytics_session_cost WHERE session_id = $1
+		`, sessionID).Scan(&costRows)
+		require.NoError(t, err)
+		assert.Equal(t, 1, costRows, "widok kosztu ma zwracać jeden wiersz na sesję")
+
+		// Stawka STT bierze się z transcripts.stt_model. Ten transkrypt ma
+		// 'chirp-3', którego nie ma w cenniku, więc koszt musi być NULL —
+		// nie zero. Zero cicho zaniżyłoby dashboard.
+		var sttCost *float64
+		err = tx.QueryRow(ctx, `
+			SELECT stt_cost_usd::float FROM v_analytics_session_cost WHERE session_id = $1
+		`, sessionID).Scan(&sttCost)
+		require.NoError(t, err)
+		assert.Nil(t, sttCost, "nieznany stt_model ma dawać NULL, nie 0")
 	})
 }

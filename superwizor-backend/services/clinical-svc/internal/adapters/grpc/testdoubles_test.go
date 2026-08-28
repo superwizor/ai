@@ -48,8 +48,8 @@ type fakeQuerier struct {
 	resolvePatientEmailFn func(ctx context.Context, id uuid.UUID) (*string, error)
 	setWorkingAliasFn     func(ctx context.Context, arg db.SetWorkingAliasParams) error
 
-	getModalityDistributionFn func(ctx context.Context) ([]db.GetModalityDistributionRow, error)
-	getAvgSessionDurationFn   func(ctx context.Context) (float64, error)
+	getModalityDistributionFn func(ctx context.Context, since time.Time) ([]db.GetModalityDistributionRow, error)
+	getAvgSessionDurationFn   func(ctx context.Context, since time.Time) (float64, error)
 	getSessionDurationTrendFn func(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error)
 
 	// DSAR & Purger fields
@@ -160,18 +160,18 @@ func (f *fakeQuerier) ResolvePatientEmail(ctx context.Context, id uuid.UUID) (*s
 	return f.resolvePatientEmailFn(ctx, id)
 }
 
-func (f *fakeQuerier) GetModalityDistribution(ctx context.Context) ([]db.GetModalityDistributionRow, error) {
+func (f *fakeQuerier) GetModalityDistribution(ctx context.Context, since time.Time) ([]db.GetModalityDistributionRow, error) {
 	if f.getModalityDistributionFn == nil {
 		return nil, nil
 	}
-	return f.getModalityDistributionFn(ctx)
+	return f.getModalityDistributionFn(ctx, since)
 }
 
-func (f *fakeQuerier) GetAvgSessionDuration(ctx context.Context) (float64, error) {
+func (f *fakeQuerier) GetAvgSessionDuration(ctx context.Context, since time.Time) (float64, error) {
 	if f.getAvgSessionDurationFn == nil {
 		return 0, nil
 	}
-	return f.getAvgSessionDurationFn(ctx)
+	return f.getAvgSessionDurationFn(ctx, since)
 }
 
 func (f *fakeQuerier) GetSessionDurationTrend(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error) {

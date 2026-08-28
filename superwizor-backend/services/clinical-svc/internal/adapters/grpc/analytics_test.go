@@ -116,10 +116,10 @@ func (q *fakeAnalyticsQuerier) GetWAU(ctx context.Context) (int64, error) { retu
 func (q *fakeAnalyticsQuerier) GetSessionsThisWeek(ctx context.Context) (int64, error) {
 	return 42, nil
 }
-func (q *fakeAnalyticsQuerier) GetActivationRate(ctx context.Context) (float64, error) {
+func (q *fakeAnalyticsQuerier) GetActivationRate(ctx context.Context, since time.Time) (float64, error) {
 	return 12.5, nil
 }
-func (q *fakeAnalyticsQuerier) GetOverallSatisfactionRate(ctx context.Context) (float64, error) {
+func (q *fakeAnalyticsQuerier) GetOverallSatisfactionRate(ctx context.Context, since time.Time) (float64, error) {
 	return 95.0, nil
 }
 func (q *fakeAnalyticsQuerier) GetWauTrend(ctx context.Context, since time.Time) ([]db.GetWauTrendRow, error) {
@@ -149,16 +149,16 @@ func (q *fakeAnalyticsQuerier) GetRegistrationsDetail(ctx context.Context, since
 func (q *fakeAnalyticsQuerier) GetPlanDistribution(ctx context.Context) ([]db.GetPlanDistributionRow, error) {
 	return []db.GetPlanDistributionRow{{PlanName: "Mistrzostwo", Count: 3}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetUnitEconomicsKPIs(ctx context.Context) (db.GetUnitEconomicsKPIsRow, error) {
-	return db.GetUnitEconomicsKPIsRow{AvgCostPerSession: 0.05, MonthlySttCost: 1.2, MonthlyLlmCost: 3.4}, nil
+func (q *fakeAnalyticsQuerier) GetUnitEconomicsKPIs(ctx context.Context, since time.Time) (db.GetUnitEconomicsKPIsRow, error) {
+	return db.GetUnitEconomicsKPIsRow{AvgCostPerSession: 0.05, PeriodSttCost: 1.2, PeriodLlmCost: 3.4}, nil
 }
-func (q *fakeAnalyticsQuerier) GetAvgTokenUtilization(ctx context.Context) (float64, error) {
+func (q *fakeAnalyticsQuerier) GetAvgTokenUtilization(ctx context.Context, since time.Time) (float64, error) {
 	return 75.5, nil
 }
 func (q *fakeAnalyticsQuerier) GetCostTrend(ctx context.Context, since time.Time) ([]db.GetCostTrendRow, error) {
 	return []db.GetCostTrendRow{{Label: "2026-01", SttCost: 0.01, LlmCost: 0.04, TotalCost: 0.05}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetTokenUtilizationHeatmap(ctx context.Context) ([]db.GetTokenUtilizationHeatmapRow, error) {
+func (q *fakeAnalyticsQuerier) GetTokenUtilizationHeatmap(ctx context.Context, since time.Time) ([]db.GetTokenUtilizationHeatmapRow, error) {
 	return []db.GetTokenUtilizationHeatmapRow{{OrgName: "Org 1", Week: "2026-01", Value: 80.0}}, nil
 }
 func (q *fakeAnalyticsQuerier) GetRevenueTrend(ctx context.Context) ([]db.GetRevenueTrendRow, error) {
@@ -167,42 +167,51 @@ func (q *fakeAnalyticsQuerier) GetRevenueTrend(ctx context.Context) ([]db.GetRev
 func (q *fakeAnalyticsQuerier) GetTokenUsageTrend(ctx context.Context, since time.Time) ([]db.GetTokenUsageTrendRow, error) {
 	return []db.GetTokenUsageTrendRow{{Label: "2026-01", InputTokens: 1000, OutputTokens: 500}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetAIQualityKPIs(ctx context.Context) (db.GetAIQualityKPIsRow, error) {
-	return db.GetAIQualityKPIsRow{AvgPipelineLatency: 120.0, FailureRate7d: 0.01}, nil
+func (q *fakeAnalyticsQuerier) GetAIQualityKPIs(ctx context.Context, since time.Time) (db.GetAIQualityKPIsRow, error) {
+	return db.GetAIQualityKPIsRow{AvgPipelineLatency: 120.0, FailureRate7d: 1.0}, nil
 }
-func (q *fakeAnalyticsQuerier) GetRelabelRate(ctx context.Context) (float64, error) { return 0.05, nil }
+func (q *fakeAnalyticsQuerier) GetRelabelRate(ctx context.Context, since time.Time) (float64, error) { return 5.0, nil }
 func (q *fakeAnalyticsQuerier) GetSatisfactionTrend(ctx context.Context, since time.Time) ([]db.GetSatisfactionTrendRow, error) {
 	return []db.GetSatisfactionTrendRow{{Label: "2026-01", SatisfactionPct: 95.0}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetIssueCategories(ctx context.Context) ([]db.GetIssueCategoriesRow, error) {
+func (q *fakeAnalyticsQuerier) GetIssueCategories(ctx context.Context, since time.Time) ([]db.GetIssueCategoriesRow, error) {
 	return []db.GetIssueCategoriesRow{{Category: "Diaryzacja", Count: 2}}, nil
 }
 func (q *fakeAnalyticsQuerier) GetLatencyTrend(ctx context.Context, since time.Time) ([]db.GetLatencyTrendRow, error) {
 	return []db.GetLatencyTrendRow{{Label: "2026-01", P50: 100.0, P95: 200.0}}, nil
 }
 func (q *fakeAnalyticsQuerier) GetFailureRateTrend(ctx context.Context, since time.Time) ([]db.GetFailureRateTrendRow, error) {
-	return []db.GetFailureRateTrendRow{{Label: "2026-01", FailureRate: 0.01, Total: 100, Failed: 1}}, nil
+	return []db.GetFailureRateTrendRow{{Label: "2026-01", FailureRate: 1.0, Total: 100, Failed: 1}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetFunnelSteps(ctx context.Context) (db.GetFunnelStepsRow, error) {
-	return db.GetFunnelStepsRow{SignupCount: 10, PatientCreatedCount: 8, SessionCompletedCount: 5, RatedCount: 4}, nil
+func (q *fakeAnalyticsQuerier) GetFunnelSteps(ctx context.Context, since time.Time) (db.GetFunnelStepsRow, error) {
+	return db.GetFunnelStepsRow{SignupCount: 10, PatientCreatedCount: 8, SessionCompletedCount: 5, ReportReadCount: 5, RatedCount: 4}, nil
 }
-func (q *fakeAnalyticsQuerier) GetReadReportCount(ctx context.Context) (int64, error) { return 4, nil }
-func (q *fakeAnalyticsQuerier) GetCohortRetention(ctx context.Context) ([]db.GetCohortRetentionRow, error) {
-	return []db.GetCohortRetentionRow{{Cohort: "2026-19", Week: "2026-20", Pct: 0.5}}, nil
+func (q *fakeAnalyticsQuerier) GetCohortRetention(ctx context.Context, since time.Time) ([]db.GetCohortRetentionRow, error) {
+	// Procenty 0-100, tak jak zwraca SQL od migracji 000101/000102.
+	return []db.GetCohortRetentionRow{{Cohort: "2026-19", Week: "2026-20", Pct: 50.0}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetActivationTimeHistogram(ctx context.Context) ([]db.GetActivationTimeHistogramRow, error) {
+
+// Kohorta z tygodnia 19 liczaca 4 osoby, z ktorych 1 wrocila w tygodniu +4
+// (2026-23). Wazona retencja = 25%.
+func (q *fakeAnalyticsQuerier) GetRetentionCohorts(ctx context.Context) ([]db.GetRetentionCohortsRow, error) {
+	return []db.GetRetentionCohortsRow{
+		{Cohort: "2026-19", Week: "2026-19", Pct: 100.0, CohortSize: 4},
+		{Cohort: "2026-19", Week: "2026-23", Pct: 25.0, CohortSize: 4},
+	}, nil
+}
+func (q *fakeAnalyticsQuerier) GetActivationTimeHistogram(ctx context.Context, since time.Time) ([]db.GetActivationTimeHistogramRow, error) {
 	return []db.GetActivationTimeHistogramRow{{BucketLabel: "0-1h", Count: 5}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetHourlyHeatmap(ctx context.Context) ([]db.GetHourlyHeatmapRow, error) {
+func (q *fakeAnalyticsQuerier) GetHourlyHeatmap(ctx context.Context, since time.Time) ([]db.GetHourlyHeatmapRow, error) {
 	return []db.GetHourlyHeatmapRow{{DayOfWeek: 1, Hour: 12, Count: 3}}, nil
 }
 func (q *fakeAnalyticsQuerier) GetUploadFailuresTrend(ctx context.Context, since time.Time) ([]db.GetUploadFailuresTrendRow, error) {
-	return []db.GetUploadFailuresTrendRow{{Label: "2026-01", FailureRate: 0.02, Total: 50, Failed: 1}}, nil
+	return []db.GetUploadFailuresTrendRow{{Label: "2026-01", FailureRate: 2.0, Total: 50, Failed: 1}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetModalityDistribution(ctx context.Context) ([]db.GetModalityDistributionRow, error) {
+func (q *fakeAnalyticsQuerier) GetModalityDistribution(ctx context.Context, since time.Time) ([]db.GetModalityDistributionRow, error) {
 	return []db.GetModalityDistributionRow{{ModalityName: "CBT", Count: 8}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetAvgSessionDuration(ctx context.Context) (float64, error) {
+func (q *fakeAnalyticsQuerier) GetAvgSessionDuration(ctx context.Context, since time.Time) (float64, error) {
 	return 2400.0, nil
 }
 func (q *fakeAnalyticsQuerier) GetSessionDurationTrend(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error) {
@@ -219,7 +228,7 @@ func (q *fakeAnalyticsQuerier) GetPlatformFixedCosts(ctx context.Context) ([]db.
 		},
 	}, nil
 }
-func (q *fakeAnalyticsQuerier) GetRatingsKPIs(ctx context.Context) (db.GetRatingsKPIsRow, error) {
+func (q *fakeAnalyticsQuerier) GetRatingsKPIs(ctx context.Context, since time.Time) (db.GetRatingsKPIsRow, error) {
 	return db.GetRatingsKPIsRow{Total: 42, Positive: 38, Negative: 4, WithNotes: 6}, nil
 }
 
@@ -260,6 +269,30 @@ func TestGetAdminAnalytics_Success(t *testing.T) {
 	}
 	if len(resp.PlatformFixedCosts) != 1 || resp.PlatformFixedCosts[0].Name != "Test Cost" || resp.PlatformFixedCosts[0].AmountUsd != 12.34 {
 		t.Errorf("unexpected PlatformFixedCosts: %+v", resp.PlatformFixedCosts)
+	}
+
+	// Lejek: pięć kroków, wszystkie z JEDNEGO zapytania. Krok 4 pochodził
+	// kiedyś z osobnego zapytania po gołej tabeli zdarzeń, na innej populacji,
+	// przez co lejek mógł się rozszerzać. Sprawdzamy monotoniczność.
+	if len(resp.FunnelSteps) != 5 {
+		t.Fatalf("expected 5 funnel steps, got %d", len(resp.FunnelSteps))
+	}
+	wantCounts := []int64{10, 8, 5, 5, 4}
+	for i, st := range resp.FunnelSteps {
+		if st.Count != wantCounts[i] {
+			t.Errorf("funnel step %d (%s): expected %d, got %d", i+1, st.StepName, wantCounts[i], st.Count)
+		}
+		if i > 0 && st.Count > resp.FunnelSteps[i-1].Count {
+			t.Errorf("funnel widened at step %d (%s): %d > %d",
+				i+1, st.StepName, st.Count, resp.FunnelSteps[i-1].Count)
+		}
+	}
+
+	// Retencja 30-dniowa idzie z GetRetentionCohorts (stałe okno), nie
+	// z macierzy ciętej selektorem. Kohorta 4-osobowa z 25% w tygodniu +4
+	// daje ważone 25%; wynik w procentach, nie w ułamku.
+	if resp.Kpi_30DRetention != 25.0 {
+		t.Errorf("expected Kpi_30DRetention 25.0, got %f", resp.Kpi_30DRetention)
 	}
 }
 
@@ -374,23 +407,23 @@ func TestTrackEvents_DualWrite(t *testing.T) {
 //
 // Zwracają pustkę z nil-error, czyli realny stan "jeszcze nic nie ma".
 // Ścieżkę błędu pokrywa osobny test niżej.
-func (f *fakeAnalyticsQuerier) GetClientSharingTrend(ctx context.Context) ([]db.GetClientSharingTrendRow, error) {
+func (f *fakeAnalyticsQuerier) GetClientSharingTrend(ctx context.Context, since time.Time) ([]db.GetClientSharingTrendRow, error) {
 	return f.sharingTrend, f.sharingErr
 }
 
-func (f *fakeAnalyticsQuerier) GetClientInvitationFunnel(ctx context.Context) (db.GetClientInvitationFunnelRow, error) {
+func (f *fakeAnalyticsQuerier) GetClientInvitationFunnel(ctx context.Context, since time.Time) (db.GetClientInvitationFunnelRow, error) {
 	return db.GetClientInvitationFunnelRow{}, f.funnelErr
 }
 
-func (f *fakeAnalyticsQuerier) GetPairingCodeFriction(ctx context.Context) ([]db.GetPairingCodeFrictionRow, error) {
+func (f *fakeAnalyticsQuerier) GetPairingCodeFriction(ctx context.Context, since time.Time) ([]db.GetPairingCodeFrictionRow, error) {
 	return nil, nil
 }
 
-func (f *fakeAnalyticsQuerier) GetReportReadingStats(ctx context.Context) (db.GetReportReadingStatsRow, error) {
+func (f *fakeAnalyticsQuerier) GetReportReadingStats(ctx context.Context, since time.Time) (db.GetReportReadingStatsRow, error) {
 	return f.reading, nil
 }
 
-func (f *fakeAnalyticsQuerier) GetReadingPlatformSplit(ctx context.Context) ([]db.GetReadingPlatformSplitRow, error) {
+func (f *fakeAnalyticsQuerier) GetReadingPlatformSplit(ctx context.Context, since time.Time) ([]db.GetReadingPlatformSplitRow, error) {
 	return nil, nil
 }
 

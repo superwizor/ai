@@ -135,10 +135,24 @@ test.describe("Admin Analytics — Dashboard", () => {
     await dashboard.switchToTab("quality");
 
     const latencyLabel = forLocale({
-      pl: "Mediana czasu przetwarzania",
-      en: "Median Processing Time",
+      pl: "Średni czas przetwarzania",
+      en: "Average processing time",
     });
     await dashboard.expectKpiVisible(latencyLabel);
+
+    // Regresja skali procentów: backend oddaje wskaźniki jako 0–100, a kafelek
+    // dokleja tylko znak "%". Gdyby frontend wrócił do mnożenia przez 100,
+    // z 2,00% zrobiłoby się 200,00%; gdyby backend wrócił do ułamka — 0,02%.
+    const failureTitle = forLocale({
+      pl: "Wskaźnik błędów",
+      en: "Failure Rate",
+    });
+    const failureCard = page.locator("div.rounded-card", {
+      has: page.locator("p", { hasText: failureTitle }),
+    });
+    await expect(failureCard.locator("span.font-display")).toContainText("2.00%", {
+      timeout: 10_000,
+    });
   });
 });
 

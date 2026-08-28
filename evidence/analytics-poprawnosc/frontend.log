@@ -1,0 +1,44 @@
+=== typecheck ===
+$ tsc --noEmit
+=== l10n ===
+l10n parity OK — 1611 keys per locale (18 suspect identical, see above).
+=== vitest ===
+ Test Files  14 passed (14)
+      Tests  123 passed (123)
+   Start at  13:59:47
+   Duration  566ms (transform 539ms, setup 0ms, import 1.36s, tests 434ms, environment 3ms)
+
+=== playwright (pelny zestaw, nic nie konkuruje o CPU) ===
+        at /Users/dpiotrak/supervisorai_v2/ai/marketing-site/tests/e2e/register-therapist.spec.ts:210:5
+
+    Error Context: test-results/register-therapist-Therapi-7fb8b-identity-svc-is-unreachable-chromium-en/error-context.md
+
+  25 failed
+    [chromium-pl] › tests/e2e/account-settings.spec.ts:115:7 › Account Settings & Deletion › can update profile and organization successfully 
+    [chromium-pl] › tests/e2e/account-settings.spec.ts:230:7 › Account Settings & Deletion › requires re-authentication during deletion flow 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:400:7 › Stripe Checkout Config › checkout API route exists 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:412:7 › Stripe Checkout Config › checkout rejects missing organizationId 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:422:7 › Stripe Checkout Config › checkout rejects invalid UUID for organizationId 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:433:7 › Bad Path: API /api/checkout › POST /api/checkout without body returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:440:7 › Bad Path: API /api/checkout › POST /api/checkout with missing priceId returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:451:7 › Bad Path: API /api/checkout › POST /api/checkout with invalid organizationId returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:462:7 › Bad Path: API /api/checkout › GET /api/checkout returns 405 (method not allowed) 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:33:7 › Therapist Registration › renders form with heading and required fields visible 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:127:7 › Therapist Registration › happy path: fills form, fires CreateUser + UpdateProfile, redirects to verify-email 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:164:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:195:7 › Therapist Registration › shows server error when identity-svc is unreachable 
+    [chromium-en] › tests/e2e/account-settings.spec.ts:115:7 › Account Settings & Deletion › can update profile and organization successfully 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:400:7 › Stripe Checkout Config › checkout API route exists 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:412:7 › Stripe Checkout Config › checkout rejects missing organizationId 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:422:7 › Stripe Checkout Config › checkout rejects invalid UUID for organizationId 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:433:7 › Bad Path: API /api/checkout › POST /api/checkout without body returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:440:7 › Bad Path: API /api/checkout › POST /api/checkout with missing priceId returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:451:7 › Bad Path: API /api/checkout › POST /api/checkout with invalid organizationId returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:462:7 › Bad Path: API /api/checkout › GET /api/checkout returns 405 (method not allowed) 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:33:7 › Therapist Registration › renders form with heading and required fields visible 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:127:7 › Therapist Registration › happy path: fills form, fires CreateUser + UpdateProfile, redirects to verify-email 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:164:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:195:7 › Therapist Registration › shows server error when identity-svc is unreachable 
+  251 passed (4.9m)
+[ELIFECYCLE] Command failed with exit code 1.
+E2E ZAKONCZONE

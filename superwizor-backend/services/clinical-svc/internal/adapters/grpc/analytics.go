@@ -122,12 +122,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		return nil, status.Errorf(codes.Internal, "failed to get sessions this week: %v", err)
 	}
 
-	activationRate, err := s.queries.GetActivationRate(ctx)
+	activationRate, err := s.queries.GetActivationRate(ctx, since)
 	if err != nil {
 		activationRate = 0.0
 	}
 
-	satisfactionRate, err := s.queries.GetOverallSatisfactionRate(ctx)
+	satisfactionRate, err := s.queries.GetOverallSatisfactionRate(ctx, since)
 	if err != nil {
 		satisfactionRate = 0.0
 	}
@@ -192,12 +192,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	// 2. Unit Economics
-	ueRow, err := s.queries.GetUnitEconomicsKPIs(ctx)
+	ueRow, err := s.queries.GetUnitEconomicsKPIs(ctx, since)
 	if err != nil {
 		ueRow = db.GetUnitEconomicsKPIsRow{}
 	}
 
-	avgTokenUtil, err := s.queries.GetAvgTokenUtilization(ctx)
+	avgTokenUtil, err := s.queries.GetAvgTokenUtilization(ctx, since)
 	if err != nil {
 		avgTokenUtil = 0.0
 	}
@@ -216,7 +216,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
-	tokenUtilHeatmapRows, err := s.queries.GetTokenUtilizationHeatmap(ctx)
+	tokenUtilHeatmapRows, err := s.queries.GetTokenUtilizationHeatmap(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get token utilization heatmap: %v", err)
 	}
@@ -229,9 +229,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
+	// Fail-soft: migawka MRR nie jest renderowana przez panel, więc jej
+	// awaria nie ma prawa wywracać całego Centrum Analitycznego.
 	revenueTrendRows, err := s.queries.GetRevenueTrend(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get revenue trend: %v", err)
+		slog.WarnContext(ctx, "analytics: revenue trend failed (fail-soft)", "error", err)
+		revenueTrendRows = nil
 	}
 	revenueTrend := make([]*clinicalv1.RevenueTrendPoint, len(revenueTrendRows))
 	for i, r := range revenueTrendRows {
@@ -257,12 +260,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	// 3. AI Quality
-	aiRow, err := s.queries.GetAIQualityKPIs(ctx)
+	aiRow, err := s.queries.GetAIQualityKPIs(ctx, since)
 	if err != nil {
 		aiRow = db.GetAIQualityKPIsRow{}
 	}
 
-	relabelRate, err := s.queries.GetRelabelRate(ctx)
+	relabelRate, err := s.queries.GetRelabelRate(ctx, since)
 	if err != nil {
 		relabelRate = 0.0
 	}
@@ -279,7 +282,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
-	issueCategoriesRows, err := s.queries.GetIssueCategories(ctx)
+	issueCategoriesRows, err := s.queries.GetIssueCategories(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get issue categories: %v", err)
 	}
@@ -319,17 +322,12 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	// 4. Funnel & Retention
-	funnelRow, err := s.queries.GetFunnelSteps(ctx)
+	funnelRow, err := s.queries.GetFunnelSteps(ctx, since)
 	if err != nil {
 		funnelRow = db.GetFunnelStepsRow{}
 	}
 
-	readReportCount, err := s.queries.GetReadReportCount(ctx)
-	if err != nil {
-		readReportCount = 0
-	}
-
-	cohortRetentionRows, err := s.queries.GetCohortRetention(ctx)
+	cohortRetentionRows, err := s.queries.GetCohortRetention(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get cohort retention: %v", err)
 	}
@@ -342,21 +340,17 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
-	// Calculate average 30d (4-week) retention
+	// KPI retencji liczymy z osobnego zapytania o stalym oknie. Przy zakresie
+	// „7 dni" macierz powyzej nie zawiera ANI JEDNEJ dojrzalej kohorty, wiec
+	// wyliczony z niej wskaznik bylby zerem udajacym pomiar.
 	var kpi30dRetention float64
-	var retentionSum float64
-	var retentionCount int
-	for _, r := range cohortRetentionRows {
-		if weekDiff(r.Cohort, r.Week) == 4 {
-			retentionSum += r.Pct
-			retentionCount++
-		}
-	}
-	if retentionCount > 0 {
-		kpi30dRetention = (retentionSum / float64(retentionCount)) * 100.0
+	if retentionRows, err := s.queries.GetRetentionCohorts(ctx); err != nil {
+		slog.WarnContext(ctx, "analytics: retention cohorts failed (fail-soft)", "error", err)
+	} else {
+		kpi30dRetention = retention30d(retentionRows, time.Now())
 	}
 
-	activationTimeHistogramRows, err := s.queries.GetActivationTimeHistogram(ctx)
+	activationTimeHistogramRows, err := s.queries.GetActivationTimeHistogram(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get activation time histogram: %v", err)
 	}
@@ -377,7 +371,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		{"1. Rejestracja", funnelRow.SignupCount},
 		{"2. Utworzenie pacjenta", funnelRow.PatientCreatedCount},
 		{"3. Zakończenie sesji", funnelRow.SessionCompletedCount},
-		{"4. Przeczytanie raportu", readReportCount},
+		{"4. Przeczytanie raportu", funnelRow.ReportReadCount},
 		{"5. Ocena raportu", funnelRow.RatedCount},
 	}
 	var prevCount int64 = 0
@@ -395,7 +389,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	// 5. Operations
-	hourlyHeatmapRows, err := s.queries.GetHourlyHeatmap(ctx)
+	hourlyHeatmapRows, err := s.queries.GetHourlyHeatmap(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get hourly heatmap: %v", err)
 	}
@@ -422,7 +416,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
-	modalityDistRows, err := s.queries.GetModalityDistribution(ctx)
+	modalityDistRows, err := s.queries.GetModalityDistribution(ctx, since)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get modality distribution: %v", err)
 	}
@@ -434,7 +428,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		}
 	}
 
-	avgDuration, err := s.queries.GetAvgSessionDuration(ctx)
+	avgDuration, err := s.queries.GetAvgSessionDuration(ctx, since)
 	if err != nil {
 		avgDuration = 0.0
 	}
@@ -467,7 +461,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	// 6. Report Feedback KPIs
-	ratingsKPIs, err := s.queries.GetRatingsKPIs(ctx)
+	ratingsKPIs, err := s.queries.GetRatingsKPIs(ctx, since)
 	if err != nil {
 		ratingsKPIs = db.GetRatingsKPIsRow{}
 	}
@@ -478,7 +472,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	// wywrócić całego pulpitu, bo reszta metryk jest niezależna. Panel
 	// pokaże wtedy zera w tej sekcji, a nie błąd na całej stronie.
 	var sharingTrend []*clinicalv1.ClientSharingPoint
-	if rows, err := s.queries.GetClientSharingTrend(ctx); err == nil {
+	if rows, err := s.queries.GetClientSharingTrend(ctx, since); err == nil {
 		for _, r := range rows {
 			sharingTrend = append(sharingTrend, &clinicalv1.ClientSharingPoint{
 				Label:         r.Label,
@@ -492,7 +486,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	inviteFunnel := &clinicalv1.ClientInvitationFunnel{}
-	if f, err := s.queries.GetClientInvitationFunnel(ctx); err == nil {
+	if f, err := s.queries.GetClientInvitationFunnel(ctx, since); err == nil {
 		inviteFunnel = &clinicalv1.ClientInvitationFunnel{
 			Sent:                int64(f.Sent),
 			Accepted:            int64(f.Accepted),
@@ -505,7 +499,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	var pairing []*clinicalv1.PairingAttemptBucket
-	if rows, err := s.queries.GetPairingCodeFriction(ctx); err == nil {
+	if rows, err := s.queries.GetPairingCodeFriction(ctx, since); err == nil {
 		for _, r := range rows {
 			pairing = append(pairing, &clinicalv1.PairingAttemptBucket{
 				Attempts:    r.Attempts,
@@ -517,7 +511,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	reading := &clinicalv1.ReportReadingStats{}
-	if r, err := s.queries.GetReportReadingStats(ctx); err == nil {
+	if r, err := s.queries.GetReportReadingStats(ctx, since); err == nil {
 		reading = &clinicalv1.ReportReadingStats{
 			Started:       int64(r.Started),
 			Finished:      int64(r.Finished),
@@ -529,7 +523,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	var platforms []*clinicalv1.PlatformReads
-	if rows, err := s.queries.GetReadingPlatformSplit(ctx); err == nil {
+	if rows, err := s.queries.GetReadingPlatformSplit(ctx, since); err == nil {
 		for _, r := range rows {
 			platforms = append(platforms, &clinicalv1.PlatformReads{
 				Platform: r.Platform,
@@ -541,17 +535,21 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}
 
 	return &clinicalv1.GetAdminAnalyticsResponse{
-		KpiWau:                  wau,
-		KpiSessionsThisWeek:     sessionsThisWeek,
-		KpiActivationRate:       activationRate,
-		KpiSatisfactionRate:     satisfactionRate,
-		WauTrend:                wauTrend,
-		SessionsTrend:           sessionsTrend,
-		RegistrationsTrend:      registrationsTrend,
-		PlanDistribution:        planDistribution,
-		KpiAvgCostPerSession:    ueRow.AvgCostPerSession,
-		KpiMonthlySttCost:       ueRow.MonthlySttCost,
-		KpiMonthlyLlmCost:       ueRow.MonthlyLlmCost,
+		KpiWau:               wau,
+		KpiSessionsThisWeek:  sessionsThisWeek,
+		KpiActivationRate:    activationRate,
+		KpiSatisfactionRate:  satisfactionRate,
+		WauTrend:             wauTrend,
+		SessionsTrend:        sessionsTrend,
+		RegistrationsTrend:   registrationsTrend,
+		PlanDistribution:     planDistribution,
+		KpiAvgCostPerSession: ueRow.AvgCostPerSession,
+		// Nazwy pól proto (`kpi_monthly_*`) są historyczne: te kafelki liczyły
+		// zaszyte 30 dni, a od tej zmiany idą z wybranego zakresu. Pola nie są
+		// przemianowane celowo — numer pola trzyma zgodność wsteczną, a etykieta
+		// widoczna dla użytkownika mówi już „w wybranym okresie".
+		KpiMonthlySttCost:       ueRow.PeriodSttCost,
+		KpiMonthlyLlmCost:       ueRow.PeriodLlmCost,
 		KpiAvgTokenUtilization:  avgTokenUtil,
 		CostTrend:               costTrend,
 		TokenUtilizationHeatmap: tokenUtilizationHeatmap,
@@ -588,15 +586,105 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 	}, nil
 }
 
-func parseISOWeek(s string) (year, week int) {
-	_, _ = fmt.Sscanf(s, "%d-%d", &year, &week)
-	return
+// parseISOWeek rozkłada etykietę 'IYYY-IW' (np. "2026-34") na rok i numer
+// tygodnia ISO. Zwraca ok=false dla wszystkiego, co nie jest taką etykietą —
+// poprzednia wersja ignorowała błąd Sscanf i cicho zwracała (0, 0), przez co
+// zepsuta etykieta wyglądała jak tydzień 0 roku 0 i wchodziła do rachunków.
+func parseISOWeek(s string) (year, week int, ok bool) {
+	n, err := fmt.Sscanf(s, "%d-%d", &year, &week)
+	if err != nil || n != 2 {
+		return 0, 0, false
+	}
+	if week < 1 || week > 53 {
+		return 0, 0, false
+	}
+	return year, week, true
 }
 
-func weekDiff(cohort, week string) int {
-	cy, cw := parseISOWeek(cohort)
-	wy, ww := parseISOWeek(week)
-	return (wy-cy)*52 + (ww - cw)
+// isoWeekStart zwraca poniedziałek tygodnia (year, week) kalendarza ISO.
+// Kotwicą jest 4 stycznia, który z definicji leży w tygodniu 1 danego roku ISO.
+func isoWeekStart(year, week int) time.Time {
+	jan4 := time.Date(year, time.January, 4, 0, 0, 0, 0, time.UTC)
+	weekday := int(jan4.Weekday()) // niedziela = 0
+	if weekday == 0 {
+		weekday = 7
+	}
+	firstMonday := jan4.AddDate(0, 0, -(weekday - 1))
+	return firstMonday.AddDate(0, 0, (week-1)*7)
+}
+
+// weekDiff liczy odległość w tygodniach między dwiema etykietami ISO.
+//
+// Poprzednia wersja robiła (wy-cy)*52 + (ww-cw), co zakłada 52 tygodnie w
+// każdym roku. Rok ISO ma 52 ALBO 53 tygodnie (2026 ma 53), więc dla kohort
+// przechodzących przez przełom roku punkt „+4 tygodnie" wskazywał zły tydzień.
+// Liczymy więc po prawdziwych datach początków tygodni.
+func weekDiff(cohort, week string) (int, bool) {
+	cy, cw, ok := parseISOWeek(cohort)
+	if !ok {
+		return 0, false
+	}
+	wy, ww, ok := parseISOWeek(week)
+	if !ok {
+		return 0, false
+	}
+	delta := isoWeekStart(wy, ww).Sub(isoWeekStart(cy, cw))
+	return int(delta.Hours() / (24 * 7)), true
+}
+
+// retention30d liczy KPI „Retencja 30-dniowa": jaki odsetek terapeutów jest
+// nadal aktywny cztery tygodnie po rejestracji.
+//
+// Dwie rzeczy, które poprzednia wersja robiła źle i które są tu naprawione:
+//
+//   - WAGA. Było AVG po kohortach, więc kohorta jednoosobowa ze 100% ważyła
+//     tyle samo, co pięćdziesięcioosobowa z 10%. Teraz to średnia ważona
+//     liczebnością kohorty, czyli po prostu „ilu z ilu".
+//
+//   - KOHORTY ZEROWE. Kohorta bez ANI JEDNEJ aktywnej osoby w tygodniu +4 nie
+//     ma wiersza w wyniku SQL, więc wypadała z mianownika i podbijała wynik.
+//     Teraz kohorta dostatecznie stara, żeby jej tydzień +4 już minął, wchodzi
+//     do rachunku z zerem, jeśli nie ma dla niej wiersza.
+//
+// `now` jest parametrem, żeby test nie zależał od dnia uruchomienia.
+func retention30d(rows []db.GetRetentionCohortsRow, now time.Time) float64 {
+	type cohort struct {
+		size    int64
+		pctAt4W float64
+		mature  bool
+	}
+	cohorts := map[string]*cohort{}
+
+	for _, r := range rows {
+		cy, cw, ok := parseISOWeek(r.Cohort)
+		if !ok {
+			continue
+		}
+		c, seen := cohorts[r.Cohort]
+		if !seen {
+			// Tydzień +4 tej kohorty musi już się skończyć, inaczej brak
+			// aktywności znaczy „jeszcze nie wiadomo", a nie „nie wrócili".
+			endOfWeek4 := isoWeekStart(cy, cw).AddDate(0, 0, 5*7)
+			c = &cohort{size: r.CohortSize, mature: !endOfWeek4.After(now)}
+			cohorts[r.Cohort] = c
+		}
+		if d, ok := weekDiff(r.Cohort, r.Week); ok && d == 4 {
+			c.pctAt4W = r.Pct
+		}
+	}
+
+	var weighted, total float64
+	for _, c := range cohorts {
+		if !c.mature || c.size <= 0 {
+			continue
+		}
+		weighted += c.pctAt4W * float64(c.size)
+		total += float64(c.size)
+	}
+	if total == 0 {
+		return 0
+	}
+	return weighted / total
 }
 
 func getStartTimeForRange(timeRange string) time.Time {

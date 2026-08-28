@@ -14,10 +14,14 @@ import (
 
 const getAIQualityKPIs = `-- name: GetAIQualityKPIs :one
 SELECT
-  COALESCE((SELECT AVG(e2e_seconds) FROM v_analytics_pipeline_latency), 0.0)::float AS avg_pipeline_latency,
+  COALESCE((
+    SELECT AVG(e2e_seconds)
+    FROM v_analytics_pipeline_latency
+    WHERE session_at >= $1
+  ), 0.0)::float AS avg_pipeline_latency,
   COALESCE(
-    (COUNT(*) FILTER (WHERE s.status = 'FAILED' AND s.created_at >= NOW() - INTERVAL '7 days')::float
-     / NULLIF(COUNT(*) FILTER (WHERE s.created_at >= NOW() - INTERVAL '7 days'), 0)),
+    (100.0 * COUNT(*) FILTER (WHERE s.status = 'FAILED')::float
+     / NULLIF(COUNT(*) FILTER (WHERE s.status IN ('COMPLETED', 'FAILED')), 0)),
     0.0
   )::float AS failure_rate_7d
 FROM sessions s
@@ -26,6 +30,7 @@ WHERE s.deleted_at IS NULL
   AND u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND s.created_at >= $1
 `
 
 type GetAIQualityKPIsRow struct {
@@ -34,16 +39,21 @@ type GetAIQualityKPIsRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-// Uses separate subqueries to prevent row multiplication from 1:N joins
-func (q *Queries) GetAIQualityKPIs(ctx context.Context) (GetAIQualityKPIsRow, error) {
-	row := q.db.QueryRow(ctx, getAIQualityKPIs)
+// Podzapytanie dla latencji, żeby JOIN 1:N nie mnożył wierszy sesji.
+// Mianownik awaryjności to sesje w stanie KOŃCOWYM: COMPLETED + FAILED.
+// Sesja w trakcie przetwarzania nie jest jeszcze ani sukcesem, ani porażką,
+// a CANCELED to decyzja użytkownika, nie awaria systemu — trzymanie ich
+// w mianowniku zaniżało wskaźnik tym bardziej, im więcej było ruchu.
+// Wynik w procentach (0–100).
+func (q *Queries) GetAIQualityKPIs(ctx context.Context, since time.Time) (GetAIQualityKPIsRow, error) {
+	row := q.db.QueryRow(ctx, getAIQualityKPIs, since)
 	var i GetAIQualityKPIsRow
 	err := row.Scan(&i.AvgPipelineLatency, &i.FailureRate7d)
 	return i, err
 }
 
 const getActivationRate = `-- name: GetActivationRate :one
-SELECT 
+SELECT
   COALESCE(
     ROUND(
       100.0 * COUNT(first_session_at) / NULLIF(COUNT(*), 0),
@@ -52,19 +62,20 @@ SELECT
     0.0
   )::float AS rate
 FROM v_analytics_activation
+WHERE signup_at >= $1
 `
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetActivationRate(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getActivationRate)
+func (q *Queries) GetActivationRate(ctx context.Context, since time.Time) (float64, error) {
+	row := q.db.QueryRow(ctx, getActivationRate, since)
 	var rate float64
 	err := row.Scan(&rate)
 	return rate, err
 }
 
 const getActivationTimeHistogram = `-- name: GetActivationTimeHistogram :many
-SELECT 
-  CASE 
+SELECT
+  CASE
     WHEN hours_to_first_session <= 1 THEN '0-1h'
     WHEN hours_to_first_session <= 24 THEN '1-24h'
     WHEN hours_to_first_session <= 72 THEN '24-72h'
@@ -73,7 +84,9 @@ SELECT
   COUNT(*)::bigint AS count
 FROM v_analytics_activation
 WHERE hours_to_first_session IS NOT NULL
+  AND signup_at >= $1
 GROUP BY 1
+ORDER BY MIN(hours_to_first_session) ASC
 `
 
 type GetActivationTimeHistogramRow struct {
@@ -82,8 +95,11 @@ type GetActivationTimeHistogramRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetActivationTimeHistogram(ctx context.Context) ([]GetActivationTimeHistogramRow, error) {
-	rows, err := q.db.Query(ctx, getActivationTimeHistogram)
+// ORDER BY po najmniejszej liczbie godzin w kubełku — kubełki są rozłącznymi
+// przedziałami, więc to je porządkuje chronologicznie. Bez tego kolejność
+// słupków na osi X zależała od planu wykonania.
+func (q *Queries) GetActivationTimeHistogram(ctx context.Context, since time.Time) ([]GetActivationTimeHistogramRow, error) {
+	rows, err := q.db.Query(ctx, getActivationTimeHistogram, since)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +119,7 @@ func (q *Queries) GetActivationTimeHistogram(ctx context.Context) ([]GetActivati
 }
 
 const getAvgSessionDuration = `-- name: GetAvgSessionDuration :one
-SELECT 
+SELECT
   COALESCE(AVG(s.duration_seconds), 0.0)::float AS avg_duration
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -111,25 +127,39 @@ WHERE s.deleted_at IS NULL
   AND u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND s.created_at >= $1
 `
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetAvgSessionDuration(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getAvgSessionDuration)
+func (q *Queries) GetAvgSessionDuration(ctx context.Context, since time.Time) (float64, error) {
+	row := q.db.QueryRow(ctx, getAvgSessionDuration, since)
 	var avg_duration float64
 	err := row.Scan(&avg_duration)
 	return avg_duration, err
 }
 
 const getAvgTokenUtilization = `-- name: GetAvgTokenUtilization :one
-SELECT 
-  COALESCE(AVG(utilization_pct), 0.0)::float AS avg_utilization
+SELECT
+  COALESCE(
+    100.0 * SUM(tokens_used)::float / NULLIF(SUM(tokens_limit), 0),
+    0.0
+  )::float AS avg_utilization
 FROM v_analytics_token_util
+WHERE period_end >= $1
+  AND period_start <= now()
 `
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetAvgTokenUtilization(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getAvgTokenUtilization)
+// Iloraz sum, nie średnia ilorazów: AVG(utilization_pct) dawał tej samej
+// wagi organizacji z limitem 10 tys. tokenów co organizacji z limitem
+// 10 mln. Widok od 000102 zwraca jeden zakres licznika na okres, więc
+// sumy nie liczą tych samych tokenów dwa razy.
+// Okres rozliczeniowy to PRZEDZIAL, nie zdarzenie punktowe. Filtr po samym
+// period_start zostawialby tylko cykle rozpoczete wewnatrz okna — czyli te
+// ledwie rozpoczete, z zuzyciem bliskim zeru — a dla planow rocznych nie
+// zostawialby zadnego. Bierzemy liczniki, ktorych okres NACHODZI na okno.
+func (q *Queries) GetAvgTokenUtilization(ctx context.Context, since time.Time) (float64, error) {
+	row := q.db.QueryRow(ctx, getAvgTokenUtilization, since)
 	var avg_utilization float64
 	err := row.Scan(&avg_utilization)
 	return avg_utilization, err
@@ -147,6 +177,7 @@ SELECT count(*)::int AS sent,
          ) FILTER (WHERE accepted_at IS NOT NULL), 0)::float AS median_hours_to_accept
 FROM invitations
 WHERE patient_file_id IS NOT NULL
+  AND created_at >= $1
 `
 
 type GetClientInvitationFunnelRow struct {
@@ -159,8 +190,8 @@ type GetClientInvitationFunnelRow struct {
 
 // Lejek zaproszeń do aplikacji klienta. patient_file_id odróżnia
 // zaproszenie klienta od zaproszenia terapeuty do organizacji.
-func (q *Queries) GetClientInvitationFunnel(ctx context.Context) (GetClientInvitationFunnelRow, error) {
-	row := q.db.QueryRow(ctx, getClientInvitationFunnel)
+func (q *Queries) GetClientInvitationFunnel(ctx context.Context, since time.Time) (GetClientInvitationFunnelRow, error) {
+	row := q.db.QueryRow(ctx, getClientInvitationFunnel, since)
 	var i GetClientInvitationFunnelRow
 	err := row.Scan(
 		&i.Sent,
@@ -174,14 +205,18 @@ func (q *Queries) GetClientInvitationFunnel(ctx context.Context) (GetClientInvit
 
 const getClientSharingTrend = `-- name: GetClientSharingTrend :many
 
-SELECT to_char(date_trunc('week', s.created_at), 'MM-DD')::text AS label,
+SELECT to_char(date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW')::text AS label,
        count(*)::int AS sessions_total,
        count(*) FILTER (WHERE s.shared_with_client_at IS NOT NULL)::int AS shared,
        count(*) FILTER (WHERE s.client_hidden_at IS NOT NULL)::int AS hidden
 FROM sessions s
+JOIN users u ON u.id = s.therapist_id
 WHERE s.deleted_at IS NULL
   AND s.status = 'COMPLETED'
-  AND s.created_at > now() - interval '12 weeks'
+  AND u.email NOT LIKE '%@superwizor.test'
+  AND u.email NOT LIKE '%@example.com'
+  AND u.email NOT LIKE '%@example.test'
+  AND s.created_at >= $1
 GROUP BY 1
 ORDER BY 1
 `
@@ -205,8 +240,12 @@ type GetClientSharingTrendRow struct {
 // Ile ukończonych sesji trafia do klienta i ile z nich klient ukrywa.
 // client_hidden_at to sygnał odrzucenia — raport dotarł, ale klient go
 // schował; bez tego widzielibyśmy tylko wysyłkę, nie odbiór.
-func (q *Queries) GetClientSharingTrend(ctx context.Context) ([]GetClientSharingTrendRow, error) {
-	rows, err := q.db.Query(ctx, getClientSharingTrend)
+//
+// Etykieta jak wszędzie indziej ('IYYY-IW'). Wcześniej było 'MM-DD' bez
+// roku, więc styczeń sortował się przed grudniem, a dwa tygodnie z różnych
+// lat mogły się skleić. Okno bierze się z zakresu, nie z zaszytych 12 tygodni.
+func (q *Queries) GetClientSharingTrend(ctx context.Context, since time.Time) ([]GetClientSharingTrendRow, error) {
+	rows, err := q.db.Query(ctx, getClientSharingTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -232,37 +271,38 @@ func (q *Queries) GetClientSharingTrend(ctx context.Context) ([]GetClientSharing
 
 const getCohortRetention = `-- name: GetCohortRetention :many
 WITH cohort_sizes AS (
-  SELECT 
-    date_trunc('week', signup_at) AS cohort_week,
+  SELECT
+    date_trunc('week', signup_at AT TIME ZONE 'Europe/Warsaw') AS cohort_week,
     COUNT(DISTINCT therapist_id)::float AS total_size
   FROM v_analytics_activation
+  WHERE signup_at >= $1::timestamptz
   GROUP BY 1
 ),
 activity AS (
-  SELECT 
+  SELECT
     s.therapist_id,
-    date_trunc('week', s.created_at) AS activity_week
+    date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw') AS activity_week
   FROM sessions s
   WHERE s.deleted_at IS NULL
 ),
 cohort_activity AS (
-  SELECT 
-    date_trunc('week', u.signup_at) AS cohort_week,
+  SELECT
+    date_trunc('week', u.signup_at AT TIME ZONE 'Europe/Warsaw') AS cohort_week,
     a.activity_week,
     COUNT(DISTINCT u.therapist_id)::float AS active_size
   FROM v_analytics_activation u
   JOIN activity a ON u.therapist_id = a.therapist_id
-  WHERE a.activity_week >= date_trunc('week', u.signup_at)
+  WHERE u.signup_at >= $1::timestamptz
+    AND a.activity_week >= date_trunc('week', u.signup_at AT TIME ZONE 'Europe/Warsaw')
   GROUP BY 1, 2
 )
-SELECT 
-  COALESCE(TO_CHAR(cs.cohort_week, 'YYYY-IW'), '')::text AS cohort,
-  COALESCE(TO_CHAR(ca.activity_week, 'YYYY-IW')::text, '')::text AS week,
-  COALESCE((ca.active_size / cs.total_size)::float, 0.0)::float AS pct
+SELECT
+  TO_CHAR(cs.cohort_week, 'IYYY-IW')::text AS cohort,
+  TO_CHAR(ca.activity_week, 'IYYY-IW')::text AS week,
+  COALESCE(100.0 * ca.active_size / NULLIF(cs.total_size, 0), 0.0)::float AS pct
 FROM cohort_sizes cs
 JOIN cohort_activity ca ON cs.cohort_week = ca.cohort_week
 ORDER BY 1 ASC, 2 ASC
-LIMIT 200
 `
 
 type GetCohortRetentionRow struct {
@@ -272,8 +312,13 @@ type GetCohortRetentionRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetCohortRetention(ctx context.Context) ([]GetCohortRetentionRow, error) {
-	rows, err := q.db.Query(ctx, getCohortRetention)
+// Bez LIMIT-u (poprzedni `LIMIT 200` obcinał NAJNOWSZE kohorty, bo sortowanie
+// rosło od najstarszej). Zakres tnie po dacie rejestracji, więc macierz jest
+// ograniczona kohortami z wybranego okresu, a nie przypadkowym progiem.
+// `pct` w procentach (0–100); `cohort_size` wyjeżdża po to, żeby KPI retencji
+// mogło ważyć kohorty ich liczebnością zamiast uśredniać ilorazy.
+func (q *Queries) GetCohortRetention(ctx context.Context, since time.Time) ([]GetCohortRetentionRow, error) {
+	rows, err := q.db.Query(ctx, getCohortRetention, since)
 	if err != nil {
 		return nil, err
 	}
@@ -293,11 +338,11 @@ func (q *Queries) GetCohortRetention(ctx context.Context) ([]GetCohortRetentionR
 }
 
 const getCostTrend = `-- name: GetCostTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', created_at), 'YYYY-IW') AS label,
-  AVG(stt_cost_usd)::float AS stt_cost,
-  AVG(llm_cost_usd)::float AS llm_cost,
-  AVG(total_cost_usd)::float AS total_cost
+SELECT
+  TO_CHAR(date_trunc('week', created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
+  COALESCE(AVG(COALESCE(stt_cost_usd, 0)), 0.0)::float AS stt_cost,
+  COALESCE(AVG(COALESCE(llm_cost_usd, 0)), 0.0)::float AS llm_cost,
+  COALESCE(AVG(COALESCE(stt_cost_usd, 0) + COALESCE(llm_cost_usd, 0)), 0.0)::float AS total_cost
 FROM v_analytics_session_cost
 WHERE created_at >= $1
 GROUP BY 1
@@ -312,8 +357,12 @@ type GetCostTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetCostTrend(ctx context.Context, createdAt time.Time) ([]GetCostTrendRow, error) {
-	rows, err := q.db.Query(ctx, getCostTrend, createdAt)
+// COALESCE na każdym składniku, żeby stos STT+LLM sumował się do linii Σ.
+// Bez tego raport z niewycenialnym modelem (llm_cost_usd IS NULL, celowo —
+// llm-worker nie zapisuje zera) wypadał ze średniej sumy, ale zostawał
+// w średniej STT, i te trzy serie liczyły się na trzech różnych zbiorach.
+func (q *Queries) GetCostTrend(ctx context.Context, since time.Time) ([]GetCostTrendRow, error) {
+	rows, err := q.db.Query(ctx, getCostTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -338,10 +387,14 @@ func (q *Queries) GetCostTrend(ctx context.Context, createdAt time.Time) ([]GetC
 }
 
 const getFailureRateTrend = `-- name: GetFailureRateTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', s.created_at), 'YYYY-IW') AS label,
-  (COUNT(*) FILTER (WHERE s.status = 'FAILED')::float / COUNT(*))::float AS failure_rate,
-  COUNT(*)::bigint AS total,
+SELECT
+  TO_CHAR(date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
+  COALESCE(
+    (100.0 * COUNT(*) FILTER (WHERE s.status = 'FAILED')::float
+     / NULLIF(COUNT(*) FILTER (WHERE s.status IN ('COMPLETED', 'FAILED')), 0)),
+    0.0
+  )::float AS failure_rate,
+  COUNT(*) FILTER (WHERE s.status IN ('COMPLETED', 'FAILED'))::bigint AS total,
   COUNT(*) FILTER (WHERE s.status = 'FAILED')::bigint AS failed
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -362,8 +415,11 @@ type GetFailureRateTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetFailureRateTrend(ctx context.Context, createdAt time.Time) ([]GetFailureRateTrendRow, error) {
-	rows, err := q.db.Query(ctx, getFailureRateTrend, createdAt)
+// Wynik w procentach (0–100); mianownik jak w GetAIQualityKPIs — tylko
+// stany końcowe. `total` też liczy stany końcowe, żeby tooltip zgadzał się
+// z wykresem.
+func (q *Queries) GetFailureRateTrend(ctx context.Context, since time.Time) ([]GetFailureRateTrendRow, error) {
+	rows, err := q.db.Query(ctx, getFailureRateTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -388,38 +444,56 @@ func (q *Queries) GetFailureRateTrend(ctx context.Context, createdAt time.Time) 
 }
 
 const getFunnelSteps = `-- name: GetFunnelSteps :one
-SELECT 
+SELECT
   COUNT(*)::bigint AS signup_count,
-  COUNT(first_patient_at)::bigint AS patient_created_count,
-  COUNT(first_session_at)::bigint AS session_completed_count,
-  COUNT(first_rating_at)::bigint AS rated_count
-FROM v_analytics_activation
+  COUNT(a.first_patient_at)::bigint AS patient_created_count,
+  COUNT(a.first_session_at)::bigint AS session_completed_count,
+  -- Warunek ` + "`" + `first_session_at IS NOT NULL` + "`" + ` jest tu konieczny, nie ozdobny:
+  -- bez niego EXISTS wiaze sie wylacznie z therapist_id i terapeuta, ktory
+  -- otworzyl raport, ale nie ma ukonczonej sesji, rozszerzalby lejek.
+  COUNT(*) FILTER (
+      WHERE a.first_session_at IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM analytics_events ae
+          WHERE ae.therapist_id = a.therapist_id
+            AND ae.event_name = 'report.read_started'
+        )
+  )::bigint AS report_read_count,
+  COUNT(a.first_rating_at)::bigint AS rated_count
+FROM v_analytics_activation a
+WHERE a.signup_at >= $1
 `
 
 type GetFunnelStepsRow struct {
 	SignupCount           int64 `json:"signup_count"`
 	PatientCreatedCount   int64 `json:"patient_created_count"`
 	SessionCompletedCount int64 `json:"session_completed_count"`
+	ReportReadCount       int64 `json:"report_read_count"`
 	RatedCount            int64 `json:"rated_count"`
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetFunnelSteps(ctx context.Context) (GetFunnelStepsRow, error) {
-	row := q.db.QueryRow(ctx, getFunnelSteps)
+// Krok „przeczytanie raportu" liczony TU, a nie osobnym zapytaniem po
+// gołej tabeli zdarzeń. Poprzednio pochodził z innej populacji (bez filtra
+// kont testowych, bez sprawdzenia roli, bez okna czasowego), więc lejek
+// potrafił się rozszerzać zamiast zwężać.
+func (q *Queries) GetFunnelSteps(ctx context.Context, since time.Time) (GetFunnelStepsRow, error) {
+	row := q.db.QueryRow(ctx, getFunnelSteps, since)
 	var i GetFunnelStepsRow
 	err := row.Scan(
 		&i.SignupCount,
 		&i.PatientCreatedCount,
 		&i.SessionCompletedCount,
+		&i.ReportReadCount,
 		&i.RatedCount,
 	)
 	return i, err
 }
 
 const getHourlyHeatmap = `-- name: GetHourlyHeatmap :many
-SELECT 
-  EXTRACT(DOW FROM s.created_at)::int AS day_of_week,
-  EXTRACT(HOUR FROM s.created_at)::int AS hour,
+SELECT
+  EXTRACT(DOW FROM s.created_at AT TIME ZONE 'Europe/Warsaw')::int AS day_of_week,
+  EXTRACT(HOUR FROM s.created_at AT TIME ZONE 'Europe/Warsaw')::int AS hour,
   COUNT(*)::bigint AS count
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -427,6 +501,7 @@ WHERE s.deleted_at IS NULL
   AND u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND s.created_at >= $1
 GROUP BY 1, 2
 ORDER BY 1 ASC, 2 ASC
 `
@@ -438,8 +513,11 @@ type GetHourlyHeatmapRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetHourlyHeatmap(ctx context.Context) ([]GetHourlyHeatmapRow, error) {
-	rows, err := q.db.Query(ctx, getHourlyHeatmap)
+// DOW i HOUR w Europe/Warsaw. W UTC sesja o 21:30 czasu polskiego trafiała
+// latem do kubełka 19:00, a sesja z poniedziałku 00:30 — do niedzieli.
+// DOW 0 = niedziela, zgodnie z mapowaniem nazw dni na froncie.
+func (q *Queries) GetHourlyHeatmap(ctx context.Context, since time.Time) ([]GetHourlyHeatmapRow, error) {
+	rows, err := q.db.Query(ctx, getHourlyHeatmap, since)
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +537,7 @@ func (q *Queries) GetHourlyHeatmap(ctx context.Context) ([]GetHourlyHeatmapRow, 
 }
 
 const getIssueCategories = `-- name: GetIssueCategories :many
-SELECT 
+SELECT
   issue::text AS category,
   COUNT(*)::bigint AS count
 FROM report_ratings rr
@@ -468,6 +546,7 @@ LATERAL UNNEST(rr.issues) AS issue
 WHERE u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND rr.created_at >= $1
 GROUP BY 1
 ORDER BY 2 DESC
 `
@@ -478,8 +557,8 @@ type GetIssueCategoriesRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetIssueCategories(ctx context.Context) ([]GetIssueCategoriesRow, error) {
-	rows, err := q.db.Query(ctx, getIssueCategories)
+func (q *Queries) GetIssueCategories(ctx context.Context, since time.Time) ([]GetIssueCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, getIssueCategories, since)
 	if err != nil {
 		return nil, err
 	}
@@ -499,8 +578,8 @@ func (q *Queries) GetIssueCategories(ctx context.Context) ([]GetIssueCategoriesR
 }
 
 const getLatencyTrend = `-- name: GetLatencyTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', session_at), 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(date_trunc('week', session_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY e2e_seconds)::float AS p50,
   PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY e2e_seconds)::float AS p95
 FROM v_analytics_pipeline_latency
@@ -516,8 +595,8 @@ type GetLatencyTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetLatencyTrend(ctx context.Context, sessionAt time.Time) ([]GetLatencyTrendRow, error) {
-	rows, err := q.db.Query(ctx, getLatencyTrend, sessionAt)
+func (q *Queries) GetLatencyTrend(ctx context.Context, since time.Time) ([]GetLatencyTrendRow, error) {
+	rows, err := q.db.Query(ctx, getLatencyTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -537,18 +616,19 @@ func (q *Queries) GetLatencyTrend(ctx context.Context, sessionAt time.Time) ([]G
 }
 
 const getModalityDistribution = `-- name: GetModalityDistribution :many
-SELECT 
+SELECT
   m.display_name::text AS modality_name,
   COUNT(s.id)::bigint AS count
 FROM sessions s
 JOIN patient_files pf ON s.patient_file_id = pf.id
 JOIN modalities m ON pf.modality_id = m.id
 JOIN users u ON u.id = s.therapist_id
-WHERE s.deleted_at IS NULL 
+WHERE s.deleted_at IS NULL
   AND pf.deleted_at IS NULL
   AND u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND s.created_at >= $1
 GROUP BY 1
 ORDER BY 2 DESC
 `
@@ -559,8 +639,8 @@ type GetModalityDistributionRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetModalityDistribution(ctx context.Context) ([]GetModalityDistributionRow, error) {
-	rows, err := q.db.Query(ctx, getModalityDistribution)
+func (q *Queries) GetModalityDistribution(ctx context.Context, since time.Time) ([]GetModalityDistributionRow, error) {
+	rows, err := q.db.Query(ctx, getModalityDistribution, since)
 	if err != nil {
 		return nil, err
 	}
@@ -580,7 +660,7 @@ func (q *Queries) GetModalityDistribution(ctx context.Context) ([]GetModalityDis
 }
 
 const getOverallSatisfactionRate = `-- name: GetOverallSatisfactionRate :one
-SELECT 
+SELECT
   COALESCE(
     ROUND(
       100.0 * COUNT(*) FILTER (WHERE rr.rating = 'positive') / NULLIF(COUNT(*), 0),
@@ -593,11 +673,12 @@ JOIN users u ON u.id = rr.therapist_id
 WHERE u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND rr.created_at >= $1
 `
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetOverallSatisfactionRate(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getOverallSatisfactionRate)
+func (q *Queries) GetOverallSatisfactionRate(ctx context.Context, since time.Time) (float64, error) {
+	row := q.db.QueryRow(ctx, getOverallSatisfactionRate, since)
 	var rate float64
 	err := row.Scan(&rate)
 	return rate, err
@@ -609,6 +690,7 @@ SELECT COALESCE(code_attempts, 0)::int AS attempts,
 FROM invitations
 WHERE patient_file_id IS NOT NULL
   AND pairing_code_hash IS NOT NULL
+  AND created_at >= $1
 GROUP BY 1
 ORDER BY 1
 `
@@ -620,8 +702,8 @@ type GetPairingCodeFrictionRow struct {
 
 // Ile prób kodu parowania potrzebuje klient. Rozkład, nie średnia —
 // interesuje nas ogon, czyli ci, którzy męczą się kilka razy.
-func (q *Queries) GetPairingCodeFriction(ctx context.Context) ([]GetPairingCodeFrictionRow, error) {
-	rows, err := q.db.Query(ctx, getPairingCodeFriction)
+func (q *Queries) GetPairingCodeFriction(ctx context.Context, since time.Time) ([]GetPairingCodeFrictionRow, error) {
+	rows, err := q.db.Query(ctx, getPairingCodeFriction, since)
 	if err != nil {
 		return nil, err
 	}
@@ -641,7 +723,7 @@ func (q *Queries) GetPairingCodeFriction(ctx context.Context) ([]GetPairingCodeF
 }
 
 const getPlanDistribution = `-- name: GetPlanDistribution :many
-SELECT 
+SELECT
   sp.display_name AS plan_name,
   COUNT(*)::bigint AS count
 FROM subscriptions s
@@ -656,6 +738,7 @@ type GetPlanDistributionRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
+// Migawka „teraz" — rozkład aktywnych subskrypcji nie ma okna czasowego.
 func (q *Queries) GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error) {
 	rows, err := q.db.Query(ctx, getPlanDistribution)
 	if err != nil {
@@ -687,6 +770,7 @@ JOIN users u ON u.id = rr.therapist_id
 WHERE u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
   AND u.email NOT LIKE '%@example.test'
+  AND rr.created_at >= $1
 `
 
 type GetRatingsKPIsRow struct {
@@ -697,9 +781,9 @@ type GetRatingsKPIsRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-// Aggregated rating counts for the admin feedback dashboard KPI cards.
-func (q *Queries) GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error) {
-	row := q.db.QueryRow(ctx, getRatingsKPIs)
+// Liczniki ocen do kafelków zakładki „Feedback raportów".
+func (q *Queries) GetRatingsKPIs(ctx context.Context, since time.Time) (GetRatingsKPIsRow, error) {
+	row := q.db.QueryRow(ctx, getRatingsKPIs, since)
 	var i GetRatingsKPIsRow
 	err := row.Scan(
 		&i.Total,
@@ -710,26 +794,12 @@ func (q *Queries) GetRatingsKPIs(ctx context.Context) (GetRatingsKPIsRow, error)
 	return i, err
 }
 
-const getReadReportCount = `-- name: GetReadReportCount :one
-SELECT COUNT(DISTINCT therapist_id)::bigint
-FROM analytics_events
-WHERE event_name = 'report.read_started'
-`
-
-// CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetReadReportCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, getReadReportCount)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const getReadingPlatformSplit = `-- name: GetReadingPlatformSplit :many
 SELECT COALESCE(NULLIF(client_platform, ''), 'unknown')::text AS platform,
        count(*)::int AS reads
 FROM analytics_events
 WHERE event_name = 'report.read_started'
-  AND occurred_at > now() - interval '90 days'
+  AND occurred_at >= $1
 GROUP BY 1
 ORDER BY 2 DESC
 `
@@ -741,8 +811,8 @@ type GetReadingPlatformSplitRow struct {
 
 // Gdzie czytane są raporty. client_platform jest wypełniany przy
 // każdym zdarzeniu klienckim, więc to działa od pierwszego dnia.
-func (q *Queries) GetReadingPlatformSplit(ctx context.Context) ([]GetReadingPlatformSplitRow, error) {
-	rows, err := q.db.Query(ctx, getReadingPlatformSplit)
+func (q *Queries) GetReadingPlatformSplit(ctx context.Context, since time.Time) ([]GetReadingPlatformSplitRow, error) {
+	rows, err := q.db.Query(ctx, getReadingPlatformSplit, since)
 	if err != nil {
 		return nil, err
 	}
@@ -762,7 +832,7 @@ func (q *Queries) GetReadingPlatformSplit(ctx context.Context) ([]GetReadingPlat
 }
 
 const getRegistrationsDetail = `-- name: GetRegistrationsDetail :many
-SELECT 
+SELECT
   u.id,
   u.email,
   u.first_name,
@@ -809,8 +879,12 @@ type GetRegistrationsDetailRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetRegistrationsDetail(ctx context.Context, createdAt time.Time) ([]GetRegistrationsDetailRow, error) {
-	rows, err := q.db.Query(ctx, getRegistrationsDetail, createdAt)
+// Kolumny login_count i session_count nie mają własnego okna czasowego i
+// nie potrzebują go: zewnętrzny WHERE zostawia tylko konta założone po
+// `since`, a ani sesja, ani zdarzenie nie może powstać przed założeniem
+// konta. Liczby są więc z definicji z wybranego okresu.
+func (q *Queries) GetRegistrationsDetail(ctx context.Context, since time.Time) ([]GetRegistrationsDetailRow, error) {
+	rows, err := q.db.Query(ctx, getRegistrationsDetail, since)
 	if err != nil {
 		return nil, err
 	}
@@ -839,8 +913,8 @@ func (q *Queries) GetRegistrationsDetail(ctx context.Context, createdAt time.Tim
 }
 
 const getRegistrationsTrend = `-- name: GetRegistrationsTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', created_at), 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(date_trunc('week', created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
   COUNT(*)::float AS value
 FROM users
 WHERE role = 'THERAPIST' AND deleted_at IS NULL
@@ -863,8 +937,13 @@ type GetRegistrationsTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetRegistrationsTrend(ctx context.Context, createdAt time.Time) ([]GetRegistrationsTrendRow, error) {
-	rows, err := q.db.Query(ctx, getRegistrationsTrend, createdAt)
+// Filtr kont wewnętrznych jest tu SZERSZY niż w pozostałych zapytaniach
+// (adresy z '+', @superwizor.ai, konto założyciela). To celowe: liczba
+// rejestracji trafia do mailingu, więc odsiewamy też własne konta robocze.
+// Nie porównuj tej liczby wprost z pierwszym krokiem lejka — mianowniki
+// są różne z założenia.
+func (q *Queries) GetRegistrationsTrend(ctx context.Context, since time.Time) ([]GetRegistrationsTrendRow, error) {
+	rows, err := q.db.Query(ctx, getRegistrationsTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -884,17 +963,30 @@ func (q *Queries) GetRegistrationsTrend(ctx context.Context, createdAt time.Time
 }
 
 const getRelabelRate = `-- name: GetRelabelRate :one
-SELECT 
+SELECT
   COALESCE(
-    (COUNT(DISTINCT session_id) FILTER (WHERE event_name = 'speaker_labels.updated')::float / NULLIF(COUNT(DISTINCT session_id) FILTER (WHERE event_name = 'upload.finalized'), 0))::float,
+    (100.0 * COUNT(DISTINCT ae.session_id) FILTER (WHERE ae.event_name = 'speaker_labels.updated')::float
+     / NULLIF(COUNT(DISTINCT ae.session_id) FILTER (WHERE ae.event_name = 'upload.finalized'), 0)),
     0.0
   )::float AS relabel_rate
-FROM analytics_events
+FROM analytics_events ae
+WHERE NOT EXISTS (
+    SELECT 1 FROM users u
+    WHERE u.id = ae.therapist_id
+      AND (u.email LIKE '%@superwizor.test'
+        OR u.email LIKE '%@example.com'
+        OR u.email LIKE '%@example.test')
+  )
+  AND ae.occurred_at >= $1
 `
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetRelabelRate(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getRelabelRate)
+// Wynik w procentach (0–100). Dochodzi filtr kont testowych — bez niego
+// wskaźnik liczył sesje z przebiegów E2E, które etykiet nie poprawiają.
+// NOT EXISTS zamiast JOIN, bo analytics_events.therapist_id jest opcjonalne
+// (zdarzenia systemowe) — INNER JOIN wyciąłby je z mianownika.
+func (q *Queries) GetRelabelRate(ctx context.Context, since time.Time) (float64, error) {
+	row := q.db.QueryRow(ctx, getRelabelRate, since)
 	var relabel_rate float64
 	err := row.Scan(&relabel_rate)
 	return relabel_rate, err
@@ -911,7 +1003,7 @@ SELECT count(*) FILTER (WHERE event_name = 'report.read_started')::int AS starte
          ) FILTER (WHERE properties->>'active_read_ms' IS NOT NULL), 0)::float AS p90_seconds
 FROM analytics_events
 WHERE event_name IN ('report.read_started', 'report.read_finished')
-  AND occurred_at > now() - interval '90 days'
+  AND occurred_at >= $1
 `
 
 type GetReportReadingStatsRow struct {
@@ -925,10 +1017,11 @@ type GetReportReadingStatsRow struct {
 // licznik przy zejściu aplikacji w tło, więc to czas AKTYWNY, a nie
 // czas otwartego ekranu.
 //
-// Różnica started-finished to czytania przerwane: użytkownik otworzył
-// raport i wyszedł bez domknięcia sesji czytania.
-func (q *Queries) GetReportReadingStats(ctx context.Context) (GetReportReadingStatsRow, error) {
-	row := q.db.QueryRow(ctx, getReportReadingStats)
+// Różnica started-finished to czytania przerwane. Może wyjść ujemna na
+// granicy okna (domknięcie czytania rozpoczętego przed `since`), dlatego
+// kafelek na froncie klamruje ją do zera.
+func (q *Queries) GetReportReadingStats(ctx context.Context, since time.Time) (GetReportReadingStatsRow, error) {
+	row := q.db.QueryRow(ctx, getReportReadingStats, since)
 	var i GetReportReadingStatsRow
 	err := row.Scan(
 		&i.Started,
@@ -937,6 +1030,85 @@ func (q *Queries) GetReportReadingStats(ctx context.Context) (GetReportReadingSt
 		&i.P90Seconds,
 	)
 	return i, err
+}
+
+const getRetentionCohorts = `-- name: GetRetentionCohorts :many
+WITH cohort_sizes AS (
+  SELECT
+    date_trunc('week', signup_at AT TIME ZONE 'Europe/Warsaw') AS cohort_week,
+    COUNT(DISTINCT therapist_id)::float AS total_size
+  FROM v_analytics_activation
+  WHERE signup_at >= now() - INTERVAL '26 weeks'
+  GROUP BY 1
+),
+activity AS (
+  SELECT
+    s.therapist_id,
+    date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw') AS activity_week
+  FROM sessions s
+  WHERE s.deleted_at IS NULL
+),
+cohort_activity AS (
+  SELECT
+    date_trunc('week', u.signup_at AT TIME ZONE 'Europe/Warsaw') AS cohort_week,
+    a.activity_week,
+    COUNT(DISTINCT u.therapist_id)::float AS active_size
+  FROM v_analytics_activation u
+  JOIN activity a ON u.therapist_id = a.therapist_id
+  WHERE u.signup_at >= now() - INTERVAL '26 weeks'
+    AND a.activity_week >= date_trunc('week', u.signup_at AT TIME ZONE 'Europe/Warsaw')
+  GROUP BY 1, 2
+)
+SELECT
+  TO_CHAR(cs.cohort_week, 'IYYY-IW')::text AS cohort,
+  COALESCE(TO_CHAR(ca.activity_week, 'IYYY-IW'), '')::text AS week,
+  COALESCE(100.0 * ca.active_size / NULLIF(cs.total_size, 0), 0.0)::float AS pct,
+  cs.total_size::bigint AS cohort_size
+FROM cohort_sizes cs
+LEFT JOIN cohort_activity ca ON cs.cohort_week = ca.cohort_week
+ORDER BY 1 ASC, 2 ASC
+`
+
+type GetRetentionCohortsRow struct {
+	Cohort     string  `json:"cohort"`
+	Week       string  `json:"week"`
+	Pct        float64 `json:"pct"`
+	CohortSize int64   `json:"cohort_size"`
+}
+
+// CROSS-SERVICE READ: analytics-only
+// Wejscie dla KPI „Retencja 30-dniowa". Osobne zapytanie od macierzy powyzej,
+// bo ten wskaznik z definicji patrzy cztery tygodnie wstecz. Gdyby dzielil
+// okno z TimeRangeSelectorem, przy zakresie „7 dni" ani jedna kohorta nie
+// bylaby jeszcze dojrzala i kafelek pokazywalby 0% — liczbe wygladajaca
+// wiarygodnie i falszywa. Okno jest wiec stale, tak jak w GetWAU.
+//
+// LEFT JOIN, nie INNER: kohorta, z ktorej NIKT nigdy nie nagral sesji, ma
+// wrocic z pustym `week` i zerowym `pct`, zeby wejsc do MIANOWNIKA KPI.
+// Przy INNER JOIN znikala z rachunku i zawyzala wynik.
+func (q *Queries) GetRetentionCohorts(ctx context.Context) ([]GetRetentionCohortsRow, error) {
+	rows, err := q.db.Query(ctx, getRetentionCohorts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRetentionCohortsRow
+	for rows.Next() {
+		var i GetRetentionCohortsRow
+		if err := rows.Scan(
+			&i.Cohort,
+			&i.Week,
+			&i.Pct,
+			&i.CohortSize,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getRevenueTrend = `-- name: GetRevenueTrend :many
@@ -960,7 +1132,8 @@ type GetRevenueTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-// MRR snapshot: counts active subscriptions per plan tier
+// Migawka MRR per plan, nie trend — nazwa została z czasów, gdy miał nim
+// być. Panel tego nie renderuje; handler traktuje ją fail-soft.
 func (q *Queries) GetRevenueTrend(ctx context.Context) ([]GetRevenueTrendRow, error) {
 	rows, err := q.db.Query(ctx, getRevenueTrend)
 	if err != nil {
@@ -987,8 +1160,8 @@ func (q *Queries) GetRevenueTrend(ctx context.Context) ([]GetRevenueTrendRow, er
 }
 
 const getSatisfactionTrend = `-- name: GetSatisfactionTrend :many
-SELECT 
-  TO_CHAR(week, 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(week AT TIME ZONE 'Europe/Warsaw', 'IYYY-IW') AS label,
   satisfaction_pct::float AS satisfaction_pct
 FROM v_analytics_satisfaction
 WHERE week >= $1::timestamptz
@@ -1001,8 +1174,8 @@ type GetSatisfactionTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetSatisfactionTrend(ctx context.Context, dollar_1 time.Time) ([]GetSatisfactionTrendRow, error) {
-	rows, err := q.db.Query(ctx, getSatisfactionTrend, dollar_1)
+func (q *Queries) GetSatisfactionTrend(ctx context.Context, since time.Time) ([]GetSatisfactionTrendRow, error) {
+	rows, err := q.db.Query(ctx, getSatisfactionTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1022,8 +1195,8 @@ func (q *Queries) GetSatisfactionTrend(ctx context.Context, dollar_1 time.Time) 
 }
 
 const getSessionDurationTrend = `-- name: GetSessionDurationTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', s.created_at), 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
   COALESCE(AVG(s.duration_seconds), 0.0)::float AS value
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -1042,8 +1215,8 @@ type GetSessionDurationTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetSessionDurationTrend(ctx context.Context, createdAt time.Time) ([]GetSessionDurationTrendRow, error) {
-	rows, err := q.db.Query(ctx, getSessionDurationTrend, createdAt)
+func (q *Queries) GetSessionDurationTrend(ctx context.Context, since time.Time) ([]GetSessionDurationTrendRow, error) {
+	rows, err := q.db.Query(ctx, getSessionDurationTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1066,7 +1239,8 @@ const getSessionsThisWeek = `-- name: GetSessionsThisWeek :one
 SELECT COUNT(*)::bigint AS count
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
-WHERE s.created_at >= NOW() - INTERVAL '7 days'
+WHERE s.created_at >= date_trunc('week', NOW() AT TIME ZONE 'Europe/Warsaw')
+                         AT TIME ZONE 'Europe/Warsaw'
   AND s.deleted_at IS NULL
   AND u.email NOT LIKE '%@superwizor.test'
   AND u.email NOT LIKE '%@example.com'
@@ -1074,6 +1248,8 @@ WHERE s.created_at >= NOW() - INTERVAL '7 days'
 `
 
 // CROSS-SERVICE READ: analytics-only
+// „W tym tygodniu" to tydzień KALENDARZOWY od poniedziałku czasu polskiego,
+// zgodnie z opisem kafelka. Poprzednio liczyło kroczące 7 dni.
 func (q *Queries) GetSessionsThisWeek(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getSessionsThisWeek)
 	var count int64
@@ -1082,8 +1258,8 @@ func (q *Queries) GetSessionsThisWeek(ctx context.Context) (int64, error) {
 }
 
 const getSessionsTrend = `-- name: GetSessionsTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', s.created_at), 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(date_trunc('week', s.created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
   COUNT(*)::float AS value
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -1102,8 +1278,8 @@ type GetSessionsTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetSessionsTrend(ctx context.Context, createdAt time.Time) ([]GetSessionsTrendRow, error) {
-	rows, err := q.db.Query(ctx, getSessionsTrend, createdAt)
+func (q *Queries) GetSessionsTrend(ctx context.Context, since time.Time) ([]GetSessionsTrendRow, error) {
+	rows, err := q.db.Query(ctx, getSessionsTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1123,10 +1299,10 @@ func (q *Queries) GetSessionsTrend(ctx context.Context, createdAt time.Time) ([]
 }
 
 const getTokenUsageTrend = `-- name: GetTokenUsageTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', created_at), 'YYYY-IW') AS label,
-  SUM(llm_input_tokens)::bigint AS input_tokens,
-  SUM(llm_output_tokens)::bigint AS output_tokens
+SELECT
+  TO_CHAR(date_trunc('week', created_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
+  COALESCE(SUM(llm_input_tokens), 0)::bigint AS input_tokens,
+  COALESCE(SUM(llm_output_tokens), 0)::bigint AS output_tokens
 FROM v_analytics_session_cost
 WHERE created_at >= $1
 GROUP BY 1
@@ -1140,8 +1316,8 @@ type GetTokenUsageTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetTokenUsageTrend(ctx context.Context, createdAt time.Time) ([]GetTokenUsageTrendRow, error) {
-	rows, err := q.db.Query(ctx, getTokenUsageTrend, createdAt)
+func (q *Queries) GetTokenUsageTrend(ctx context.Context, since time.Time) ([]GetTokenUsageTrendRow, error) {
+	rows, err := q.db.Query(ctx, getTokenUsageTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1161,15 +1337,19 @@ func (q *Queries) GetTokenUsageTrend(ctx context.Context, createdAt time.Time) (
 }
 
 const getTokenUtilizationHeatmap = `-- name: GetTokenUtilizationHeatmap :many
-SELECT 
+SELECT
   o.legal_name::text AS org_name,
-  TO_CHAR(v.period_start, 'YYYY-IW') AS week,
-  AVG(v.utilization_pct)::float AS value
+  TO_CHAR(v.period_start AT TIME ZONE 'Europe/Warsaw', 'IYYY-IW') AS week,
+  COALESCE(
+    100.0 * SUM(v.tokens_used)::float / NULLIF(SUM(v.tokens_limit), 0),
+    0.0
+  )::float AS value
 FROM v_analytics_token_util v
 JOIN organizations o ON v.organization_id = o.id
+WHERE v.period_end >= $1
+  AND v.period_start <= now()
 GROUP BY 1, 2
 ORDER BY 2 ASC, 1 ASC
-LIMIT 50
 `
 
 type GetTokenUtilizationHeatmapRow struct {
@@ -1179,8 +1359,11 @@ type GetTokenUtilizationHeatmapRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetTokenUtilizationHeatmap(ctx context.Context) ([]GetTokenUtilizationHeatmapRow, error) {
-	rows, err := q.db.Query(ctx, getTokenUtilizationHeatmap)
+// Bez LIMIT-u. Poprzedni `ORDER BY 2 ASC LIMIT 50` obcinał NAJNOWSZE
+// tygodnie, więc heatmapa pokazywała wiosnę, gdy panel stał na „7 dni".
+// Nachodzenie okresu na okno, nie jego poczatek — patrz GetAvgTokenUtilization.
+func (q *Queries) GetTokenUtilizationHeatmap(ctx context.Context, since time.Time) ([]GetTokenUtilizationHeatmapRow, error) {
+	rows, err := q.db.Query(ctx, getTokenUtilizationHeatmap, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1200,32 +1383,43 @@ func (q *Queries) GetTokenUtilizationHeatmap(ctx context.Context) ([]GetTokenUti
 }
 
 const getUnitEconomicsKPIs = `-- name: GetUnitEconomicsKPIs :one
-SELECT 
-  COALESCE(AVG(total_cost_usd), 0.0)::float AS avg_cost_per_session,
-  COALESCE(SUM(stt_cost_usd) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days'), 0.0)::float AS monthly_stt_cost,
-  COALESCE(SUM(llm_cost_usd) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days'), 0.0)::float AS monthly_llm_cost
+SELECT
+  -- To samo wyrazenie co linia Σ w GetCostTrend. AVG(total_cost_usd) pomijaloby
+  -- wiersze z NULL-em (nieznany stt_model albo niewyceniony model LLM), wiec
+  -- kafelek i wykres liczylyby na roznych populacjach.
+  COALESCE(AVG(COALESCE(stt_cost_usd, 0) + COALESCE(llm_cost_usd, 0)), 0.0)::float AS avg_cost_per_session,
+  COALESCE(SUM(stt_cost_usd), 0.0)::float AS period_stt_cost,
+  COALESCE(SUM(llm_cost_usd), 0.0)::float AS period_llm_cost
 FROM v_analytics_session_cost
+WHERE created_at >= $1
 `
 
 type GetUnitEconomicsKPIsRow struct {
 	AvgCostPerSession float64 `json:"avg_cost_per_session"`
-	MonthlySttCost    float64 `json:"monthly_stt_cost"`
-	MonthlyLlmCost    float64 `json:"monthly_llm_cost"`
+	PeriodSttCost     float64 `json:"period_stt_cost"`
+	PeriodLlmCost     float64 `json:"period_llm_cost"`
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetUnitEconomicsKPIs(ctx context.Context) (GetUnitEconomicsKPIsRow, error) {
-	row := q.db.QueryRow(ctx, getUnitEconomicsKPIs)
+// Wszystkie trzy liczby z JEDNEGO okna — wybranego zakresu. Poprzednio
+// średnia szła po całej historii, a sumy po zaszytych 30 dniach, więc
+// trzy kafelki w jednym rzędzie opisywały trzy różne przedziały czasu.
+func (q *Queries) GetUnitEconomicsKPIs(ctx context.Context, since time.Time) (GetUnitEconomicsKPIsRow, error) {
+	row := q.db.QueryRow(ctx, getUnitEconomicsKPIs, since)
 	var i GetUnitEconomicsKPIsRow
-	err := row.Scan(&i.AvgCostPerSession, &i.MonthlySttCost, &i.MonthlyLlmCost)
+	err := row.Scan(&i.AvgCostPerSession, &i.PeriodSttCost, &i.PeriodLlmCost)
 	return i, err
 }
 
 const getUploadFailuresTrend = `-- name: GetUploadFailuresTrend :many
-SELECT 
-  TO_CHAR(date_trunc('week', occurred_at), 'YYYY-IW') AS label,
-  (COUNT(*) FILTER (WHERE event_name = 'upload.failed')::float / NULLIF(COUNT(*), 0))::float AS failure_rate,
-  COUNT(*)::bigint AS total,
+SELECT
+  TO_CHAR(date_trunc('week', occurred_at AT TIME ZONE 'Europe/Warsaw'), 'IYYY-IW') AS label,
+  COALESCE(
+    (100.0 * COUNT(*) FILTER (WHERE event_name = 'upload.failed')::float
+     / NULLIF(COUNT(*) FILTER (WHERE event_name = 'upload.initiated'), 0)),
+    0.0
+  )::float AS failure_rate,
+  COUNT(*) FILTER (WHERE event_name = 'upload.initiated')::bigint AS total,
   COUNT(*) FILTER (WHERE event_name = 'upload.failed')::bigint AS failed
 FROM analytics_events
 WHERE event_name IN ('upload.initiated', 'upload.failed')
@@ -1242,8 +1436,13 @@ type GetUploadFailuresTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetUploadFailuresTrend(ctx context.Context, occurredAt time.Time) ([]GetUploadFailuresTrendRow, error) {
-	rows, err := q.db.Query(ctx, getUploadFailuresTrend, occurredAt)
+// Mianownik to SAME próby wgrania. Poprzednio było COUNT(*) po zbiorze
+// {upload.initiated, upload.failed}, a te zdarzenia nie są rozłączne —
+// jedno nieudane wgranie emituje oba, więc wskaźnik wychodził
+// failed/(initiated+failed) i systematycznie zaniżał awaryjność.
+// Wynik w procentach (0–100).
+func (q *Queries) GetUploadFailuresTrend(ctx context.Context, since time.Time) ([]GetUploadFailuresTrendRow, error) {
+	rows, err := q.db.Query(ctx, getUploadFailuresTrend, since)
 	if err != nil {
 		return nil, err
 	}
@@ -1268,6 +1467,7 @@ func (q *Queries) GetUploadFailuresTrend(ctx context.Context, occurredAt time.Ti
 }
 
 const getWAU = `-- name: GetWAU :one
+
 SELECT COUNT(DISTINCT s.therapist_id)::bigint AS count
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
@@ -1278,7 +1478,39 @@ WHERE s.created_at >= NOW() - INTERVAL '7 days'
   AND u.email NOT LIKE '%@example.test'
 `
 
+// ─────────────────────────────────────────────────────────────────────
+// Zapytania panelu /admin/analytics.
+//
+// Trzy konwencje obowiązujące w CAŁYM tym pliku — złamanie którejkolwiek
+// daje liczbę, która wygląda wiarygodnie i jest zła:
+//
+//  1. ETYKIETA TYGODNIA to `TO_CHAR(…, 'IYYY-IW')`, nigdy `'YYYY-IW'`.
+//     IYYY to rok ISO, YYYY kalendarzowy — te kalendarze rozjeżdżają się
+//     na przełomie roku. 28.12.2026 należy do tygodnia ISO 1 roku 2027;
+//     maska 'YYYY-IW' dała mu etykietę '2026-01', czyli wsadziła go do
+//     słupka ze stycznia 2026. Przy poprawnej masce etykiety sortują się
+//     leksykograficznie tak samo jak chronologicznie, więc GROUP BY 1 /
+//     ORDER BY 1 po etykiecie jest bezpieczne.
+//
+//  2. KUBEŁKOWANIE JEST W `Europe/Warsaw`, nie w UTC. `date_trunc` i
+//     `EXTRACT` na wartości timestamptz liczą w strefie sesji bazy, czyli
+//     w praktyce w UTC — sesja z poniedziałku 00:30 czasu polskiego wpadała
+//     do poprzedniego tygodnia, a wieczorna do złej godziny na heatmapie.
+//     Granice wybranego zakresu ($1) zostają instantami i porównują się
+//     z timestamptz bez konwersji.
+//
+//  3. WSKAŹNIK PROCENTOWY WYCHODZI JAKO 0–100, nie jako ułamek. Frontend
+//     rysował ułamek pod etykietą „%", więc awaryjność 2% wyglądała na
+//     wykresie jak 0,02% — przy KPI obok, który mnożył przez 100.
+//
+// Każde zapytanie, które ma sens w oknie czasowym, przyjmuje sqlc.arg(since)
+// z TimeRangeSelector. Zapytania bez tego parametru (GetWAU,
+// GetPlanDistribution, GetRevenueTrend) są migawkami z definicji i ich
+// kafelki mówią to wprost.
+// ─────────────────────────────────────────────────────────────────────
 // CROSS-SERVICE READ: analytics-only
+// Kroczące 7 dni Z DEFINICJI (Weekly Active Users) — celowo nie reaguje
+// na TimeRangeSelector.
 func (q *Queries) GetWAU(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getWAU)
 	var count int64
@@ -1287,8 +1519,8 @@ func (q *Queries) GetWAU(ctx context.Context) (int64, error) {
 }
 
 const getWauTrend = `-- name: GetWauTrend :many
-SELECT 
-  TO_CHAR(week, 'YYYY-IW') AS label,
+SELECT
+  TO_CHAR(week AT TIME ZONE 'Europe/Warsaw', 'IYYY-IW') AS label,
   active_therapists::float AS value
 FROM v_analytics_wau
 WHERE week >= $1::timestamptz
@@ -1301,8 +1533,10 @@ type GetWauTrendRow struct {
 }
 
 // CROSS-SERVICE READ: analytics-only
-func (q *Queries) GetWauTrend(ctx context.Context, dollar_1 time.Time) ([]GetWauTrendRow, error) {
-	rows, err := q.db.Query(ctx, getWauTrend, dollar_1)
+// `week` w widoku to instant lokalnej północy poniedziałku (000102),
+// więc etykietę liczymy z powrotem w Europe/Warsaw.
+func (q *Queries) GetWauTrend(ctx context.Context, since time.Time) ([]GetWauTrendRow, error) {
+	rows, err := q.db.Query(ctx, getWauTrend, since)
 	if err != nil {
 		return nil, err
 	}
