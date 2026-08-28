@@ -175,12 +175,18 @@ renderuje; kafelki nie odrozniaja "0 z fail-soft" od prawdziwego zera;
 zalozone wczoraj nie zdazylo sie aktywowac) — opisane w podpowiedzi
 kafelka zamiast bramki dojrzalosci, bo to decyzja produktowa.
 
-WYKRYTE PRZY OKAZJI, NIE NAPRAWIONE TUTAJ: wygenerowany kod sqlc rozjechal
-sie z zapytaniami w identity-svc (`CreateUser` w users.sql wstawia
-`phone_number` i `has_marketing_consent`, a wygenerowany Go tych kolumn nie
-ma) i w ingestion-svc; models.go w billing/identity/ingestion nie zna typow
-z migracji 000096-000100. Regeneracja tam ZMIENI zachowanie, wiec zostala
-poza ta galezia — jest osobne zadanie.
+WYKRYTE PRZY OKAZJI, NIE NAPRAWIONE TUTAJ: `CreateUser` w
+identity-svc/queries/users.sql wstawia 10 kolumn, a wygenerowany
+users.sql.go tylko 8 — od commita `32eac303` (2026-07-28, "save current
+work"), ktory zmienil .sql i nie ruszyl generowanego pliku.
+
+To NIE jest utrata danych, sprawdzone: produkcja wykonuje stala z Go, a
+`CreateUserRequest` w proto w ogole nie ma tych pol. Rejestracja jest
+dwuetapowa z zalozenia (CreateUser -> UpdateProfile), a telefon jest
+wymagany w schemacie formularza, wiec bramka `hasExtras` zawsze przepuszcza
+UpdateProfile z telefonem i zgoda marketingowa. Problem jest taki, ze plik
+.sql klamie o tym, co robi kod, i nastepne `sqlc generate` wywali build
+w czterech call-site'ach. Osobne zadanie.
 
 ### Potok wnioskowania na Flash — WDROZONE 2026-08-26, benchmark w toku
 
