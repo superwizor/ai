@@ -1,6 +1,7 @@
 package ontology
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -204,5 +205,52 @@ func TestPewnoscJestWymagana(t *testing.T) {
 		if d, _ := conf["description"].(string); d == "" {
 			t.Errorf("%s: confidence bez opisu", id)
 		}
+	}
+}
+
+// TestGlosyNieZmieniajaSchematu — STRAZNIK zasady "identyfikator, nie
+// objasnienie" (test kontraktowy planu value_glosses, sekcja 6.2).
+//
+// JSON Schema wyjscia S2 zbudowany z ontologii Z glosami i BEZ glos
+// (te same values) musi byc BAJTOWO identyczny. Gdy przyszly refaktor
+// generatora wciagnie glosy do enumu albo do opisow pol, ten test ma
+// wywrocic build — bo od tego momentu glosa przestaje byc objasnieniem,
+// a zaczyna byc czescia identyfikatora, i caly lancuch R1/telemetria/
+// benchmark zaczyna porownywac inne stringi.
+func TestGlosyNieZmieniajaSchematu(t *testing.T) {
+	values := []string{"miłość", "pewność", "pewność siebie"}
+	bez := &Ontology{Modality: "ppt", Version: "0.0.1",
+		Constructs: map[string]*Construct{
+			"kat": {LabelPL: "K", Kind: KindCategory, Values: values},
+		}}
+	z := &Ontology{Modality: "ppt", Version: "0.0.1",
+		Constructs: map[string]*Construct{
+			"kat": {LabelPL: "K", Kind: KindCategory, Values: values,
+				ValueGlosses: map[string]string{
+					"pewność":        "decyzyjność — zdolność podejmowania decyzji",
+					"pewność siebie": "ufność we własne siły",
+				}},
+		}}
+
+	sBez, err := bez.SchemaForConstruct("kat", SchemaOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sZ, err := z.SchemaForConstruct("kat", SchemaOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// encoding/json sortuje klucze map deterministycznie, wiec rownosc
+	// bajtowa jest dobrze zdefiniowana.
+	jBez, err := json.Marshal(sBez)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jZ, err := json.Marshal(sZ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(jBez, jZ) {
+		t.Fatalf("schemat zmienil sie po dodaniu glos:\nbez: %s\nz:   %s", jBez, jZ)
 	}
 }

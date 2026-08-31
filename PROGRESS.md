@@ -89,6 +89,140 @@ Gotchas:
 
 ## In progress
 
+### E4/T42a — fakty sesyjne po scaleniu z F7a/F7b — GOTOWE na feat/cbt-011-silnik — 2026-08-31
+
+D1-D4 ZATWIERDZONE przez wlasciciela produktu zgodnie z rekomendacjami
+(zapisane w changelogu noty v1.1).
+
+Dokument scalajacy: docs/67_SCALENIE_E4_Z_F7A_F7B.md — rozstrzygniecie
+naczelne: `prior_report_context` z noty NIE powstaje, tym wejsciem JEST
+PastContext (F7a/F7b). Numeracja regul skorygowana: V8 = zakaz procentow
+(E1), V9 = lustro R11 (E2); V7 zajete przez ciaglosc z F7a.
+
+T42a wdrozone:
+- S1: pole spanu fact_kind (6 wartosci, katalog pkg/ontology FactKinds),
+  prompt s1/1.1.0, weryfikacja mechaniczna bez zmian.
+- Migracja 000103: report_spans.fact_kind z CHECK na katalog.
+- Ontologia: Construct.FactKindMap + lint F1-F5 (jeden konstrukt na
+  fact_kind; wymagane forced_status: observation).
+- Potok: konstrukt faktowy POMIJA S2, mapowany deterministycznie
+  (MapFacts) W POZYCJI konstruktu w petli — kolejnosc twierdzen stabilna
+  (indeks wnioskowania adresuje po pozycji). Twierdzenie faktowe:
+  observation, confidence 1.0, dowod = span; przechodzi S3 normalnie.
+- Seed cbt/0.1.2: fact_kind_map na session_agreement i mood_rating.
+- Test integracyjny: konstrukt faktowy nigdy nie trafia do S2 (zepsute
+  celowo — lapie).
+
+T42b GOTOWE (2026-08-31): etap S2k (s2k/1.0.0) — parowanie
+deterministyczne, osad enumem, report_claim_links (migracja 000104),
+werdykt bez dowodu degraduje do nie_wrocono (zliczany), powierzchnia
+w RENDERERZE (nie w prozie S4 — data i kierunek nie moga sie
+"poprawic"), fail-open. Testy + celowe psucie walidacji par: lapie.
+
+WDROZONE I ZWERYFIKOWANE 2026-08-31 (llm-worker-00139-zip, migracje
+103+104, seedy ppt/0.1.1 + cbt/0.1.1 + cbt/0.1.2 zaimportowane kontem
+edytora dpiotrak2+onto@gmail.com):
+- PPT 3cab94e9 (ont 0.1.1): V2_termin_obcy 2->0 (glosy zadzialaly),
+  R2_no_current_span 3->0, V4 2->0, R10 1->0; twierdzen 23->27, dowodow
+  62->86; 40 linkow wzmacnia. Evidence: evidence/t42/kanarki-t42.log
+- CBT ce248cc9 (ont 0.1.2): proweniencja s1/1.1.0+s2/1.4.0+s2k/1.0.0;
+  3 linki ciaglosci; ZERO faktow — spójne z materialem (tematy spanow
+  bez watkow zadanie/agenda), ale POZYTYWNA KONTROLA ekstrakcji faktow
+  wciaz potrzebna: sesja z jawnym ustaleniem pracy domowej.
+- Naprawa z kanarka: dedupe linii kontynuacji per (konstrukt, relacja)
+  z najnowsza data — 9 identycznych linii pod konstruktem to szum.
+- SYGNAL KALIBRACYJNY: 43/43 linki "wzmacnia", zero "oslabia" — osad
+  relacji moze byc przytakujacy; obserwowac, rozwazyc wymog wskazania
+  roznicy kierunku przy "oslabia"/sanity-check w benchmarku T9.
+
+DALEJ: T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po decyzji
+snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).
+
+UWAGA wdrozeniowa: prompt S1 zmienil sie (s1/1.1.0) — pierwszy deploy
+po merge'u obejmie tez ta zmiane; benchmark A/B por. dok. 11 §8.2.
+
+
+### CBT 0.1.1 + faza addytywna Noty Zmian Silnika — GOTOWE na feat/cbt-011-silnik — 2026-08-31
+
+Zrodla od uzytkownika: docs/plany/Nota_Zmian_Silnika_v1.5.md (E1-E10,
+T37-T46) + ontology/cbt/0.1.1.yaml (17 konstruktow, layout 12 sekcji,
+glosy; propozycje silnika WYLACZNIE w komentarzach - plik lintowal sie
+od pierwszego uruchomienia).
+
+Zaimplementowane (kolejnosc z noty, "faza silnika, addytywna"):
+- T37/E5: ParseSlotType (pkg/ontology/slots.go - JEDYNY interpreter
+  gramatyki typow slotow), unie `construct_ref(a|b)` / `span_ref|entry_ref`,
+  `multiple`+`min_items`; enum_ref na konstrukt bez values = ERROR.
+- T38/E7: G7 homonimy miedzykonstruktowe (WARNING, chyba ze glosy PO OBU
+  stronach); CrossConstructHomonyms wspolne dla lintera i renderera;
+  renderer S2 dopisuje "(tu: <label_pl>)" po obu stronach homonimu.
+  Prompt S2 -> s2/1.4.0.
+- T40/E9: min_evidence.speaker (therapist|client|any) - R2 liczy WSZYSTKIE
+  progi (spans/behavioral/sessions) wylacznie na spanach wskazanej roli;
+  rola z observed_by, nie z surowego stringa speaker. Test zlamany celowo:
+  bez filtra pada.
+- T41/E10: WARNING lintera dla layoutu bez patterns/out_of_taxonomy;
+  odpala sie na ppt/0.1.0 i ppt/0.1.1 (zgodnie z nota - do naprawy w
+  przyszlym ppt/0.1.2), CBT 0.1.1 czysty.
+
+Metaschemat + dok. 11 v1.7 (nota pisana jako "v1.4->v1.5" PRZED wejsciem
+v1.5 Flash i v1.6 glos - zmapowana na v1.7, odnotowane w changelogu).
+
+NIE zaimplementowane (duze zmiany potoku, kolejne tickety):
+- E1 (tiery pewnosci) - WYMAGA DECYZJI D1 + benchmark z kolumna tierow (T46)
+- E2 (R11 zakaz diagnoz) - slownik w guardrail-svc, wspolny z P1 (T44)
+- E3 (granica R10 dla sekcji o terapeucie) - slownik predykatow (T43)
+- E4 (fact_kind w S1 + prior_report_context + ciaglosc) - najwiekszy (T42)
+- E6 (kind: catalog + R12 proweniencja interwencji) - (T45)
+- E8 (_shared includes) - (T39)
+Decyzje blokujace D1-D4 z noty czekaja na potwierdzenie (rekomendacje sa).
+
+
+### value_glosses (T19.G) — G1-G3+G5 GOTOWE na feat/value-glosses — 2026-08-26
+
+Plan: docs/ai_reports_ontology/Plan_Implementacji_value_glosses_v1.0.md
+(changelog 1.1 = ksiegowosc realizacji i odstepstw). Zrobione:
+
+- pkg/ontology: pole Construct.ValueGlosses; glosses.go z regulami G1-G6
+  i WSPOLNA detekcja par podlancuchowych (SubstringValuePairs) dla
+  lintera i renderera; kanal Warnings() (linter drukuje `!`, nie failuje).
+- ODSTEPSTWO (zapisane w kodzie i planie): G6 = ERROR tylko dla
+  konstruktu uzywajacego glos; dla konstruktu bez glos ostrzezenie —
+  bezwarunkowy ERROR przeczyl DoD planu (ppt/0.1.0 ma przechodzic).
+- Renderer S2 (prompts.go): " — " + naglowek warunkowy + "NIE mylic z"
+  dla par; PromptVersionS2 s2/1.3.0; golden snapshoty
+  (AKTUALIZUJ_SNAPSHOTY=1 regeneruje) + asercja, ze prompt bez glos
+  jest bajtowo niezmieniony.
+- Test kontraktowy: JSON Schema wyjscia S2 bajtowo identyczny z glosami
+  i bez (TestGlosyNieZmieniajaSchematu). Oba strazniki zepsute celowo —
+  lapia.
+- Seed ontology/ppt/0.1.1.yaml (PATCH): glosy 4 pozycji, tresc =
+  PLACEHOLDERY do autoryzacji; ontology/README.md z konwencja semver
+  (glosa = PATCH). UWAGA: wartosc z planu "wzorzec" naprawde nazywa sie
+  "wzorzec/naśladowanie".
+- Metaschemat ontology/_meta/schema.yaml DONIESIONY do kodu: value_glosses
+  + label_en + report_profile.layout (M5+ istnial tylko w kodzie — dryf).
+- Web Studio: model.ts (readGlosses/setValueGloss + testy round-trip,
+  w tym asercja, ze osierocona glosa NIE znika po cichu), ConstructForm
+  (pole glosy pod kazda wartoscia, maxLength=120, aria-label), i18n
+  pl+en. tsc czysty, vitest modelu 26/26.
+- Dok. 11 -> v1.6.
+
+NIE ZROBIONE i dlaczego:
+- Picker A7 (T19.G4 wlasciwe): NIE ISTNIEJE zaden picker — to ticket
+  T11 (czat). Glosy dowiezione do jedynego istniejacego UI (Studio).
+- Ewaluacja A/B (T19.G6/§6.4): czeka na benchmark T9, zgodnie z planem.
+
+E2E marketing-site (2026-08-26): typecheck + unit zielone. E2E ma
+DRYF BAZY: CLAUDE.md deklaruje 0-3 flaky (account-settings/
+dashboard-handheld), a realnie pada ~23-24 przypadkow w
+register-therapist / register-flow / crm-onboarding-stripe — TAK SAMO
+bez zmian glos (stash-test: 24 failed / 138 passed na czystym drzewie,
+23/253 z glosami). Porazki srodowiskowe (toBeVisible timeout na
+formularzu rejestracji), nie regresja. Studio ontologii nie ma wlasnych
+E2E; glosy pokryte unit round-trip. Naprawa e2e = osobne zadanie.
+
+
 ### Poprawnosc liczb w /admin/analytics — GALAZ GOTOWA, MIGRACJE NIEURUCHOMIONE (2026-08-28)
 
 Galaz `fix/analytics-poprawnosc-liczb` (od `main`), zmergowana i wypchnieta.

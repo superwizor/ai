@@ -20,6 +20,7 @@ type s1Span struct {
 	ObservedBy      string   `json:"observed_by"`
 	AboutPast       bool     `json:"about_past"`
 	RiskContent     bool     `json:"risk_content"`
+	FactKind        string   `json:"fact_kind"`
 	SilenceBeforeMs int      `json:"silence_before_ms"`
 }
 
@@ -80,6 +81,7 @@ func ExtractSpans(ctx context.Context, llm LLM, in Input, u *Usage) ([]ontology.
 			ObservedBy:    obs,
 			AboutPast:     s.AboutPast,
 			RiskContent:   s.RiskContent,
+			FactKind:      s.FactKind,
 		})
 		topics[s.SpanID] = s.Topics
 		silence[s.SpanID] = s.SilenceBeforeMs

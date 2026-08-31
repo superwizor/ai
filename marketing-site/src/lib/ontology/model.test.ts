@@ -13,6 +13,7 @@ import {
   setSectionWeight,
   setMinEvidence,
   setMultiLabel,
+  setValueGloss,
   setValues,
   slugify,
 } from "./model";
@@ -151,6 +152,50 @@ describe("mutacje", () => {
     const doc = parseDoc(PRZYKLAD);
     setConfusions(doc, "zasob", [{ input: "a", correct: "" }]);
     expect(readOntology(doc).constructs[1].confusions).toEqual([]);
+  });
+});
+
+describe("glosy wartosci (value_glosses)", () => {
+  it("odczyt: glosy trafiaja do widoku, smieci odpadaja", () => {
+    const doc = parseDoc(`modality: ppt
+version: 0.0.1
+approved_by: []
+constructs:
+  kat:
+    label_pl: "K"
+    values: ["pewność", "pewność siebie"]
+    value_glosses:
+      "pewność": "decyzyjność (zdolność podejmowania decyzji)"
+      "pewność siebie": ""
+`);
+    const k = readOntology(doc).constructs[0];
+    expect(k.valueGlosses["pewność"]).toContain("decyzyjność");
+    // Pusta glosa nie wchodzi do widoku — pole formularza pokaże pustkę.
+    expect(k.valueGlosses["pewność siebie"]).toBeUndefined();
+  });
+
+  it("zapis i wyczyszczenie: ostatnia usunieta glosa zabiera caly klucz", () => {
+    const doc = parseDoc(PRZYKLAD);
+    setValues(doc, "konflikt", ["pewność", "pewność siebie"]);
+    setValueGloss(doc, "konflikt", "pewność", "decyzyjność");
+    expect(docToString(doc)).toContain("value_glosses:");
+    expect(readOntology(doc).constructs[0].valueGlosses["pewność"]).toBe("decyzyjność");
+
+    setValueGloss(doc, "konflikt", "pewność", "   ");
+    // Pusty obiekt value_glosses nie ma prawa zostac w pliku, ktory
+    // czyta ekspert.
+    expect(docToString(doc)).not.toContain("value_glosses:");
+  });
+
+  it("edycja values NIE czysci osieroconej glosy po cichu", () => {
+    // Usuniecie tresci eksperckiej bez pytania byloby gorsze niz
+    // widoczny blad G1 z walidacji serwera — to jest asercja na
+    // POWSTRZYMANIE sie od sprzatania.
+    const doc = parseDoc(PRZYKLAD);
+    setValues(doc, "konflikt", ["pewność"]);
+    setValueGloss(doc, "konflikt", "pewność", "decyzyjność");
+    setValues(doc, "konflikt", ["inna wartość"]);
+    expect(docToString(doc)).toContain("decyzyjność");
   });
 });
 

@@ -18,6 +18,9 @@ package ontopipe
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -27,9 +30,10 @@ import (
 // sprzed miesiaca — a to jest wymog audytu (art. 94 MDR) i warunek
 // sensownego benchmarku.
 const (
-	PromptVersionS1  = "s1/1.0.0"
-	PromptVersionS2  = "s2/1.2.0" // blok ustalen z poprzednich sesji (F7a-3)
+	PromptVersionS1  = "s1/1.1.0" // fact_kind — fakty sesyjne (E4/T42a, docs/67)
+	PromptVersionS2  = "s2/1.4.0" // dopisek homonimow miedzykonstruktowych "(tu: ...)" (nota E7); 1.3.0: glosy; 1.2.0: blok ustalen F7a-3
 	PromptVersionS4  = "s4/1.7.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
+	PromptVersionS2K = "s2k/1.0.0" // relacje ciaglosci + rozliczenie pracy domowej (T42b, docs/67 par. 4)
 	ValidatorVersion = "r1-r10/1.0.0"
 	// PipelineVersion trafia do reports.pipeline_version.
 	PipelineVersion = "ontology_s1s5"
@@ -113,6 +117,7 @@ const (
 const (
 	StageExtraction = "S1"
 	StageMapping    = "S2"
+	StageContinuity = "S2k"
 	StageSynthesis  = "S4"
 )
 
@@ -155,6 +160,25 @@ type Result struct {
 	// Niepuste WYLACZNIE razem z Extractive — jesli synteza sie udala,
 	// nie ma czego zglaszac.
 	Violations []Violation
+	// FactMapped to konstrukty zmapowane deterministycznie z faktow
+	// sesyjnych (E4/T42a) — z pominieciem S2. Do proweniencji i testow.
+	FactMapped []string
+
+	// ContinuityLinks (T42b) to rozstrzygniete relacje biezace<->przeszle
+	// twierdzenie tego samego konstruktu. ClaimIdx indeksuje Approved —
+	// Persist tlumaczy go na uuid po zapisie twierdzen.
+	ContinuityLinks []ContinuityLink
+	// HomeworkVerdicts (T42b) to rozliczenie przeszlych ustalen
+	// "praca domowa klienta". Domysl bez dowodu: nie_wrocono.
+	HomeworkVerdicts []HomeworkVerdict
+	// DroppedLinks liczy relacje odrzucone przy walidacji odpowiedzi S2k
+	// (nieznany identyfikator pary, dowod spoza sesji). Odrzucana jest
+	// RELACJA, nie raport (docs/67 par. 4).
+	DroppedLinks int
+	// ContinuityFailed = true, gdy wywolanie S2k zawiodlo. Fail-open:
+	// ciaglosc jest wzmocnieniem, nie bramka — raport wychodzi bez niej.
+	ContinuityFailed bool
+
 	// PrunedHypotheses to hipotezy USUNIETE po nieudanych regeneracjach.
 	//
 	// Niepuste znaczy: reszta prozy przeszla V1-V6 i zostala, a wycielismy
@@ -182,4 +206,30 @@ func (u *Usage) add(r LLMResponse) {
 	u.InputTokens += r.InputTokens
 	u.OutputTokens += r.OutputTokens
 	u.Calls++
+}
+
+
+// ContinuityLink to jedna relacja ciaglosci (T42b).
+type ContinuityLink struct {
+	ClaimIdx        int
+	ConstructID     string
+	PastClaimID     uuid.UUID
+	PastSessionDate time.Time
+	// Relation: "wzmacnia" | "oslabia". "bez_zwiazku" nie tworzy linku.
+	Relation string
+}
+
+// HomeworkVerdict to rozliczenie jednego przeszlego ustalenia
+// "praca domowa klienta" (T42b).
+type HomeworkVerdict struct {
+	PastClaimID     uuid.UUID
+	PastSessionDate time.Time
+	// Quote to cytat przeszlego ustalenia (pierwszy dowod) — renderer
+	// pokazuje, CO bylo zadane, nie tylko ze bylo.
+	Quote string
+	// Verdict: "omowiona_z_rezultatem" | "wspomniana" | "nie_wrocono".
+	Verdict string
+	// EvidenceSpanIDs to spany biezacej sesji uzasadniajace werdykt
+	// (puste przy nie_wrocono).
+	EvidenceSpanIDs []string
 }

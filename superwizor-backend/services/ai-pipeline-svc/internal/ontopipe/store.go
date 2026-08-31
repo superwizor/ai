@@ -87,16 +87,17 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			INSERT INTO report_spans (session_id, transcript_id, span_ref,
 			       quote_ciphertext, quote_encrypted_dek, speaker, kind,
 			       observed_by, about_past, risk_content, silence_before_ms,
-			       topics)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+			       topics, fact_kind)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,''))
 			ON CONFLICT (transcript_id, span_ref) DO UPDATE
 			   SET quote_ciphertext = EXCLUDED.quote_ciphertext,
 			       quote_encrypted_dek = EXCLUDED.quote_encrypted_dek,
-			       topics = EXCLUDED.topics
+			       topics = EXCLUDED.topics,
+			       fact_kind = EXCLUDED.fact_kind
 			RETURNING id`,
 			in.SessionID, in.TranscriptID, s.ID, ct, dek, s.Speaker, string(s.Kind),
 			string(s.ObservedBy), s.AboutPast, s.RiskContent, s.SilenceBeforeMs,
-			tematy)
+			tematy, s.FactKind)
 		if err != nil {
 			return wynik, fmt.Errorf("ontopipe: zapis spanu %s: %w", s.ID, err)
 		}
@@ -147,6 +148,38 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			if err := linkEvidence(ctx, db, claimID, spanUUID, historyczne, q.SpanID, "counter"); err != nil {
 				return wynik, err
 			}
+		}
+	}
+
+	// ── T42b: relacje ciaglosci i rozliczenie pracy domowej ──
+	// ClaimIdx tlumaczony na uuid DOPIERO tutaj, po zapisie twierdzen:
+	// indeks jest nosny wylacznie w obrebie tego przebiegu.
+	for _, l := range res.ContinuityLinks {
+		if l.ClaimIdx < 0 || l.ClaimIdx >= len(wynik.ClaimIDs) {
+			continue
+		}
+		if err := db.Exec(ctx, `
+			INSERT INTO report_claim_links (report_id, kind, current_claim_id,
+			       past_claim_id, relation, evidence_span_refs)
+			VALUES ($1,'continuity',$2,$3,$4,$5)
+			ON CONFLICT DO NOTHING`,
+			in.ReportID, wynik.ClaimIDs[l.ClaimIdx], l.PastClaimID, l.Relation,
+			[]string{}); err != nil {
+			return wynik, fmt.Errorf("ontopipe: zapis linku ciaglosci: %w", err)
+		}
+	}
+	for _, h := range res.HomeworkVerdicts {
+		ev := h.EvidenceSpanIDs
+		if ev == nil {
+			ev = []string{}
+		}
+		if err := db.Exec(ctx, `
+			INSERT INTO report_claim_links (report_id, kind, current_claim_id,
+			       past_claim_id, relation, evidence_span_refs)
+			VALUES ($1,'homework',NULL,$2,$3,$4)
+			ON CONFLICT DO NOTHING`,
+			in.ReportID, h.PastClaimID, h.Verdict, ev); err != nil {
+			return wynik, fmt.Errorf("ontopipe: zapis rozliczenia: %w", err)
 		}
 	}
 

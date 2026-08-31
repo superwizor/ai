@@ -862,6 +862,8 @@
       "clearCatalogue": "Remove the catalogue (content becomes a description)",
       "addValue": "+ Value",
       "removeValue": "Remove value",
+      "glossPlaceholder": "gloss (optional): which concept this is, in one line",
+      "glossLabel": "Value gloss",
       "multiLabel": "One fragment may carry several values at once",
       "multiLabelHelp": "E.g. a single sentence carrying two cognitive distortions.",
       "sectionEvidence": "Evidence threshold",

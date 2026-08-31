@@ -1,0 +1,587 @@
+# Ontologia CBT (tradycja Aarona i Judith Beck) — SZKIC 0.1.2.
+#
+# 0.1.2 (PATCH — E4/T42a, docs/67 §3): fact_kind_map na session_agreement
+# i mood_rating — konstrukty faktowe mapowane deterministycznie ze spanow
+# S1 (fact_kind), z pominieciem S2. Identyfikatory values BEZ ZMIAN;
+# adnotacja mechanizmu, nie tresci. Komentarz "PROPOZYCJA SILNIKA §E4"
+# przy session_agreement przestal byc propozycja — mechanizm istnieje.
+#
+# Status: DO AUTORYZACJI EKSPERCKIEJ (D2). approved_by puste = CI blokuje prod.
+#
+# Zmiany względem 0.1.0 (porównanie ze zweryfikowanym promptem CBT, 2026-08-31):
+#   - katalogi: `wyolbrzymianie/umniejszanie` (forma z promptu); value_glosses
+#     dla 3 zniekształceń i 3 kategorii przekonań kluczowych; emocja
+#     `bezradność` -> `bezsilność` (kolizja z kategorią core_belief);
+#     strategie kompensacyjne + `perfekcjonizm zadaniowy` (naprawa
+#     common_confusions wskazującego kategorię spoza values)
+#   - cbt_episode: sloty `meaning` i `physiological` (sekwencja z promptu),
+#     `consequence` zachowany (zasila S2c)
+#   - NOWE konstrukty: safety_behavior, cognitive_process, early_experience,
+#     cognitive_conceptualization, thought_record, behavioral_experiment,
+#     session_agreement, mood_rating, session_structure_element,
+#     therapist_technique_observed
+#   - report_profile.layout: pełny układ 7 sekcji promptu + patterns +
+#     out_of_taxonomy + questions; kolejność sekcji = DECYZJA (patrz komentarz)
+#
+# Konwencje w tym pliku:
+#   # DECYZJA SESJI AUTORYZACYJNEJ — treść kliniczna do potwierdzenia
+#   # PROPOZYCJA SILNIKA (nota §E*) — pole/mechanizm NIEOBECNY w metaschemacie;
+#     zapisany WYŁĄCZNIE w komentarzu, żeby plik przechodził lint już dziś.
+#   Wszystkie values i progi min_evidence to placeholdery do autoryzacji.
+#
+# Tłumaczenia EN: robocze, do przeglądu na sesji autoryzacyjnej.
+
+modality: cbt
+version: 0.1.2
+approved_by: []                 # PUSTE do autoryzacji — blokuje prod (CI)
+
+constructs:
+
+  # ---------------------------------------------------------------------------
+  # RDZEŃ POZNAWCZY
+  # ---------------------------------------------------------------------------
+
+  automatic_thought:
+    label_pl: "Myśl automatyczna"
+    label_en: "Automatic thought"
+    aliases: ["myśl gorąca", "automatyczna myśl"]
+    definition: >
+      Konkretna, sytuacyjna, dosłowna wypowiedź w pierwszej osobie.
+      Przytaczana DOSŁOWNIE ze spanu — nigdy tłumaczona na język
+      podręcznikowy (reguła 2 promptu). PLACEHOLDER definicji kanonicznej (L1).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null                # brak katalogu zamkniętego — treść jest cytatem
+    min_evidence: {spans: 1}
+    is_not: [emotion, intermediate_belief, core_belief, cognitive_process]
+    common_confusions:
+      - {input: "parafraza podręcznikowa ('przewidywanie porażki')", correct: "cytat dosłowny", note: "notacja: sytuacja + cytat + emocja"}
+      - {input: "czuję, że nikomu na mnie nie zależy", correct: "myśl automatyczna (cytat) — emocja osobno", note: "konstrukcja 'czuję, że…' wprowadza MYŚL, nie emocję"}
+      - {input: "zawsze zawodzę (jako reguła)", correct: "sprawdź: pojedyncza myśl czy reguła ponadsytuacyjna (intermediate_belief)", note: "jedna myśl ≠ reguła — reguła wymaga ≥2 myśli w tym samym kierunku"}
+
+  emotion:
+    label_pl: "Emocja"
+    label_en: "Emotion"
+    definition: >
+      JEDNO słowo. Kanon listy = DECYZJA SESJI AUTORYZACYJNEJ; rekomendacja:
+      kuratorowany podzbiór MFOEM (OBO Foundry, CC BY) z tłumaczeniem
+      eksperckim; ID klas MFOEM w `source` (dok. 12 §3a, dok. 14 v1.1).
+    source: {work_id: "mfoem_obo", edition: "aktualna wersja OWL", pages: "ID klas MFOEM"}
+    kind: category
+    # DECYZJA SESJI AUTORYZACYJNEJ: `bezradność` USUNIĘTA z emocji (kolizja z
+    # kategorią core_belief — homonim międzykonstruktowy, PROPOZYCJA SILNIKA G7);
+    # zastąpiona `bezsilność`. Kanon i liczność listy do potwierdzenia.
+    values: ["smutek", "lęk", "złość", "wstyd", "wina", "bezsilność",
+             "rozczarowanie", "zazdrość", "ulga", "radość"]     # ZWERYFIKOWAĆ
+    quantities: {policy: stated_only, scale: "0-100"}   # natężenie wyłącznie gdy padło (R9)
+    min_evidence: {spans: 1}
+    is_not: [automatic_thought, cognitive_distortion, core_belief]
+    common_confusions:
+      - {input: "bezradność", correct: "jako emocja: bezsilność; jako przekonanie: kategoria core_belief 'bezradność'", note: "rozdzielić poziomy — z porównania z promptem"}
+      - {input: "czuję, że…", correct: "myśl automatyczna + emocja osobno", note: "błąd kategorialny myśl/emocja"}
+
+  cognitive_distortion:
+    label_pl: "Zniekształcenie poznawcze"
+    label_en: "Cognitive distortion"
+    aliases: ["błąd poznawczy", "błąd w myśleniu"]
+    definition: >
+      Etykieta WYŁĄCZNIE z listy; zjawisko spoza listy = no_fit
+      (opis zwykłym językiem w sekcji poza taksonomią), nigdy własna nazwa.
+      Zawsze z cytatem-dowodem.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    multi_label: true           # M2: jeden span może nieść kilka zniekształceń; benchmark F1 per etykieta
+    values: ["myślenie dychotomiczne", "katastrofizacja", "nadmierne uogólnianie",
+             "filtr mentalny", "dyskwalifikowanie pozytywów", "czytanie w myślach",
+             "przepowiadanie przyszłości", "wnioskowanie emocjonalne", "imperatywy",
+             "etykietowanie", "personalizacja i obwinianie",
+             "wyolbrzymianie/umniejszanie"]        # 12/12 = prompt (zweryfikowany)
+    value_glosses:
+      "myślenie dychotomiczne": "wszystko-albo-nic"
+      "filtr mentalny": "selektywna uwaga na negatywy"
+      "imperatywy": "„powinienem/muszę”"
+    min_evidence: {spans: 1}    # PER etykieta (M2)
+    requires: [automatic_thought]
+    is_not: [compensatory_strategy, safety_behavior, cognitive_process, emotion]
+    common_confusions:
+      - {input: "prokrastynacja", correct: "ZACHOWANIE w epizodzie (slot behavior) / strategia 'odkładanie'", note: "nigdy zniekształcenie"}
+      - {input: "unikanie", correct: "compensatory_strategy 'unikanie' lub safety_behavior", note: "zachowanie, nie zniekształcenie"}
+      - {input: "perfekcjonizm", correct: "compensatory_strategy 'perfekcjonizm zadaniowy' (zwykle nad imperatywami)", note: "naprawa 0.1.0: kategoria istnieje teraz w values strategii"}
+      - {input: "niska samoocena", correct: "obszar core_belief (wskaż kategorię)", note: ""}
+      - {input: "ruminacja / zamartwianie się", correct: "cognitive_process", note: "PROCES poznawczy, nie treść myśli"}
+      - {input: "lęk", correct: "emotion", note: ""}
+      - {input: "brak asertywności / wyuczona bezradność", correct: "deficyt umiejętności (opis zwykłym językiem) lub compensatory_strategy", note: ""}
+      - {input: "własna nazwa zniekształcenia (np. 'myślenie życzeniowe')", correct: "no_fit + opis zwykłym językiem", note: "reguła promptu: nie twórz własnych nazw"}
+
+  intermediate_belief:
+    label_pl: "Przekonanie pośredniczące"
+    label_en: "Intermediate belief"
+    aliases: ["przekonanie pośrednie", "założenie warunkowe", "reguła"]
+    definition: >
+      Reguła ponadsytuacyjna w jednej z trzech FORM (J. Beck); zapis w tej
+      formie, nie opisowo. Drabina: wymaga ≥2 myśli automatycznych
+      wskazujących TEN SAM kierunek (reguła 6 promptu).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["postawa", "reguła", "założenie jeśli-to"]
+    value_glosses:
+      "postawa": "ocena ogólna („porażka jest straszna”)"
+      "reguła": "norma („muszę zawsze dawać radę”)"
+      "założenie jeśli-to": "warunek („jeśli poproszę o pomoc, uznają mnie za słabego”)"
+    requires: [automatic_thought]
+    min_evidence: {spans: 2}    # ≥2 myśli w tym samym kierunku — "kierunek" ocenia S2, liczność egzekwuje S3
+    is_not: [automatic_thought, core_belief]
+    fallback_rendering: "kierunek do obserwacji (jedna myśl = za mało na regułę)"
+
+  core_belief:
+    label_pl: "Przekonanie kluczowe"
+    label_en: "Core belief"
+    aliases: ["przekonanie rdzenne", "schemat (potocznie)"]
+    definition: >
+      Globalne, absolutne twierdzenie o sobie/innych/świecie. Kategoria
+      OBOWIĄZKOWA — pomyłka bezradność/bezwartościowość zmienia
+      konceptualizację i dobór interwencji. Po pierwszej sesji ZAWSZE
+      hipoteza „wstępna” sformułowana jako kierunek do zbadania.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["bezradność", "niekochanie", "bezwartościowość"]   # kanon J. Beck — ZWERYFIKOWAĆ
+    value_glosses:
+      "bezradność": "„jestem nieskuteczny / niekompetentny / bezsilny wobec świata”"
+      "niekochanie": "„nie zasługuję na miłość / jestem inny, nie do zaakceptowania”"
+      "bezwartościowość": "„jestem zły / nic niewart / niemoralny”"
+    requires: [intermediate_belief]          # reguła 6 promptu: nie skakać od jednej myśli do CB
+    forced_status: theoretical_hypothesis    # zawsze hipoteza -> test spójności R4 + marker abdukcyjny
+    # PROPOZYCJA SILNIKA (nota §E1): min_evidence = próg DOPUSZCZENIA;
+    # poziomy pewności (wstępna/umiarkowana/ugruntowana) wyliczane
+    # deterministycznie z dowodów. Do czasu wdrożenia E1 próg poniżej
+    # blokuje CB w pierwszej sesji (R2 -> insufficient_data), co jest
+    # niezgodne z promptem („wstępna, jako kierunek”). Po E1: spans: 2,
+    # sessions: null (dopuszczenie), tier ugruntowana = sessions ≥ 3.
+    min_evidence: {spans: 3, sessions: 2}    # DECYZJA SESJI AUTORYZACYJNEJ (patrz komentarz E1)
+    is_not: [intermediate_belief, automatic_thought, emotion]
+    fallback_rendering: "kierunek do zbadania (wstępny), nie ustalenie"
+    common_confusions:
+      - {input: "niekompetencja", correct: "kategoria 'bezradność'", note: "przykład z promptu"}
+      - {input: "niska samoocena", correct: "wskaż kategorię — 'niska samoocena' nie jest kategorią", note: ""}
+
+  # ---------------------------------------------------------------------------
+  # WARSTWA BEHAWIORALNA I PROCESOWA
+  # ---------------------------------------------------------------------------
+
+  compensatory_strategy:
+    label_pl: "Strategia kompensacyjna"
+    label_en: "Compensatory strategy"
+    aliases: ["strategia radzenia sobie", "strategia zaradcza"]
+    definition: >
+      Zachowanie chroniące przed uruchomieniem przekonania kluczowego
+      (J. Beck). Nazywać strategią, nie „mechanizmem obronnym” (inny model).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    # DECYZJA SESJI AUTORYZACYJNEJ: katalog otwarty czy zamknięty; poniżej
+    # zamknięty roboczo. `perfekcjonizm zadaniowy` DODANY (naprawa 0.1.0).
+    values: ["nadmierne przygotowywanie", "perfekcjonizm zadaniowy", "unikanie",
+             "zadowalanie innych", "kontrolowanie", "wycofanie", "odkładanie",
+             "nadmierna samodzielność"]                       # ZWERYFIKOWAĆ
+    value_glosses:
+      "unikanie": "niepodejmowanie sytuacji uruchamiających przekonanie (odróżnij od zachowań zabezpieczających W sytuacji)"
+      "perfekcjonizm zadaniowy": "standardy nie do spełnienia jako ochrona przed „porażką” (zwykle nad imperatywami)"
+    min_evidence: {spans: 2, behavioral: 1}
+    is_not: [safety_behavior, cognitive_distortion]
+    common_confusions:
+      - {input: "mechanizm obronny", correct: "strategia kompensacyjna", note: "terminologia psychodynamiczna nie miesza się z CBT"}
+      - {input: "sprawdzanie / szukanie zapewnień W sytuacji", correct: "safety_behavior", note: "strategia = unikanie/organizacja życia wokół przekonania; zabezpieczenie = działanie W sytuacji lękowej"}
+
+  safety_behavior:
+    label_pl: "Zachowanie zabezpieczające"
+    label_en: "Safety behaviour"
+    aliases: ["zachowanie asekuracyjne", "zabezpieczenie"]
+    definition: >
+      Działanie podejmowane W sytuacji lękowej, by zapobiec obawianej
+      katastrofie; podtrzymuje przekonanie, bo uniemożliwia jego test
+      (Clark, Salkovskis). Konstrukt odrębny od strategii kompensacyjnej
+      — prompt wymienia „zachowania zabezpieczające i unikanie” jako
+      priorytet obserwacji.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    # DECYZJA SESJI AUTORYZACYJNEJ: odrębny konstrukt (rekomendacja) czy
+    # wartości w compensatory_strategy; poniżej odrębny.
+    values: ["kontrola/sprawdzanie", "szukanie zapewnień", "przygotowanie na wszelki wypadek",
+             "odwracanie uwagi", "ukrywanie objawów", "towarzysz bezpieczeństwa",
+             "unikanie subtelne"]                             # ZWERYFIKOWAĆ
+    value_glosses:
+      "unikanie subtelne": "pozostanie w sytuacji przy ograniczeniu ekspozycji (np. brak kontaktu wzrokowego, wyjście „na chwilę”)"
+    min_evidence: {spans: 2, behavioral: 1}
+    is_not: [compensatory_strategy, cognitive_distortion]
+
+  cognitive_process:
+    label_pl: "Proces poznawczy"
+    label_en: "Cognitive process"
+    aliases: ["styl myślenia", "proces myślowy"]
+    definition: >
+      SPOSÓB przetwarzania (proces), nie TREŚĆ myśli. Zamartwianie i
+      ruminacja opisywane tu, osobno od zniekształceń i myśli
+      automatycznych. Język modelu poznawczego zamiast nazw zaburzeń
+      (np. „nasilone zamartwianie się”, nigdy nazwa jednostki).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["zamartwianie się", "ruminacja", "tłumienie myśli",
+             "nadmierna samoobserwacja", "monitorowanie zagrożenia"]   # ZWERYFIKOWAĆ
+    min_evidence: {spans: 2}
+    is_not: [cognitive_distortion, automatic_thought]
+
+  early_experience:
+    label_pl: "Wczesne doświadczenie"
+    label_en: "Early experience"
+    aliases: ["dane z dzieciństwa", "doświadczenie kształtujące"]
+    definition: >
+      Doświadczenie z przeszłości, które klient SAM łączy z przekonaniem
+      lub o którym mówi w materiale. Wyłącznie z cytatem (etiology_policy
+      strict, R5). Brak w materiale = insufficient_data + pytanie
+      eksploracyjne; NIGDY hipoteza o dzieciństwie bez spanu.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null
+    min_evidence: {spans: 1}
+    forced_status: observation   # to, co klient powiedział — nie interpretacja genezy
+    common_confusions:
+      - {input: "prawdopodobnie w dzieciństwie…", correct: "insufficient_data + pytanie", note: "konfabulacja etiologiczna — R5 odrzuca"}
+
+  # ---------------------------------------------------------------------------
+  # KOMPOZYTY KONCEPTUALIZACJI (M1)
+  # ---------------------------------------------------------------------------
+
+  cbt_episode:
+    label_pl: "Epizod poznawczy (model 5-elementowy)"
+    label_en: "Cognitive episode (5-part model)"
+    aliases: ["sekwencja problemowa", "łańcuch poznawczy"]
+    definition: >
+      Oś każdej analizy: Sytuacja -> Myśl automatyczna -> Znaczenie ->
+      Emocja -> Zachowanie -> Reakcja fizjologiczna (sekwencja z promptu);
+      + Konsekwencja krótkoterminowa (zachowana z 0.1.0 — wyjaśnia,
+      dlaczego wzorzec się utrzymuje, i zasila deterministyczną detekcję
+      cykli S2c). Ogniwo nieopisane = pominięte, nie dopowiedziane.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: composite
+    slots:
+      situation:
+        type: span_ref
+        required: true
+        kind_hint: declarative
+      thought:
+        type: construct_ref(automatic_thought)
+        required: true
+      meaning:                  # NOWY: „co ta myśl znaczy dla mnie” — wypowiedź klienta
+        type: span_ref          # (nie construct_ref: powiązanie z przekonaniem to RELACJA
+        required: false         #  S2b, nie slot — PROPOZYCJA SILNIKA §E5 dot. unii typów)
+        kind_hint: declarative
+      emotion:
+        type: enum_ref(emotion)
+        required: false
+      emotion_intensity:
+        type: span_ref
+        required: false
+        quantity: true          # M3: liczba tylko gdy padła (R9)
+      behavior:
+        type: span_ref
+        required: false
+        kind_hint: behavioral
+      physiological:            # NOWY: piąty element modelu (ciało)
+        type: span_ref
+        required: false
+        kind_hint: declarative
+      consequence:
+        type: span_ref
+        required: false
+    min_complete_slots: 3       # sytuacja + myśl + jeden dalszy — DECYZJA SESJI AUTORYZACYJNEJ
+    quantities:
+      policy: stated_only
+      scale: "0-100"
+    min_evidence: {spans: 2}
+
+  cognitive_conceptualization:
+    label_pl: "Konceptualizacja poznawcza (diagram CCD)"
+    label_en: "Cognitive conceptualization diagram"
+    aliases: ["CCD", "diagram konceptualizacji"]
+    definition: >
+      Robocza mapa w modelu Becka: 1–3 epizody + przekonania pośredniczące
+      i kluczowe + strategie + wczesne doświadczenia. Kompozyt kompozytów
+      (M1). NIE diagnoza. Ostateczna wersja należy do terapeuty i jest
+      rozwijana z klientem.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: composite
+    # PROPOZYCJA SILNIKA (§E5): slot `multiple: true` zastąpiłby
+    # episode_1..3; do czasu wdrożenia — trzy sloty jak trzy kolumny CCD.
+    slots:
+      episode_1: {type: construct_ref(cbt_episode), required: true}
+      episode_2: {type: construct_ref(cbt_episode), required: false}
+      episode_3: {type: construct_ref(cbt_episode), required: false}
+      intermediate_belief: {type: construct_ref(intermediate_belief), required: false}
+      core_belief: {type: construct_ref(core_belief), required: false}
+      compensatory_strategy: {type: construct_ref(compensatory_strategy), required: false}
+      early_experience: {type: construct_ref(early_experience), required: false}
+    min_complete_slots: 2
+    forced_status: theoretical_hypothesis
+    min_evidence: {spans: 3}
+    fallback_rendering: "wstępna mapa robocza — ogniwa bez danych oznaczone jako luki"
+
+  # ---------------------------------------------------------------------------
+  # NARZĘDZIA PRACY (zasilane z sesji ORAZ z aplikacji towarzyszącej)
+  # ---------------------------------------------------------------------------
+
+  thought_record:
+    label_pl: "Dziennik myśli (zapis myśli)"
+    label_en: "Thought record"
+    aliases: ["dziennik myśli automatycznych", "zapis myśli", "tabela myśli"]
+    definition: >
+      Narzędzie nr 1 CBT: epizod + praca z myślą (dowody za/przeciw,
+      myśl alternatywna, % wiary przed/po, emocja po). Wypełniany na sesji
+      (spany) LUB przez klienta w aplikacji (entry_ref, dok. 14 §8 —
+      PROPOZYCJA SILNIKA §E5: unia typów span_ref|entry_ref w slocie).
+      % wiary i natężenia = SAMOOCENA KLIENTA, nigdy wypełniane za niego.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: composite
+    slots:
+      episode: {type: construct_ref(cbt_episode), required: true}
+      evidence_for: {type: span_ref, required: false}
+      evidence_against: {type: span_ref, required: false}
+      alternative_thought: {type: span_ref, required: false}
+      belief_pct_before: {type: span_ref, required: false, quantity: true}
+      belief_pct_after: {type: span_ref, required: false, quantity: true}
+      emotion_after_intensity: {type: span_ref, required: false, quantity: true}
+    min_complete_slots: 2
+    quantities:
+      policy: stated_only
+      scale: "0-100 %"
+    forced_status: observation   # zapis narzędzia = fakt z sesji/aplikacji, nie interpretacja
+    min_evidence: {spans: 1}
+
+  behavioral_experiment:
+    label_pl: "Eksperyment behawioralny"
+    label_en: "Behavioural experiment"
+    aliases: ["eksperyment", "test przekonania"]
+    definition: >
+      Struktura z promptu: przekonanie do przetestowania (DOSŁOWNA myśl),
+      sposób przeprowadzenia (co/gdzie/kiedy), przewidywanie klienta + % wiary
+      (klient wypełnia SAM), co obserwujemy/mierzymy, wynik i wniosek (po).
+      Zaplanowany na sesji = spany; wykonany = entry_ref z aplikacji.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: composite
+    slots:
+      belief_under_test: {type: construct_ref(automatic_thought), required: true}
+      procedure: {type: span_ref, required: true}
+      prediction: {type: span_ref, required: false}
+      prediction_belief_pct: {type: span_ref, required: false, quantity: true}
+      measure: {type: span_ref, required: false}
+      outcome: {type: span_ref, required: false}
+      conclusion: {type: span_ref, required: false}
+    min_complete_slots: 2
+    quantities:
+      policy: stated_only
+      scale: "0-100 %"
+    forced_status: observation
+    min_evidence: {spans: 1}
+
+  session_agreement:
+    label_pl: "Ustalenie z sesji"
+    label_en: "Session agreement"
+    aliases: ["ustalenie", "zobowiązanie", "praca domowa", "agenda"]
+    definition: >
+      FAKT z sesji (nie inferencja): wyłącznie to, co faktycznie padło.
+      Rdzeń „Podsumowania” i reguły 9 promptu (ciągłość: rozliczenie
+      pracy domowej). Docelowo zasilany deterministycznie z S1
+      (PROPOZYCJA SILNIKA §E4: fact_kind). Kandydat do konstruktów
+      współdzielonych między modalnościami (§E8).
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["praca domowa klienta", "zobowiązanie terapeuty",
+             "agenda kolejnej sesji", "temat z agendy nieomówiony"]
+    fact_kind_map:              # E4/T42a: mapowanie deterministyczne ze spanow S1
+      agreement_client: "praca domowa klienta"
+      agreement_therapist: "zobowiązanie terapeuty"
+      agenda_next: "agenda kolejnej sesji"
+      agenda_unaddressed: "temat z agendy nieomówiony"
+    value_glosses:
+      "zobowiązanie terapeuty": "arkusz, skala, link, materiał — do przypomnienia terapeucie"
+      "temat z agendy nieomówiony": "zgłoszony przez klienta na agendę, niepodjęty"
+    forced_status: observation
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "zadanie, które 'warto by' zadać", correct: "to propozycja (sekcja planu), nie ustalenie", note: "ustalenie = padło na sesji"}
+
+  mood_rating:
+    label_pl: "Pomiar nastroju"
+    label_en: "Mood rating"
+    aliases: ["ocena nastroju", "skala nastroju"]
+    definition: >
+      Wartość podana przez klienta (skala wg narzędzia). Wyłącznie gdy
+      padła (R9); w aplikacji — entry_ref. Element struktury sesji.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: null
+    fact_kind_map:              # E4/T42a
+      mood_rating: ""
+    quantities:
+      policy: stated_only
+      scale: "wg narzędzia (0-10 / 0-100)"
+    forced_status: observation
+    min_evidence: {spans: 1}
+
+  # ---------------------------------------------------------------------------
+  # STRUKTURA I PRZEBIEG SESJI (granica R10 — patrz nota §E3)
+  # ---------------------------------------------------------------------------
+
+  session_structure_element:
+    label_pl: "Element struktury sesji CBT"
+    label_en: "CBT session structure element"
+    aliases: ["struktura sesji", "element sesji"]
+    definition: >
+      Obecność/nieobecność standardowych elementów sesji CBT. Status ZAWSZE
+      obserwacja ze spanem, którego mówcą jest terapeuta; predykat
+      behawioralny („ustalił agendę”), nigdy mentalny (R10). Bez punktowania.
+      PROPOZYCJA SILNIKA (§E3/E9): min_evidence.speaker: therapist.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["agenda", "pomost z poprzedniej sesji", "przegląd pracy domowej",
+             "pomiar nastroju", "podsumowanie kapsułkowe", "feedback końcowy",
+             "ustalenie nowej pracy domowej"]                # 7 = prompt
+    forced_status: observation
+    min_evidence: {spans: 1}
+    is_not: [therapist_technique_observed]
+
+  therapist_technique_observed:
+    label_pl: "Technika terapeuty zaobserwowana w sesji"
+    label_en: "Therapist technique observed"
+    aliases: ["moment pracy terapeuty", "interwencja terapeuty"]
+    definition: >
+      Obserwowalny wybór techniczny terapeuty ze spanem (mówca: terapeuta),
+      predykat behawioralny. Skuteczność = hipoteza o REAKCJI KLIENTA
+      (osobne twierdzenie), nigdy o terapeucie. Pytanie do autorefleksji
+      = wyłącznie open_question (nota §E3).
+      # DECYZJA SESJI AUTORYZACYJNEJ: czy konstrukt wchodzi do v1 (sekcja
+      # „Jakość interwencji” promptu) — rekomendacja: tak, z regułą E3.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["dialog sokratejski", "psychoedukacja", "pytanie zamknięte w kluczowym momencie",
+             "szybkie przejście do rozwiązań", "odkrywanie kierowane",
+             "walidacja emocji", "normalizacja"]             # ZWERYFIKOWAĆ
+    forced_status: observation
+    min_evidence: {spans: 1}
+    is_not: [session_structure_element]
+
+  # PROPOZYCJA SILNIKA (§E6) — katalog technik dla sekcji interwencji:
+  #   cbt_technique:
+  #     kind: catalog            # NIE mapowany w S2; konsumowany przez S4 (interventions)
+  #     values: [restrukturyzacja poznawcza z zapisem myśli, technika ciasta,
+  #              ekspozycja z powstrzymaniem reakcji, strzałka w dół,
+  #              dialog sokratejski, eksperyment behawioralny,
+  #              aktywizacja behawioralna, planowanie aktywności,
+  #              trening rozwiązywania problemów, psychoedukacja modelu poznawczego]
+  #     provenance: claim_ref    # R12: interwencja MUSI wskazać zatwierdzoną hipotezę
+  # Do czasu wdrożenia `kind: catalog` lista zamknięta żyje w guidance sekcji
+  # `interwencje` (poniżej) — tak jak w prompcie legacy.
+
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis, open_question,
+                     insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
+                 mediacja]      # paralela wyłączona dla CBT (flaga per modalność, dok. 15 §2.2-c)
+
+# M5+: pełny układ sekcji promptu CBT (7) + patterns + out_of_taxonomy + questions.
+# Reguła metaschematu: konstrukt należy do JEDNEJ sekcji; nieprzypisane lądują
+# w sekcji końcowej (układ nigdy nie ukrywa zweryfikowanej treści).
+#
+# DECYZJA SESJI AUTORYZACYJNEJ — kolejność sekcji: prompt legacy ma
+# obserwacje -> plan -> interwencje -> wątki -> superwizja -> konceptualizacja;
+# poniżej kolejność LOGICZNA (konceptualizacja przed planem, bo plan z niej
+# wynika; ustalenia zaraz po podsumowaniu, bo są faktami). Zmiana UX względem
+# legacy — świadoma; alternatywa: odwzorować kolejność promptu 1:1.
+#
+# Ograniczenia znane (jak w 0.1.0): rozliczenie pracy domowej i TWARDE
+# USTALENIA wymagają fact_kind w S1 (§E4) — do tego czasu session_agreement
+# mapuje S2 jak zwykły konstrukt (mniej precyzyjnie).
+report_profile:
+  layout:
+    - id: podsumowanie
+      title: "Podsumowanie sesji"
+      title_en: "Session summary"
+      kind: summary
+    - id: ustalenia
+      title: "Ustalenia i narzędzia z sesji"
+      title_en: "Agreements and tools from the session"
+      kind: constructs
+      constructs: [session_agreement, mood_rating, thought_record, behavioral_experiment]
+    - id: obserwacje
+      title: "Wnikliwe obserwacje"
+      title_en: "Insightful observations"
+      kind: constructs
+      constructs: [automatic_thought, cognitive_distortion, emotion,
+                   cognitive_process, compensatory_strategy, safety_behavior]
+    - id: wzorce
+      title: "Wzorce i powiązania"
+      title_en: "Patterns and connections"
+      kind: patterns              # S1.5 / S2b / S2c: rekurencje, sekwencje, mediacje, cykle
+    - id: watki
+      title: "Wątki do pogłębienia"
+      title_en: "Threads to explore"
+      kind: constructs
+      constructs: [intermediate_belief, core_belief]
+    - id: konceptualizacja
+      title: "Konceptualizacja poznawcza"
+      title_en: "Cognitive conceptualization"
+      kind: constructs
+      constructs: [cbt_episode, cognitive_conceptualization, early_experience]
+    - id: plan_dzialania
+      title: "Plan działania klienta"
+      title_en: "Client action plan"
+      kind: suggestions
+      guidance: >
+        2-4 zadania w duchu CBT. PRIORYTETOWO rozwijaj ustalenia z sekcji
+        „Ustalenia i narzędzia” (session_agreement: praca domowa klienta;
+        zaplanowane thought_record / behavioral_experiment); dodatkowe
+        (max 1-2) oznacz „Propozycja dodatkowa (nieomawiana na sesji)”.
+        Struktura zadania: nazwa; skąd wynika; cel terapeutyczny; instrukcja
+        krok po kroku — dla eksperymentu OBOWIĄZKOWO pola kompozytu
+        behavioral_experiment, z „% wiary” jako POLEM DO WYPEŁNIENIA PRZEZ
+        KLIENTA (nigdy wypełnianym za niego); potencjalne trudności.
+        Język przyjazny klientowi, bez żargonu, bez hipotez klinicznych —
+        zadanie ma być bezpieczne do pokazania klientowi wprost.
+    - id: interwencje
+      title: "Propozycje interwencji"
+      title_en: "Suggested interventions"
+      kind: interventions
+      guidance: >
+        1-2 techniki do rozważenia — propozycje warunkowe, nie zalecenia.
+        Nazwa WYŁĄCZNIE z listy zamkniętej: restrukturyzacja poznawcza
+        z zapisem myśli; technika ciasta; ekspozycja z powstrzymaniem
+        reakcji; strzałka w dół; dialog sokratejski wokół konkretnego
+        przekonania; eksperyment behawioralny; aktywizacja behawioralna;
+        planowanie aktywności; trening rozwiązywania problemów;
+        psychoedukacja modelu poznawczego. Struktura: nazwa; „Opiera się
+        na:” — WSKAŻ HIPOTEZĘ Z TEGO RAPORTU i co zweryfikować przed
+        zastosowaniem (bez wskazania hipotezy interwencja nie istnieje);
+        cel kliniczny; podstawa (1-2 zdania; zaznacz, jeśli standard dla
+        podobnych trudności); scenariusz 4-6 kroków z przykładowymi
+        pytaniami terapeuty; na co uważać. Na końcu: interwencja
+        minimalna — jedno pytanie sokratejskie na start kolejnej sesji
+        weryfikujące główną hipotezę raportu. Nie proponuj działań
+        medycznych ani zmian w leczeniu.
+    - id: struktura_sesji
+      title: "Struktura i przebieg sesji"
+      title_en: "Session structure and process"
+      kind: constructs
+      constructs: [session_structure_element, therapist_technique_observed]
+    - id: superwizja
+      title: "Czego można było nie zauważyć"
+      title_en: "What might have been missed"
+      kind: overlooked            # kontrdowody + no_fit + degradacje; sekcja bezpieczeństwa
+                                  # (cytaty ryzyka) — za flagą do rozstrzygnięcia D3/14
+    - id: pytania
+      title: "Pytania i niewiadome"
+      title_en: "Questions and unknowns"
+      kind: questions             # w tym pytanie do autorefleksji terapeuty — WYŁĄCZNIE open_question (E3)
+    - id: poza_taksonomia
+      title: "Poza kategoriami CBT"
+      title_en: "Outside CBT categories"
+      kind: out_of_taxonomy       # no_fit: zjawiska opisane zwykłym językiem
+  default_tone: null

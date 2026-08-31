@@ -73,6 +73,17 @@ func schemaS1() map[string]any {
 							"type":        "boolean",
 							"description": "Prog NISKI — przy watpliwosci true.",
 						},
+						// E4/T42a: fakt sesyjny. Pole OPCJONALNE (poza
+						// required) — wiekszosc spanow nie jest faktem i
+						// wymuszanie deklaracji per span puchloby wyjscie.
+						"fact_kind": map[string]any{
+							"type": "string",
+							"enum": []any{"agreement_client", "agreement_therapist",
+								"agenda_next", "agenda_unaddressed", "mood_rating",
+								"client_metaphor"},
+							"description": "WYLACZNIE dla faktu sesyjnego: ustalenie, " +
+								"agenda, pomiar nastroju, metafora klienta. Pomijaj dla zwyklych spanow.",
+						},
 						"topics": map[string]any{
 							"type": "array", "maxItems": int64(3),
 							"items": map[string]any{"type": "string", "maxLength": int64(40)},
@@ -123,9 +134,47 @@ func buildS2Prompt(o *ontology.Ontology, constructID string, past *PastContext) 
 	}
 
 	if len(c.Values) > 0 {
-		b.WriteString("\nKATEGORIE (jedyne dopuszczalne)\n")
+		// Glosy (plan value_glosses): objasnienie renderuje sie OBOK
+		// identyfikatora, po separatorze " — ". Instrukcja naglowkowa i
+		// dopisek "NIE mylic z" pojawiaja sie WYLACZNIE, gdy konstrukt ma
+		// glosy — prompt konstruktu bez glos pozostaje bajtowo taki sam
+		// jak przed wprowadzeniem pola (to czesc kontraktu wersji promptu).
+		maGlosy := len(c.ValueGlosses) > 0
+		if maGlosy {
+			b.WriteString("\nKATEGORIE (jedyne dopuszczalne; w polu category zwroc DOKLADNIE " +
+				"wartosc sprzed myslnika \" — \", bez objasnienia po myslniku)\n")
+		} else {
+			b.WriteString("\nKATEGORIE (jedyne dopuszczalne)\n")
+		}
+		// Ta sama detekcja par co w linterze (G6) — celowo wspolna
+		// funkcja: gdyby renderer widzial inne pary niz walidator, lint
+		// wymuszalby glosy, ktorych prompt nie wyroznia.
+		nieMylic := map[string][]string{}
+		if maGlosy {
+			for _, para := range ontology.SubstringValuePairs(c.Values) {
+				nieMylic[para[0]] = append(nieMylic[para[0]], para[1])
+			}
+		}
+		// Homonim miedzykonstruktowy (G7, nota E7): ta sama wartosc w
+		// innym konstrukcie dostaje jawne "(tu: <etykieta>)" — prompt
+		// PPT kaze homonimy "zawsze precyzowac", wiec precyzuje je
+		// renderer, a nie dobra wola modelu.
+		homonimy := o.CrossConstructHomonyms()
 		for _, v := range c.Values {
-			fmt.Fprintf(&b, "  - %s\n", v)
+			fmt.Fprintf(&b, "  - %s", v)
+			if len(homonimy[strings.ToLower(strings.TrimSpace(v))]) > 1 {
+				fmt.Fprintf(&b, " (tu: %s)", c.LabelPL)
+			}
+			if g := strings.TrimSpace(c.ValueGlosses[v]); g != "" {
+				fmt.Fprintf(&b, " — %s", g)
+			}
+			if inne := nieMylic[v]; len(inne) > 0 {
+				fmt.Fprintf(&b, "; NIE mylic z %q", inne[0])
+				for _, x := range inne[1:] {
+					fmt.Fprintf(&b, " ani z %q", x)
+				}
+			}
+			b.WriteString("\n")
 		}
 		if c.MultiLabel {
 			b.WriteString("Konstrukt wielokrotny: wolno wskazac wiecej niz jedna.\n")

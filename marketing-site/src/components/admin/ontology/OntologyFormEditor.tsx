@@ -25,6 +25,7 @@ import {
   setSectionWeight,
   setMultiLabel,
   setSlots,
+  setValueGloss,
   setValues,
   type MinEvidence,
   type NewConstructShape,
@@ -161,6 +162,10 @@ export function OntologyFormEditor({
                 },
                 values: (v) => {
                   setValues(doc, aktywny.id, v);
+                  zapisz();
+                },
+                valueGloss: (wartosc, glosa) => {
+                  setValueGloss(doc, aktywny.id, wartosc, glosa);
                   zapisz();
                 },
                 multiLabel: (v) => {

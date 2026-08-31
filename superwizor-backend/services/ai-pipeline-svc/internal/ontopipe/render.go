@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -82,6 +83,12 @@ type chrome struct {
 	pewnosc          string // fmt: %.0f
 	wartoSprawdzic   string // fmt: pytanie
 	noFitWstep       string
+	// T42b (docs/67 par. 4): linie ciaglosci i rozliczenie.
+	kontWzmacnia   string // fmt: data
+	kontOslabia    string // fmt: data
+	kontBezDanych  string // fmt: data
+	rozliczenieTyt string
+	werdykty       map[string]string // werdykt -> etykieta
 }
 
 var chromePL = chrome{
@@ -114,6 +121,15 @@ var chromePL = chrome{
 	wartoSprawdzic:  "- Warto sprawdzić: %s\n",
 	noFitWstep: "W materiale pojawiły się zjawiska, których obecna ontologia " +
 		"nie obejmuje. Zostały odnotowane bez nadawania im kategorii:\n\n",
+	kontWzmacnia:   "_Kontynuacja: potwierdza ustalenie z %s._\n\n",
+	kontOslabia:    "_Kontynuacja: osłabia ustalenie z %s._\n\n",
+	kontBezDanych:  "_Kontynuacja: bez nowych danych w tej sesji (ostatnio %s)._\n\n",
+	rozliczenieTyt: "**Rozliczenie poprzedniej pracy domowej**\n\n",
+	werdykty: map[string]string{
+		"omowiona_z_rezultatem": "omówiona z rezultatem",
+		"wspomniana":            "wspomniana, bez omówienia wyniku",
+		"nie_wrocono":           "nie wrócono do niej",
+	},
 }
 
 var chromeEN = chrome{
@@ -146,6 +162,15 @@ var chromeEN = chrome{
 	wartoSprawdzic:  "- Worth checking: %s\n",
 	noFitWstep: "The material contains phenomena the current ontology does not " +
 		"cover. They are noted without assigning categories:\n\n",
+	kontWzmacnia:   "_Continuity: supports the finding from %s._\n\n",
+	kontOslabia:    "_Continuity: weakens the finding from %s._\n\n",
+	kontBezDanych:  "_Continuity: no new data this session (last seen %s)._\n\n",
+	rozliczenieTyt: "**Previous homework follow-up**\n\n",
+	werdykty: map[string]string{
+		"omowiona_z_rezultatem": "discussed with outcome",
+		"wspomniana":            "mentioned, outcome not discussed",
+		"nie_wrocono":           "not revisited",
+	},
 }
 
 // chromeFor wybiera tabele napisow po jezyku raportu.
@@ -208,7 +233,7 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 		case ontology.SectionSessionSummary:
 			renderSummary(&b, ch, in.SummaryShort)
 		case ontology.SectionInterpretive:
-			renderInterpretive(&b, o, res, nil, ch, en, cytaty)
+			renderInterpretive(&b, o, res, in.Past, nil, ch, en, cytaty)
 		case ontology.SectionPatterns:
 			renderTitled(&b, ch.wzorce, func(bb *strings.Builder) bool {
 				return renderPatternsBody(bb, o, res, en)
@@ -255,7 +280,7 @@ func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in Rende
 				naleza[id] = true
 			}
 			renderTitled(b, tytul, func(bb *strings.Builder) bool {
-				return renderInterpretive(bb, o, res, naleza, ch, en, cytaty)
+				return renderInterpretive(bb, o, res, in.Past, naleza, ch, en, cytaty)
 			})
 		case ontology.LayoutSuggestions:
 			renderSuggestions(b, o, ch, en, tytul, res.Report.Suggestions)
@@ -289,7 +314,7 @@ func renderLayout(b *strings.Builder, o *ontology.Ontology, res Result, in Rende
 	}
 	if maNieprzypisane {
 		renderTitled(b, ch.pozostale, func(bb *strings.Builder) bool {
-			return renderInterpretive(bb, o, res, nieprzypisane, ch, en, cytaty)
+			return renderInterpretive(bb, o, res, in.Past, nieprzypisane, ch, en, cytaty)
 		})
 	}
 	if !pokryte[ontology.LayoutQuestions] {
@@ -469,10 +494,17 @@ func renderSummary(b *strings.Builder, ch chrome, summary string) {
 // cokolwiek wypisano. W trybie ukladu naglowki konstruktow schodza
 // poziom nizej (###), bo sekcje ukladu zajmuja poziom ##.
 func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result,
-	tylko map[string]bool, ch chrome, en bool, cytaty map[string]string) bool {
+	past *PastContext, tylko map[string]bool, ch chrome, en bool, cytaty map[string]string) bool {
 	naglowek := "## %s\n\n"
 	if tylko != nil {
 		naglowek = "### %s\n\n"
+	}
+	// T42b: linki ciaglosci per konstrukt — DETERMINISTYCZNA linia pod
+	// hipotezami, nie proza S4. Relacja pochodzi z zapisanego linku,
+	// wiec data i kierunek nie moga sie "poprawic" w syntezie.
+	linkiPerKonstrukt := map[string][]ContinuityLink{}
+	for _, l := range res.ContinuityLinks {
+		linkiPerKonstrukt[l.ConstructID] = append(linkiPerKonstrukt[l.ConstructID], l)
 	}
 	cokolwiek := false
 	for _, cr := range res.Constructsy() {
@@ -529,6 +561,49 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result,
 				fmt.Fprintf(b, "> %s\n\n"+ch.przeczy+"\n\n", q, labelFor(o, cr.ConstructID, en))
 			}
 			b.WriteString("\n")
+		}
+
+		// T42b: kontynuacje tego konstruktu (docs/67 par. 4).
+		//
+		// DEDUPE per relacja: kanarek 2026-08-31 (raport 3cab94e9) dal 40
+		// linkow wzmacnia — kazda para twierdzen to osobny wiersz w bazie
+		// (i słusznie: audyt), ale 9 identycznych linii pod jednym
+		// konstruktem to szum, nie informacja. Render pokazuje JEDNA
+		// linie na relacje, z data najnowszego przeszlego twierdzenia.
+		najnowsza := map[string]time.Time{}
+		for _, l := range linkiPerKonstrukt[cr.ConstructID] {
+			if l.PastSessionDate.After(najnowsza[l.Relation]) {
+				najnowsza[l.Relation] = l.PastSessionDate
+			}
+		}
+		for _, rel := range []string{"wzmacnia", "oslabia"} {
+			if d, ok := najnowsza[rel]; ok {
+				format := ch.kontWzmacnia
+				if rel == "oslabia" {
+					format = ch.kontOslabia
+				}
+				fmt.Fprintf(b, format, d.Format(ch.dateFmt))
+			}
+		}
+		if len(linkiPerKonstrukt[cr.ConstructID]) == 0 && len(cr.Hypotheses) == 0 {
+			if ostatnia, ok := ostatniaData(past, cr.ConstructID); ok {
+				fmt.Fprintf(b, ch.kontBezDanych, ostatnia.Format(ch.dateFmt))
+			}
+		}
+		// Rozliczenie pracy domowej przy konstrukcie faktowym ustalen.
+		if c := o.Constructs[cr.ConstructID]; c != nil {
+			if _, ok := c.FactKindMap["agreement_client"]; ok && len(res.HomeworkVerdicts) > 0 {
+				b.WriteString(ch.rozliczenieTyt)
+				for _, h := range res.HomeworkVerdicts {
+					et := ch.werdykty[h.Verdict]
+					if et == "" {
+						et = h.Verdict
+					}
+					fmt.Fprintf(b, "- (%s) %q — %s\n",
+						h.PastSessionDate.Format(ch.dateFmt), h.Quote, et)
+				}
+				b.WriteString("\n")
+			}
 		}
 	}
 	return cokolwiek
@@ -641,4 +716,18 @@ func (r Result) Constructsy() []ConstructReport {
 	out := append([]ConstructReport{}, r.Report.Constructs...)
 	sort.Slice(out, func(i, j int) bool { return out[i].ConstructID < out[j].ConstructID })
 	return out
+}
+
+// ostatniaData zwraca date najnowszego przeszlego twierdzenia konstruktu
+// — dla linii "bez nowych danych" (T42b).
+func ostatniaData(past *PastContext, constructID string) (t time.Time, ok bool) {
+	if past == nil {
+		return t, false
+	}
+	for _, pc := range past.Claims {
+		if pc.ConstructID == constructID && pc.SessionDate.After(t) {
+			t, ok = pc.SessionDate, true
+		}
+	}
+	return t, ok
 }

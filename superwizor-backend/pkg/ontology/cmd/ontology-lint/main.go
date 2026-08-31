@@ -41,7 +41,8 @@ func main() {
 
 	failed := 0
 	for _, f := range files {
-		if problems := lintFile(f); len(problems) > 0 {
+		problems, warnings := lintFile(f)
+		if len(problems) > 0 {
 			failed++
 			fmt.Printf("BLAD %s (%d):\n", f, len(problems))
 			for _, p := range problems {
@@ -50,6 +51,12 @@ func main() {
 			continue
 		}
 		fmt.Printf("OK   %s\n", f)
+		// Ostrzezenia sa widoczne, ale nie failuja: to klasa problemow,
+		// ktora z definicji dopuszcza wyjatki (G5, G6 bez glos) i o
+		// ktorej rozstrzyga ekspert, nie bramka CI.
+		for _, w := range warnings {
+			fmt.Printf("   ! %s\n", w)
+		}
 	}
 
 	fmt.Printf("\nsprawdzono %d plik(ow), niepoprawnych: %d\n", len(files), failed)
@@ -58,16 +65,17 @@ func main() {
 	}
 }
 
-func lintFile(path string) []string {
+func lintFile(path string) (problems, warnings []string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return []string{fmt.Sprintf("odczyt: %v", err)}
+		return []string{fmt.Sprintf("odczyt: %v", err)}, nil
 	}
 	o, err := ontology.Parse(data)
 	if err != nil {
-		return []string{err.Error()}
+		return []string{err.Error()}, nil
 	}
-	problems := o.Validate()
+	problems = o.Validate()
+	warnings = o.Warnings()
 
 	// Seed z niepustym approved_by udawalby autoryzacje, ktorej nie bylo.
 	// Autoryzacja zyje w bazie (status `approved` + four-eyes w Studio),
@@ -90,7 +98,7 @@ func lintFile(path string) []string {
 		problems = append(problems,
 			fmt.Sprintf("version %q nie zgadza sie z nazwa pliku %q", o.Version, name))
 	}
-	return problems
+	return problems, warnings
 }
 
 // collect rozwija katalogi do plikow .yaml, pomijajac _meta (metaschemat

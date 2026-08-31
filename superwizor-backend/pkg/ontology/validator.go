@@ -261,12 +261,36 @@ func (o *Ontology) checkClaim(c *Construct, cl Claim, opts ValidateOptions) (Rej
 	}
 
 	if me := c.MinEvidence; me != nil {
-		if len(spanIDs) < me.Spans {
-			return rej(ReasonCoverage, "spanow %d, wymagane %d", len(spanIDs), me.Spans)
+		// E9 (T40): speaker zaweza zbior LICZONYCH spanow do roli.
+		// Rola czytana z observed_by (self -> klient, therapist ->
+		// terapeuta) — znormalizowanego enuma z S1 — a nie z surowego
+		// stringa speaker, ktory niesie imiona "dokladnie jak w zapisie".
+		// Filtr obejmuje WSZYSTKIE trzy progi (spans/behavioral/sessions):
+		// prog "2 spany terapeuty" liczony na spanach klienta bylby
+		// progiem tylko z nazwy.
+		liczone := spanIDs
+		if me.Speaker == "client" || me.Speaker == "therapist" {
+			chciana := ObservedBySelf
+			if me.Speaker == "therapist" {
+				chciana = ObservedByTherapist
+			}
+			liczone = map[string]bool{}
+			for id := range spanIDs {
+				if opts.Spans[id].ObservedBy == chciana {
+					liczone[id] = true
+				}
+			}
+		}
+		if len(liczone) < me.Spans {
+			if me.Speaker != "" && me.Speaker != "any" {
+				return rej(ReasonCoverage, "spanow roli %s: %d, wymagane %d",
+					me.Speaker, len(liczone), me.Spans)
+			}
+			return rej(ReasonCoverage, "spanow %d, wymagane %d", len(liczone), me.Spans)
 		}
 		if me.Behavioral != nil && *me.Behavioral > 0 {
 			n := 0
-			for id := range spanIDs {
+			for id := range liczone {
 				if opts.Spans[id].Kind == SpanBehavioral {
 					n++
 				}
@@ -278,7 +302,7 @@ func (o *Ontology) checkClaim(c *Construct, cl Claim, opts ValidateOptions) (Rej
 		}
 		if me.Sessions != nil && *me.Sessions > 0 {
 			sessions := map[string]bool{}
-			for id := range spanIDs {
+			for id := range liczone {
 				sessions[opts.Spans[id].SessionID] = true
 			}
 			if len(sessions) < *me.Sessions {

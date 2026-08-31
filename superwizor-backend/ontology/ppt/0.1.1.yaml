@@ -1,0 +1,257 @@
+# Ontologia PPT (psychoterapia pozytywna Peseschkiana) — SZKIC 0.1.1.
+#
+# Status: DO AUTORYZACJI EKSPERCKIEJ (D2). approved_by jest puste, więc CI
+# blokuje użycie produkcyjne; REPORT_PIPELINE_PPT=ontology spadnie na legacy.
+#
+# 0.1.1 (semver PATCH — plan value_glosses): glosy dla 4 pozycji katalogu
+# potencjalności pierwotnych, w tym pary podłańcuchowej pewność/pewność
+# siebie (reguła G6). Identyfikatory values BEZ ZMIAN. Treść glos to treść
+# kliniczna — PLACEHOLDERY z promptu zweryfikowanego, do zatwierdzenia na
+# sesji autoryzacyjnej razem z resztą (glosy podlegają approved_by).
+# Glosa unika wewnętrznego " — " (kolizja z separatorem renderera S2) —
+# doprecyzowanie idzie w nawiasie.
+#
+# Pochodzenie treści: dokument 11 v1.4 §3.3 (fragment ilustracyjny) + soczewka
+# czatu PPT (zamknięte katalogi, mapowania antybłędowe). Wszystkie values i
+# progi min_evidence to placeholdery — sesja autoryzacyjna ma je potwierdzić
+# lub poprawić; rozbieżności katalogów oznaczone w common_confusions.
+
+modality: ppt
+version: 0.1.1
+approved_by: []                 # PUSTE do autoryzacji — blokuje prod (CI)
+
+constructs:
+
+  actual_capacity_primary:
+    label_pl: "Potencjalność pierwotna"
+    aliases: ["zdolność pierwotna", "potencjalność podstawowa"]
+    definition: >
+      Emocjonalno-relacyjna zdolność rozwijana ze zdolności do miłości;
+      opisuje JAK osoba wchodzi w więzi, nie normy społeczne. PLACEHOLDER —
+      definicja kanoniczna z wyciągu L1 po autoryzacji.
+    source: {work_id: "", edition: "", pages: ""}   # uzupełnia L1 (dok. 12)
+    kind: category
+    # ROZBIEŻNOŚĆ ŹRÓDEŁ (pierwszy punkt sesji autoryzacyjnej — plan 16 §6.3):
+    # dokument 11 §3.3 wymienia 11 pozycji; soczewka czatu PPT — 13 (dodatkowo
+    # "seksualność/czułość" i "pewność siebie"). Szkic przyjmuje 13 z aliasami.
+    values: ["miłość", "wzorzec/naśladowanie", "cierpliwość", "czas", "kontakt",
+             "seksualność/czułość", "zaufanie", "pewność siebie", "nadzieja",
+             "wiara/sens", "wątpienie", "pewność", "jedność"]   # ZWERYFIKOWAĆ
+    value_glosses:              # PLACEHOLDERY do autoryzacji (plan value_glosses §7 G5)
+      "wzorzec/naśladowanie": "uczenie się na modelu i bycie modelem"
+      "pewność siebie": "ufność we własne siły"
+      "pewność": "decyzyjność (zdolność podejmowania decyzji)"
+      "jedność": "integrowanie"
+    is_not: [actual_capacity_secondary, need, resource, symptom_function, positum]
+    min_evidence: {spans: 2}
+    common_confusions:
+      - {input: "wzór", correct: "wzorzec/naśladowanie", note: "wariant nazwy z dok. 11 — ujednolicić w L1"}
+      - {input: "wiara", correct: "wiara/sens", note: "j.w."}
+      - {input: "kontakt (sfera)", correct: "rozróżnij: sfera Kontaktu vs potencjalność pierwotna kontakt", note: "homonim — zawsze precyzować poziom"}
+
+  actual_capacity_secondary:
+    label_pl: "Potencjalność wtórna"
+    aliases: ["zdolność wtórna", "zdolności aktualne wtórne"]
+    definition: >
+      Norma społeczna rozwijana ze zdolności do poznania. PLACEHOLDER.
+    source: {work_id: "", edition: "", pages: ""}
+    kind: category
+    values: ["punktualność", "czystość", "porządek", "posłuszeństwo", "uprzejmość",
+             "otwartość/szczerość", "wierność", "sprawiedliwość",
+             "pracowitość/osiągnięcia", "oszczędność", "niezawodność",
+             "dokładność", "sumienność"]                        # ZWERYFIKOWAĆ
+    is_not: [actual_capacity_primary, need, resource]
+    min_evidence: {spans: 2, behavioral: 1}
+    common_confusions:
+      - {input: "szczerość", correct: "otwartość/szczerość", note: "wariant nazwy z dok. 11"}
+      - {input: "pilność/osiągnięcia", correct: "pracowitość/osiągnięcia", note: "j.w."}
+      - {input: "spokój", correct: "nie jest potencjalnością", note: "kandydat: potrzeba / sygnał zaniedbania sfery Ciało-Zmysły (z feedbacku)"}
+      - {input: "troska o siebie", correct: "nie jest potencjalnością", note: "potrzeba dotycząca sfery Ciało/Zmysły (z feedbacku)"}
+      - {input: "samoświadomość", correct: "nie jest potencjalnością", note: "z feedbacku"}
+      - {input: "odpowiedzialność", correct: "najbliżej sumienności lub niezawodności", note: "mapowanie z soczewki"}
+      - {input: "perfekcjonizm", correct: "nadmiar dokładności/porządku/sumienności", note: "stan potencjalności, nie osobna pozycja"}
+      - {input: "asertywność", correct: "język osi uprzejmość <-> otwartość/szczerość", note: "j.w. dotyczy też 'granic'"}
+      - {input: "radość życia / harmonia / bezpieczeństwo / samoocena", correct: "nie są potencjalnościami", note: "z soczewki — częste błędy modelu"}
+
+  need:
+    label_pl: "Potrzeba"
+    definition: >
+      Stan pozadany opisywany przez klienta — poziom POJECIOWO INNY niz
+      potencjalnosc. Wyodrebniony, bo jest najczestszym miejscem bledu
+      kategorialnego: "spokoj", "troska o siebie", "bezpieczenstwo"
+      trafiaja tu, nie do katalogu potencjalnosci. PLACEHOLDER.
+    kind: category
+    values: null                # katalog otwarty — potrzeby nie maja taksonomii zamknietej
+    is_not: [actual_capacity_primary, actual_capacity_secondary, resource]
+    min_evidence: {spans: 1}
+
+  resource:
+    label_pl: "Zasob"
+    definition: >
+      To, co juz dziala i na czym proces moze sie oprzec. Poziom rozny od
+      potencjalnosci i od potrzeby. PLACEHOLDER.
+    kind: category
+    values: null
+    is_not: [actual_capacity_primary, actual_capacity_secondary, need]
+    min_evidence: {spans: 1}
+
+  capacity_assessment:
+    label_pl: "Ocena stanu potencjalności"
+    definition: >
+      Przypisanie stanu (deficyt/balans/nadmiar) konkretnej potencjalności
+      na podstawie materiału. Kompozyt: potencjalność + stan + dowody.
+    kind: composite
+    slots:
+      capacity:
+        type: enum_ref(actual_capacity_primary)   # albo secondary — lint dopuszcza listę? DECYZJA T1: dwa kompozyty lub union
+        required: true
+      state:
+        type: enum_ref(capacity_state)
+        required: true
+      evidence_span:
+        type: span_ref
+        required: true
+        kind_hint: behavioral
+    min_complete_slots: 3
+    min_evidence: {spans: 2, behavioral: 1}
+
+  capacity_state:
+    label_pl: "Stan potencjalności"
+    kind: category
+    values: ["deficyt", "balans", "nadmiar"]
+    min_evidence: {spans: 1}
+
+  balance_model_area:
+    label_pl: "Sfera modelu równowagi"
+    aliases: ["obszar modelu równowagi"]
+    definition: >
+      Rozkład energii życiowej na cztery sfery; sfera POMIJANA w narracji
+      jest informacją tak samo jak dominująca. PLACEHOLDER.
+    kind: category
+    values: ["ciało/zmysły", "praca/osiągnięcia", "kontakty", "fantazja/przyszłość/sens"]
+    min_evidence: {spans: 1}
+    common_confusions:
+      - {input: "Osiągnięcia (potencjalność)", correct: "rozróżnij: sfera praca/osiągnięcia vs potencjalność pracowitość/osiągnięcia", note: "homonim"}
+
+  conflict_processing_form:
+    label_pl: "Forma przetwarzania konfliktu"
+    aliases: ["reakcja ucieczkowa"]
+    kind: category
+    values: ["w ciało/chorobę", "w pracę/aktywność", "w kontakt lub samotność",
+             "w fantazję/przyszłość"]
+    min_evidence: {spans: 2}
+
+  current_conflict:
+    label_pl: "Konflikt aktualny"
+    definition: >
+      Bieżąca, uświadamiana sytuacja napięcia; mikro-/makrotraumy naruszają
+      potencjalności. Notacja: sytuacja + naruszone potencjalności wtórne.
+    min_evidence: {spans: 2}
+    common_confusions:
+      - {input: "mikrotrauma jako wydarzenie z dzieciństwa", correct: "mikrotrauma = powtarzalne drobne naruszenia w BIEŻĄCEJ codzienności", note: "warstwą dziecięcą są koncepty i konflikt podstawowy — z soczewki"}
+
+  inner_conflict:
+    label_pl: "Konflikt wewnętrzny"
+    definition: "Nieświadomy stan 'ani-ani'; generator objawów (kierunek: konflikt -> objawy)."
+    requires: [current_conflict]
+    forced_status: theoretical_hypothesis     # konstrukt silnie inferencyjny (soczewka: nigdy 'rozpoznanie')
+    min_evidence: {spans: 2}
+
+  basic_conflict:
+    label_pl: "Konflikt podstawowy"
+    definition: >
+      Dziecięcy kompromis w strukturze osobowości — para "wtórna–pierwotna"
+      + reguła jeśli-to. Wymaga danych biograficznych Z MATERIAŁU (R5).
+    min_evidence: {spans: 2, sessions: 2}
+
+  key_conflict:
+    label_pl: "Konflikt kluczowy"
+    definition: >
+      Termin ZAREZERWOWANY dla osi uprzejmość <-> otwartość/szczerość;
+      zwrotnica energii konfliktu (do wewnątrz / na zewnątrz).
+    requires: [current_conflict, inner_conflict, basic_conflict]
+    min_evidence: {spans: 3, sessions: 3}     # przykładowo — DECYZJA EKSPERCKA
+    fallback_rendering: "hipoteza robocza napięcia aktualnego (nie key conflict w sensie PPT)"
+    common_confusions:
+      - {input: "dowolne inne napięcie jako konflikt kluczowy", correct: "wyłącznie oś uprzejmość-otwartość", note: "wymóg wzorca w >= 2 różnych sytuacjach — z soczewki"}
+
+  positum:
+    label_pl: "Positum"
+    definition: "PLACEHOLDER — pozytywne przewartościowanie w sensie Peseschkiana."
+    is_not: [symptom_function]
+    min_evidence: {spans: 2}
+    common_confusions:
+      - {input: "bezsenność jako mądry sygnał ciała", correct: "hipoteza funkcjonalna (symptom_function), nie Positum", note: "z feedbacku"}
+
+  symptom_function:
+    label_pl: "Hipoteza funkcjonalna objawu"
+    is_not: [positum]
+    forced_status: theoretical_hypothesis
+    min_evidence: {spans: 2}
+
+  ppt_stage:
+    label_pl: "Etap procesu PPT"
+    definition: "Pięć etapów; kryterium adekwatności interwencji. Obserwacja procesu, nie ocena."
+    kind: category
+    values: ["1-obserwacja/dystansowanie", "2-inwentaryzacja",
+             "3-wzmocnienie sytuacyjne", "4-werbalizacja", "5-poszerzenie celów"]
+    min_evidence: {spans: 1}
+
+epistemic_statuses: [observation, interpretation, theoretical_hypothesis, open_question,
+                     insufficient_data, no_fit]
+etiology_policy: strict
+therapist_boundary: strict
+relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
+                 mediacja, paralela]
+
+# M5+: uklad sekcji ANALOGICZNY do raportu legacy (soczewka PPT).
+# Odwzorowanie 1:1 tam, gdzie potok ma czym renderowac; roznice nazwane:
+#  - "Bilans sesji": esencja (call-1) + kotwice pamieciowe (cytaty
+#    dowodowe wybrane przez kod). TWARDE USTALENIA i metafora czekaja na
+#    ekstrakcje ustalen w S1 (osobny ticket).
+#  - "Wskazowki superwizyjne" ograniczone do rdzenia "czego mozna bylo
+#    nie zauwazyc" (kontrdowody + no_fit + degradacje) — komentarz o
+#    technice terapeuty wymaga decyzji (przyleganie do R10).
+#  - guidance sekcji generacyjnych = wytyczne z soczewki, skondensowane;
+#    edytowalne tutaj, wersjonowane, po four-eyes.
+report_profile:
+  layout:
+    - id: bilans_sesji
+      title: "Bilans sesji"
+      kind: summary
+    - id: analiza_rownowagi
+      title: "Analiza w Modelu Równowagi"
+      kind: constructs
+      constructs: [balance_model_area, capacity_state, conflict_processing_form,
+                   capacity_assessment]
+    - id: konflikty
+      title: "Konflikty i Ukryte Potencjalności"
+      kind: constructs
+      constructs: [current_conflict, inner_conflict, key_conflict, basic_conflict,
+                   need, actual_capacity_primary, actual_capacity_secondary]
+    - id: konceptualizacja
+      title: "Pozytywna Konceptualizacja"
+      kind: constructs
+      constructs: [positum, symptom_function, resource, ppt_stage]
+    - id: inspiracje
+      title: "Inspiracje między sesjami"
+      kind: suggestions
+      guidance: >
+        2-3 zaproszenia do obserwacji lub mikro-praktyki wspierajace
+        rownowage. Charakter obserwacyjny (etapy 1-2) albo zasobowy
+        (etap 3), chyba ze material jasno wskazuje pozniejszy etap.
+        Jezyk niedyrektywny, przyjazny klientowi.
+    - id: interwencje
+      title: "Propozycje interwencji"
+      kind: interventions
+      guidance: >
+        1-2 interwencje warunkowe w duchu PPT. Przy braku danych o etapie
+        proponuj interwencje etapow 1-3. Historie transkulturowe podawaj
+        wylacznie jako motyw; nie przypisuj Peseschkianowi historii
+        wymyslonych.
+    - id: superwizja
+      title: "Czego można było nie zauważyć"
+      kind: overlooked
+    - id: pytania
+      title: "Pytania i niewiadome"
+      kind: questions

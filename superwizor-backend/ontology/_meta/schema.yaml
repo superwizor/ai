@@ -1,11 +1,32 @@
-# Metaschemat ontologii modalności — kontrakt z dokumentu 11 v1.4 §3.2.
+# Metaschemat ontologii modalności — kontrakt z dokumentu 11 §3.2.
 #
 # Ten plik jest ŹRÓDŁEM PRAWDY o strukturze plików ontology/<mod>/<semver>.yaml.
 # Walidowany w CI (ontology-lint, ticket T1 / faza F0 planu 16). Zmiana tego
 # pliku = zmiana kontraktu = przegląd jak zmiana kodu walidatora.
 #
 # Zapis: pseudo-schemat YAML (typy w komentarzach), nie JSON Schema — zgodnie
-# z formą w dokumencie 11. ontology-lint implementuje go w Go.
+# z formą w dokumencie 11. ontology-lint implementuje go w Go; parserem
+# odniesienia jest pkg/ontology/types.go i przy rozjeździe wygrywa kod.
+#
+# Historia kontraktu:
+#   v1.4  M1–M4 (kompozyty, multi_label, quantities, mediacja) + R10.
+#   +M5   report_profile.sections (wagi) ORAZ report_profile.layout
+#         (uporządkowane nazwane sekcje; XOR z sections) + label_en /
+#         title_en dla raportów w języku kartoteki. Doniesione do tego
+#         pliku 2026-08-26 — layout istniał wcześniej w kodzie, a
+#         metaschemat go pomijał (dryf dokument↔kod).
+#   +G    value_glosses (plan value_glosses v1.0): objaśnienia 1-liniowe
+#         pozycji katalogu; reguły lintera G1–G6.
+#   +E4a  fakty sesyjne (docs/67 §3): pole spanu S1 `fact_kind` (katalog
+#         6 wartości w pkg/ontology FactKinds) + pole konstruktu
+#         `fact_kind_map` — mapowanie deterministyczne, konstrukt faktowy
+#         pomijany w S2; reguły lintera F1–F5.
+#   +E    Nota_Zmian_Silnika_v1.5 (2026-08-31), faza addytywna: E5 unie
+#         typów slotów i multiple/min_items; E7 reguła G7 (homonimy
+#         międzykonstruktowe — WARNING bez glos obu stron; renderer S2
+#         dopisuje „(tu: <label>)”); E9 min_evidence.speaker; E10 WARNING
+#         braku sekcji patterns/out_of_taxonomy w layout. E1–E4, E6, E8
+#         — patrz nota; NIE są jeszcze częścią kontraktu.
 
 modality: string                # ppt | cbt | psychodynamic | gestalt | st | sys | eft | coach | univ
 version: semver
@@ -14,6 +35,8 @@ approved_by: [string]           # v1.2: wypełniane przez Ontology Studio przy z
 constructs:
   <construct_id>:
     label_pl: string
+    label_en: string | null     # etykieta dla raportów EN (język KARTOTEKI, nie ontologii);
+                                # brak = fallback na label_pl, co samo zgłasza lukę ekspertowi
     aliases: [string]           # synonimy i warianty tłumaczeń PL; rozstrzygane w wyciągach L1 (dok. 12)
     definition: string
     source:                     # audytowalność definicji do literatury (work_id z manifestu korpusu, dok. 12 §3)
@@ -23,16 +46,36 @@ constructs:
     kind: category | composite  # M1 (v1.3): composite = krotka typowanych slotów; domyślnie category
     slots:                      # tylko dla kind: composite
       <slot_id>:
-        type: span_ref | construct_ref(<id>) | enum_ref(<id>) | entry_ref
+        # E5: atom lub UNIA atomów przez `|`; unia celów też w nawiasie:
+        #   span_ref | entry_ref | construct_ref(a) | construct_ref(a|b)
+        #   | enum_ref(a) | enum_ref(a|b) | span_ref|entry_ref
+        # Element spełnia którykolwiek typ unii. enum_ref wymaga celu
+        # z niepustym values. Gramatyka: pkg/ontology/slots.go.
+        type: string
         required: bool
         kind_hint: behavioral | declarative | null
         quantity: bool          # slot dopuszcza wartość liczbową (podlega quantities.policy)
+        multiple: bool          # E5: slot jest LISTĄ wartości; dla min_complete_slots
+                                # liczy się jako wypełniony przy >= 1 elemencie (lub min_items)
+        min_items: int | null   # tylko przy multiple: true; >= 1
     min_complete_slots: int | null
     values: "[string] | null"   # null = konstrukt bez katalogu zamkniętego
+    value_glosses:              # plan value_glosses v1.0 (opcjonalne; tylko gdy values != null)
+      "<wartość-z-values>": string   # 1 linia, czysty tekst, PL, <= 120 znaków
+    # Semantyka: objaśnienie POJEDYNCZEJ pozycji katalogu. Renderowane do
+    # promptu S2 (obok enumu, po " — ") i pickera kategorii (podpis).
+    # NIE trafia do: JSON Schema wyjścia S2, walidatora R1, telemetrii,
+    # wartości w claims, dopasowań benchmarku. Reguły lintera G1–G6
+    # (pkg/ontology/glosses.go); zmiana samej glosy = semver PATCH wersji
+    # ontologii (nie zmienia identyfikatorów ani reguł).
     multi_label: bool           # M2 (v1.3): wyjście categories >= 1; benchmark F1 per etykieta
     quantities:                 # M3 (v1.3)
       policy: stated_only       # liczba WYŁĄCZNIE ze spanem, w którym padła (reguła R9)
       scale: string | null
+    fact_kind_map:              # E4a (docs/67 §3): konstrukt FAKTOWY — mapowany
+      "<fact_kind>": "<kategoria|''>"   # deterministycznie ze spanów S1, z pominięciem
+                                # S2; wymaga forced_status: observation (F4); jeden
+                                # konstrukt na fact_kind w ontologii (F3)
     forced_status: epistemic_status | null   # np. core_belief CBT -> zawsze theoretical_hypothesis
     is_not: [construct_id]
     requires: [construct_id]
@@ -40,6 +83,8 @@ constructs:
       spans: int
       sessions: int | null
       behavioral: int | null
+      speaker: therapist | client | any   # E9: próg liczony WYŁĄCZNIE na spanach
+                                          # wskazanej roli (z observed_by); domyślnie any
     common_confusions:
       - {input: string, correct: string, note: string}
     examples: [string]
@@ -51,6 +96,21 @@ etiology_policy: strict         # twierdzenia genetyczne tylko ze spanem źród�
 therapist_boundary: strict      # R10 (v1.4): zero inferencji o stanach wewnętrznych terapeuty
 relation_types: [wspolwystepowanie, napiecie, sekwencja, sprzecznosc, wzmocnienie,
                  mediacja, paralela]
-report_profile:                 # M5 (v1.4, opcjonalne)
+report_profile:                 # M5/M5+ (opcjonalne)
+  # DWA TRYBY, WZAJEMNIE WYKLUCZAJĄCE (obecność obu = błąd walidacji):
+  # `sections` — wagi nad sekcjami domyślnymi, gdy modalności wystarczy
+  # kolejność; `layout` — pełny układ nazwanych sekcji odwzorowujący
+  # strukturę raportu znaną terapeutom danej szkoły (M5+).
   sections: {}                  # {<section>: {weight: high|default|low}}
+  layout:                       # M5+: uporządkowana lista sekcji
+    - id: string                # [a-z][a-z0-9_]*, unikalne w układzie
+      title: string             # wymagane — sekcja bez tytułu nie ma czym być
+      title_en: string | null   # tytuł dla raportów EN; brak = fallback na title
+      kind: summary | constructs | suggestions | interventions |
+            overlooked | questions | patterns | out_of_taxonomy
+      constructs: [construct_id]  # tylko dla kind: constructs; konstrukt należy
+                                  # do JEDNEJ sekcji; nieprzypisane lądują w sekcji
+                                  # końcowej — układ NIGDY nie ukrywa zweryfikowanej treści
+      guidance: string | null   # wytyczne generacyjne S4 (tylko suggestions/
+                                # interventions) — treść ekspercka, wersjonowana
   default_tone: string | null
