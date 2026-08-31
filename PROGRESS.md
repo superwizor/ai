@@ -89,6 +89,45 @@ Gotchas:
 
 ## In progress
 
+### value_glosses (T19.G) — G1-G3+G5 GOTOWE na feat/value-glosses — 2026-08-26
+
+Plan: docs/ai_reports_ontology/Plan_Implementacji_value_glosses_v1.0.md
+(changelog 1.1 = ksiegowosc realizacji i odstepstw). Zrobione:
+
+- pkg/ontology: pole Construct.ValueGlosses; glosses.go z regulami G1-G6
+  i WSPOLNA detekcja par podlancuchowych (SubstringValuePairs) dla
+  lintera i renderera; kanal Warnings() (linter drukuje `!`, nie failuje).
+- ODSTEPSTWO (zapisane w kodzie i planie): G6 = ERROR tylko dla
+  konstruktu uzywajacego glos; dla konstruktu bez glos ostrzezenie —
+  bezwarunkowy ERROR przeczyl DoD planu (ppt/0.1.0 ma przechodzic).
+- Renderer S2 (prompts.go): " — " + naglowek warunkowy + "NIE mylic z"
+  dla par; PromptVersionS2 s2/1.3.0; golden snapshoty
+  (AKTUALIZUJ_SNAPSHOTY=1 regeneruje) + asercja, ze prompt bez glos
+  jest bajtowo niezmieniony.
+- Test kontraktowy: JSON Schema wyjscia S2 bajtowo identyczny z glosami
+  i bez (TestGlosyNieZmieniajaSchematu). Oba strazniki zepsute celowo —
+  lapia.
+- Seed ontology/ppt/0.1.1.yaml (PATCH): glosy 4 pozycji, tresc =
+  PLACEHOLDERY do autoryzacji; ontology/README.md z konwencja semver
+  (glosa = PATCH). UWAGA: wartosc z planu "wzorzec" naprawde nazywa sie
+  "wzorzec/naśladowanie".
+- Metaschemat ontology/_meta/schema.yaml DONIESIONY do kodu: value_glosses
+  + label_en + report_profile.layout (M5+ istnial tylko w kodzie — dryf).
+- Web Studio: model.ts (readGlosses/setValueGloss + testy round-trip,
+  w tym asercja, ze osierocona glosa NIE znika po cichu), ConstructForm
+  (pole glosy pod kazda wartoscia, maxLength=120, aria-label), i18n
+  pl+en. tsc czysty, vitest modelu 26/26.
+- Dok. 11 -> v1.6.
+
+NIE ZROBIONE i dlaczego:
+- Picker A7 (T19.G4 wlasciwe): NIE ISTNIEJE zaden picker — to ticket
+  T11 (czat). Glosy dowiezione do jedynego istniejacego UI (Studio).
+- Ewaluacja A/B (T19.G6/§6.4): czeka na benchmark T9, zgodnie z planem.
+
+Zostalo przed merge: pnpm test:all marketing-site (w toku w tle),
+commit web + docs, PROGRESS check-off.
+
+
 ### Poprawnosc liczb w /admin/analytics — GALAZ GOTOWA, MIGRACJE NIEURUCHOMIONE (2026-08-28)
 
 Galaz `fix/analytics-poprawnosc-liczb` (od `main`), zmergowana i wypchnieta.
