@@ -214,6 +214,7 @@ func (o *Ontology) validateConstructs() []string {
 		}
 		p = append(p, o.validateRefs(id, c)...)
 		p = append(p, validateConstructShape(id, c)...)
+		p = append(p, validateGlosses(id, c)...)
 	}
 	return p
 }

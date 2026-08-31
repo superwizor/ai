@@ -29,6 +29,14 @@ constructs:
         quantity: bool          # slot dopuszcza wartość liczbową (podlega quantities.policy)
     min_complete_slots: int | null
     values: "[string] | null"   # null = konstrukt bez katalogu zamkniętego
+    value_glosses:              # plan value_glosses v1.0 (opcjonalne; tylko gdy values != null)
+      "<wartość-z-values>": string   # 1 linia, czysty tekst, PL, <= 120 znaków
+    # Semantyka: objaśnienie POJEDYNCZEJ pozycji katalogu. Renderowane do
+    # promptu S2 (obok enumu, po " — ") i pickera kategorii (podpis).
+    # NIE trafia do: JSON Schema wyjścia S2, walidatora R1, telemetrii,
+    # wartości w claims, dopasowań benchmarku. Reguły lintera G1–G6
+    # (pkg/ontology/glosses.go); zmiana samej glosy = semver PATCH wersji
+    # ontologii (nie zmienia identyfikatorów ani reguł).
     multi_label: bool           # M2 (v1.3): wyjście categories >= 1; benchmark F1 per etykieta
     quantities:                 # M3 (v1.3)
       policy: stated_only       # liczba WYŁĄCZNIE ze spanem, w którym padła (reguła R9)

@@ -107,7 +107,14 @@ type Construct struct {
 	// Values null = konstrukt bez katalogu zamknietego. Niepusta lista
 	// trafia do JSON Schema jako enum.
 	Values     []string    `yaml:"values,omitempty"`
-	MultiLabel bool        `yaml:"multi_label,omitempty"`
+	// ValueGlosses to 1-liniowe objasnienia POJEDYNCZYCH pozycji katalogu
+	// (plan value_glosses v1.0). Wartosc enumu jest identyfikatorem, glosa
+	// objasnieniem: glosa jest renderowana obok identyfikatora w prompcie
+	// S2 i w pickerze kategorii, ale NIE trafia do JSON Schema wyjscia S2,
+	// walidatora R1, telemetrii ani do `category` w claims. Pilnuje tego
+	// test kontraktowy (schemat bajtowo identyczny z glosami i bez).
+	ValueGlosses map[string]string `yaml:"value_glosses,omitempty"`
+	MultiLabel   bool              `yaml:"multi_label,omitempty"`
 	Quantities *Quantities `yaml:"quantities,omitempty"`
 	// ForcedStatus wymusza status konstruktu niezaleznie od sadu modelu
 	// (np. core_belief CBT -> zawsze theoretical_hypothesis).
