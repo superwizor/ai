@@ -113,11 +113,14 @@ T42a wdrozone:
 - Test integracyjny: konstrukt faktowy nigdy nie trafia do S2 (zepsute
   celowo — lapie).
 
-T42b NASTEPNE (docs/67 §4): parowanie po konstrukcie + osad relacji
-{wzmacnia, oslabia, bez_zwiazku} jedna runda LLM, report_claim_links,
-render "potwierdza/oslabia/bez nowych danych", rozliczenie pracy
-domowej (3 stany). Potem T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po
-decyzji snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).
+T42b GOTOWE (2026-08-31): etap S2k (s2k/1.0.0) — parowanie
+deterministyczne, osad enumem, report_claim_links (migracja 000104),
+werdykt bez dowodu degraduje do nie_wrocono (zliczany), powierzchnia
+w RENDERERZE (nie w prozie S4 — data i kierunek nie moga sie
+"poprawic"), fail-open. Testy + celowe psucie walidacji par: lapie.
+
+DALEJ: T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po decyzji
+snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).
 
 UWAGA wdrozeniowa: prompt S1 zmienil sie (s1/1.1.0) — pierwszy deploy
 po merge'u obejmie tez ta zmiane; benchmark A/B por. dok. 11 §8.2.

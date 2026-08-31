@@ -151,6 +151,38 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 		}
 	}
 
+	// ── T42b: relacje ciaglosci i rozliczenie pracy domowej ──
+	// ClaimIdx tlumaczony na uuid DOPIERO tutaj, po zapisie twierdzen:
+	// indeks jest nosny wylacznie w obrebie tego przebiegu.
+	for _, l := range res.ContinuityLinks {
+		if l.ClaimIdx < 0 || l.ClaimIdx >= len(wynik.ClaimIDs) {
+			continue
+		}
+		if err := db.Exec(ctx, `
+			INSERT INTO report_claim_links (report_id, kind, current_claim_id,
+			       past_claim_id, relation, evidence_span_refs)
+			VALUES ($1,'continuity',$2,$3,$4,$5)
+			ON CONFLICT DO NOTHING`,
+			in.ReportID, wynik.ClaimIDs[l.ClaimIdx], l.PastClaimID, l.Relation,
+			[]string{}); err != nil {
+			return wynik, fmt.Errorf("ontopipe: zapis linku ciaglosci: %w", err)
+		}
+	}
+	for _, h := range res.HomeworkVerdicts {
+		ev := h.EvidenceSpanIDs
+		if ev == nil {
+			ev = []string{}
+		}
+		if err := db.Exec(ctx, `
+			INSERT INTO report_claim_links (report_id, kind, current_claim_id,
+			       past_claim_id, relation, evidence_span_refs)
+			VALUES ($1,'homework',NULL,$2,$3,$4)
+			ON CONFLICT DO NOTHING`,
+			in.ReportID, h.PastClaimID, h.Verdict, ev); err != nil {
+			return wynik, fmt.Errorf("ontopipe: zapis rozliczenia: %w", err)
+		}
+	}
+
 	for _, p := range res.Patterns {
 		pid, err := db.QueryUUID(ctx, `
 			INSERT INTO report_patterns (report_id, pattern_ref, pattern_type,

@@ -119,6 +119,15 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 		res.Insufficient = append(res.Insufficient, v.InsufficientData...)
 	}
 
+	// ── S2k ── relacje ciaglosci i rozliczenie (T42b, docs/67 §4).
+	// Po zatwierdzeniu twierdzen, przed synteza: linki odnosza sie do
+	// FINALNEJ listy Approved (indeksy sa nosne dla Persist), a synteza
+	// ich nie konsumuje — powierzchnia jest deterministyczna, w
+	// rendererze. Fail-open wewnatrz.
+	if in.Past != nil {
+		RunContinuity(ctx, llm, o, &res, in.Past, spans, &res.Usage)
+	}
+
 	// ── S4 + S5 ── z petla regeneracji
 	var pastIDs []string
 	for _, s := range spans {

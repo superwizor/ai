@@ -2836,9 +2836,10 @@ func pipelineProvenance(d pipelineDecision) provenance {
 	}
 	p.OntologyVersion = d.OntologyVersion
 	p.PromptVersions = map[string]string{
-		"s1": ontopipe.PromptVersionS1,
-		"s2": ontopipe.PromptVersionS2,
-		"s4": ontopipe.PromptVersionS4,
+		"s1":  ontopipe.PromptVersionS1,
+		"s2":  ontopipe.PromptVersionS2,
+		"s2k": ontopipe.PromptVersionS2K,
+		"s4":  ontopipe.PromptVersionS4,
 	}
 	p.Validator = ontopipe.ValidatorVersion
 	return p
