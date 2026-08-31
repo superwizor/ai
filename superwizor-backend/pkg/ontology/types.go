@@ -120,6 +120,12 @@ type Construct struct {
 	// (np. core_belief CBT -> zawsze theoretical_hypothesis).
 	ForcedStatus EpistemicStatus `yaml:"forced_status,omitempty"`
 
+	// FactKindMap (E4/T42a, docs/67 §3) czyni konstrukt FAKTOWYM:
+	// span o danym fact_kind mapuje sie deterministycznie na twierdzenie
+	// z kategoria z mapy (pusta przy values: null). Konstrukt faktowy
+	// jest POMIJANY w S2 — mapowanie robi kod, nie model. Lint F1-F5.
+	FactKindMap map[string]string `yaml:"fact_kind_map,omitempty"`
+
 	IsNot    []string `yaml:"is_not,omitempty"`
 	Requires []string `yaml:"requires,omitempty"`
 

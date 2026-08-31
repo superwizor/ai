@@ -48,6 +48,23 @@ type Span struct {
 	// Tresci ryzyka nie zasilaja S2/S2b/S1.5 — zadnych wnioskow, wzorcow
 	// ani statystyk na ich bazie.
 	RiskContent bool
+	// FactKind (E4/T42a, docs/67 §3) oznacza span bedacy FAKTEM
+	// sesyjnym: ustaleniem, agenda, pomiarem nastroju, metafora klienta.
+	// Puste = zwykly span. Wartosci: FactKinds. Fakty sa mapowane na
+	// twierdzenia DETERMINISTYCZNIE (fact_kind_map konstruktu), z
+	// pominieciem S2 — fakt ze spanem nie potrzebuje inferencji.
+	FactKind string
+}
+
+// FactKinds to zamkniety katalog rodzajow faktow sesyjnych (E4).
+// Rozszerzenie katalogu = zmiana kontraktu S1 (nowa wersja promptu).
+var FactKinds = []string{
+	"agreement_client",    // praca domowa / zobowiazanie klienta
+	"agreement_therapist", // zobowiazanie terapeuty (arkusz, material)
+	"agenda_next",         // agenda kolejnej sesji
+	"agenda_unaddressed",  // temat zgloszony, nieomowiony
+	"mood_rating",         // pomiar nastroju podany przez klienta
+	"client_metaphor",     // metafora klienta (PPT: kotwice jezykowe)
 }
 
 // QuoteRef to odnosnik dowodowy w twierdzeniu.

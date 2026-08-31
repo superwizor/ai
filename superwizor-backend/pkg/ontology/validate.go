@@ -22,6 +22,7 @@ func (o *Ontology) Validate() []string {
 	p = append(p, o.validateHeader()...)
 	p = append(p, o.validateConstructs()...)
 	p = append(p, o.validatePolicies()...)
+	p = append(p, o.validateFactRouting()...)
 	p = append(p, o.validateReportProfile()...)
 	sort.Strings(p)
 	return p
@@ -212,6 +213,7 @@ func (o *Ontology) validateConstructs() []string {
 		p = append(p, o.validateRefs(id, c)...)
 		p = append(p, validateConstructShape(id, c)...)
 		p = append(p, validateGlosses(id, c)...)
+		p = append(p, validateFactKindMap(id, c)...)
 	}
 	return p
 }

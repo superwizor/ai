@@ -5,7 +5,7 @@
 | Plik | `docs/plany/Nota_Zmian_Silnika_v1.5.md` |
 | Wersja | 1.0 |
 | Data | 31 sierpnia 2026 r. |
-| Status | Do zatwierdzenia — rozszerzenia addytywne; jedna zmiana semantyczna (E1) wymaga decyzji |
+| Status | D1–D4 zatwierdzone 2026-08-31; realizacja w toku (E5/E7/E9/E10 + T42a wdrożone; E4 wg docs/67) |
 | Impuls | Porównanie ontologii `cbt/0.1.0` ze zweryfikowanym promptem CBT ujawniło luki silnika przekrojowe (nie tylko CBT); metaschemat w repo (2026-08-26) ma już M5+ `layout`, `label_en`, `value_glosses` — ten dokument dopisuje to, czego nadal brakuje |
 | Konsument | `ontology/_meta/schema.yaml` (kontrakt), `pkg/ontology` (lint, typy), `llm-worker` (S1/S2/S4), `guardrail-svc` (S3/S5), benchmark, `cbt/0.1.1`, `ppt/0.1.1` |
 | Dokumenty powiązane | dok. 11 v1.4 (§3.2, §4, §8); dok. 13 (R4, S2b); dok. 14 (§7 polityka ryzyka, §8 aplikacja); dok. 15 (R10); plan `value_glosses` v1.0; `cbt_0.1.1.yaml` |
@@ -15,6 +15,7 @@
 | Wersja | Data | Zmiana |
 |---|---|---|
 | 1.0 | 2026-08-31 | Pierwsza wersja: E1–E10, wpływ na PPT, tickety T37–T46. |
+| 1.1 | 2026-08-31 | **Decyzje D1–D4 zatwierdzone przez właściciela produktu zgodnie z rekomendacjami** (D1: tak — tiery; D2: tak, za flagą per tenant; D3: odrzucana; D4: kolejność logiczna z testem A/B). Faza addytywna E5/E7/E9/E10 wdrożona 2026-08-31 (dok. 11 v1.7). **E4 realizowany wg docs/67** (scalenie z F7a/F7b): `prior_report_context` NIE powstaje — tym wejściem jest istniejący PastContext; numeracja reguł skorygowana (V8 = zakaz procentów, V9 = lustro R11 — V7 zajęte przez ciągłość z F7a). T42a (fact_kind + mapowanie deterministyczne) wdrożone; T42b (relacje ciągłości + rozliczenie pracy domowej) następne. |
 
 ---
 

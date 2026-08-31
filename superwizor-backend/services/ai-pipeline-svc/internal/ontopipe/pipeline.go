@@ -27,7 +27,7 @@ import (
 // sprzed miesiaca — a to jest wymog audytu (art. 94 MDR) i warunek
 // sensownego benchmarku.
 const (
-	PromptVersionS1  = "s1/1.0.0"
+	PromptVersionS1  = "s1/1.1.0" // fact_kind — fakty sesyjne (E4/T42a, docs/67)
 	PromptVersionS2  = "s2/1.4.0" // dopisek homonimow miedzykonstruktowych "(tu: ...)" (nota E7); 1.3.0: glosy; 1.2.0: blok ustalen F7a-3
 	PromptVersionS4  = "s4/1.7.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	ValidatorVersion = "r1-r10/1.0.0"
@@ -155,6 +155,10 @@ type Result struct {
 	// Niepuste WYLACZNIE razem z Extractive — jesli synteza sie udala,
 	// nie ma czego zglaszac.
 	Violations []Violation
+	// FactMapped to konstrukty zmapowane deterministycznie z faktow
+	// sesyjnych (E4/T42a) — z pominieciem S2. Do proweniencji i testow.
+	FactMapped []string
+
 	// PrunedHypotheses to hipotezy USUNIETE po nieudanych regeneracjach.
 	//
 	// Niepuste znaczy: reszta prozy przeszla V1-V6 i zostala, a wycielismy

@@ -89,6 +89,40 @@ Gotchas:
 
 ## In progress
 
+### E4/T42a — fakty sesyjne po scaleniu z F7a/F7b — GOTOWE na feat/cbt-011-silnik — 2026-08-31
+
+D1-D4 ZATWIERDZONE przez wlasciciela produktu zgodnie z rekomendacjami
+(zapisane w changelogu noty v1.1).
+
+Dokument scalajacy: docs/67_SCALENIE_E4_Z_F7A_F7B.md — rozstrzygniecie
+naczelne: `prior_report_context` z noty NIE powstaje, tym wejsciem JEST
+PastContext (F7a/F7b). Numeracja regul skorygowana: V8 = zakaz procentow
+(E1), V9 = lustro R11 (E2); V7 zajete przez ciaglosc z F7a.
+
+T42a wdrozone:
+- S1: pole spanu fact_kind (6 wartosci, katalog pkg/ontology FactKinds),
+  prompt s1/1.1.0, weryfikacja mechaniczna bez zmian.
+- Migracja 000103: report_spans.fact_kind z CHECK na katalog.
+- Ontologia: Construct.FactKindMap + lint F1-F5 (jeden konstrukt na
+  fact_kind; wymagane forced_status: observation).
+- Potok: konstrukt faktowy POMIJA S2, mapowany deterministycznie
+  (MapFacts) W POZYCJI konstruktu w petli — kolejnosc twierdzen stabilna
+  (indeks wnioskowania adresuje po pozycji). Twierdzenie faktowe:
+  observation, confidence 1.0, dowod = span; przechodzi S3 normalnie.
+- Seed cbt/0.1.2: fact_kind_map na session_agreement i mood_rating.
+- Test integracyjny: konstrukt faktowy nigdy nie trafia do S2 (zepsute
+  celowo — lapie).
+
+T42b NASTEPNE (docs/67 §4): parowanie po konstrukcie + osad relacji
+{wzmacnia, oslabia, bez_zwiazku} jedna runda LLM, report_claim_links,
+render "potwierdza/oslabia/bez nowych danych", rozliczenie pracy
+domowej (3 stany). Potem T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po
+decyzji snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).
+
+UWAGA wdrozeniowa: prompt S1 zmienil sie (s1/1.1.0) — pierwszy deploy
+po merge'u obejmie tez ta zmiane; benchmark A/B por. dok. 11 §8.2.
+
+
 ### CBT 0.1.1 + faza addytywna Noty Zmian Silnika — GOTOWE na feat/cbt-011-silnik — 2026-08-31
 
 Zrodla od uzytkownika: docs/plany/Nota_Zmian_Silnika_v1.5.md (E1-E10,

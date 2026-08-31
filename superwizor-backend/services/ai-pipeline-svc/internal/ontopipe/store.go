@@ -87,16 +87,17 @@ func Persist(ctx context.Context, db DB, crypto Crypto, in PersistInput, res Res
 			INSERT INTO report_spans (session_id, transcript_id, span_ref,
 			       quote_ciphertext, quote_encrypted_dek, speaker, kind,
 			       observed_by, about_past, risk_content, silence_before_ms,
-			       topics)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+			       topics, fact_kind)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,''))
 			ON CONFLICT (transcript_id, span_ref) DO UPDATE
 			   SET quote_ciphertext = EXCLUDED.quote_ciphertext,
 			       quote_encrypted_dek = EXCLUDED.quote_encrypted_dek,
-			       topics = EXCLUDED.topics
+			       topics = EXCLUDED.topics,
+			       fact_kind = EXCLUDED.fact_kind
 			RETURNING id`,
 			in.SessionID, in.TranscriptID, s.ID, ct, dek, s.Speaker, string(s.Kind),
 			string(s.ObservedBy), s.AboutPast, s.RiskContent, s.SilenceBeforeMs,
-			tematy)
+			tematy, s.FactKind)
 		if err != nil {
 			return wynik, fmt.Errorf("ontopipe: zapis spanu %s: %w", s.ID, err)
 		}

@@ -78,9 +78,26 @@ func Run(ctx context.Context, llm LLM, in Input) (Result, error) {
 
 	approvedConstructs := map[string]bool{}
 	for _, id := range orderByRequires(o, categories) {
-		stage, err := MapConstruct(ctx, llm, o, id, spans, in.Past, &res.Usage)
-		if err != nil {
-			return res, err
+		// Konstrukt faktowy (E4/T42a, docs/67 §3): mapowanie robi kod,
+		// nie model — S2 jest pomijane. Mapowanie dzieje sie WEWNATRZ
+		// tej petli, w pozycji konstruktu: kolejnosc zatwierdzonych
+		// twierdzen jest nosna (indeks wnioskowania adresuje po
+		// pozycji), wiec fakty nie moga byc doklejane na koncu.
+		var stage ontology.StageResult
+		var err error
+		if c := o.Constructs[id]; c != nil && len(c.FactKindMap) > 0 {
+			stage = ontology.StageResult{ConstructID: id}
+			for _, sr := range o.MapFacts(spans) {
+				if sr.ConstructID == id {
+					stage = sr
+				}
+			}
+			res.FactMapped = append(res.FactMapped, id)
+		} else {
+			stage, err = MapConstruct(ctx, llm, o, id, spans, in.Past, &res.Usage)
+			if err != nil {
+				return res, err
+			}
 		}
 		for i := range stage.Claims {
 			classifyClaim(&stage.Claims[i], spanByID)

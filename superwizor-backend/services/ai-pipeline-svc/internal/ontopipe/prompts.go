@@ -73,6 +73,17 @@ func schemaS1() map[string]any {
 							"type":        "boolean",
 							"description": "Prog NISKI — przy watpliwosci true.",
 						},
+						// E4/T42a: fakt sesyjny. Pole OPCJONALNE (poza
+						// required) — wiekszosc spanow nie jest faktem i
+						// wymuszanie deklaracji per span puchloby wyjscie.
+						"fact_kind": map[string]any{
+							"type": "string",
+							"enum": []any{"agreement_client", "agreement_therapist",
+								"agenda_next", "agenda_unaddressed", "mood_rating",
+								"client_metaphor"},
+							"description": "WYLACZNIE dla faktu sesyjnego: ustalenie, " +
+								"agenda, pomiar nastroju, metafora klienta. Pomijaj dla zwyklych spanow.",
+						},
 						"topics": map[string]any{
 							"type": "array", "maxItems": int64(3),
 							"items": map[string]any{"type": "string", "maxLength": int64(40)},

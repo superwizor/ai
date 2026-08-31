@@ -17,6 +17,10 @@
 #         metaschemat go pomijał (dryf dokument↔kod).
 #   +G    value_glosses (plan value_glosses v1.0): objaśnienia 1-liniowe
 #         pozycji katalogu; reguły lintera G1–G6.
+#   +E4a  fakty sesyjne (docs/67 §3): pole spanu S1 `fact_kind` (katalog
+#         6 wartości w pkg/ontology FactKinds) + pole konstruktu
+#         `fact_kind_map` — mapowanie deterministyczne, konstrukt faktowy
+#         pomijany w S2; reguły lintera F1–F5.
 #   +E    Nota_Zmian_Silnika_v1.5 (2026-08-31), faza addytywna: E5 unie
 #         typów slotów i multiple/min_items; E7 reguła G7 (homonimy
 #         międzykonstruktowe — WARNING bez glos obu stron; renderer S2
@@ -68,6 +72,10 @@ constructs:
     quantities:                 # M3 (v1.3)
       policy: stated_only       # liczba WYŁĄCZNIE ze spanem, w którym padła (reguła R9)
       scale: string | null
+    fact_kind_map:              # E4a (docs/67 §3): konstrukt FAKTOWY — mapowany
+      "<fact_kind>": "<kategoria|''>"   # deterministycznie ze spanów S1, z pominięciem
+                                # S2; wymaga forced_status: observation (F4); jeden
+                                # konstrukt na fact_kind w ontologii (F3)
     forced_status: epistemic_status | null   # np. core_belief CBT -> zawsze theoretical_hypothesis
     is_not: [construct_id]
     requires: [construct_id]

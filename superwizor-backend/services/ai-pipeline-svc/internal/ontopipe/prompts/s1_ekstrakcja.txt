@@ -60,6 +60,21 @@ topics
 silence_before_ms
   długość pauzy przed wypowiedzią, jeśli zapis ją oznacza. Brak oznaczenia = 0.
 
+fact_kind
+  WYŁĄCZNIE dla spanu będącego FAKTEM sesyjnym — pomiń dla zwykłych spanów:
+  — agreement_client: klient przyjął zadanie/zobowiązanie („spróbuję w tym
+    tygodniu zapisywać myśli")
+  — agreement_therapist: terapeuta zobowiązał się do czegoś („prześlę Pani
+    arkusz")
+  — agenda_next: ustalenie tematu kolejnej sesji
+  — agenda_unaddressed: temat zgłoszony na agendę, do którego nie wrócono
+  — mood_rating: klient PODAŁ wartość nastroju w skali („dzisiaj jakieś 4
+    na 10")
+  — client_metaphor: wyrazista metafora własna klienta („jakbym niósł
+    plecak z kamieniami")
+  Fakt to coś, co PADŁO — nie coś, co „warto by" ustalić. Cytat faktu
+  podlega tej samej weryfikacji znak w znak co każdy span.
+
 CZEGO NIE ROBIĆ
 — nie streszczaj, nie parafrazuj, nie uogólniaj
 — nie oceniaj, nie diagnozuj, nie nazywaj mechanizmów
