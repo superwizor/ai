@@ -119,6 +119,22 @@ werdykt bez dowodu degraduje do nie_wrocono (zliczany), powierzchnia
 w RENDERERZE (nie w prozie S4 — data i kierunek nie moga sie
 "poprawic"), fail-open. Testy + celowe psucie walidacji par: lapie.
 
+WDROZONE I ZWERYFIKOWANE 2026-08-31 (llm-worker-00139-zip, migracje
+103+104, seedy ppt/0.1.1 + cbt/0.1.1 + cbt/0.1.2 zaimportowane kontem
+edytora dpiotrak2+onto@gmail.com):
+- PPT 3cab94e9 (ont 0.1.1): V2_termin_obcy 2->0 (glosy zadzialaly),
+  R2_no_current_span 3->0, V4 2->0, R10 1->0; twierdzen 23->27, dowodow
+  62->86; 40 linkow wzmacnia. Evidence: evidence/t42/kanarki-t42.log
+- CBT ce248cc9 (ont 0.1.2): proweniencja s1/1.1.0+s2/1.4.0+s2k/1.0.0;
+  3 linki ciaglosci; ZERO faktow — spójne z materialem (tematy spanow
+  bez watkow zadanie/agenda), ale POZYTYWNA KONTROLA ekstrakcji faktow
+  wciaz potrzebna: sesja z jawnym ustaleniem pracy domowej.
+- Naprawa z kanarka: dedupe linii kontynuacji per (konstrukt, relacja)
+  z najnowsza data — 9 identycznych linii pod konstruktem to szum.
+- SYGNAL KALIBRACYJNY: 43/43 linki "wzmacnia", zero "oslabia" — osad
+  relacji moze byc przytakujacy; obserwowac, rozwazyc wymog wskazania
+  roznicy kierunku przy "oslabia"/sanity-check w benchmarku T9.
+
 DALEJ: T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po decyzji
 snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).
 

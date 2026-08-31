@@ -564,12 +564,26 @@ func renderInterpretive(b *strings.Builder, o *ontology.Ontology, res Result,
 		}
 
 		// T42b: kontynuacje tego konstruktu (docs/67 par. 4).
+		//
+		// DEDUPE per relacja: kanarek 2026-08-31 (raport 3cab94e9) dal 40
+		// linkow wzmacnia — kazda para twierdzen to osobny wiersz w bazie
+		// (i słusznie: audyt), ale 9 identycznych linii pod jednym
+		// konstruktem to szum, nie informacja. Render pokazuje JEDNA
+		// linie na relacje, z data najnowszego przeszlego twierdzenia.
+		najnowsza := map[string]time.Time{}
 		for _, l := range linkiPerKonstrukt[cr.ConstructID] {
-			format := ch.kontWzmacnia
-			if l.Relation == "oslabia" {
-				format = ch.kontOslabia
+			if l.PastSessionDate.After(najnowsza[l.Relation]) {
+				najnowsza[l.Relation] = l.PastSessionDate
 			}
-			fmt.Fprintf(b, format, l.PastSessionDate.Format(ch.dateFmt))
+		}
+		for _, rel := range []string{"wzmacnia", "oslabia"} {
+			if d, ok := najnowsza[rel]; ok {
+				format := ch.kontWzmacnia
+				if rel == "oslabia" {
+					format = ch.kontOslabia
+				}
+				fmt.Fprintf(b, format, d.Format(ch.dateFmt))
+			}
 		}
 		if len(linkiPerKonstrukt[cr.ConstructID]) == 0 && len(cr.Hypotheses) == 0 {
 			if ostatnia, ok := ostatniaData(past, cr.ConstructID); ok {

@@ -153,9 +153,20 @@ func TestRenderKontynuacjiIRozliczenia(t *testing.T) {
 				Quote: "Spróbuję zapisywać myśli przez tydzień.", Verdict: "omowiona_z_rezultatem"},
 		},
 	}
+	// Dedupe: trzy linki tej samej relacji do jednego konstruktu daja
+	// JEDNA linie (z najnowsza data) — 40 identycznych linii w kanarku
+	// 3cab94e9 bylo szumem, nie informacja.
+	res.ContinuityLinks = append(res.ContinuityLinks,
+		ContinuityLink{ClaimIdx: 0, ConstructID: "konflikt", PastClaimID: past.Claims[0].ID,
+			PastSessionDate: past.Claims[0].SessionDate.AddDate(0, 0, -7), Relation: "wzmacnia"},
+		ContinuityLink{ClaimIdx: 0, ConstructID: "konflikt", PastClaimID: past.Claims[1].ID,
+			PastSessionDate: past.Claims[0].SessionDate, Relation: "wzmacnia"})
 	md := RenderMarkdown(o, res, RenderInput{Past: past})
+	if n := strings.Count(md, "Kontynuacja: potwierdza"); n != 1 {
+		t.Fatalf("linii kontynuacji %d, oczekiwano 1 (dedupe per relacja):\n%s", n, md)
+	}
 	if !strings.Contains(md, "potwierdza ustalenie z 20.08") {
-		t.Fatalf("brak linii kontynuacji z data:\n%s", md)
+		t.Fatalf("brak linii kontynuacji z NAJNOWSZA data:\n%s", md)
 	}
 	if !strings.Contains(md, "Rozliczenie poprzedniej pracy domowej") ||
 		!strings.Contains(md, "omówiona z rezultatem") {

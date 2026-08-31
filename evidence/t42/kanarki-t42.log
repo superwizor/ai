@@ -1,0 +1,73 @@
+KANARKI T42 + glosy — 2026-08-31, llm-worker-00139-zip
+PPT 3cab94e9 (ont 0.1.1) vs 7cab283c (bez glos) · CBT ce248cc9 (ont 0.1.2) vs 419fc7ff (0.1.0)
+
+== RAPORT 3cab94e9 ==
+  ontologia=0.1.1 tokeny=159925/41674
+  prompty={"s1": "s1/1.1.0", "s2": "s2/1.4.0", "s4": "s4/1.7.0", "s2k": "s2k/1.0.0"}
+  twierdzenia per konstrukt:
+    actual_capacity_primary          1
+    actual_capacity_secondary        2
+    balance_model_area               3
+    capacity_state                   3
+    conflict_processing_form         2
+    current_conflict                 2
+    inner_conflict                   3
+    need                             1
+    positum                          2
+    ppt_stage                        2
+    resource                         3
+    symptom_function                 3
+  spany z fact_kind:
+    (brak)
+  report_claim_links:
+    continuity   wzmacnia                 40
+  odrzucenia:
+    R2_coverage                      3
+    R5_etiology                      2
+    R2_unknown_span                  1
+    V3_etiologia                     1
+    V6_liczba_bez_pokrycia           1
+    V7_ciaglosc_bez_zakotwiczenia    1
+
+== RAPORT ce248cc9 ==
+  ontologia=0.1.2 tokeny=77165/20044
+  prompty={"s1": "s1/1.1.0", "s2": "s2/1.4.0", "s4": "s4/1.7.0", "s2k": "s2k/1.0.0"}
+  twierdzenia per konstrukt:
+    automatic_thought                3
+    cognitive_distortion             2
+    cognitive_process                2
+    compensatory_strategy            2
+    emotion                          3
+    intermediate_belief              2
+  spany z fact_kind:
+    (brak)
+  report_claim_links:
+    continuity   wzmacnia                 3
+  odrzucenia:
+    V5_marker_abdukcyjny             6
+    R2_coverage                      2
+    R10_therapist_boundary           1
+
+=== DIFF PPT ===
+                                        A        B
+zatwierdzone                           23       27
+powiazania dowodowe                    62       86
+R10_therapist_boundary                  1        0  <- mniej
+R2_coverage                             2        3  <- wiecej
+R2_no_current_span                      3        0  <- mniej
+R2_unknown_span                         0        1  <- wiecej
+R3_requires                             1        0  <- mniej
+R5_etiology                             1        2  <- wiecej
+V2_termin_obcy                          2        0  <- mniej
+V3_etiologia                            0        1  <- wiecej
+V4_hierarchia                           2        0  <- mniej
+V6_liczba_bez_pokrycia                  0        1  <- wiecej
+V7_ciaglosc_bez_zakotwiczenia           1        1
+
+=== DIFF CBT ===
+                                        A        B
+zatwierdzone                           14       14
+powiazania dowodowe                    32       31
+R10_therapist_boundary                  0        1  <- wiecej
+R2_coverage                             1        2  <- wiecej
+V5_marker_abdukcyjny                    4        6  <- wiecej
