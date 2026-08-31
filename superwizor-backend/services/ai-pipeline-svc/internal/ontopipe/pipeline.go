@@ -30,7 +30,7 @@ import (
 // sprzed miesiaca — a to jest wymog audytu (art. 94 MDR) i warunek
 // sensownego benchmarku.
 const (
-	PromptVersionS1  = "s1/1.1.0" // fact_kind — fakty sesyjne (E4/T42a, docs/67)
+	PromptVersionS1  = "s1/1.2.0" // fact_kind WYMAGANE z "none" — Flash pomijal pole opcjonalne (kanarek 2026-08-31); 1.1.0: fact_kind opcjonalne
 	PromptVersionS2  = "s2/1.4.0" // dopisek homonimow miedzykonstruktowych "(tu: ...)" (nota E7); 1.3.0: glosy; 1.2.0: blok ustalen F7a-3
 	PromptVersionS4  = "s4/1.7.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	PromptVersionS2K = "s2k/1.0.0" // relacje ciaglosci + rozliczenie pracy domowej (T42b, docs/67 par. 4)

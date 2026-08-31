@@ -73,16 +73,19 @@ func schemaS1() map[string]any {
 							"type":        "boolean",
 							"description": "Prog NISKI — przy watpliwosci true.",
 						},
-						// E4/T42a: fakt sesyjny. Pole OPCJONALNE (poza
-						// required) — wiekszosc spanow nie jest faktem i
-						// wymuszanie deklaracji per span puchloby wyjscie.
+						// E4/T42a: fakt sesyjny. Pole WYMAGANE z jawnym
+						// "none" — kanarek 2026-08-31 (sesje 49cb4734/
+						// ca74f1c6, tematy "zgoda" x12) pokazal, ze Flash
+						// POMIJA pole opcjonalne mimo instrukcji w prompcie.
+						// Wymuszenie deklaracji per span kosztuje ~1 token
+						// na span; fakt przemilczany kosztuje sekcje ustalen.
 						"fact_kind": map[string]any{
 							"type": "string",
-							"enum": []any{"agreement_client", "agreement_therapist",
+							"enum": []any{"none", "agreement_client", "agreement_therapist",
 								"agenda_next", "agenda_unaddressed", "mood_rating",
 								"client_metaphor"},
-							"description": "WYLACZNIE dla faktu sesyjnego: ustalenie, " +
-								"agenda, pomiar nastroju, metafora klienta. Pomijaj dla zwyklych spanow.",
+							"description": "Rodzaj FAKTU sesyjnego (ustalenie, agenda, " +
+								"pomiar nastroju, metafora klienta) albo none dla zwyklego spanu.",
 						},
 						"topics": map[string]any{
 							"type": "array", "maxItems": int64(3),
@@ -94,7 +97,7 @@ func schemaS1() map[string]any {
 						"silence_before_ms": map[string]any{"type": "integer"},
 					},
 					"required": []any{"span_id", "quote_verbatim", "speaker", "kind",
-						"observed_by", "about_past", "risk_content", "topics"},
+						"observed_by", "about_past", "risk_content", "topics", "fact_kind"},
 				},
 			},
 		},

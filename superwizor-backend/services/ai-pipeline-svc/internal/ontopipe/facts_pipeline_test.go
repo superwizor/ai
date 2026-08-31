@@ -77,3 +77,48 @@ func TestKonstruktFaktowyOmijaS2(t *testing.T) {
 		t.Fatal("brak zatwierdzonego twierdzenia faktowego")
 	}
 }
+
+// TestSchematS1WymuszaFactKind — kontrakt naprawy z kanarka 2026-08-31:
+// pole opcjonalne Flash po prostu pomijal (171 spanow, 0 z fact_kind, na
+// sesji negocjujacej ustalenia). Wymagane pole z jawnym "none" zmusza
+// model do decyzji per span. Gdy ktos to "odchudzi", ten test przypomni
+// czemu pole jest wymagane.
+func TestSchematS1WymuszaFactKind(t *testing.T) {
+	schema := schemaS1()
+	items := schema["properties"].(map[string]any)["spans"].(map[string]any)["items"].(map[string]any)
+	req, _ := items["required"].([]any)
+	maFactKind := false
+	for _, r := range req {
+		if r == "fact_kind" {
+			maFactKind = true
+		}
+	}
+	if !maFactKind {
+		t.Fatal("fact_kind nie jest wymagane w schemacie S1 — Flash bedzie je pomijal")
+	}
+	enum := items["properties"].(map[string]any)["fact_kind"].(map[string]any)["enum"].([]any)
+	maNone := false
+	for _, e := range enum {
+		if e == "none" {
+			maNone = true
+		}
+	}
+	if !maNone {
+		t.Fatal("enum fact_kind bez 'none' — wymagane pole potrzebuje jawnej wartosci dla zwyklego spanu")
+	}
+}
+
+// TestParseNoneDajePustyFactKind: "none" ze schematu to wewnetrznie pusty
+// FactKind (baza trzyma NULL, mapowanie faktow ignoruje).
+func TestParseNoneDajePustyFactKind(t *testing.T) {
+	s1 := `{"spans":[{"span_id":"s01","quote_verbatim":"Zwykla wypowiedz.","speaker":"Klient","kind":"declarative","observed_by":"self","fact_kind":"none","topics":[]}]}`
+	f := &fakeLLM{handler: func(req LLMRequest) (string, error) { return s1, nil }}
+	spans, _, err := ExtractSpans(context.Background(), f,
+		Input{SessionID: "x", Transcript: "Klient: Zwykla wypowiedz."}, &Usage{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(spans) != 1 || spans[0].FactKind != "" {
+		t.Fatalf("none mial dac pusty FactKind: %+v", spans)
+	}
+}

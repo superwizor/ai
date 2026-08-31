@@ -81,7 +81,9 @@ func ExtractSpans(ctx context.Context, llm LLM, in Input, u *Usage) ([]ontology.
 			ObservedBy:    obs,
 			AboutPast:     s.AboutPast,
 			RiskContent:   s.RiskContent,
-			FactKind:      s.FactKind,
+			// "none" to jawna deklaracja zwyklego spanu (schemat wymusza
+			// decyzje per span) — wewnetrznie zwykly span ma pusty FactKind.
+			FactKind:      map[bool]string{true: "", false: s.FactKind}[s.FactKind == "none"],
 		})
 		topics[s.SpanID] = s.Topics
 		silence[s.SpanID] = s.SilenceBeforeMs

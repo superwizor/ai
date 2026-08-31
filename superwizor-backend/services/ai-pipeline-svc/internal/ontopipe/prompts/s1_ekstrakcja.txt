@@ -61,7 +61,8 @@ silence_before_ms
   długość pauzy przed wypowiedzią, jeśli zapis ją oznacza. Brak oznaczenia = 0.
 
 fact_kind
-  WYŁĄCZNIE dla spanu będącego FAKTEM sesyjnym — pomiń dla zwykłych spanów:
+  WYMAGANE dla każdego spanu. Dla zwykłego spanu wpisz "none".
+  Wartość inna niż "none" WYŁĄCZNIE dla spanu będącego FAKTEM sesyjnym:
   — agreement_client: klient przyjął zadanie/zobowiązanie („spróbuję w tym
     tygodniu zapisywać myśli")
   — agreement_therapist: terapeuta zobowiązał się do czegoś („prześlę Pani
