@@ -131,9 +131,22 @@ edytora dpiotrak2+onto@gmail.com):
   wciaz potrzebna: sesja z jawnym ustaleniem pracy domowej.
 - Naprawa z kanarka: dedupe linii kontynuacji per (konstrukt, relacja)
   z najnowsza data — 9 identycznych linii pod konstruktem to szum.
-- SYGNAL KALIBRACYJNY: 43/43 linki "wzmacnia", zero "oslabia" — osad
-  relacji moze byc przytakujacy; obserwowac, rozwazyc wymog wskazania
-  roznicy kierunku przy "oslabia"/sanity-check w benchmarku T9.
+- SYGNAL KALIBRACYJNY (ROZBROJONY 2026-08-31): pierwsze przebiegi daly
+  43/43 "wzmacnia"; pozytywna kontrola na 'CBT terapia par' dala
+  wzmacnia 18 / oslabia 5 — osad NIE jest czysto przytakujacy.
+  Rozklad nadal do zmierzenia w T9.
+
+POZYTYWNA KONTROLA FAKTOW — ZALICZONA (evidence/t42/pozytywna-kontrola-cbt.log):
+- Defekt z kanarka: Flash POMIJAL opcjonalne pole fact_kind (171/171
+  pustych na sesji z tematem "zgoda" x12). Naprawa fix/s1-fact-kind-
+  wymuszenie: pole WYMAGANE z jawnym "none" (s1/1.2.0), commit 3ec963d8,
+  llm-worker-00141-gij.
+- Sesja #1 (cbd2d825): 2 spany agreement_client -> 2 twierdzenia
+  session_agreement (mapowanie deterministyczne end-to-end).
+- Sesja #2 (d277326e): 1 fakt wlasny + HOMEWORK omowiona_z_rezultatem
+  x2 wobec ustalen z sesji #1 — pierwsze trojstanowe rozliczenie na
+  zywych danych; continuity wzmacnia 15 / oslabia 3;
+  R2_no_current_span dziala.
 
 DALEJ: T43 (E3), T44 (E2), T45 (E6), T39 (E8 — po decyzji
 snapshot-vs-referencja), T46 (E1 — czeka na benchmark T9).

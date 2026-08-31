@@ -1,0 +1,48 @@
+POZYTYWNA KONTROLA T42 — kartoteka 'CBT terapia par', 2026-08-31, llm-worker-00141-gij
+Przed naprawa S1 (s1/1.1.0, pole opcjonalne): 0 faktow na 171 spanach.
+Po naprawie (s1/1.2.0, wymagane z 'none'):
+
+== RAPORT cbd2d825 ==
+  ontologia=0.1.2 tokeny=91027/24004
+  prompty={"s1": "s1/1.2.0", "s2": "s2/1.4.0", "s4": "s4/1.7.0", "s2k": "s2k/1.0.0"}
+  twierdzenia per konstrukt:
+    automatic_thought                3
+    cognitive_distortion             3
+    cognitive_process                2
+    early_experience                 2
+    emotion                          3
+    intermediate_belief              1
+    session_agreement                2
+  spany z fact_kind:
+    agreement_client         2
+  report_claim_links:
+    continuity   oslabia                  2
+    continuity   wzmacnia                 3
+  odrzucenia:
+    R2_coverage                      2
+    R10_therapist_boundary           1
+
+== RAPORT d277326e ==
+  ontologia=0.1.2 tokeny=122570/31903
+  prompty={"s1": "s1/1.2.0", "s2": "s2/1.4.0", "s4": "s4/1.7.0", "s2k": "s2k/1.0.0"}
+  twierdzenia per konstrukt:
+    automatic_thought                3
+    cognitive_distortion             3
+    cognitive_process                3
+    compensatory_strategy            1
+    early_experience                 2
+    emotion                          2
+    intermediate_belief              2
+    session_agreement                1
+  spany z fact_kind:
+    agreement_client         1
+  report_claim_links:
+    continuity   oslabia                  3
+    continuity   wzmacnia                 15
+    homework     omowiona_z_rezultatem    2
+  odrzucenia:
+    R2_coverage                      2
+    R2_no_current_span               1
+    R5_etiology                      1
+    V3_etiologia                     1
+
