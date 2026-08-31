@@ -30,6 +30,7 @@ export interface ConstructEdits {
   labelPl: (v: string) => void;
   definition: (v: string) => void;
   values: (v: string[] | null) => void;
+  valueGloss: (value: string, gloss: string) => void;
   multiLabel: (v: boolean) => void;
   minEvidence: (v: MinEvidence | null) => void;
   isNot: (v: string[]) => void;
@@ -104,7 +105,9 @@ export function ConstructForm({
             <>
               <ListaWartosci
                 wartosci={konstrukt.values}
+                glosy={konstrukt.valueGlosses}
                 onChange={edits.values}
+                onGloss={edits.valueGloss}
                 t={t}
               />
               <label className="flex items-center gap-2 mt-3">
@@ -216,34 +219,54 @@ function PickerKonstruktow({
 
 function ListaWartosci({
   wartosci,
+  glosy,
   onChange,
+  onGloss,
   t,
 }: {
   wartosci: string[];
+  glosy: Record<string, string>;
   onChange: (v: string[]) => void;
+  onGloss: (value: string, gloss: string) => void;
   t: (k: string) => string;
 }) {
   return (
     <div className="grid gap-2" data-testid="form-values">
       {wartosci.map((w, i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            value={w}
-            onChange={(e) => {
-              const next = [...wartosci];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-            className="bg-abyss border border-frost/20 text-frost px-3 py-2 font-serif text-sm flex-1"
-          />
-          <button
-            type="button"
-            onClick={() => onChange(wartosci.filter((_, j) => j !== i))}
-            className="border border-frost/25 text-frost/70 px-3 font-mono text-xs hover:bg-frost/10"
-            aria-label={t("removeValue")}
-          >
-            ×
-          </button>
+        <div key={i} className="grid gap-1">
+          <div className="flex gap-2">
+            <input
+              value={w}
+              onChange={(e) => {
+                const next = [...wartosci];
+                next[i] = e.target.value;
+                onChange(next);
+              }}
+              className="bg-abyss border border-frost/20 text-frost px-3 py-2 font-serif text-sm flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(wartosci.filter((_, j) => j !== i))}
+              className="border border-frost/25 text-frost/70 px-3 font-mono text-xs hover:bg-frost/10"
+              aria-label={t("removeValue")}
+            >
+              ×
+            </button>
+          </div>
+          {/* Glosa: objaśnienie pozycji, nie definicja (limit 120 znaków —
+              twardo pilnuje go walidacja serwera, G3). Pole tylko dla
+              wartości już nazwanej: glosa pustej wartości nie ma sensu. */}
+          {w.trim() !== "" && (
+            <input
+              value={glosy[w] ?? ""}
+              onChange={(e) => onGloss(w, e.target.value)}
+              maxLength={120}
+              placeholder={t("glossPlaceholder")}
+              aria-label={`${t("glossLabel")}: ${w}`}
+              data-testid={`form-gloss-${i}`}
+              className="bg-abyss border border-frost/10 text-mist px-3 py-1.5 font-serif text-xs ml-4"
+            />
+          )}
         </div>
       ))}
       <div className="flex gap-2">

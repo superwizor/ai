@@ -862,6 +862,8 @@
       "clearCatalogue": "Usuń katalog (treścią będzie opis)",
       "addValue": "+ Wartość",
       "removeValue": "Usuń wartość",
+      "glossPlaceholder": "glosa (opcjonalnie): które to pojęcie, jednym zdaniem",
+      "glossLabel": "Glosa wartości",
       "multiLabel": "Jednemu fragmentowi może przysługiwać kilka wartości naraz",
       "multiLabelHelp": "Np. jedno zdanie niosące dwa zniekształcenia poznawcze.",
       "sectionEvidence": "Próg dowodowy",

@@ -45,6 +45,10 @@ export interface ConstructView {
   kind: ConstructKind;
   /** null = brak katalogu zamkniętego (konstrukt opisowy). */
   values: string[] | null;
+  /** Objaśnienia pojedynczych pozycji katalogu (plan value_glosses).
+   * Klucz musi być wartością z `values` (reguła G1 lintera Go) —
+   * formularz pokazuje pole glosy przy każdej wartości. */
+  valueGlosses: Record<string, string>;
   multiLabel: boolean;
   minEvidence: MinEvidence | null;
   isNot: string[];
@@ -163,6 +167,16 @@ function asStringList(v: unknown): string[] {
   return v.map(asString).filter((s) => s !== "");
 }
 
+function readGlosses(v: unknown): Record<string, string> {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    const g = asString(val);
+    if (k !== "" && g !== "") out[k] = g;
+  }
+  return out;
+}
+
 /** Czyta dokument do widoku formularza.
  *
  * Kolejność konstruktów zachowana z pliku — to kolejność, w której
@@ -180,6 +194,7 @@ export function readOntology(doc: OntologyDoc): OntologyView {
       definition: asString(c?.definition),
       kind: c?.kind === "composite" ? "composite" : "category",
       values: values === null || values === undefined ? null : asStringList(values),
+      valueGlosses: readGlosses(c?.value_glosses),
       multiLabel: c?.multi_label === true,
       minEvidence: readMinEvidence(c?.min_evidence),
       isNot: asStringList(c?.is_not),
@@ -324,6 +339,30 @@ export function setValues(doc: OntologyDoc, id: string, values: string[] | null)
   }
   const clean = values.map((v) => v.trim()).filter((v) => v !== "");
   doc.setIn(path, doc.createNode(clean));
+}
+
+/** Ustawia lub usuwa glosę jednej wartości katalogu.
+ *
+ * Pusta glosa = usunięcie wpisu (nie zapisujemy pustych stringów — YAML
+ * czyta ekspert). Po usunięciu ostatniej glosy znika cały klucz
+ * `value_glosses`, żeby plik nie nosił pustego obiektu. Klucz glosy
+ * osierocony przez edycję `values` NIE jest tu czyszczony automatycznie:
+ * wykryje go walidacja serwera (G1) — usunięcie treści eksperckiej po
+ * cichu byłoby gorsze niż widoczny błąd. */
+export function setValueGloss(doc: OntologyDoc, id: string, value: string, gloss: string): void {
+  const path = ["constructs", id, "value_glosses", value];
+  const clean = gloss.trim();
+  if (clean === "") {
+    doc.deleteIn(path);
+    const rodzic = doc.getIn(["constructs", id, "value_glosses"]) as
+      | { items?: unknown[] }
+      | undefined;
+    if (rodzic && Array.isArray(rodzic.items) && rodzic.items.length === 0) {
+      doc.deleteIn(["constructs", id, "value_glosses"]);
+    }
+    return;
+  }
+  doc.setIn(path, clean);
 }
 
 export function setMultiLabel(doc: OntologyDoc, id: string, on: boolean): void {

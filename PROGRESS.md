@@ -124,8 +124,14 @@ NIE ZROBIONE i dlaczego:
   T11 (czat). Glosy dowiezione do jedynego istniejacego UI (Studio).
 - Ewaluacja A/B (T19.G6/§6.4): czeka na benchmark T9, zgodnie z planem.
 
-Zostalo przed merge: pnpm test:all marketing-site (w toku w tle),
-commit web + docs, PROGRESS check-off.
+E2E marketing-site (2026-08-26): typecheck + unit zielone. E2E ma
+DRYF BAZY: CLAUDE.md deklaruje 0-3 flaky (account-settings/
+dashboard-handheld), a realnie pada ~23-24 przypadkow w
+register-therapist / register-flow / crm-onboarding-stripe — TAK SAMO
+bez zmian glos (stash-test: 24 failed / 138 passed na czystym drzewie,
+23/253 z glosami). Porazki srodowiskowe (toBeVisible timeout na
+formularzu rejestracji), nie regresja. Studio ontologii nie ma wlasnych
+E2E; glosy pokryte unit round-trip. Naprawa e2e = osobne zadanie.
 
 
 ### Poprawnosc liczb w /admin/analytics — GALAZ GOTOWA, MIGRACJE NIEURUCHOMIONE (2026-08-28)
