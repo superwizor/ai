@@ -17,6 +17,12 @@
 #         metaschemat go pomijał (dryf dokument↔kod).
 #   +G    value_glosses (plan value_glosses v1.0): objaśnienia 1-liniowe
 #         pozycji katalogu; reguły lintera G1–G6.
+#   +E    Nota_Zmian_Silnika_v1.5 (2026-08-31), faza addytywna: E5 unie
+#         typów slotów i multiple/min_items; E7 reguła G7 (homonimy
+#         międzykonstruktowe — WARNING bez glos obu stron; renderer S2
+#         dopisuje „(tu: <label>)”); E9 min_evidence.speaker; E10 WARNING
+#         braku sekcji patterns/out_of_taxonomy w layout. E1–E4, E6, E8
+#         — patrz nota; NIE są jeszcze częścią kontraktu.
 
 modality: string                # ppt | cbt | psychodynamic | gestalt | st | sys | eft | coach | univ
 version: semver
@@ -36,10 +42,18 @@ constructs:
     kind: category | composite  # M1 (v1.3): composite = krotka typowanych slotów; domyślnie category
     slots:                      # tylko dla kind: composite
       <slot_id>:
-        type: span_ref | construct_ref(<id>) | enum_ref(<id>) | entry_ref
+        # E5: atom lub UNIA atomów przez `|`; unia celów też w nawiasie:
+        #   span_ref | entry_ref | construct_ref(a) | construct_ref(a|b)
+        #   | enum_ref(a) | enum_ref(a|b) | span_ref|entry_ref
+        # Element spełnia którykolwiek typ unii. enum_ref wymaga celu
+        # z niepustym values. Gramatyka: pkg/ontology/slots.go.
+        type: string
         required: bool
         kind_hint: behavioral | declarative | null
         quantity: bool          # slot dopuszcza wartość liczbową (podlega quantities.policy)
+        multiple: bool          # E5: slot jest LISTĄ wartości; dla min_complete_slots
+                                # liczy się jako wypełniony przy >= 1 elemencie (lub min_items)
+        min_items: int | null   # tylko przy multiple: true; >= 1
     min_complete_slots: int | null
     values: "[string] | null"   # null = konstrukt bez katalogu zamkniętego
     value_glosses:              # plan value_glosses v1.0 (opcjonalne; tylko gdy values != null)
@@ -61,6 +75,8 @@ constructs:
       spans: int
       sessions: int | null
       behavioral: int | null
+      speaker: therapist | client | any   # E9: próg liczony WYŁĄCZNIE na spanach
+                                          # wskazanej roli (z observed_by); domyślnie any
     common_confusions:
       - {input: string, correct: string, note: string}
     examples: [string]

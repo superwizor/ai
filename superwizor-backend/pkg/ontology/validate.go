@@ -79,10 +79,7 @@ var (
 	semverRe   = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 	modalityRe = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	idRe       = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	// slotTypeRe pokrywa cztery formy z metaschematu: span_ref, entry_ref,
-	// construct_ref(<id>), enum_ref(<id>).
-	slotTypeRe = regexp.MustCompile(`^(span_ref|entry_ref|(construct_ref|enum_ref)\([a-z][a-z0-9_]*\))$`)
-	refRe      = regexp.MustCompile(`^(construct_ref|enum_ref)\(([a-z][a-z0-9_]*)\)$`)
+	// Gramatyke typow slotow interpretuje wylacznie ParseSlotType (slots.go).
 )
 
 // validateLayout pilnuje ukladu sekcji (M5+).
@@ -243,13 +240,24 @@ func (o *Ontology) validateRefs(id string, c *Construct) []string {
 		if s == nil {
 			continue
 		}
-		m := refRe.FindStringSubmatch(s.Type)
-		if m == nil {
+		atomy, err := ParseSlotType(s.Type)
+		if err != nil {
+			// Blad gramatyki zglasza validateConstructShape — tu tylko refy.
 			continue
 		}
-		target := m[2]
-		if _, ok := o.Constructs[target]; !ok {
-			p = append(p, fmt.Sprintf("%s.slots.%s: %s wskazuje na nieistniejacy konstrukt %q", id, sid, m[1], target))
+		for _, a := range atomy {
+			for _, target := range a.Refs {
+				cel, ok := o.Constructs[target]
+				if !ok {
+					p = append(p, fmt.Sprintf("%s.slots.%s: %s wskazuje na nieistniejacy konstrukt %q", id, sid, a.Kind, target))
+					continue
+				}
+				// enum_ref bez katalogu nie ma z czego wybierac — to
+				// zawsze pomylka z construct_ref, nie decyzja.
+				if a.Kind == "enum_ref" && (cel == nil || len(cel.Values) == 0) {
+					p = append(p, fmt.Sprintf("%s.slots.%s: enum_ref(%s) wskazuje konstrukt bez values", id, sid, target))
+				}
+			}
 		}
 	}
 	return p
@@ -286,8 +294,16 @@ func validateConstructShape(id string, c *Construct) []string {
 			p = append(p, fmt.Sprintf("%s.slots.%s: pusta definicja slotu", id, sid))
 			continue
 		}
-		if !slotTypeRe.MatchString(s.Type) {
-			p = append(p, fmt.Sprintf("%s.slots.%s: nieznany type %q", id, sid, s.Type))
+		if _, err := ParseSlotType(s.Type); err != nil {
+			p = append(p, fmt.Sprintf("%s.slots.%s: %v", id, sid, err))
+		}
+		// min_items poza multiple nie znaczy nic — a nic nieznaczacy
+		// prog wyglada jak egzekwowany.
+		if s.MinItems != nil && !s.Multiple {
+			p = append(p, fmt.Sprintf("%s.slots.%s: min_items wymaga multiple: true", id, sid))
+		}
+		if s.MinItems != nil && *s.MinItems < 1 {
+			p = append(p, fmt.Sprintf("%s.slots.%s: min_items=%d ponizej 1", id, sid, *s.MinItems))
 		}
 		switch s.KindHint {
 		case "", "behavioral", "declarative":
@@ -316,6 +332,11 @@ func validateConstructShape(id string, c *Construct) []string {
 	}
 
 	if me := c.MinEvidence; me != nil {
+		switch me.Speaker {
+		case "", "any", "client", "therapist":
+		default:
+			p = append(p, fmt.Sprintf("%s.min_evidence.speaker %q: dopuszczalne therapist|client|any (nota E9)", id, me.Speaker))
+		}
 		if me.Spans < 1 {
 			p = append(p, fmt.Sprintf("%s.min_evidence.spans=%d: prog ponizej 1 znosi wymog proweniencji (R2)", id, me.Spans))
 		}

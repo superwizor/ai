@@ -17,6 +17,9 @@ package ontology
 //   G4  glosa nie moze byc identyczna z kluczem ani z inna wartoscia
 //   G5  klucz glosy nie moze byc aliasem INNEGO konstruktu (ostrzezenie)
 //   G6  para wartosci w relacji podlancucha musi miec glosy OBU stron
+//   G7  identyczna wartosc w values DWOCH konstruktow (homonim
+//       miedzykonstruktowy, nota E7) — ostrzezenie, chyba ze OBIE
+//       strony maja glosy; renderer S2 dopisuje "(tu: <label>)"
 //
 // G6 istnieje dla dokladnie jednego rodzaju wypadku: "pewnosc" obok
 // "pewnosc siebie" w jednym katalogu. Model (i czlowiek w pickerze)
@@ -156,6 +159,38 @@ func validateGlosses(id string, c *Construct) []string {
 	return p
 }
 
+// CrossConstructHomonyms zwraca wartosci wystepujace w katalogach WIECEJ
+// niz jednego konstruktu (porownanie bez wielkosci liter), z lista
+// konstruktow per wartosc (posortowana).
+//
+// Wspolna dla lintera (G7) i renderera S2 (dopisek "(tu: <label>)") —
+// z tego samego powodu, dla ktorego SubstringValuePairs jest wspolna:
+// ostrzezenie o homonimie, ktorego prompt nie rozbraja, byloby teatrem.
+func (o *Ontology) CrossConstructHomonyms() map[string][]string {
+	gdzie := map[string][]string{}
+	for _, id := range o.ConstructIDs() {
+		c := o.Constructs[id]
+		if c == nil {
+			continue
+		}
+		widziane := map[string]bool{}
+		for _, v := range c.Values {
+			klucz := strings.ToLower(strings.TrimSpace(v))
+			if klucz == "" || widziane[klucz] {
+				continue
+			}
+			widziane[klucz] = true
+			gdzie[klucz] = append(gdzie[klucz], id)
+		}
+	}
+	for k, ids := range gdzie {
+		if len(ids) < 2 {
+			delete(gdzie, k)
+		}
+	}
+	return gdzie
+}
+
 // Warnings zwraca problemy klasy OSTRZEZENIE — rzeczy warte pokazania
 // autorowi, ktore nie blokuja zapisu ani importu.
 //
@@ -212,6 +247,54 @@ func (o *Ontology) Warnings() []string {
 			}
 		}
 	}
+	// G7 (nota E7): homonim miedzykonstruktowy jest legitymny tylko
+	// rozbrojony — glosami PO OBU stronach. Rozbrojenie polowiczne
+	// zostawia dwuznacznosc dokladnie tam, gdzie miala zniknac.
+	homonimy := o.CrossConstructHomonyms()
+	var wartosci []string
+	for v := range homonimy {
+		wartosci = append(wartosci, v)
+	}
+	sort.Strings(wartosci)
+	for _, v := range wartosci {
+		var bezGlosy []string
+		for _, id := range homonimy[v] {
+			c := o.Constructs[id]
+			ma := false
+			for k := range c.ValueGlosses {
+				if strings.ToLower(strings.TrimSpace(k)) == v {
+					ma = true
+				}
+			}
+			if !ma {
+				bezGlosy = append(bezGlosy, id)
+			}
+		}
+		if len(bezGlosy) > 0 {
+			w = append(w, fmt.Sprintf(
+				"wartosc %q wystepuje w %s — homonim miedzykonstruktowy wymaga glos po obu stronach; brakuje w: %s (G7)",
+				v, strings.Join(homonimy[v], ", "), strings.Join(bezGlosy, ", ")))
+		}
+	}
+
+	// E10: uklad bez sekcji patterns/out_of_taxonomy zrzuca tresc
+	// relacyjna i pozataksonomiczna do sekcji koncowej — czyli w miejsce
+	// przypadkowe. "Uklad nigdy nie ukrywa zweryfikowanej tresci"
+	// obejmuje takze ta tresc. WARNING, nie ERROR: modalnosc moze
+	// swiadomie laczyc sekcje.
+	if rp := o.ReportProfile; rp != nil && len(rp.Layout) > 0 {
+		kinds := map[string]bool{}
+		for _, sec := range rp.Layout {
+			kinds[sec.Kind] = true
+		}
+		if !kinds[LayoutPatterns] {
+			w = append(w, "report_profile.layout: brak sekcji kind: patterns — wzorce S1.5/S2b/S2c wyladuja w sekcji koncowej (E10)")
+		}
+		if !kinds[LayoutOutOfTaxonomy] {
+			w = append(w, "report_profile.layout: brak sekcji kind: out_of_taxonomy — zjawiska no_fit wyladuja w sekcji koncowej (E10)")
+		}
+	}
+
 	sort.Strings(w)
 	return w
 }

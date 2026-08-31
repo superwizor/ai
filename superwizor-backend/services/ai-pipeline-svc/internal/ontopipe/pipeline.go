@@ -28,7 +28,7 @@ import (
 // sensownego benchmarku.
 const (
 	PromptVersionS1  = "s1/1.0.0"
-	PromptVersionS2  = "s2/1.3.0" // glosy wartosci katalogu (plan value_glosses); poprzednio 1.2.0: blok ustalen F7a-3
+	PromptVersionS2  = "s2/1.4.0" // dopisek homonimow miedzykonstruktowych "(tu: ...)" (nota E7); 1.3.0: glosy; 1.2.0: blok ustalen F7a-3
 	PromptVersionS4  = "s4/1.7.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	ValidatorVersion = "r1-r10/1.0.0"
 	// PipelineVersion trafia do reports.pipeline_version.

@@ -144,8 +144,16 @@ func buildS2Prompt(o *ontology.Ontology, constructID string, past *PastContext) 
 				nieMylic[para[0]] = append(nieMylic[para[0]], para[1])
 			}
 		}
+		// Homonim miedzykonstruktowy (G7, nota E7): ta sama wartosc w
+		// innym konstrukcie dostaje jawne "(tu: <etykieta>)" — prompt
+		// PPT kaze homonimy "zawsze precyzowac", wiec precyzuje je
+		// renderer, a nie dobra wola modelu.
+		homonimy := o.CrossConstructHomonyms()
 		for _, v := range c.Values {
 			fmt.Fprintf(&b, "  - %s", v)
+			if len(homonimy[strings.ToLower(strings.TrimSpace(v))]) > 1 {
+				fmt.Fprintf(&b, " (tu: %s)", c.LabelPL)
+			}
 			if g := strings.TrimSpace(c.ValueGlosses[v]); g != "" {
 				fmt.Fprintf(&b, " — %s", g)
 			}

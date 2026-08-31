@@ -142,12 +142,24 @@ type Source struct {
 
 // Slot to jeden typowany element kompozytu (M1).
 type Slot struct {
+	// Type przyjmuje atom lub unie atomow rozdzielona `|` (nota E5/T37):
+	//   span_ref | entry_ref | construct_ref(a) | enum_ref(a)
+	//   construct_ref(a|b)          — unia celow wewnatrz nawiasu
+	//   span_ref|entry_ref          — unia miedzy atomami
+	// Element spelnia KTORYKOLWIEK typ unii. Gramatyke egzekwuje
+	// ParseSlotType — jedyne miejsce uprawnione do interpretacji.
 	Type     string `yaml:"type"`
 	Required bool   `yaml:"required,omitempty"`
 	KindHint string `yaml:"kind_hint,omitempty"`
 	// Quantity: slot dopuszcza wartosc liczbowa; podlega polityce
 	// Quantities i regule R9 (liczba bez spanu = twarde odrzucenie).
 	Quantity bool `yaml:"quantity,omitempty"`
+	// Multiple: slot jest LISTA wartosci tego typu (nota E5). Dla
+	// min_complete_slots slot multiple liczy sie jako wypelniony przy
+	// >= 1 elemencie (lub min_items, gdy ustawione).
+	Multiple bool `yaml:"multiple,omitempty"`
+	// MinItems ma sens wylacznie przy multiple: true.
+	MinItems *int `yaml:"min_items,omitempty"`
 }
 
 // Quantities to polityka wartosci liczbowych (M3).
@@ -163,6 +175,13 @@ type MinEvidence struct {
 	Spans      int  `yaml:"spans"`
 	Sessions   *int `yaml:"sessions,omitempty"`
 	Behavioral *int `yaml:"behavioral,omitempty"`
+	// Speaker (nota E9/T40) zaweza LICZONE spany do wskazanej roli:
+	// therapist | client | any (puste = any). Kryterium czyta
+	// znormalizowana role z observed_by spanu (self -> client,
+	// therapist -> therapist), NIE surowy string speaker — ten jest
+	// "dokladnie jak w zapisie", wiec niesie imiona i warianty, na
+	// ktorych prog dowodowy nie ma prawa stac.
+	Speaker string `yaml:"speaker,omitempty"`
 }
 
 // Confusion to wpis w zywym rejestrze antywzorcow. Zasilany feedbackiem

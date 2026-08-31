@@ -89,6 +89,42 @@ Gotchas:
 
 ## In progress
 
+### CBT 0.1.1 + faza addytywna Noty Zmian Silnika — GOTOWE na feat/cbt-011-silnik — 2026-08-31
+
+Zrodla od uzytkownika: docs/plany/Nota_Zmian_Silnika_v1.5.md (E1-E10,
+T37-T46) + ontology/cbt/0.1.1.yaml (17 konstruktow, layout 12 sekcji,
+glosy; propozycje silnika WYLACZNIE w komentarzach - plik lintowal sie
+od pierwszego uruchomienia).
+
+Zaimplementowane (kolejnosc z noty, "faza silnika, addytywna"):
+- T37/E5: ParseSlotType (pkg/ontology/slots.go - JEDYNY interpreter
+  gramatyki typow slotow), unie `construct_ref(a|b)` / `span_ref|entry_ref`,
+  `multiple`+`min_items`; enum_ref na konstrukt bez values = ERROR.
+- T38/E7: G7 homonimy miedzykonstruktowe (WARNING, chyba ze glosy PO OBU
+  stronach); CrossConstructHomonyms wspolne dla lintera i renderera;
+  renderer S2 dopisuje "(tu: <label_pl>)" po obu stronach homonimu.
+  Prompt S2 -> s2/1.4.0.
+- T40/E9: min_evidence.speaker (therapist|client|any) - R2 liczy WSZYSTKIE
+  progi (spans/behavioral/sessions) wylacznie na spanach wskazanej roli;
+  rola z observed_by, nie z surowego stringa speaker. Test zlamany celowo:
+  bez filtra pada.
+- T41/E10: WARNING lintera dla layoutu bez patterns/out_of_taxonomy;
+  odpala sie na ppt/0.1.0 i ppt/0.1.1 (zgodnie z nota - do naprawy w
+  przyszlym ppt/0.1.2), CBT 0.1.1 czysty.
+
+Metaschemat + dok. 11 v1.7 (nota pisana jako "v1.4->v1.5" PRZED wejsciem
+v1.5 Flash i v1.6 glos - zmapowana na v1.7, odnotowane w changelogu).
+
+NIE zaimplementowane (duze zmiany potoku, kolejne tickety):
+- E1 (tiery pewnosci) - WYMAGA DECYZJI D1 + benchmark z kolumna tierow (T46)
+- E2 (R11 zakaz diagnoz) - slownik w guardrail-svc, wspolny z P1 (T44)
+- E3 (granica R10 dla sekcji o terapeucie) - slownik predykatow (T43)
+- E4 (fact_kind w S1 + prior_report_context + ciaglosc) - najwiekszy (T42)
+- E6 (kind: catalog + R12 proweniencja interwencji) - (T45)
+- E8 (_shared includes) - (T39)
+Decyzje blokujace D1-D4 z noty czekaja na potwierdzenie (rekomendacje sa).
+
+
 ### value_glosses (T19.G) — G1-G3+G5 GOTOWE na feat/value-glosses — 2026-08-26
 
 Plan: docs/ai_reports_ontology/Plan_Implementacji_value_glosses_v1.0.md

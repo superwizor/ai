@@ -75,6 +75,35 @@ func TestSnapshotPromptS2(t *testing.T) {
 	}
 }
 
+// TestSnapshotHomonimMiedzykonstruktowy — dopisek "(tu: <etykieta>)"
+// (nota E7): wartosc obecna w katalogach dwoch konstruktow renderuje sie
+// z jawnym wskazaniem, o ktory konstrukt chodzi — po OBU stronach.
+func TestSnapshotHomonimMiedzykonstruktowy(t *testing.T) {
+	o := &ontology.Ontology{
+		Modality: "ppt", Version: "0.0.1",
+		Constructs: map[string]*ontology.Construct{
+			"sfera": {LabelPL: "Sfera zycia", Kind: ontology.KindCategory,
+				Values:       []string{"kontakt", "cialo"},
+				ValueGlosses: map[string]string{"kontakt": "sfera relacji i wiezi"}},
+			"potenc": {LabelPL: "Potencjalnosc pierwotna", Kind: ontology.KindCategory,
+				Values:       []string{"kontakt", "milosc"},
+				ValueGlosses: map[string]string{"kontakt": "zdolnosc nawiazywania wiezi"}},
+		},
+	}
+	prompt := buildS2Prompt(o, "sfera", nil)
+	if !strings.Contains(prompt, "- kontakt (tu: Sfera zycia) — sfera relacji i wiezi") {
+		t.Fatalf("brak dopisku homonimu w prompcie sfery:\n%s", prompt)
+	}
+	prompt2 := buildS2Prompt(o, "potenc", nil)
+	if !strings.Contains(prompt2, "- kontakt (tu: Potencjalnosc pierwotna) — zdolnosc nawiazywania wiezi") {
+		t.Fatalf("brak dopisku homonimu w prompcie potencjalnosci:\n%s", prompt2)
+	}
+	// Wartosc bez homonimu — bez dopisku.
+	if strings.Contains(prompt, "cialo (tu:") {
+		t.Fatalf("dopisek na wartosci bez homonimu:\n%s", prompt)
+	}
+}
+
 // TestPromptBezGlosNieZmieniony: konstrukt bez glos renderuje sie
 // IDENTYCZNIE jak przed wprowadzeniem pola — bez naglowka o myslniku,
 // bez dopiskow. To jest obietnica z planu ("nie zasmiecamy promptow
