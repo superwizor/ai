@@ -67,6 +67,12 @@ const (
 	// (F7b-4), niedeterministyczna bramka nie ma prawa decydowac
 	// o tresci raportu klinicznego.
 	KeySemanticContextEnabled = "SEMANTIC_CONTEXT_ENABLED"
+	// KeyReportAuditEnabled dokleja do raportu EKSPERYMENTALNEGO ostatnia
+	// sekcje: audyt przebiegu (odrzucone twierdzenia z uzasadnieniami,
+	// naruszenia, kontekst miedzysesyjny, statystyki). Dla zespolow
+	// tunujacych potok. Sekcja jest renderowana przy GENERACJI — flaga
+	// nie dziala wstecz na istniejace raporty.
+	KeyReportAuditEnabled = "REPORT_AUDIT_ENABLED"
 )
 
 // KeyReportPipeline zwraca klucz przelacznika potoku raportu dla jednej
@@ -389,6 +395,10 @@ func (r *Reader) ExperimentalDailyLimit(ctx context.Context, org uuid.UUID) int6
 // wyszukiwanie semantyczne w kontekscie miedzysesyjnym.
 func (r *Reader) SemanticContextEnabled(ctx context.Context, org uuid.UUID) bool {
 	return r.Bool(ctx, KeySemanticContextEnabled, org)
+}
+
+func (r *Reader) ReportAuditEnabled(ctx context.Context, org uuid.UUID) bool {
+	return r.Bool(ctx, KeyReportAuditEnabled, org)
 }
 
 func (r *Reader) ChatEnabled(ctx context.Context, org uuid.UUID) bool {
