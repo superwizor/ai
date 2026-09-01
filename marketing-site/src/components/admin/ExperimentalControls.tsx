@@ -23,7 +23,9 @@ import { ActionDialog, type ActionResult } from "@/components/admin/ActionDialog
 type PendingChange =
   | { kind: "enable" }
   | { kind: "disable" }
-  | { kind: "limit"; value: number };
+  | { kind: "limit"; value: number }
+  | { kind: "auditEnable" }
+  | { kind: "auditDisable" };
 
 export function ExperimentalControls({ orgId }: { orgId: string }) {
   const t = useTranslations("admin.experimental");
@@ -62,6 +64,8 @@ export function ExperimentalControls({ orgId }: { orgId: string }) {
           ...(change.kind === "enable" ? { enabled: true } : {}),
           ...(change.kind === "disable" ? { enabled: false } : {}),
           ...(change.kind === "limit" ? { dailyLimit: BigInt(change.value) } : {}),
+          ...(change.kind === "auditEnable" ? { auditEnabled: true } : {}),
+          ...(change.kind === "auditDisable" ? { auditEnabled: false } : {}),
         });
         setControls(res);
         setLimitDraft(String(res.dailyLimit));
@@ -100,6 +104,37 @@ export function ExperimentalControls({ orgId }: { orgId: string }) {
           className="border border-ember/60 text-ember px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/10"
         >
           {wlaczony ? t("actionDisable") : t("actionEnable")}
+        </button>
+      </div>
+
+      {/* Audyt przebiegu: sekcja techniczna na końcu raportu
+          eksperymentalnego — dla zespołów kalibrujących. Renderowana
+          przy GENERACJI, więc przełączenie nie zmienia istniejących
+          raportów (mówi o tym opis pod przełącznikiem). */}
+      <div className="flex items-center justify-between gap-4 flex-wrap border-t border-frost/10 pt-3">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+            {t("auditLabel")}
+          </p>
+          <p
+            className={`font-serif text-lg ${controls.auditEnabled ? "text-ember" : "text-frost"}`}
+            data-testid="audit-status"
+          >
+            {controls.auditEnabled ? t("statusOn") : t("statusOff")}
+          </p>
+          <p className="font-serif text-mist text-xs max-w-md">{t("auditHelp")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setPending(
+              controls.auditEnabled ? { kind: "auditDisable" } : { kind: "auditEnable" },
+            )
+          }
+          className="border border-frost/40 text-frost px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-frost/10"
+          data-testid="audit-toggle"
+        >
+          {controls.auditEnabled ? t("actionDisable") : t("actionEnable")}
         </button>
       </div>
 
@@ -144,7 +179,13 @@ export function ExperimentalControls({ orgId }: { orgId: string }) {
             ? t("confirmEnableBody")
             : pending?.kind === "disable"
               ? t("confirmDisableBody")
-              : t("confirmLimitBody", { value: pending?.value ?? 0 })
+              : pending?.kind === "auditEnable"
+                ? t("confirmAuditEnableBody")
+                : pending?.kind === "auditDisable"
+                  ? t("confirmAuditDisableBody")
+                  : t("confirmLimitBody", {
+                      value: pending?.kind === "limit" ? pending.value : 0,
+                    })
         }
         onConfirm={(reason) =>
           pending ? apply(pending, reason) : Promise.resolve("success" as const)

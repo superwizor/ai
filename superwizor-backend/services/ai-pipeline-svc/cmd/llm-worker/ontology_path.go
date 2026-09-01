@@ -11,6 +11,7 @@ import (
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/ontopipe"
+	"time"
 )
 
 // Galaz ontologiczna generacji raportu (plan 16, F2).
@@ -216,12 +217,26 @@ func runOntologyPipeline(
 	// SummaryShort z call-1 zasila sekcje "Bilans sesji" (M5). Streszczenie
 	// nie jest wnioskowaniem i istnieje dla kazdego raportu, wiec sekcja
 	// nie omija potoku — pokazuje material policzony niezaleznie od niego.
+	// Stopka z czasem generacji: przy kilku uruchomieniach na tej samej
+	// sesji to jedyny widoczny wyroznik. Czas w strefie kartotek (PL).
+	warszawa, tzErr := time.LoadLocation("Europe/Warsaw")
+	if tzErr != nil {
+		warszawa = time.UTC
+	}
 	payload.ReportMarkdown = ontopipe.RenderMarkdown(o, res, ontopipe.RenderInput{
 		SummaryShort: metadataPayload.SummaryShort,
 		Language:     session.ReportLanguage,
 		// Bez kontekstu renderer nie znalazlby tresci cytatu
 		// historycznego i odnosnik zniknalby z raportu po cichu.
-		Past: past,
+		Past:        past,
+		GeneratedAt: time.Now().In(warszawa),
+		Provenance: fmt.Sprintf("%s · ontologia %s · %s %s %s",
+			PipelineExperimental, o.Version, ontopipe.PromptVersionS1,
+			ontopipe.PromptVersionS2, ontopipe.PromptVersionS2K),
+		// Audyt WYLACZNIE na powierzchni eksperymentalnej — raport
+		// produkcyjny (legacy) nie przechodzi przez ta sciezke.
+		AuditEnabled: pipelineConfig != nil &&
+			pipelineConfig.ReportAuditEnabled(ctx, session.OrganizationID),
 	})
 	return payload, res, stats, nil
 }

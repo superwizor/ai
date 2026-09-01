@@ -300,13 +300,22 @@ func wczytajTwierdzenia(ctx context.Context, idSesji []uuid.UUID,
 	// juz w clinical-svc i w kolumnie reports.pipeline_version, a
 	// trzecia kopia rozjechalaby sie po cichu — filtr przestalby
 	// znajdowac cokolwiek i wygladaloby to jak brak historii.
+	//
+	// DISTINCT ON: twierdzenia WYLACZNIE z NAJNOWSZEGO raportu kazdej
+	// sesji. Do 2026-09-01 zapytanie bralo wszystkie raporty klasy —
+	// przy wielokrotnych przebiegach kalibracyjnych okno pecznialo suma
+	// przebiegow (kanarek: 30 ustalen z sesji, ktorej najnowszy raport
+	// mial 16) i sztucznie mnozylo pary ciaglosci. Wykryte pierwszym
+	// uzyciem sekcji audytu.
 	rows, err := dbPool.Query(ctx, `
 		SELECT c.id, r.session_id, c.construct_id, c.categories,
 		       c.epistemic_status, COALESCE(c.confidence, 0)::float8
-		  FROM report_claims c
-		  JOIN reports r ON r.id = c.report_id
-		 WHERE r.session_id = ANY($1)
-		   AND (r.pipeline_version = $3) = $2`,
+		  FROM (SELECT DISTINCT ON (session_id) id, session_id
+		          FROM reports
+		         WHERE session_id = ANY($1)
+		           AND (pipeline_version = $3) = $2
+		         ORDER BY session_id, created_at DESC) r
+		  JOIN report_claims c ON c.report_id = r.id`,
 		idSesji, eksperymentalny, PipelineExperimental)
 	if err != nil {
 		return nil, err

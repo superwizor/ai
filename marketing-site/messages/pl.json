@@ -820,7 +820,11 @@
       "confirmDisableTitle": "Wyłączyć tryb eksperymentalny?",
       "confirmDisableBody": "Przełącznik zniknie z ustawień, a nowe zamówienia zostaną odrzucone. Raporty już wygenerowane zostają — usuwa się je normalną ścieżką usuwania raportów.",
       "confirmLimitTitle": "Zmienić limit dobowy?",
-      "confirmLimitBody": "Nowy limit: {value} raportów na terapeutę na dobę. Nieudane generacje też się liczą — kosztowały wywołania modelu."
+      "confirmLimitBody": "Nowy limit: {value} raportów na terapeutę na dobę. Nieudane generacje też się liczą — kosztowały wywołania modelu.",
+      "auditLabel": "Audyt raportu",
+      "auditHelp": "Dokleja na końcu raportu eksperymentalnego pełny rejestr decyzji potoku (odrzucone twierdzenia z uzasadnieniami, naruszenia, kontekst). Działa od NASTĘPNEJ generacji — nie zmienia istniejących raportów.",
+      "confirmAuditEnableBody": "Włączyć audyt raportu dla tej organizacji? Każdy KOLEJNY raport eksperymentalny zakończy się sekcją z pełnym rejestrem decyzji potoku.",
+      "confirmAuditDisableBody": "Wyłączyć audyt raportu? Istniejące raporty pozostaną bez zmian; kolejne będą bez sekcji audytu."
     },
     "ontologyWizard": {
       "title": "Nowy konstrukt",

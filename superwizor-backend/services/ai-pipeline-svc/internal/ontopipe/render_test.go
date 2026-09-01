@@ -574,3 +574,79 @@ func TestRaportNieNiesieOdnosnikowWProzie(t *testing.T) {
 		t.Fatalf("zdanie po czyszczeniu wyglada zle:\n%s", md)
 	}
 }
+
+// ── Audyt przebiegu (REPORT_AUDIT_ENABLED) + stopka generacji ──
+
+func wynikDoAudytu(t *testing.T) (Result, *ontology.Ontology) {
+	t.Helper()
+	o := testO(t)
+	res := Result{
+		Approved: []ontology.Claim{{ConstructID: "konflikt",
+			Categories: []string{"blizkosc-autonomia"},
+			Status:     ontology.StatusInterpretation, Confidence: 0.7}},
+		Rejected: []ontology.Rejection{{
+			ConstructID: "zasob", Reason: ontology.ReasonCoverage,
+			Detail: "spanow 1, wymagane 2",
+			Claim: &ontology.Claim{ConstructID: "zasob",
+				Categories: []string{"wsparcie"},
+				Status:     ontology.StatusObservation, Confidence: 0.6,
+				Reasoning:  "Klientka wskazuje siostre jako wsparcie.",
+				Evidence:   []ontology.QuoteRef{{SpanID: "s03", Quote: "Mam siostrę."}}},
+		}},
+		Violations: []Violation{{Rule: VRuleContinuity, ConstructID: "konflikt",
+			Detail: "marker ciaglosci bez zakotwiczenia", HypothesisText: "Wątek powraca."}},
+		NoFit:      []string{"positum"},
+		S1Rejected: []string{"s09: cytat nie przeszedl weryfikacji"},
+		Report: Report{Constructs: []ConstructReport{{ConstructID: "konflikt",
+			Hypotheses: []Hypothesis{{ID: "A", Claim: "Napięcie się utrzymuje.",
+				EpistemicStatus: "interpretation", Confidence: 0.7}}}}},
+	}
+	res.Usage.InputTokens, res.Usage.OutputTokens, res.Usage.Calls = 1000, 200, 5
+	return res, o
+}
+
+func TestAudytZaFlagaIStopka(t *testing.T) {
+	res, o := wynikDoAudytu(t)
+	kiedy := time.Date(2026, 8, 31, 18, 24, 0, 0, time.UTC)
+
+	bez := RenderMarkdown(o, res, RenderInput{GeneratedAt: kiedy, Provenance: "potok x"})
+	if strings.Contains(bez, "Audyt przebiegu") {
+		t.Fatalf("audyt renderuje sie bez flagi:\n%s", bez)
+	}
+	if !strings.Contains(bez, "Wygenerowano: 31.08 2026, 18:24 · potok x") {
+		t.Fatalf("brak stopki z data generacji:\n%s", bez)
+	}
+
+	z := RenderMarkdown(o, res, RenderInput{GeneratedAt: kiedy, Provenance: "potok x",
+		AuditEnabled: true})
+	for _, chce := range []string{
+		"Audyt przebiegu",
+		"R2_coverage",
+		"Klientka wskazuje siostre jako wsparcie.", // uzasadnienie ODRZUCONEGO
+		"V7_ciaglosc_bez_zakotwiczenia",
+		"Wątek powraca.",                    // zdanie naruszenia
+		"positum",                            // no_fit
+		"odrzucone w ekstrakcji: 1",          // S1Rejected
+		"1000 tokenów wejścia",
+	} {
+		if !strings.Contains(z, chce) {
+			t.Fatalf("audyt bez %q:\n%s", chce, z)
+		}
+	}
+	// Audyt jest OSTATNIA sekcja — zaden naglowek "## " nie moze
+	// wystapic po nim.
+	if i := strings.Index(z, "Audyt przebiegu"); i >= 0 {
+		if strings.LastIndex(z, "## ") > i {
+			t.Fatalf("po audycie jest jeszcze inna sekcja:\n%s", z[i:])
+		}
+	}
+}
+
+func TestAudytPoAngielsku(t *testing.T) {
+	res, o := wynikDoAudytu(t)
+	z := RenderMarkdown(o, res, RenderInput{Language: "en-US", AuditEnabled: true,
+		GeneratedAt: time.Date(2026, 8, 31, 18, 24, 0, 0, time.UTC), Provenance: "x"})
+	if !strings.Contains(z, "Run audit") || !strings.Contains(z, "Generated:") {
+		t.Fatalf("audyt EN niekompletny:\n%s", z)
+	}
+}

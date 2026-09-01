@@ -1,0 +1,42 @@
+AUDYT PRZEBIEGU — trzy kanarki na sesji ca74f1c6 (CBT terapia par #2), 2026-09-01
+830ff15c: przed naprawami (okno=30, ciaglosc 15+3) · 8051c235: po naprawie okna (okno=16+8 sem-duplikatow, 7 par) · 2b71bd48: po obu (okno=16, sem=0, 6 par)
+
+## Audyt przebiegu (dla zespołu kalibrującego)
+
+Sekcja techniczna włączona dla tej organizacji: pełny rejestr decyzji potoku — także to, co zostało ODRZUCONE i nie weszło do raportu. Nie jest częścią treści klinicznej.
+
+- Twierdzenia: zatwierdzone 14 · odrzucone 5 · naruszenia korekty 0
+- Cytaty: 75 spanów, w tym 0 o treści ryzyka (wyłączone z wnioskowania) · odrzucone w ekstrakcji: 0
+- Kontekst międzysesyjny: 1 sesji w oknie · pokazano 16 ustaleń i 25 cytatów · kanał semantyczny: 0 trafień, 0 poniżej progu
+- Ciągłość: 6 wzmacnia · 0 osłabia · 0 relacji odrzuconych przy walidacji
+- Zużycie: 89896 tokenów wejścia · 21331 wyjścia · 14 wywołań modelu
+
+**Odrzucone twierdzenia (z uzasadnieniami modelu)**
+
+- **R2_coverage** · cognitive_process — spanow 1, wymagane 2
+  - propozycja: kategorie [monitorowanie zagrożenia], status observation, pewność 0.90
+  - uzasadnienie: Wypowiedź Speaker 2 bezpośrednio wskazuje na ciągłe bycie 'czujną' i sprawdzanie, czy mąż pił, co jest bezpośrednim przejawem monitorowania zagrożenia.
+  - „No bo, no bo jak przychodzi z pracy, no to niestety ja cały czas jestem czujna i myślę, że czy nie pił, czy pił i...”
+- **R2_coverage** · compensatory_strategy — spanow behawioralnych 0, wymagane 1
+  - propozycja: kategorie [kontrolowanie], status interpretation, pewność 0.80
+  - uzasadnienie: Żona (Speaker 2) wyraża chęć, aby mąż konsultował z nią wyjścia z domu i przyznaje, że jest 'cały czas czujna' i myśli o tym, czy mąż pił, co wskazuje na próbę kontrolowania jego zachowań, prawdopodobnie w celu uniknięcia powrotu do przeszłych problemów z alkoholem.
+  - „Bo że, że, żebym go nie kontrolowała i, i bardziej mu ufała. No bo, no bo jak przychodzi z pracy, no to niestety ja cały czas jestem czujna …”
+  - „Chciałabym też właśnie, żeby mąż konsultował właśnie ze mną takie kwestie jak wyjście z domu.”
+- **R2_no_current_span** · emotion — twierdzenie oparte wylacznie na spanach z wczesniejszych sesji — raport opisuje sesje biezaca
+  - propozycja: kategorie [smutek], status interpretation, pewność 0.80
+  - uzasadnienie: Wypowiedzi męża z poprzedniej sesji wskazują na to, że żona często płacze, co jest silnym wskaźnikiem smutku. Chociaż w obecnej sesji nie ma bezpośredniego cytatu o płaczu, to kontekst wcześniejszych sesji pozwala na interpretację, że smutek jest obecny w relacji.
+  - „No i żona ma ciągle do mnie pretensje, że kiedy piłem, nie było mnie w domu. Teraz, kiedy nie piję, też mnie nie ma, że sobie nie radzi, że …”
+  - „Żona zaraz płacze i-”
+- **R2_no_current_span** · emotion — twierdzenie oparte wylacznie na spanach z wczesniejszych sesji — raport opisuje sesje biezaca
+  - propozycja: kategorie [bezsilność], status observation, pewność 1.00
+  - uzasadnienie: Klientka wprost nazywa swoje uczucie 'bezsilnością' w kontekście braku skuteczności argumentów.
+  - „Jest mi po prostu przykro. Idę do drugiego pokoju. Z tej bezsilności płaczę, bo żadne argumenty nie działają.”
+- **R2_coverage** · safety_behavior — spanow 1, wymagane 2
+  - propozycja: kategorie [kontrola/sprawdzanie], status observation, pewność 0.90
+  - uzasadnienie: Speaker 2 (żona) wprost mówi o kontrolowaniu męża i byciu czujną, co jest bezpośrednim przejawem zachowania zabezpieczającego w kategorii kontrola/sprawdzanie, mającego na celu zapobieżenie obawianej katastrofie (powrotowi męża do picia).
+  - „Bo że, że, żebym go nie kontrolowała i, i bardziej mu ufała. No bo, no bo jak przychodzi z pracy, no to niestety ja cały czas jestem czujna …”
+**Za mało danych (insufficient):** session_structure_element, therapist_technique_observed, core_belief
+
+---
+_Wygenerowano: 01.09 2026, 11:36 · ontology_s1s5_experimental · ontologia 0.1.2 · s1/1.2.0 s2/1.4.0 s2k/1.0.0_
+

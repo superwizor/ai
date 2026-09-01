@@ -1702,6 +1702,12 @@ message AdminExperimentalControls {
   bool is_org_override = 3;
   string note = 4;
   google.protobuf.Timestamp updated_at = 5;
+  // Czy raport eksperymentalny konczy sie sekcja audytu przebiegu
+  // (odrzucone twierdzenia z uzasadnieniami, naruszenia, kontekst
+  // miedzysesyjny, statystyki). Dla zespolow TUNINGUJACYCH potok —
+  // sekcja jest renderowana przy GENERACJI, wiec przelaczenie flagi
+  // nie zmienia raportow juz istniejacych.
+  bool audit_enabled = 6;
 }
 
 message AdminSetExperimentalControlsRequest {
@@ -1715,6 +1721,7 @@ message AdminSetExperimentalControlsRequest {
   // bez tego "zmien limit, zostaw flage" cicho przestawialoby flage.
   optional bool enabled = 2;
   optional int64 daily_limit = 3;
+  optional bool audit_enabled = 5;
 
   // Dlaczego. Wymagane przy kazdej zmianie — wpis audytowy bez powodu
   // nie odpowiada na zadne pytanie, ktore ktos potem zada.

@@ -54,6 +54,18 @@ type RenderInput struct {
 	// S4 mial TRESC i DATE — bez tego odnosnik `s0821:s07` wypadalby
 	// z raportu po cichu, bo nie ma go wsrod spanow biezacej sesji.
 	Past *PastContext
+	// GeneratedAt to chwila generacji przebiegu. Niezerowa wartosc
+	// renderuje stopke z data i proweniencja — przy kilku uruchomieniach
+	// na tej samej sesji to jedyny sposob odroznienia raportow golym
+	// okiem.
+	GeneratedAt time.Time
+	// Provenance to jednoliniowy opis wersji (potok, ontologia, prompty)
+	// do stopki. Sklada go wolajacy — renderer nie zna wersji promptow.
+	Provenance string
+	// AuditEnabled dokleja OSTATNIA sekcje: pelny audyt decyzji przebiegu
+	// (flaga organizacji REPORT_AUDIT_ENABLED; tylko powierzchnia
+	// eksperymentalna). Renderowane przy generacji — nie dziala wstecz.
+	AuditEnabled bool
 }
 
 // chrome to WSZYSTKIE stale napisy renderera w jednym jezyku.
@@ -89,6 +101,27 @@ type chrome struct {
 	kontBezDanych  string // fmt: data
 	rozliczenieTyt string
 	werdykty       map[string]string // werdykt -> etykieta
+	// Audyt przebiegu (flaga REPORT_AUDIT_ENABLED) + stopka generacji.
+	audytTyt        string
+	audytWstep      string
+	audytStat       string // fmt: zatw, odrz, naruszen
+	audytSpany      string // fmt: spany, ryzyko, s1odrzucone
+	audytKontekst   string // fmt: sesje, ustalenia, spany, semantyczne, ponizejProgu
+	audytCiaglosc   string // fmt: wzmacnia, oslabia, odrzuconeRelacje
+	audytTokeny     string // fmt: wej, wyj, wywolan
+	audytOdrzucone  string
+	audytOdrzWiersz string // fmt: regula, konstrukt, powod
+	audytPropozycja string // fmt: kategorie, status, pewnosc
+	audytUzasadnien string // fmt: uzasadnienie
+	audytDegradacje string
+	audytDegrWiersz string // fmt: konstrukt, do, powod
+	audytNaruszenia string
+	audytNarWiersz  string // fmt: regula, konstrukt, powod
+	audytNarZdanie  string // fmt: zdanie hipotezy
+	audytNoFit      string // fmt: lista
+	audytBrakDanych string // fmt: lista
+	audytEkstrakt   string
+	stopka          string // fmt: data, proweniencja
 }
 
 var chromePL = chrome{
@@ -130,6 +163,28 @@ var chromePL = chrome{
 		"wspomniana":            "wspomniana, bez omówienia wyniku",
 		"nie_wrocono":           "nie wrócono do niej",
 	},
+	audytTyt: "Audyt przebiegu (dla zespołu kalibrującego)",
+	audytWstep: "Sekcja techniczna włączona dla tej organizacji: pełny rejestr decyzji " +
+		"potoku — także to, co zostało ODRZUCONE i nie weszło do raportu. " +
+		"Nie jest częścią treści klinicznej.\n\n",
+	audytStat:      "- Twierdzenia: zatwierdzone %d · odrzucone %d · naruszenia korekty %d\n",
+	audytSpany:     "- Cytaty: %d spanów, w tym %d o treści ryzyka (wyłączone z wnioskowania) · odrzucone w ekstrakcji: %d\n",
+	audytKontekst:  "- Kontekst międzysesyjny: %d sesji w oknie · pokazano %d ustaleń i %d cytatów · kanał semantyczny: %d trafień, %d poniżej progu\n",
+	audytCiaglosc:  "- Ciągłość: %d wzmacnia · %d osłabia · %d relacji odrzuconych przy walidacji\n",
+	audytTokeny:    "- Zużycie: %d tokenów wejścia · %d wyjścia · %d wywołań modelu\n",
+	audytOdrzucone: "\n**Odrzucone twierdzenia (z uzasadnieniami modelu)**\n\n",
+	audytOdrzWiersz: "- **%s** · %s — %s\n",
+	audytPropozycja: "  - propozycja: kategorie %v, status %s, pewność %.2f\n",
+	audytUzasadnien: "  - uzasadnienie: %s\n",
+	audytDegradacje: "\n**Degradacje (niespełnione zależności)**\n\n",
+	audytDegrWiersz: "- %s → „%s” — %s\n",
+	audytNaruszenia: "\n**Naruszenia korekty końcowej**\n\n",
+	audytNarWiersz:  "- **%s** · %s — %s\n",
+	audytNarZdanie:  "  - zdanie: „%s”\n",
+	audytNoFit:      "\n**Poza taksonomią (no_fit):** %s\n",
+	audytBrakDanych: "**Za mało danych (insufficient):** %s\n",
+	audytEkstrakt:   "\n**UWAGA: raport w trybie ekstraktywnym** — synteza nie przeszła korekty.\n",
+	stopka:          "\n---\n_Wygenerowano: %s · %s_\n",
 }
 
 var chromeEN = chrome{
@@ -171,6 +226,28 @@ var chromeEN = chrome{
 		"wspomniana":            "mentioned, outcome not discussed",
 		"nie_wrocono":           "not revisited",
 	},
+	audytTyt: "Run audit (for the calibration team)",
+	audytWstep: "Technical section enabled for this organization: the full decision " +
+		"log of the pipeline — including what was REJECTED and did not enter " +
+		"the report. Not part of the clinical content.\n\n",
+	audytStat:      "- Findings: approved %d · rejected %d · verifier violations %d\n",
+	audytSpany:     "- Quotes: %d spans, incl. %d risk-content (excluded from inference) · rejected at extraction: %d\n",
+	audytKontekst:  "- Cross-session context: %d sessions in window · %d findings and %d quotes shown · semantic channel: %d hits, %d below threshold\n",
+	audytCiaglosc:  "- Continuity: %d supports · %d weakens · %d relations dropped at validation\n",
+	audytTokeny:    "- Usage: %d input tokens · %d output · %d model calls\n",
+	audytOdrzucone: "\n**Rejected findings (with model reasonings)**\n\n",
+	audytOdrzWiersz: "- **%s** · %s — %s\n",
+	audytPropozycja: "  - proposal: categories %v, status %s, confidence %.2f\n",
+	audytUzasadnien: "  - reasoning: %s\n",
+	audytDegradacje: "\n**Degradations (unmet requirements)**\n\n",
+	audytDegrWiersz: "- %s → “%s” — %s\n",
+	audytNaruszenia: "\n**Final-verifier violations**\n\n",
+	audytNarWiersz:  "- **%s** · %s — %s\n",
+	audytNarZdanie:  "  - sentence: “%s”\n",
+	audytNoFit:      "\n**Outside the taxonomy (no_fit):** %s\n",
+	audytBrakDanych: "**Insufficient data:** %s\n",
+	audytEkstrakt:   "\n**NOTE: extractive-mode report** — synthesis did not pass verification.\n",
+	stopka:          "\n---\n_Generated: %s · %s_\n",
 }
 
 // chromeFor wybiera tabele napisow po jezyku raportu.
@@ -225,6 +302,7 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 
 	if o.ReportProfile != nil && len(o.ReportProfile.Layout) > 0 {
 		renderLayout(&b, o, res, in, ch, en, cytaty)
+		renderAuditAndFooter(&b, o, res, in, ch, en)
 		return b.String()
 	}
 
@@ -248,6 +326,7 @@ func RenderMarkdown(o *ontology.Ontology, res Result, in RenderInput) string {
 			})
 		}
 	}
+	renderAuditAndFooter(&b, o, res, in, ch, en)
 	return b.String()
 }
 
@@ -730,4 +809,117 @@ func ostatniaData(past *PastContext, constructID string) (t time.Time, ok bool) 
 		}
 	}
 	return t, ok
+}
+
+// renderAuditAndFooter dokleja (1) sekcje audytu przebiegu, gdy
+// organizacja ma REPORT_AUDIT_ENABLED, oraz (2) stopke z data generacji
+// i proweniencja, gdy GeneratedAt jest ustawione.
+//
+// ══ Dlaczego przy generacji, a nie przy odczycie ══
+//
+// Sekcja powstaje z Result — WSZYSTKO jest tu jawnym tekstem w pamieci
+// (uzasadnienia odrzucen, zdania naruszen, cytaty), wiec zadnego
+// deszyfrowania. Odczytowa wersja musialaby deszyfrowac rejestr KMS-em
+// przy kazdym otwarciu i dublowac ten kod po stronie serwera odczytu.
+// Cena: przelaczenie flagi nie zmienia raportow juz wygenerowanych —
+// zapisana w komentarzu do flagi i w dokumentacji.
+//
+// ══ Audyt jest czescia raportu, nie oceny ══
+//
+// Zadnych rekomendacji „popraw prompt": sekcja pokazuje surowe decyzje
+// (co odpadlo i czemu), a wnioski naleza do zespolu kalibrujacego.
+func renderAuditAndFooter(b *strings.Builder, o *ontology.Ontology, res Result,
+	in RenderInput, ch chrome, en bool) {
+
+	if in.AuditEnabled {
+		fmt.Fprintf(b, "\n## %s\n\n", ch.audytTyt)
+		b.WriteString(ch.audytWstep)
+
+		ryzyko := 0
+		for _, sp := range res.Spans {
+			if sp.RiskContent {
+				ryzyko++
+			}
+		}
+		fmt.Fprintf(b, ch.audytStat, len(res.Approved), len(res.Rejected), len(res.Violations))
+		fmt.Fprintf(b, ch.audytSpany, len(res.Spans), ryzyko, len(res.S1Rejected))
+		if p := in.Past; p != nil {
+			fmt.Fprintf(b, ch.audytKontekst, p.Stats.SessionsLoaded,
+				p.Stats.ClaimsShown, p.Stats.SpansShown,
+				p.Stats.SemanticFound, p.Stats.SemanticBelowThreshold)
+		}
+		wz, os_ := 0, 0
+		for _, l := range res.ContinuityLinks {
+			if l.Relation == "oslabia" {
+				os_++
+			} else {
+				wz++
+			}
+		}
+		if wz+os_+res.DroppedLinks > 0 || res.ContinuityFailed {
+			fmt.Fprintf(b, ch.audytCiaglosc, wz, os_, res.DroppedLinks)
+		}
+		fmt.Fprintf(b, ch.audytTokeny, res.Usage.InputTokens, res.Usage.OutputTokens, res.Usage.Calls)
+		if res.Extractive {
+			b.WriteString(ch.audytEkstrakt)
+		}
+
+		if len(res.Rejected) > 0 {
+			b.WriteString(ch.audytOdrzucone)
+			for _, r := range res.Rejected {
+				fmt.Fprintf(b, ch.audytOdrzWiersz, r.Reason, r.ConstructID, r.Detail)
+				if c := r.Claim; c != nil {
+					fmt.Fprintf(b, ch.audytPropozycja, c.Categories, c.Status, c.Confidence)
+					if u := strings.TrimSpace(c.Reasoning); u != "" {
+						fmt.Fprintf(b, ch.audytUzasadnien, u)
+					}
+					for i, q := range c.Evidence {
+						if i == 2 {
+							break
+						}
+						fmt.Fprintf(b, "  - „%s”\n", skroc(q.Quote, 140))
+					}
+				}
+			}
+		}
+		if len(res.Degraded) > 0 {
+			b.WriteString(ch.audytDegradacje)
+			for _, d := range res.Degraded {
+				fmt.Fprintf(b, ch.audytDegrWiersz, d.ConstructID, d.To, d.Detail)
+			}
+		}
+		if len(res.Violations) > 0 || len(res.PrunedHypotheses) > 0 {
+			b.WriteString(ch.audytNaruszenia)
+			for _, v := range res.Violations {
+				fmt.Fprintf(b, ch.audytNarWiersz, v.Rule, v.ConstructID, v.Detail)
+				if z := strings.TrimSpace(v.HypothesisText); z != "" {
+					fmt.Fprintf(b, ch.audytNarZdanie, skroc(z, 200))
+				}
+			}
+			for _, z := range res.PrunedHypotheses {
+				fmt.Fprintf(b, ch.audytNarZdanie, skroc(z, 200))
+			}
+		}
+		if len(res.NoFit) > 0 {
+			fmt.Fprintf(b, ch.audytNoFit, strings.Join(res.NoFit, ", "))
+		}
+		if len(res.Insufficient) > 0 {
+			fmt.Fprintf(b, ch.audytBrakDanych, strings.Join(res.Insufficient, ", "))
+		}
+	}
+
+	if !in.GeneratedAt.IsZero() {
+		fmt.Fprintf(b, ch.stopka,
+			in.GeneratedAt.Format(ch.dateFmt+" 2006, 15:04"), in.Provenance)
+	}
+}
+
+// skroc obcina tekst do n znakow z wielokropkiem — audyt cytuje, nie
+// przedrukowuje.
+func skroc(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
 }

@@ -74,6 +74,9 @@ func (s *Server) AdminSetExperimentalControls(ctx context.Context,
 	if req.Enabled != nil {
 		updates[appconfig.KeyReportExperimentalEnabled] = strconv.FormatBool(req.GetEnabled())
 	}
+	if req.AuditEnabled != nil {
+		updates[appconfig.KeyReportAuditEnabled] = strconv.FormatBool(req.GetAuditEnabled())
+	}
 	if req.DailyLimit != nil {
 		limit := req.GetDailyLimit()
 		if limit < 0 {
@@ -110,6 +113,7 @@ func (s *Server) AdminSetExperimentalControls(ctx context.Context,
 func (s *Server) readExperimentalControls(ctx context.Context, org uuid.UUID) *clinicalv1.AdminExperimentalControls {
 	return &clinicalv1.AdminExperimentalControls{
 		Enabled:       s.config.ExperimentalReportsEnabled(ctx, org),
+		AuditEnabled:  s.config.ReportAuditEnabled(ctx, org),
 		DailyLimit:    s.config.ExperimentalDailyLimit(ctx, org),
 		IsOrgOverride: org != uuid.Nil,
 		UpdatedAt:     timestamppb.New(time.Now()),
@@ -136,6 +140,8 @@ func (s *Server) recordExperimentalChange(ctx context.Context, actor, org uuid.U
 		"keys_changed":       changed,
 		"before_enabled":     before.GetEnabled(),
 		"after_enabled":      after.GetEnabled(),
+		"before_audit":       before.GetAuditEnabled(),
+		"after_audit":        after.GetAuditEnabled(),
 		"before_daily_limit": before.GetDailyLimit(),
 		"after_daily_limit":  after.GetDailyLimit(),
 		"note":               note,
