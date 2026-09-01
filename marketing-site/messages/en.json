@@ -820,7 +820,11 @@
       "confirmDisableTitle": "Disable experimental mode?",
       "confirmDisableBody": "The toggle disappears from settings and new requests are refused. Reports already generated remain — remove them through the normal report deletion path.",
       "confirmLimitTitle": "Change the daily limit?",
-      "confirmLimitBody": "New limit: {value} reports per therapist per day. Failed generations count too — they cost model calls."
+      "confirmLimitBody": "New limit: {value} reports per therapist per day. Failed generations count too — they cost model calls.",
+      "auditLabel": "Report audit",
+      "auditHelp": "Appends the pipeline's full decision log (rejected findings with reasonings, violations, context) to the end of experimental reports. Applies from the NEXT generation — existing reports are unchanged.",
+      "confirmAuditEnableBody": "Enable report audit for this organization? Every SUBSEQUENT experimental report will end with the pipeline's full decision log.",
+      "confirmAuditDisableBody": "Disable report audit? Existing reports stay unchanged; new ones will omit the audit section."
     },
     "ontologyWizard": {
       "title": "New construct",

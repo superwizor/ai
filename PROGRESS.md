@@ -89,6 +89,39 @@ Gotchas:
 
 ## In progress
 
+### Audyt przebiegu w raporcie + naprawy pamieci — GOTOWE, WDROZONE — 2026-09-01
+
+Galaz fix/okno-najnowszy-raport (zawiera feat/audyt-raportu). Wdrozone
+na llm-worker-00144 (kolejno 00142/00143/00144), flaga REPORT_AUDIT_ENABLED
+wlaczona dla org 3da34bab.
+
+1. AUDYT (914e2790): flaga org w panelu admina (proto audit_enabled,
+   optional w Set), sekcja "Audyt przebiegu" jako OSTATNIA sekcja
+   raportu eksperymentalnego — renderowana przy GENERACJI z Result
+   (zero deszyfrowania; flaga nie dziala wstecz — zapisane w kodzie
+   i opisie flagi). Stopka z timestampem (Europe/Warsaw) i proweniencja
+   w KAZDYM raporcie eksperymentalnym. Narzedzie lokalnego wgladu:
+   scratchpad audyt/ (KMS app-data-key, wzorzec dump-transcript).
+
+2. AUDYT WYKRYL DWA DEFEKTY PAMIECI w dwoch pierwszych uzyciach:
+   - Okno ladowalo twierdzenia ze WSZYSTKICH raportow sesji (30 zamiast
+     16 przy dwoch przebiegach) -> b283cd8f: DISTINCT ON najnowszy
+     raport per sesja.
+   - Po naprawie okna kanal semantyczny "dosypal" 8 duplikatow ze
+     starszego przebiegu sesji OKIENNEJ (indeks niesie wpisy z kazdego
+     przebiegu; dedupe po ID nie lapie tej samej tresci o innych ID)
+     -> c1504993: retrieval wyklucza sesje obecne w oknie (przywraca
+     litere docs/65: semantyka doklada to, czego okno nie widzi).
+   Dowod przed/po: evidence/audyt/kanarki-przed-po.log
+   (okno 30->16, sem 8->0, pary 18->6, tokeny wejscia -27%).
+
+OTWARTE (pokrewne, F7b-4): indeks semantyczny wciaz PRZECHOWUJE wpisy
+z kazdego przebiegu — wykluczenie sesji okiennych zalatwia okno W=3,
+ale sesje SPOZA okna z wieloma przebiegami nadal moga zwracac
+duplikaty miedzy soba; do rozstrzygniecia filtr "najnowszy raport"
+w retrievalu albo czyszczenie indeksu przy nowym przebiegu.
+
+
 ### E4/T42a — fakty sesyjne po scaleniu z F7a/F7b — GOTOWE na feat/cbt-011-silnik — 2026-08-31
 
 D1-D4 ZATWIERDZONE przez wlasciciela produktu zgodnie z rekomendacjami
