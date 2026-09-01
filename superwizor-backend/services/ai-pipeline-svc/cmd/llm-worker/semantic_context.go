@@ -95,6 +95,23 @@ func dolaczSemantyczne(ctx context.Context, logger *slog.Logger, session *Sessio
 		juzMamy[c.ID] = true
 	}
 
+	// Semantyka doklada WYLACZNIE to, czego okno nie widzi (docs/65
+	// §5.2) — wiec sesje JUZ obecne w oknie sa wykluczone z retrievalu
+	// razem z biezaca. Do 2026-09-01 wykluczana byla tylko biezaca:
+	// indeks niesie wpisy z KAZDEGO przebiegu, wiec starszy raport
+	// sesji okiennej wracal kanalem semantycznym jako 8 "trafien" o
+	// innych ID i tej samej tresci (kanarek 8051c235 — pierwsze uzycie
+	// sekcji audytu po naprawie okna). Dedupe po ID tego nie lapie z
+	// definicji; wykluczenie sesji lapie z definicji.
+	wykluczone := []uuid.UUID{session.ID}
+	widzianeSesje := map[uuid.UUID]bool{session.ID: true}
+	for _, c := range past.Claims {
+		if !widzianeSesje[c.SessionID] {
+			widzianeSesje[c.SessionID] = true
+			wykluczone = append(wykluczone, c.SessionID)
+		}
+	}
+
 	rows, err := dbPool.Query(ctx, `
 		SELECT i.source_claim_id, i.session_id, i.session_at, i.construct_id,
 		       1 - (i.embedding <=> $1::vector) AS podobienstwo
@@ -103,12 +120,12 @@ func dolaczSemantyczne(ctx context.Context, logger *slog.Logger, session *Sessio
 		   AND i.kind = 'claim'
 		   AND i.pipeline_version = $3
 		   AND i.embedding_model = $4
-		   AND i.session_id <> $5
+		   AND i.session_id <> ALL($5)
 		   AND i.source_claim_id IS NOT NULL
 		 ORDER BY i.embedding <=> $1::vector, i.session_at DESC, i.id
 		 LIMIT $6`,
 		vectorToString(wektor), session.PatientFileID, klasaPotoku,
-		embeddingModel, session.ID, kSemantyczne*3)
+		embeddingModel, wykluczone, kSemantyczne*3)
 	if err != nil {
 		logger.Warn("semantyka: zapytanie do indeksu", "error", err)
 		return past
