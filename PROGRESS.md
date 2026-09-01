@@ -89,6 +89,36 @@ Gotchas:
 
 ## In progress
 
+### Soczewki czatu wyrownane do promptow raportowych — WGRANE — 2026-09-01
+
+Zweryfikowane i wgrane 7 soczewek (galaz feat/soczewki-wyrownanie;
+DB przez wersjonowana sciezke panelu, historia v5/v6 per modalnosc,
+autor dpiotrak2+onto, notatka zmiany). PPT (9982) i CBT (5260) — bez
+zmian (wzorce, potwierdzone przez wlasciciela).
+
+Limit twardy: 10000 znakow (maxChatPromptChars, lustro w PromptStudio).
+Nowe dlugosci: COACH 9779 · EFT 8836 · GESTALT 6515 · PSYCHO 8905 ·
+ST 9315 · SYS 9953 · UNIV 4682. Kazda: parytet katalogow ze zrodlem
+1:1 (schematy 18/18, tryby 14/14, obrony 19/19 itd.), zakazy
+diagnostyczne wg WLASNEGO zrodla, zero struktury sekcji raportu,
+pelne zdanie na koncu. Metoda: 7 rownoleglych agentow + niezalezna
+weryfikacja sondami.
+
+Znaleziska weryfikacji (stan sprzed):
+- GESTALT/COACH/UNIV nios3y VERBATIM sekcje raportu, w tym sekcje
+  RYZYKA (Gestalt, UNIV) — usuniete; wszystkie trzy sprzed
+  wprowadzenia zakazu tresci diagnostycznych do zrodel.
+- UNIV byl UCIETY na limicie (koniec bez kropki) — 9776 -> 4682 po
+  przebudowie; COACH balansowal 13 znakow od limitu.
+- EFT/PSYCHO/ST/SYS byly ~800-znakowymi zalazkami.
+- Pliki repo migrations/modality_prompts/chat_*.txt byly przestarzale
+  takze dla PPT/CBT — zsynchronizowane z baza (wszystkie 9).
+
+DROBNE do potwierdzenia u wlasciciela (nie ruszone, bo PPT/CBT
+"zrobione"): PPT konczy sie zablakanym znakiem cudzyslowu; CBT ma
+urwana linie "JEZYK: ...;".
+
+
 ### Audyt przebiegu w raporcie + naprawy pamieci — GOTOWE, WDROZONE — 2026-09-01
 
 Galaz fix/okno-najnowszy-raport (zawiera feat/audyt-raportu). Wdrozone
