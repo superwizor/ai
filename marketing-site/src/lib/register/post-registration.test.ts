@@ -9,7 +9,7 @@
 // obsługi błędów rejestracji.
 
 import { describe, expect, it } from "vitest";
-import { resolveStripePriceId } from "./post-registration";
+import { resolvePromoCode, resolveStripePriceId } from "./post-registration";
 
 describe("resolveStripePriceId", () => {
   it("plany darmowe nie mają ceny — użytkownik idzie na weryfikację e-maila", () => {
@@ -60,5 +60,59 @@ describe("resolveStripePriceId", () => {
     // wybrał — a nic w interfejsie tego nie pokaże.
     const ids = PLATNE.map((s) => resolveStripePriceId(s));
     expect(new Set(ids).size).toBe(PLATNE.length);
+  });
+});
+
+// resolvePromoCode decyduje, JAKI rabat trafi do sesji Stripe Checkout.
+// Pomyłka tutaj też jest cicha: użytkownik po prostu płaci więcej (kod
+// przepadł) albo mniej (kupon planu nadpisał świadomy wybór "bez
+// promocji"). Kolejność pierwszeństwa jest tu całą regułą, więc każdy
+// z trzech poziomów ma własny test.
+describe("resolvePromoCode", () => {
+  it("bez kodu w URL-u zostaje kupon planu — zachowanie sprzed docs/70", () => {
+    expect(resolvePromoCode("solo_monthly", "?plan=solo_monthly")).toBe(
+      "ROWNOWAGA",
+    );
+    expect(resolvePromoCode("pro_annual", "")).toBe("ROZKWIT_ROK");
+  });
+
+  it("kod z ?code= wygrywa z automatycznym kuponem planu", () => {
+    // Wpisany ręcznie i zwalidowany na /pricing — świadomy wybór bije
+    // domyślny kupon, inaczej kampania rabatowa nigdy by nie zadziałała.
+    expect(resolvePromoCode("solo_monthly", "?plan=solo_monthly&code=WIOSNA25")).toBe(
+      "WIOSNA25",
+    );
+  });
+
+  it("normalizuje kod do wielkich liter, jak backend", () => {
+    expect(resolvePromoCode("solo_monthly", "?code=wiosna25")).toBe("WIOSNA25");
+  });
+
+  it("kod o złym kształcie jest ignorowany, a nie przekazywany dalej", () => {
+    // Backend i tak by go odrzucił; lokalna kontrola zostawia
+    // użytkownikowi kupon planu zamiast checkoutu bez żadnej zniżki.
+    expect(resolvePromoCode("solo_monthly", "?code=za")).toBe("ROWNOWAGA");
+    expect(resolvePromoCode("solo_monthly", "?code=ma%20spacje")).toBe(
+      "ROWNOWAGA",
+    );
+    expect(resolvePromoCode("solo_monthly", "?code=zły-znak")).toBe(
+      "ROWNOWAGA",
+    );
+  });
+
+  it("?nopromo=1 i ?clean=1 wyłączają WSZYSTKO, także kod z URL-a", () => {
+    // Furtka do testów czystego checkoutu. Gdyby ?code= ją omijał,
+    // przestałaby służyć do czegokolwiek.
+    expect(resolvePromoCode("solo_monthly", "?nopromo=1&code=WIOSNA25")).toBeUndefined();
+    expect(resolvePromoCode("solo_monthly", "?clean=1")).toBeUndefined();
+  });
+
+  it("nieznany plan bez kodu nie wymyśla kuponu", () => {
+    expect(resolvePromoCode("nie_istnieje", "")).toBeUndefined();
+    expect(resolvePromoCode(null, "")).toBeUndefined();
+  });
+
+  it("sam kod wystarczy — nawet gdy planu nie znamy", () => {
+    expect(resolvePromoCode(null, "?code=PIONIER33")).toBe("PIONIER33");
   });
 });

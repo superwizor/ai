@@ -39,6 +39,22 @@ const BACKEND_PATTERNS: Array<{ contains: string; key: string }> = [
   // identity-svc handler — every SUPERWIZOR_ADMIN mutation gates on
   // reason length. The user can fix this by typing more.
   { contains: "reason must be >=", key: "backend.reasonTooShort" },
+  // billing-svc discount_codes.go (docs/70 §6.3). Each of these is a
+  // form error the admin can fix on the spot, which the generic
+  // "check the values" message hides rather than explains. The prefixes
+  // are part of the contract — a Go test pins them.
+  { contains: "discount_code_format", key: "backend.discountCodeFormat" },
+  {
+    contains: "discount_code_expired_on_create",
+    key: "backend.discountCodeExpiredOnCreate",
+  },
+  { contains: "discount_code_exists", key: "backend.discountCodeExists" },
+  // Not a user error at all: the deployment is missing STRIPE_SECRET_KEY.
+  // Saying "check the form" would send the admin hunting for nothing.
+  { contains: "stripe_not_configured", key: "backend.stripeNotConfigured" },
+  // Cross-provider block (docs/70 §5.1, E22) — surfaced by BeginStorePurchase
+  // and by the checkout pre-check.
+  { contains: "other_provider_active", key: "backend.otherProviderActive" },
   // clinical-svc AdminUpdateModalityPrompt — optimistic lock. Licznik
   // wersji jest wspólny dla promptu raportu i czatu, więc zapis
   // „tamtego" klucza (albo drugie okno Studia) unieważnia expectedVersion

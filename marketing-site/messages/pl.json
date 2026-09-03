@@ -78,7 +78,8 @@
       "prompts": "Prompty",
       "stripeTest": "Testy Stripe",
       "aiChat": "AI Chat",
-      "ontologies": "Ontologie"
+      "ontologies": "Ontologie",
+      "discountCodes": "Kody rabatowe"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -970,6 +971,142 @@
       "toneNone": "domyślny",
       "tone_phenomenological": "fenomenologiczny",
       "layoutNotice": "Ta ontologia używa własnego układu sekcji (analogicznego do raportu legacy). Kolejność i tytuły edytuj w podglądzie YAML — wagi nie obowiązują."
+    },
+    "discountCodes": {
+      "metaTitle": "Kody rabatowe",
+      "title": "Kody rabatowe",
+      "subhead": "Kampanie rabatowe dla płatności na stronie. O limicie użyć rozstrzyga Stripe — licznik poniżej jest przybliżeniem.",
+      "loading": "Ładowanie kodów rabatowych…",
+      "empty": "Brak kodów rabatowych.",
+      "error": "Nie udało się pobrać listy kodów rabatowych.",
+      "retry": "Spróbuj ponownie",
+      "showInactive": "Pokaż nieaktywne",
+      "createCta": "Nowy kod",
+      "columns": {
+        "code": "Kod",
+        "name": "Nazwa",
+        "percent": "Rabat",
+        "validUntil": "Termin",
+        "redemptions": "Użycia",
+        "channels": "Kanały",
+        "status": "Status",
+        "actions": "Akcje"
+      },
+      "status": {
+        "active": "Aktywny",
+        "inactive": "Nieaktywny",
+        "expired": "Wygasł"
+      },
+      "duration": {
+        "ONCE": "Jednorazowo",
+        "REPEATING": "{count, plural, one {Przez # okres} few {Przez # okresy} many {Przez # okresów} other {Przez # okresu}}",
+        "FOREVER": "Na zawsze"
+      },
+      "durationOption": {
+        "ONCE": "Jednorazowo",
+        "REPEATING": "Przez kilka okresów",
+        "FOREVER": "Na zawsze"
+      },
+      "cycleLabel": {
+        "MONTHLY": "Miesięczny",
+        "ANNUAL": "Roczny"
+      },
+      "channelLabel": {
+        "WEB": "Web",
+        "APPLE": "App Store",
+        "GOOGLE": "Google Play"
+      },
+      "allTiers": "Wszystkie plany",
+      "allCycles": "Wszystkie cykle",
+      "newCustomersOnlyBadge": "Tylko nowi klienci",
+      "viewCta": "Szczegóły",
+      "hideCta": "Zwiń",
+      "editCta": "Edytuj",
+      "deactivateCta": "Dezaktywuj",
+      "activateCta": "Aktywuj",
+      "create": {
+        "title": "Nowy kod rabatowy",
+        "body": "Kod powstaje równocześnie u nas i w Stripe (kupon + promotion code). O limicie użyć rozstrzyga Stripe przy płatności.",
+        "codeLabel": "Kod",
+        "codePlaceholder": "np. WIOSNA25",
+        "codeHint": "Od 3 do 32 znaków: wielkie litery, cyfry i podkreślenie. Małe litery zamieniamy na wielkie.",
+        "nameLabel": "Nazwa kampanii",
+        "namePlaceholder": "Kampania wiosenna 2026",
+        "percentLabel": "Rabat (%)",
+        "validUntilLabel": "Ważny do",
+        "maxRedemptionsLabel": "Maksymalna liczba użyć",
+        "durationLabel": "Czas trwania rabatu",
+        "durationPeriodsLabel": "Liczba okresów rozliczeniowych",
+        "tiersLabel": "Plany objęte kodem",
+        "tiersHint": "Nic nie zaznaczone = wszystkie plany.",
+        "cyclesLabel": "Cykle rozliczeniowe",
+        "cyclesHint": "Nic nie zaznaczone = wszystkie cykle.",
+        "channelsLabel": "Kanały",
+        "channelsHint": "W wersji 1 działa wyłącznie kanał Web — sklepy dochodzą w fazie 2.",
+        "newCustomersOnlyLabel": "Tylko dla nowych klientów",
+        "fullDiscountWarning": "Rabat 100% oznacza subskrypcję w pełni darmową — Stripe nie poprosi wtedy o dane karty. Używaj wyłącznie do kont testowych i demonstracyjnych.",
+        "invalidCode": "Kod musi mieć od 3 do 32 znaków i zawierać wyłącznie A–Z, 0–9 oraz _.",
+        "invalidName": "Podaj nazwę kampanii.",
+        "invalidPercent": "Rabat musi być większy od 0 i nie większy niż 100.",
+        "invalidValidUntil": "Termin ważności musi być datą w przyszłości.",
+        "invalidMaxRedemptions": "Limit użyć musi być liczbą większą od zera.",
+        "invalidDurationPeriods": "Podaj liczbę okresów większą od zera."
+      },
+      "edit": {
+        "title": "Edytuj kod",
+        "body": "Zmiana terminu lub limitu zakłada w Stripe nowy promotion code pod tym samym kuponem, a stary wygasza. Puste pole zostawia wartość bez zmian.",
+        "nameLabel": "Nazwa kampanii",
+        "validUntilLabel": "Ważny do",
+        "maxRedemptionsLabel": "Maksymalna liczba użyć",
+        "unchangedHint": "Puste pole = bez zmian."
+      },
+      "deactivate": {
+        "title": "Dezaktywuj kod",
+        "body": "Kod przestanie działać przy nowych płatnościach. Subskrypcje, które go już użyły, zachowują rabat."
+      },
+      "activate": {
+        "title": "Aktywuj kod",
+        "body": "Kod znów zadziała przy płatności, o ile nie minął jego termin ważności."
+      },
+      "details": {
+        "title": "Wykorzystania",
+        "loading": "Ładowanie wykorzystań…",
+        "error": "Nie udało się pobrać szczegółów kodu.",
+        "empty": "Ten kod nie został jeszcze użyty.",
+        "columns": {
+          "organization": "Organizacja",
+          "channel": "Kanał",
+          "status": "Status",
+          "reservedAt": "Zarezerwowano",
+          "committedAt": "Rozliczono"
+        },
+        "status": {
+          "RESERVED": "Zarezerwowane",
+          "COMMITTED": "Rozliczone",
+          "RELEASED": "Zwolnione"
+        }
+      }
+    },
+    "orgStore": {
+      "sectionTitle": "Sklep",
+      "provider": "Dostawca",
+      "productId": "Produkt",
+      "environment": "Środowisko",
+      "graceUntil": "Grace period do",
+      "loading": "Ładowanie transakcji sklepowych…",
+      "empty": "Brak transakcji sklepowych dla tej organizacji.",
+      "providerLabel": {
+        "APPLE_IAP": "App Store",
+        "GOOGLE_IAP": "Google Play"
+      },
+      "columns": {
+        "purchaseDate": "Zakup",
+        "product": "Produkt",
+        "expires": "Wygasa",
+        "environment": "Środowisko",
+        "offer": "Oferta",
+        "revoked": "Zwrot"
+      }
     }
   },
   "errors": {
@@ -1004,7 +1141,12 @@
       "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto.",
       "seatAllocationRequired": "Organizacja ma kilka przydziałów miejsc — wskaż, który plan ma obciążyć terapeuta.",
       "tokensLimitBelowPlan": "Nowy limit jest niższy niż limit wynikający z planu tej organizacji. Wpisane wartości są poprawne — blokuje to reguła planu. Zmień plan albo przydział miejsc zamiast zaniżać licznik.",
-      "promptVersionConflict": "Prompt został w międzyczasie zmieniony (zapis promptu czatu, drugie okno Studia albo inna osoba). Stan został odświeżony — kliknij Potwierdź ponownie."
+      "promptVersionConflict": "Prompt został w międzyczasie zmieniony (zapis promptu czatu, drugie okno Studia albo inna osoba). Stan został odświeżony — kliknij Potwierdź ponownie.",
+      "discountCodeFormat": "Kod może zawierać wyłącznie A–Z, 0–9 i _, od 3 do 32 znaków.",
+      "discountCodeExists": "Kod o tej nazwie już istnieje. Wybierz inny.",
+      "discountCodeExpiredOnCreate": "Termin ważności musi być datą w przyszłości.",
+      "stripeNotConfigured": "Kody na kanał Web wymagają połączenia ze Stripe. Skontaktuj się z zespołem technicznym.",
+      "otherProviderActive": "Organizacja ma aktywną subskrypcję kupioną w sklepie. Zarządza się nią w App Store lub Google Play."
     }
   },
   "nav": {
@@ -1678,7 +1820,24 @@
     "billingInvoicesView": "Pokaż w Stripe",
     "billingInvoicesShowBtn": "Pokaż historię faktur",
     "billingInvoicesHideBtn": "Ukryj historię faktur",
-    "billingInvoicesLoading": "Ładowanie..."
+    "billingInvoicesLoading": "Ładowanie...",
+    "billingProviderLabel": "Dostawca",
+    "billingProviderStripe": "Stripe (superwizor.ai)",
+    "billingProviderApple": "App Store",
+    "billingProviderGoogle": "Google Play",
+    "billingProviderManual": "Umowa z organizacją",
+    "billingStoreAppleTitle": "Subskrypcja kupiona w App Store",
+    "billingStoreAppleBody": "Planem, metodą płatności i anulowaniem zarządzasz w ustawieniach subskrypcji App Store na swoim urządzeniu Apple.",
+    "billingStoreGoogleTitle": "Subskrypcja kupiona w Google Play",
+    "billingStoreGoogleBody": "Planem, metodą płatności i anulowaniem zarządzasz w ustawieniach subskrypcji Google Play.",
+    "billingStoreManageAppleCta": "Otwórz subskrypcje w App Store",
+    "billingStoreManageGoogleCta": "Otwórz subskrypcje w Google Play",
+    "billingStoreInvoicesApple": "Rachunki za tę subskrypcję znajdziesz w App Store — wystawia je Apple, nie Superwizor AI. Faktury VAT z NIP są dostępne tylko przy zakupie na stronie.",
+    "billingStoreInvoicesGoogle": "Rachunki za tę subskrypcję znajdziesz w Google Play — wystawia je Google, nie Superwizor AI. Faktury VAT z NIP są dostępne tylko przy zakupie na stronie.",
+    "billingOrgManagedTitle": "Planem zarządza Twoja organizacja",
+    "billingOrgManagedBody": "Miejsce w planie przydziela administrator Twojej organizacji. Zmiany planu i rozliczenia załatwisz przez niego.",
+    "billingGraceTitle": "Problem z płatnością",
+    "billingGraceBody": "Ostatnia płatność się nie powiodła. Zaktualizuj metodę płatności w sklepie do {date}, żeby zachować dostęp."
   },
   "b": {
     "hero": {
@@ -2040,6 +2199,53 @@
       "chartUtilizationInfo": "Procent wykorzystania limitu tokenów w danym okresie rozliczeniowym, osobno dla każdego terapeuty organizacji.",
       "chartHourly": "Rozkład sesji — dzień i godzina",
       "chartHourlyDesc": "Kiedy terapeuci najczęściej nagrywają"
+    }
+  },
+  "billing": {
+    "discount": {
+      "label": "Kod rabatowy",
+      "placeholder": "Wpisz kod",
+      "checkCta": "Sprawdź",
+      "checking": "Sprawdzam…",
+      "clearCta": "Usuń kod",
+      "appliedTitle": "Kod {code} zastosowany",
+      "campaign": "Kampania: {name}",
+      "planLine": "{plan}: {before} → {after}",
+      "redemptionsLeft": "Pozostało ok. {count} użyć.",
+      "durationOnce": "Rabat obowiązuje przy pierwszej płatności.",
+      "durationRepeating": "Rabat obowiązuje przez {count} kolejnych okresów.",
+      "durationForever": "Rabat obowiązuje przy każdym odnowieniu.",
+      "invalidFormat": "Kod może zawierać wyłącznie litery, cyfry i podkreślenie (od 3 do 32 znaków).",
+      "unverified": "Nie udało się teraz sprawdzić kodu. Przekażemy go do płatności — jeśli jest ważny, rabat zobaczysz przed potwierdzeniem zamówienia.",
+      "reason": {
+        "NOT_FOUND": "Nie znamy takiego kodu. Sprawdź pisownię.",
+        "EXPIRED": "Ten kod stracił ważność.",
+        "NOT_STARTED": "Ten kod nie jest jeszcze aktywny.",
+        "EXHAUSTED": "Limit użyć tego kodu został wyczerpany.",
+        "ALREADY_USED": "Ten kod został już wykorzystany na Twoim koncie.",
+        "PLAN_NOT_ELIGIBLE": "Ten kod nie obejmuje wybranego planu ani cyklu rozliczeniowego.",
+        "CHANNEL_NOT_ELIGIBLE": "Tego kodu nie można użyć przy zakupie na stronie.",
+        "NEW_CUSTOMERS_ONLY": "Ten kod jest zarezerwowany dla nowych klientów.",
+        "INACTIVE": "Ten kod został wyłączony.",
+        "UNKNOWN": "Nie możemy zastosować tego kodu.",
+        "OK": "Kod jest ważny."
+      }
+    },
+    "checkout": {
+      "otherProviderApple": "Masz już aktywną subskrypcję kupioną w App Store. Zarządzasz nią w ustawieniach subskrypcji na urządzeniu Apple — nowy zakup na stronie jest możliwy dopiero po {date}.",
+      "otherProviderGoogle": "Masz już aktywną subskrypcję kupioną w Google Play. Zarządzasz nią w ustawieniach subskrypcji Google Play — nowy zakup na stronie jest możliwy dopiero po {date}.",
+      "otherProvider": "Masz już aktywną subskrypcję kupioną w sklepie. Zarządzasz nią w ustawieniach sklepu."
+    }
+  },
+  "onboarding": {
+    "step7": {
+      "title": "Plan kupisz na stronie albo w aplikacji",
+      "subtitle": "Subskrypcję wykupisz i zmienisz zarówno na www.superwizor.ai, jak i w aplikacji mobilnej. Konto i limit sesji są wspólne — bez znaczenia, gdzie kupisz.",
+      "itemPlan": "Zmiana planu i subskrypcji",
+      "itemInvoice": "Faktury i historia płatności",
+      "itemProfile": "Dane profilu i organizacji",
+      "storeNote": "Zakup w App Store lub Google Play rozlicza sklep — fakturę VAT z NIP wystawiamy wyłącznie przy zakupie na stronie.",
+      "cta": "Rozumiem, dalej"
     }
   }
 }

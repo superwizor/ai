@@ -1,0 +1,53 @@
+# Migracje 000105-000106 na zywym Postgresie — dowod
+# Data: 2026-09-03T10:56:27Z, PostgreSQL 17.11 (scratch cluster, port 55433)
+# Pelny zestaw 106 migracji zaaplikowany od zera, potem rollback 2 i ponowne up.
+
+## schema_migrations po pelnym up
+ version | dirty 
+---------+-------
+     106 | f
+(1 row)
+
+## Plany zmapowane na produkty sklepowe (000106)
+ tier |  cycle  | price_gross | store_price_gross |      apple_product_id      | google_product_id 
+------+---------+-------------+-------------------+----------------------------+-------------------
+ SOLO | MONTHLY |      149.00 |            174.99 | ai.superwizor.solo.monthly | solo:monthly
+ SOLO | ANNUAL  |     1490.00 |           1749.00 | ai.superwizor.solo.annual  | solo:annual
+ PRO  | MONTHLY |      299.00 |            349.99 | ai.superwizor.pro.monthly  | pro:monthly
+ PRO  | ANNUAL  |     2990.00 |           3449.00 | ai.superwizor.pro.annual   | pro:annual
+(4 rows)
+
+## Flagi IAP w app_config — sprzedaz startuje wylaczona
+         key         | value |                                                                             note                                                                             
+---------------------+-------+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ IAP_ALLOW_SANDBOX   | true  | docs/70 E19 — akceptuj zakupy Sandbox (recenzja Apple / TestFlight / testerzy Play). Subskrypcje sandbox są oznaczone i wykluczone z analityki przychodu.
+ IAP_ENABLED_ANDROID | false | docs/70 E26 — sprzedaż IAP w aplikacji Android. Włączyć po aktywacji subskrypcji w Play Console.
+ IAP_ENABLED_IOS     | false | docs/70 E26 — sprzedaż IAP w aplikacji iOS. Włączyć dopiero po zatwierdzeniu produktów w App Store Connect.
+ IAP_WEB_LINK_MODE   | NONE  | docs/70 R6 — NONE | TEXT | LINK. Wzmianka o zakupie na superwizor.ai w aplikacji. NONE jest jedynym bezpiecznym trybem bez analizy DMA.
+(4 rows)
+
+## Nowe kolumny subscriptions
+    column_name    |        data_type         
+-------------------+--------------------------
+ auto_renew        | boolean
+ grace_until       | timestamp with time zone
+ pending_plan_id   | uuid
+ store_environment | text
+ store_product_id  | text
+(5 rows)
+
+## Nowe tabele
+        table_name         
+---------------------------
+ discount_code_redemptions
+ discount_codes
+ pending_checkouts
+ store_transactions
+(4 rows)
+
+## Wymuszone ograniczenia (proby zapisu)
+  - duplikat kodu roznica wielkosci liter -> odrzucony przez ux_discount_codes_code
+  - percent_off = 150 -> odrzucony przez discount_codes_percent_off_check
+  - drugie uzycie kodu przez te sama organizacje -> odrzucone przez UNIQUE(code_id, organization_id)
+  - channel = 'SMS' -> odrzucony przez discount_code_redemptions_channel_check
+## Rollback down 2 -> wersja 104, tabele i kolumny znikaja; ponowne up -> 106, dirty=f

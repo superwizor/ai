@@ -10,7 +10,7 @@
 // and redirects there. The Stripe webhook on the backend will provision
 // the paid subscription when checkout completes.
 
-import { lookupPlan } from "@/lib/billing/plans";
+import { lookupPlan, type BillingCycle, type PlanTier } from "@/lib/billing/plans";
 import { identityClient } from "@/lib/connect/clients";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
@@ -24,6 +24,48 @@ export type PlanSlug =
   | "pro_monthly"
   | "pro_annual";
 
+/** ?plan= slug → catalog coordinates. One map, two readers. */
+const SLUG_TO_PLAN: Record<string, { tier: PlanTier; cycle: BillingCycle }> = {
+  solo_monthly: { tier: "SOLO", cycle: "MONTHLY" },
+  solo_annual: { tier: "SOLO", cycle: "ANNUAL" },
+  pro_monthly: { tier: "PRO", cycle: "MONTHLY" },
+  pro_annual: { tier: "PRO", cycle: "ANNUAL" },
+};
+
+/** Same shape the admin panel enforces (docs/70 §6.2, D9). */
+const DISCOUNT_CODE_PATTERN = /^[A-Z0-9_]{3,32}$/;
+
+/**
+ * Which promo code goes to /api/checkout.
+ *
+ * Precedence, and the reasoning behind it:
+ *   1. ?nopromo=1 / ?clean=1 — the existing "give me a bare checkout"
+ *      escape hatch used for testing. Nothing overrides it.
+ *   2. ?code=XYZ — a code the visitor typed and we validated on /pricing
+ *      or /upgrade. Deliberate beats automatic, so it wins over the
+ *      plan's own coupon. Re-validated server-side when the Checkout
+ *      session is created; a junk value can only cost the discount.
+ *   3. The plan's built-in coupon (ROWNOWAGA, ROZKWIT, …) — unchanged
+ *      behaviour for everyone who never touches the code field.
+ */
+export function resolvePromoCode(
+  planSlug: string | null,
+  search: string,
+): string | undefined {
+  const params = new URLSearchParams(search);
+  if (params.get("nopromo") === "1" || params.get("clean") === "1") {
+    return undefined;
+  }
+
+  const typed = (params.get("code") ?? "").trim().toUpperCase();
+  if (DISCOUNT_CODE_PATTERN.test(typed)) return typed;
+
+  if (!planSlug) return undefined;
+  const planKey = SLUG_TO_PLAN[planSlug.toLowerCase()];
+  if (!planKey) return undefined;
+  return lookupPlan(planKey.tier, planKey.cycle)?.couponCode;
+}
+
 /**
  * Resolve a ?plan= slug to a Stripe price ID.
  * Returns null for free plans (trial, beta) or unrecognized slugs.
@@ -36,18 +78,10 @@ export function resolveStripePriceId(planSlug: string | null): string | null {
   // Free plans — no Stripe checkout needed
   if (slug === "trial" || slug === "beta") return null;
 
-  // Map slug to tier+cycle
-  const mapping: Record<string, { tier: string; cycle: string }> = {
-    solo_monthly: { tier: "SOLO", cycle: "MONTHLY" },
-    solo_annual: { tier: "SOLO", cycle: "ANNUAL" },
-    pro_monthly: { tier: "PRO", cycle: "MONTHLY" },
-    pro_annual: { tier: "PRO", cycle: "ANNUAL" },
-  };
-
-  const planKey = mapping[slug];
+  const planKey = SLUG_TO_PLAN[slug];
   if (!planKey) return null;
 
-  const plan = lookupPlan(planKey.tier as any, planKey.cycle as any);
+  const plan = lookupPlan(planKey.tier, planKey.cycle);
   return plan?.stripePriceId ?? null;
 }
 
@@ -75,27 +109,10 @@ export async function handlePostRegistrationRedirect(
     return;
   }
 
-  let promoCode: string | undefined;
-  let noPromo = false;
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    noPromo = params.get("nopromo") === "1" || params.get("clean") === "1";
-  }
-
-  if (planSlug && !noPromo) {
-    const slug = planSlug.toLowerCase();
-    const mapping: Record<string, { tier: string; cycle: string }> = {
-      solo_monthly: { tier: "SOLO", cycle: "MONTHLY" },
-      solo_annual: { tier: "SOLO", cycle: "ANNUAL" },
-      pro_monthly: { tier: "PRO", cycle: "MONTHLY" },
-      pro_annual: { tier: "PRO", cycle: "ANNUAL" },
-    };
-    const planKey = mapping[slug];
-    if (planKey) {
-      const plan = lookupPlan(planKey.tier as any, planKey.cycle as any);
-      promoCode = plan?.couponCode;
-    }
-  }
+  const promoCode = resolvePromoCode(
+    planSlug,
+    typeof window !== "undefined" ? window.location.search : "",
+  );
 
   // Paid flow: create Stripe Checkout session
   try {

@@ -34,9 +34,13 @@ import {
   AdminResetTokensRequestSchema,
   AdminChangePlanRequestSchema,
   AdminGetOrgSeatUsageRequestSchema,
+  AdminListStoreTransactionsRequestSchema,
   AdminSetSeatAllocationsRequestSchema,
+  GetSubscriptionRequestSchema,
   type OrgSeatSummary,
   type PlanInfo,
+  type StoreTransactionInfo,
+  type Subscription,
 } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
 import { ExperimentalControls } from "@/components/admin/ExperimentalControls";
@@ -716,6 +720,10 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         </section>
       )}
 
+      {/* Sklep (docs/70 §7.5) — renderuje się tylko dla subskrypcji
+          kupionych w App Store / Google Play. */}
+      <StoreSection orgId={orgId} />
+
       {/* Action dialogs ----------------------------------------- */}
       <ActionDialog
         open={openDialog === "block"}
@@ -1128,6 +1136,172 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         </div>
       </ActionDialog>
     </div>
+  );
+}
+
+// Sklep — provider, produkt, środowisko i dziennik transakcji dla
+// subskrypcji kupionych w aplikacji (docs/70 §7.5).
+//
+// Osobny komponent, a nie kolejne pola w OrgDetail, z dwóch powodów:
+// odpada rozrost i tak długiej listy hooków w komponencie nadrzędnym, a
+// całość znika z DOM-u dla organizacji rozliczanych przez Stripe'a —
+// czyli dla większości.
+//
+// `invoices` w billing-svc jest Stripe-only z założenia, więc TO jest
+// jedyna historia płatności, jaką mamy dla IAP. Backend jest świeży, a
+// panel musi działać także zanim RPC pojawi się na danym środowisku:
+// każdy błąd (łącznie z `unimplemented`) kończy się pustym stanem, nie
+// wywróconą stroną.
+function StoreSection({ orgId }: { orgId: string }) {
+  const t = useTranslations("admin.orgStore");
+  const locale = useLocale();
+  const [sub, setSub] = useState<Subscription | null>(null);
+  const [transactions, setTransactions] = useState<StoreTransactionInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      let current: Subscription | null = null;
+      try {
+        current = await billingClient.getSubscription(
+          create(GetSubscriptionRequestSchema, { organizationId: orgId }),
+        );
+      } catch {
+        current = null; // brak subskrypcji / starszy backend — karty nie ma
+      }
+      if (cancelled) return;
+      setSub(current);
+
+      const provider = (current?.billingProvider ?? "").toUpperCase();
+      if (provider !== "APPLE_IAP" && provider !== "GOOGLE_IAP") {
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const resp = await billingClient.adminListStoreTransactions(
+          create(AdminListStoreTransactionsRequestSchema, {
+            organizationId: orgId,
+            limit: 20,
+          }),
+        );
+        if (!cancelled) setTransactions(resp.transactions);
+      } catch {
+        if (!cancelled) setTransactions([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const fmt = (ts: Parameters<typeof timestampDate>[0] | undefined) => {
+    if (!ts) return "—";
+    return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "pl-PL", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(timestampDate(ts));
+  };
+
+  const provider = (sub?.billingProvider ?? "").toUpperCase();
+  if (provider !== "APPLE_IAP" && provider !== "GOOGLE_IAP") return null;
+
+  // Produkt i środowisko nie są polami Subscription — najświeższa
+  // transakcja (zapytanie sortuje malejąco po purchase_date) jest
+  // jedynym miejscem, gdzie sklep nam je podaje.
+  const latest = transactions[0];
+
+  return (
+    <section>
+      <Card title={t("sectionTitle")}>
+        <DefRow
+          label={t("provider")}
+          value={t(`providerLabel.${provider}`)}
+        />
+        <DefRow label={t("productId")} value={latest?.productId || "—"} mono />
+        <DefRow
+          label={t("environment")}
+          value={latest?.environment || "—"}
+          mono
+        />
+        {sub?.graceUntil && (
+          <DefRow label={t("graceUntil")} value={fmt(sub.graceUntil)} />
+        )}
+
+        {loading && (
+          <p className="font-serif text-mist text-sm mt-3">{t("loading")}</p>
+        )}
+
+        {!loading && transactions.length === 0 && (
+          <p className="font-serif text-mist text-sm mt-3">{t("empty")}</p>
+        )}
+
+        {!loading && transactions.length > 0 && (
+          <div className="mt-3 overflow-x-auto rounded-card border border-frost/10">
+            <table className="w-full text-sm">
+              <thead className="bg-frost/5">
+                <tr>
+                  {[
+                    "purchaseDate",
+                    "product",
+                    "expires",
+                    "environment",
+                    "offer",
+                    "revoked",
+                  ].map((key) => (
+                    <th
+                      key={key}
+                      className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist whitespace-nowrap"
+                    >
+                      {t(`columns.${key}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => (
+                  <tr
+                    key={`${tx.provider}-${tx.transactionId}`}
+                    className="border-t border-frost/5"
+                  >
+                    <td className="px-3 py-2 font-mono text-mist text-xs whitespace-nowrap">
+                      {fmt(tx.purchaseDate)}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-frost text-xs break-all">
+                      {tx.productId}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-mist text-xs whitespace-nowrap">
+                      {fmt(tx.expiresDate)}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-mist text-xs">
+                      {tx.environment}
+                    </td>
+                    <td className="px-3 py-2 font-serif text-mist text-xs break-all">
+                      {tx.offerIdentifier || "—"}
+                    </td>
+                    <td
+                      className={`px-3 py-2 font-mono text-xs whitespace-nowrap ${
+                        tx.revocationDate ? "text-magma" : "text-mist"
+                      }`}
+                    >
+                      {fmt(tx.revocationDate)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </section>
   );
 }
 

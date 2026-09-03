@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
-type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts" | "ontologies" | "aiChat" | "stripeTest"; href: string };
+type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics" | "crm" | "prompts" | "ontologies" | "aiChat" | "discountCodes" | "stripeTest"; href: string };
 
 function getSidebarIcon(key: string, active: boolean) {
   const colorClass = active ? "text-ember" : "text-mist group-hover:text-frost transition-colors";
@@ -74,6 +74,12 @@ function getSidebarIcon(key: string, active: boolean) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       );
+    case "discountCodes":
+      return (
+        <svg className={`w-5 h-5 ${colorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+      );
     case "stripeTest":
       return (
         <svg className={`w-5 h-5 ${colorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -110,6 +116,7 @@ export function AdminShell({
     { key: "prompts",    href: `${prefix}/admin/prompts` },
     { key: "ontologies", href: `${prefix}/admin/ontologies` },
     { key: "aiChat",     href: `${prefix}/admin/ai-chat` },
+    { key: "discountCodes", href: `${prefix}/admin/discount-codes` },
     { key: "stripeTest", href: `${prefix}/admin/stripe-test` },
   ];
 

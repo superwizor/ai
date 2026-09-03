@@ -14,6 +14,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -271,6 +272,10 @@ export function OnboardingWizard({ locale }: { locale: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const t = useCallback((pl: string, en: string) => (locale === "en" ? en : pl), [locale]);
+  // Krok 7 przeszedł na next-intl (messages/{pl,en}.json → onboarding.step7).
+  // Reszta kreatora nadal trzyma pary pl/en inline — przepisanie całości
+  // to osobna zmiana, nie okazja przy poprawce treści.
+  const tStep7 = useTranslations("onboarding.step7");
 
   const handleDone = useCallback(async (skipped: boolean) => {
     setSaving(true);
@@ -742,23 +747,17 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="#8FA5A0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
               </div>
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] text-center mb-3 leading-tight">
-                {t(
-                  "Pamiętaj: Subskrypcje kupujesz tylko na stronie WWW!",
-                  "Remember: Subscriptions are managed only on the website!"
-                )}
+                {tStep7("title")}
               </h2>
               <p className="font-sans text-sm text-[#8FA5A0]/80 text-center leading-relaxed mb-8">
-                {t(
-                  "Zarządzaj swoim kontem logując się na www.superwizor.ai",
-                  "Manage your account by logging in at www.superwizor.ai"
-                )}
+                {tStep7("subtitle")}
               </p>
 
               <motion.div className="flex flex-col gap-3 mb-6" variants={stagger} initial="initial" animate="animate">
                 {[
-                  { key: "plan", label: t("Zmiana planu i subskrypcji", "Change plan & subscription"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg> },
-                  { key: "invoice", label: t("Faktury i historia płatności", "Invoices & payment history"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg> },
-                  { key: "profile", label: t("Dane profilu i organizacji", "Profile & organization data"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                  { key: "plan", label: tStep7("itemPlan"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg> },
+                  { key: "invoice", label: tStep7("itemInvoice"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg> },
+                  { key: "profile", label: tStep7("itemProfile"), svg: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                 ].map(({ key, label, svg }) => (
                   <motion.div
                     key={key}
@@ -776,17 +775,14 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 <div className="flex items-start gap-3">
                   <svg className="w-5 h-5 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
                   <p className="font-sans text-xs text-[#8FA5A0] leading-relaxed">
-                    {t(
-                      "Aplikacja mobilna służy tylko do nagrywania sesji i przeglądania raportów.",
-                      "The mobile app is only for recording sessions and reviewing reports."
-                    )}
+                    {tStep7("storeNote")}
                   </p>
                 </div>
               </div>
 
               <PrimaryButton
                 onClick={goNext}
-                label={t("Rozumiem, dalej", "Got it, continue")}
+                label={tStep7("cta")}
               />
             </StepCard>
           )}

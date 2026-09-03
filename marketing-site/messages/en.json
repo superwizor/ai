@@ -78,7 +78,8 @@
       "prompts": "Prompts",
       "stripeTest": "Stripe Testing",
       "aiChat": "AI Chat",
-      "ontologies": "Ontologies"
+      "ontologies": "Ontologies",
+      "discountCodes": "Discount codes"
     },
     "header": {
       "signOut": "Sign out",
@@ -970,6 +971,142 @@
       "toneNone": "default",
       "tone_phenomenological": "phenomenological",
       "layoutNotice": "This ontology uses a custom section layout (mirroring the legacy report). Edit order and titles in the YAML view — weights do not apply."
+    },
+    "discountCodes": {
+      "metaTitle": "Discount codes",
+      "title": "Discount codes",
+      "subhead": "Discount campaigns for web checkout. Stripe is the authority on the redemption limit — the counter below is an approximation.",
+      "loading": "Loading discount codes…",
+      "empty": "No discount codes yet.",
+      "error": "Could not load the discount codes.",
+      "retry": "Try again",
+      "showInactive": "Show inactive",
+      "createCta": "New code",
+      "columns": {
+        "code": "Code",
+        "name": "Name",
+        "percent": "Discount",
+        "validUntil": "Valid until",
+        "redemptions": "Redemptions",
+        "channels": "Channels",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "expired": "Expired"
+      },
+      "duration": {
+        "ONCE": "Once",
+        "REPEATING": "{count, plural, one {For # period} other {For # periods}}",
+        "FOREVER": "Forever"
+      },
+      "durationOption": {
+        "ONCE": "Once",
+        "REPEATING": "For several periods",
+        "FOREVER": "Forever"
+      },
+      "cycleLabel": {
+        "MONTHLY": "Monthly",
+        "ANNUAL": "Annual"
+      },
+      "channelLabel": {
+        "WEB": "Web",
+        "APPLE": "App Store",
+        "GOOGLE": "Google Play"
+      },
+      "allTiers": "All plans",
+      "allCycles": "All cycles",
+      "newCustomersOnlyBadge": "New customers only",
+      "viewCta": "Details",
+      "hideCta": "Collapse",
+      "editCta": "Edit",
+      "deactivateCta": "Deactivate",
+      "activateCta": "Activate",
+      "create": {
+        "title": "New discount code",
+        "body": "The code is created here and in Stripe at once (coupon + promotion code). Stripe enforces the redemption limit at checkout.",
+        "codeLabel": "Code",
+        "codePlaceholder": "e.g. SPRING25",
+        "codeHint": "3 to 32 characters: capital letters, digits and underscore. Lowercase input is upper-cased.",
+        "nameLabel": "Campaign name",
+        "namePlaceholder": "Spring campaign 2026",
+        "percentLabel": "Discount (%)",
+        "validUntilLabel": "Valid until",
+        "maxRedemptionsLabel": "Maximum redemptions",
+        "durationLabel": "Discount duration",
+        "durationPeriodsLabel": "Number of billing periods",
+        "tiersLabel": "Plans covered",
+        "tiersHint": "Nothing selected = all plans.",
+        "cyclesLabel": "Billing cycles",
+        "cyclesHint": "Nothing selected = all cycles.",
+        "channelsLabel": "Channels",
+        "channelsHint": "In v1 only the Web channel works — the stores land in phase 2.",
+        "newCustomersOnlyLabel": "New customers only",
+        "fullDiscountWarning": "A 100% discount means a fully free subscription — Stripe will not ask for card details. Use it for test and demo accounts only.",
+        "invalidCode": "The code must be 3 to 32 characters long and contain only A–Z, 0–9 and _.",
+        "invalidName": "Enter a campaign name.",
+        "invalidPercent": "The discount must be greater than 0 and at most 100.",
+        "invalidValidUntil": "The expiry must be a date in the future.",
+        "invalidMaxRedemptions": "The redemption limit must be greater than zero.",
+        "invalidDurationPeriods": "Enter a number of periods greater than zero."
+      },
+      "edit": {
+        "title": "Edit code",
+        "body": "Changing the expiry or the limit creates a new Stripe promotion code under the same coupon and retires the old one. An empty field leaves the value unchanged.",
+        "nameLabel": "Campaign name",
+        "validUntilLabel": "Valid until",
+        "maxRedemptionsLabel": "Maximum redemptions",
+        "unchangedHint": "Empty field = no change."
+      },
+      "deactivate": {
+        "title": "Deactivate code",
+        "body": "The code stops working for new payments. Subscriptions that already used it keep the discount."
+      },
+      "activate": {
+        "title": "Activate code",
+        "body": "The code will work at checkout again, as long as its expiry has not passed."
+      },
+      "details": {
+        "title": "Redemptions",
+        "loading": "Loading redemptions…",
+        "error": "Could not load the code details.",
+        "empty": "This code has not been used yet.",
+        "columns": {
+          "organization": "Organization",
+          "channel": "Channel",
+          "status": "Status",
+          "reservedAt": "Reserved",
+          "committedAt": "Committed"
+        },
+        "status": {
+          "RESERVED": "Reserved",
+          "COMMITTED": "Committed",
+          "RELEASED": "Released"
+        }
+      }
+    },
+    "orgStore": {
+      "sectionTitle": "Store",
+      "provider": "Provider",
+      "productId": "Product",
+      "environment": "Environment",
+      "graceUntil": "Grace period until",
+      "loading": "Loading store transactions…",
+      "empty": "No store transactions for this organization.",
+      "providerLabel": {
+        "APPLE_IAP": "App Store",
+        "GOOGLE_IAP": "Google Play"
+      },
+      "columns": {
+        "purchaseDate": "Purchased",
+        "product": "Product",
+        "expires": "Expires",
+        "environment": "Environment",
+        "offer": "Offer",
+        "revoked": "Refunded"
+      }
     }
   },
   "errors": {
@@ -1004,7 +1141,12 @@
       "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead.",
       "seatAllocationRequired": "The organization has several seat allocations — pick which plan the therapist consumes.",
       "tokensLimitBelowPlan": "The new limit is below this organization's plan limit. The values you entered are valid — the plan rule blocks this. Change the plan or the seat allocation instead of lowering the counter.",
-      "promptVersionConflict": "The prompt changed in the meantime (a chat-prompt save, a second Studio window, or another person). The state has been refreshed — click Confirm again."
+      "promptVersionConflict": "The prompt changed in the meantime (a chat-prompt save, a second Studio window, or another person). The state has been refreshed — click Confirm again.",
+      "discountCodeFormat": "The code may contain only A–Z, 0–9 and _, 3 to 32 characters.",
+      "discountCodeExists": "A code with this name already exists. Pick another one.",
+      "discountCodeExpiredOnCreate": "The expiry must be a date in the future.",
+      "stripeNotConfigured": "Web-channel codes need a Stripe connection. Contact the engineering team.",
+      "otherProviderActive": "The organization has an active subscription bought in a store. It is managed in the App Store or Google Play."
     }
   },
   "nav": {
@@ -1678,7 +1820,24 @@
     "billingInvoicesView": "View in Stripe",
     "billingInvoicesShowBtn": "Show invoice history",
     "billingInvoicesHideBtn": "Hide invoice history",
-    "billingInvoicesLoading": "Loading..."
+    "billingInvoicesLoading": "Loading...",
+    "billingProviderLabel": "Provider",
+    "billingProviderStripe": "Stripe (superwizor.ai)",
+    "billingProviderApple": "App Store",
+    "billingProviderGoogle": "Google Play",
+    "billingProviderManual": "Organization agreement",
+    "billingStoreAppleTitle": "Subscription purchased in the App Store",
+    "billingStoreAppleBody": "You manage the plan, the payment method and cancellation in the App Store subscription settings on your Apple device.",
+    "billingStoreGoogleTitle": "Subscription purchased in Google Play",
+    "billingStoreGoogleBody": "You manage the plan, the payment method and cancellation in the Google Play subscription settings.",
+    "billingStoreManageAppleCta": "Open subscriptions in the App Store",
+    "billingStoreManageGoogleCta": "Open subscriptions in Google Play",
+    "billingStoreInvoicesApple": "Receipts for this subscription live in the App Store — Apple issues them, not Superwizor AI. VAT invoices with a tax ID are available only for purchases made on the website.",
+    "billingStoreInvoicesGoogle": "Receipts for this subscription live in Google Play — Google issues them, not Superwizor AI. VAT invoices with a tax ID are available only for purchases made on the website.",
+    "billingOrgManagedTitle": "Your organization manages this plan",
+    "billingOrgManagedBody": "Your organization's administrator assigns the seat. Plan changes and billing go through them.",
+    "billingGraceTitle": "Payment problem",
+    "billingGraceBody": "The last payment failed. Update your payment method in the store by {date} to keep access."
   },
   "b": {
     "hero": {
@@ -2040,6 +2199,53 @@
       "chartUtilizationInfo": "Percentage of the token limit used in each billing period, per organization therapist.",
       "chartHourly": "Session distribution — day & hour",
       "chartHourlyDesc": "When therapists record most often"
+    }
+  },
+  "billing": {
+    "discount": {
+      "label": "Discount code",
+      "placeholder": "Enter code",
+      "checkCta": "Check",
+      "checking": "Checking…",
+      "clearCta": "Remove code",
+      "appliedTitle": "Code {code} applied",
+      "campaign": "Campaign: {name}",
+      "planLine": "{plan}: {before} → {after}",
+      "redemptionsLeft": "About {count} redemptions left.",
+      "durationOnce": "The discount applies to the first payment.",
+      "durationRepeating": "The discount applies for {count} consecutive periods.",
+      "durationForever": "The discount applies to every renewal.",
+      "invalidFormat": "The code may contain only letters, digits and underscore (3 to 32 characters).",
+      "unverified": "We could not check the code right now. We will pass it on to checkout — if it is valid you will see the discount before confirming the order.",
+      "reason": {
+        "NOT_FOUND": "We don't recognise this code. Check the spelling.",
+        "EXPIRED": "This code has expired.",
+        "NOT_STARTED": "This code is not active yet.",
+        "EXHAUSTED": "This code has reached its redemption limit.",
+        "ALREADY_USED": "This code has already been used on your account.",
+        "PLAN_NOT_ELIGIBLE": "This code does not cover the selected plan or billing cycle.",
+        "CHANNEL_NOT_ELIGIBLE": "This code cannot be used when buying on the website.",
+        "NEW_CUSTOMERS_ONLY": "This code is reserved for new customers.",
+        "INACTIVE": "This code has been switched off.",
+        "UNKNOWN": "We cannot apply this code.",
+        "OK": "The code is valid."
+      }
+    },
+    "checkout": {
+      "otherProviderApple": "You already have an active subscription bought in the App Store. You manage it in the subscription settings on your Apple device — buying on the website is possible only after {date}.",
+      "otherProviderGoogle": "You already have an active subscription bought in Google Play. You manage it in the Google Play subscription settings — buying on the website is possible only after {date}.",
+      "otherProvider": "You already have an active subscription bought in a store. You manage it in the store settings."
+    }
+  },
+  "onboarding": {
+    "step7": {
+      "title": "Buy your plan on the website or in the app",
+      "subtitle": "You can buy and change your subscription both at www.superwizor.ai and in the mobile app. The account and the session limit are shared — it does not matter where you buy.",
+      "itemPlan": "Change plan & subscription",
+      "itemInvoice": "Invoices & payment history",
+      "itemProfile": "Profile & organization data",
+      "storeNote": "Purchases in the App Store or Google Play are billed by the store — we issue VAT invoices with a tax ID only for purchases made on the website.",
+      "cta": "Got it, continue"
     }
   }
 }

@@ -1,0 +1,40 @@
+       at pages/register.page.ts:112
+
+      110 |     // pole języka i wywracała test "identity-svc unreachable", który
+      111 |     // przez ten krok nie przechodzi.
+    > 112 |     await this.submitButton.waitFor({ state: "visible" });
+          |                             ^
+      113 |   }
+      114 |
+      115 |   /** Submit the form. */
+        at RegisterTherapistPage.fillRequiredFields (/Users/dpiotrak/supervisorai_v2/ai/marketing-site/tests/e2e/pages/register.page.ts:112:29)
+        at /Users/dpiotrak/supervisorai_v2/ai/marketing-site/tests/e2e/register-therapist.spec.ts:210:5
+
+    Error Context: test-results/register-therapist-Therapi-7fb8b-identity-svc-is-unreachable-chromium-en/error-context.md
+
+  23 failed
+    [chromium-pl] › tests/e2e/accept-invite-phone.spec.ts:49:7 › Akceptacja zaproszenia — numer telefonu › zaproszenie terapeuty: telefon jest wymagany i trafia do AcceptInvitation 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:400:7 › Stripe Checkout Config › checkout API route exists 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:412:7 › Stripe Checkout Config › checkout rejects missing organizationId 
+    [chromium-pl] › tests/e2e/crm-onboarding-stripe.spec.ts:422:7 › Stripe Checkout Config › checkout rejects invalid UUID for organizationId 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:433:7 › Bad Path: API /api/checkout › POST /api/checkout without body returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:440:7 › Bad Path: API /api/checkout › POST /api/checkout with missing priceId returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:451:7 › Bad Path: API /api/checkout › POST /api/checkout with invalid organizationId returns 400 
+    [chromium-pl] › tests/e2e/register-flow.spec.ts:462:7 › Bad Path: API /api/checkout › GET /api/checkout returns 405 (method not allowed) 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:33:7 › Therapist Registration › renders form with heading and required fields visible 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:127:7 › Therapist Registration › happy path: fills form, fires CreateUser + UpdateProfile, redirects to verify-email 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:164:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use 
+    [chromium-pl] › tests/e2e/register-therapist.spec.ts:195:7 › Therapist Registration › shows server error when identity-svc is unreachable 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:400:7 › Stripe Checkout Config › checkout API route exists 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:412:7 › Stripe Checkout Config › checkout rejects missing organizationId 
+    [chromium-en] › tests/e2e/crm-onboarding-stripe.spec.ts:422:7 › Stripe Checkout Config › checkout rejects invalid UUID for organizationId 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:433:7 › Bad Path: API /api/checkout › POST /api/checkout without body returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:440:7 › Bad Path: API /api/checkout › POST /api/checkout with missing priceId returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:451:7 › Bad Path: API /api/checkout › POST /api/checkout with invalid organizationId returns 400 
+    [chromium-en] › tests/e2e/register-flow.spec.ts:462:7 › Bad Path: API /api/checkout › GET /api/checkout returns 405 (method not allowed) 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:33:7 › Therapist Registration › renders form with heading and required fields visible 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:127:7 › Therapist Registration › happy path: fills form, fires CreateUser + UpdateProfile, redirects to verify-email 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:164:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use 
+    [chromium-en] › tests/e2e/register-therapist.spec.ts:195:7 › Therapist Registration › shows server error when identity-svc is unreachable 
+  253 passed (5.0m)
+[ELIFECYCLE] Command failed with exit code 1.

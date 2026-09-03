@@ -10,10 +10,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
 import { findPlan, formatPrice } from "@/lib/billing/plans";
+import {
+  DiscountCodeField,
+  discountAppliesTo,
+  type AppliedDiscount,
+} from "@/components/billing/DiscountCodeField";
 import { identityClient, billingClient } from "@/lib/connect/clients";
 import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { create } from "@bufbuild/protobuf";
@@ -31,6 +37,14 @@ export function UpgradeSection({
   const [currentPlanTier, setCurrentPlanTier] = useState<string | undefined>(undefined);
   const prefix = locale === "en" ? "/en" : "";
   const isAnnual = cycle === "ANNUAL";
+
+  // Validated code overrides the plan's own coupon when it covers that
+  // plan; otherwise the existing auto-coupon behaviour stands.
+  const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
+  const selectCycle = (next: BillingCycle) => {
+    setCycle(next);
+    setDiscount(null);
+  };
 
   useEffect(() => {
     const fetchCurrentPlan = async () => {
@@ -102,7 +116,7 @@ export function UpgradeSection({
             <button
               role="tab"
               aria-selected={!isAnnual}
-              onClick={() => setCycle("MONTHLY")}
+              onClick={() => selectCycle("MONTHLY")}
               className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${
                 !isAnnual
                   ? "text-white"
@@ -114,7 +128,7 @@ export function UpgradeSection({
             <button
               role="tab"
               aria-selected={isAnnual}
-              onClick={() => setCycle("ANNUAL")}
+              onClick={() => selectCycle("ANNUAL")}
               className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${
                 isAnnual
                   ? "text-white"
@@ -134,6 +148,18 @@ export function UpgradeSection({
           )}
         </div>
 
+        {/* --- Discount code (docs/70 §6.4) --- */}
+        <div className="mb-10">
+          <DiscountCodeField
+            targets={[
+              { tier: "SOLO", cycle },
+              { tier: "PRO", cycle },
+            ]}
+            resetToken={cycle}
+            onChange={setDiscount}
+          />
+        </div>
+
         {/* --- Two Plan Cards --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {solo && (
@@ -146,6 +172,7 @@ export function UpgradeSection({
               prefix={prefix}
               isHero={false}
               currentPlanTier={currentPlanTier}
+              discount={discount}
             />
           )}
           {pro && (
@@ -158,6 +185,7 @@ export function UpgradeSection({
               prefix={prefix}
               isHero={true}
               currentPlanTier={currentPlanTier}
+              discount={discount}
             />
           )}
         </div>
@@ -186,6 +214,7 @@ function UpgradeCard({
   prefix,
   isHero,
   currentPlanTier,
+  discount,
 }: {
   tier: string;
   tierName: string;
@@ -195,9 +224,11 @@ function UpgradeCard({
   prefix: string;
   isHero: boolean;
   currentPlanTier?: string;
+  discount: AppliedDiscount | null;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tCheckout = useTranslations("billing.checkout");
   const searchParams = useSearchParams();
   // When user arrives from /account → ?from=account, we pass returnUrl
   // to the checkout API so Stripe redirects back to /account after payment.
@@ -248,7 +279,15 @@ function UpgradeCard({
   // Build the correct planSlug reflecting the selected cycle
   const cycleSuffix = cycle === "ANNUAL" ? "annual" : "monthly";
   const planSlug = `${tier}_${cycleSuffix}`;
-  const registerHref = `${prefix}/register/therapist?plan=${planSlug}`;
+  // A code only rides along when it actually covers THIS plan+cycle —
+  // otherwise checkout would reject a discount the visitor never asked
+  // to apply here.
+  const codeForThisPlan = discountAppliesTo(discount, tier.toUpperCase(), cycle)
+    ? discount!.code
+    : undefined;
+  const registerHref = `${prefix}/register/therapist?plan=${planSlug}${
+    codeForThisPlan ? `&code=${encodeURIComponent(codeForThisPlan)}` : ""
+  }`;
 
   // Checkout handler: if logged in → /api/checkout direct; else → registration
   const handleCheckout = useCallback(async () => {
@@ -351,10 +390,32 @@ function UpgradeCard({
           taxId,
           vatIdEu,
           address,
-          promoCode: row.couponCode || undefined,
+          promoCode: codeForThisPlan ?? row.couponCode ?? undefined,
           ...(returnUrl ? { returnUrl } : {}),
         }),
       });
+
+      // 409 = the org already has a store subscription, so Stripe must
+      // not sell it a second one (docs/70 §5.1, E22). This is a normal
+      // state to be in, not a failure to report as "Error: ...".
+      if (resp.status === 409) {
+        const body = await resp.json().catch(() => ({} as Record<string, string>));
+        if (body?.error === "OTHER_PROVIDER_ACTIVE") {
+          const until = body.blocked_until ? new Date(body.blocked_until) : null;
+          const date =
+            until && !Number.isNaN(until.getTime())
+              ? until.toLocaleDateString(locale === "en" ? "en-GB" : "pl-PL")
+              : null;
+          setError(
+            date && body.provider === "APPLE_IAP"
+              ? tCheckout("otherProviderApple", { date })
+              : date && body.provider === "GOOGLE_IAP"
+                ? tCheckout("otherProviderGoogle", { date })
+                : tCheckout("otherProvider"),
+          );
+          return;
+        }
+      }
 
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
@@ -378,7 +439,7 @@ function UpgradeCard({
     } finally {
       setLoading(false);
     }
-  }, [row.stripePriceId, prefix, registerHref, locale]);
+  }, [row.stripePriceId, row.couponCode, prefix, registerHref, locale, codeForThisPlan, returnUrl, tCheckout]);
 
   return (
     <div
