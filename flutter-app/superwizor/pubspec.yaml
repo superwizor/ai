@@ -94,6 +94,13 @@ dependencies:
   firebase_crashlytics: ^5.2.0
   firebase_performance: ^0.11.3
 
+  # Zakupy w sklepach (docs/70 §7.4). Ciągnie za sobą
+  # in_app_purchase_storekit (StoreKit 2) i in_app_purchase_android
+  # (Play Billing Library ≥ 7 — wymóg Play od 08/2025). Weryfikacja i
+  # entitlement są SERWEROWE: aplikacja nigdy nie finishuje transakcji
+  # przed potwierdzeniem przez billing-svc (docs/70 E28).
+  in_app_purchase: ^3.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

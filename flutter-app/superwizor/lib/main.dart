@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'analytics/analytics_collector.dart';
@@ -27,8 +28,11 @@ import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'client/client_home_screen.dart';
 import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
+import 'providers/billing_surface_provider.dart';
+import 'providers/signup_draft_provider.dart';
 import 'screens/account_not_found_screen.dart';
 import 'screens/deactivated_account_screen.dart';
+import 'screens/profile_setup_screen.dart';
 import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
@@ -251,6 +255,14 @@ void main() async {
   // uprawnienia (o zgodę prosi ekran konfiguracji).
   container.read(fcmTokenServiceProvider).start();
 
+  // Zakupy sklepowe: nasłuch `purchaseStream` musi żyć OD STARTU aplikacji,
+  // a nie od wejścia na paywall (docs/70 E28). Transakcja potwierdzona przez
+  // sklep tuż przed crashem albo utratą sieci wraca właśnie tędy — i dopiero
+  // po jej weryfikacji na serwerze wolno ją domknąć. Bez tego użytkownik
+  // zostaje z obciążoną kartą i bez planu. Nieszkodliwe przed zalogowaniem i
+  // na platformach bez sklepu (usługa sama się wtedy wyłącza).
+  unawaited(container.read(storePurchaseServiceProvider).start());
+
   // Listen to connectivity restoration and refresh patient data
   setupConnectivityListener(container);
 
@@ -385,10 +397,22 @@ class _AuthGate extends ConsumerWidget {
 
     final authState = ref.watch(firebaseUserProvider);
 
+    // Sesja Firebase bez wiersza w `users` ma dwa różne znaczenia. Gdy
+    // istnieje szkic rejestracji, użytkownik jest w środku naszego własnego
+    // przepływu „Załóż konto" (docs/70 S1) i należy mu się ekran profilu.
+    // Bez szkicu to cudza tożsamość bez konta — ślepy zaułek z docs/39,
+    // którego świadomie NIE leczymy cichym zakładaniem konta.
+    final signupDraft = ref.watch(signupDraftProvider);
+
     return authState.when(
       data: (user) {
         if (user == null) return const LoginScreen();
-        if (notRegistered) return const AccountNotFoundScreen();
+        if (notRegistered) {
+          if (signupDraft != null) {
+            return ProfileSetupScreen(draft: signupDraft);
+          }
+          return const AccountNotFoundScreen();
+        }
         if (deactivated) return DeactivatedAccountScreen(deleted: deleted);
         if (isClient) return const ClientHomeScreen();
         return const _LockGate();

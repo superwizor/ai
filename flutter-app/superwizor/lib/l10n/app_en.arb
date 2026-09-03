@@ -138,6 +138,7 @@
   "auth_toggle_to_register": "Don't have an account? ",
   "avatar_customize_background_color": "BACKGROUND COLOR",
   "avatar_customize_desc": "Give your clients unique labels to quickly find them in records.",
+  "billing_choose_plan_cta": "Choose a plan",
   "billing_delete_confirm_action": "Delete permanently",
   "billing_delete_confirm_body": "Audio will be permanently deleted from this device. This action cannot be undone.",
   "billing_delete_confirm_title": "Delete session recording?",
@@ -401,12 +402,19 @@
   "delete_account_consequence_1": "All clinical documentation (all patients, records, sessions, and AI reports) will be permanently deleted.",
   "delete_account_consequence_2": "Your subscription (if you have one) will not be automatically canceled. You must cancel it separately in the App Store or Google Play.",
   "delete_account_consequence_3": "You will not be able to recover your data after completing this process. The operation is irreversible.",
+  "delete_account_reason_label": "Why are you leaving? (optional)",
+  "delete_account_reason_hint": "Your answer helps us improve.",
+  "delete_account_failed": "We could not delete the account. Please try again.",
   "delete_account_relogin_error": "Please log in again to delete your account.",
   "delete_account_sheet_button": "DELETE ACCOUNT",
   "delete_account_sheet_cancel": "Cancel",
   "delete_account_sheet_hint": "type here…",
   "delete_account_sheet_subtitle": "To confirm, type:",
   "delete_account_sheet_title": "Final step",
+  "delete_account_store_sub_title": "Cancel your subscription first",
+  "delete_account_store_sub_body": "You have an active subscription bought in the store. Deleting the account does not cancel it — do that in your subscription settings, otherwise the store will keep charging you.",
+  "delete_account_store_sub_open": "Open subscription settings",
+  "delete_account_store_sub_force": "I understand, delete anyway",
   "delete_account_title": "Delete account",
   "delete_account_toggle_text": "I understand the consequences\nand want to delete my account",
   "drawer_about": "About App",
@@ -876,6 +884,124 @@
   "pending_uploads_phase_encrypting": "Encrypting recording...",
   "pending_uploads_phase_failed": "Upload interrupted",
   "pending_uploads_phase_offline": "Offline — will upload automatically",
+  "purchase_error_foreign_account": "This purchase belongs to a different Superwizor AI account. Sign in to that account or contact us.",
+  "purchase_error_store_not_configured": "Store purchases are not configured yet. Please try again later.",
+  "purchase_error_sandbox_not_allowed": "This account cannot make sandbox purchases.",
+  "plan_picker_unavailable_title": "Purchases are temporarily unavailable",
+  "plan_picker_unavailable_body": "You cannot buy a plan in this app right now. Your recordings and reports keep working as usual.",
+  "plan_picker_blocked_until": "Valid until {date}.",
+  "@plan_picker_blocked_until": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "register_title": "Create an account",
+  "register_subtitle": "A few fields and you can record your first session.",
+  "register_email_divider": "or with an email address",
+  "register_email_cta": "Sign up with email",
+  "register_password_hint": "Password (min. 8 characters)",
+  "register_have_account": "Already have an account? ",
+  "register_sign_in_action": "Sign in",
+  "profile_setup_title": "Your profile",
+  "profile_setup_subtitle": "These three fields are enough to start. You can fill in the rest later in settings.",
+  "profile_setup_first_name": "First name",
+  "profile_setup_last_name": "Last name",
+  "profile_setup_modality_label": "Therapy modality",
+  "profile_setup_modality_hint": "Choose a modality",
+  "profile_setup_modality_help": "The modality shapes how AI writes your session reports. You can change it any time.",
+  "profile_setup_consent_prefix": "I accept the ",
+  "profile_setup_consent_terms": "Terms of Service",
+  "profile_setup_consent_conjunction": " and the ",
+  "profile_setup_consent_privacy": "Privacy Policy",
+  "profile_setup_error_first_name": "Enter your first name.",
+  "profile_setup_error_last_name": "Enter your last name.",
+  "profile_setup_error_consent": "Accept the Terms and Privacy Policy to continue.",
+  "profile_setup_submit": "Create my account",
+  "profile_setup_failed": "We could not create your account. Check your connection and try again.",
+  "subscription_paused_title": "Subscription paused",
+  "subscription_paused_body": "Your subscription is paused in Google Play. Resume it to process sessions again.",
+  "subscription_resume_in_store": "Resume in Google Play",
+  "subscription_status_label": "Status",
+  "subscription_status_active": "Active",
+  "subscription_status_trialing": "Trial",
+  "subscription_status_past_due": "Payment overdue",
+  "subscription_status_paused": "Paused",
+  "subscription_status_canceled": "Ended",
+  "subscription_cancel_at_period_end": "This subscription will not renew — you have access until {date}.",
+  "@subscription_cancel_at_period_end": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "upload_error_email_unverified": "Confirm your email address to send this recording for analysis.",
+  "plan_picker_title": "Choose a plan",
+  "plan_picker_subtitle": "You can change or cancel your plan at any time.",
+  "plan_picker_cycle_monthly": "Monthly",
+  "plan_picker_cycle_annual": "Yearly",
+  "plan_picker_sessions": "{n, plural, =1{1 session per billing period} other{{n} sessions per billing period}}",
+  "@plan_picker_sessions": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "plan_picker_cta": "Subscribe",
+  "plan_picker_skip": "Continue without a plan",
+  "plan_picker_restore": "Restore purchases",
+  "plan_picker_empty": "There are no plans available for purchase on this device right now.",
+  "plan_picker_legal_monthly": "Billed monthly; the subscription renews automatically until cancelled. Cancel in your store settings at least 24 hours before the period ends. The store issues the receipt.",
+  "plan_picker_legal_annual": "Billed yearly; the subscription renews automatically until cancelled. Cancel in your store settings at least 24 hours before the period ends. The store issues the receipt.",
+  "plan_picker_legal_terms": "Terms of Service",
+  "plan_picker_legal_privacy": "Privacy Policy",
+  "plan_picker_current_plan": "Your current plan",
+  "purchase_success": "Your plan is active. Enjoy!",
+  "purchase_pending": "The store is waiting for the payment to clear. We will let you know when the plan is active.",
+  "purchase_error_store_unavailable": "The store is unavailable on this device.",
+  "purchase_error_product_unavailable": "This plan is temporarily unavailable in the store.",
+  "purchase_error_verification": "The payment went through but we could not confirm it on the server. Nothing is lost — we will finish this the next time you open the app.",
+  "purchase_error_generic": "The purchase failed. Please try again.",
+  "purchase_restore_none": "We found no purchases to restore.",
+  "purchase_restore_success": "Purchases restored.",
+  "purchase_blocked_other_provider": "You already have an active subscription bought elsewhere.",
+  "purchase_blocked_other_provider_until": "You already have an active subscription bought elsewhere — valid until {date}.",
+  "@purchase_blocked_other_provider_until": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_blocked_org_managed": "Your organisation manages this plan.",
+  "purchase_blocked_iap_disabled": "In-app purchases are temporarily disabled.",
+  "purchase_blocked_pending_checkout": "You have a payment open elsewhere. Finish it or try again later.",
+  "purchase_blocked_account_inactive": "This account is inactive.",
+  "purchase_blocked_generic": "This purchase is not available right now.",
+  "subscription_provider_label": "Provider",
+  "subscription_provider_apple": "App Store",
+  "subscription_provider_google": "Google Play",
+  "subscription_provider_stripe": "superwizor.ai",
+  "subscription_provider_manual": "Assigned plan",
+  "subscription_manage_button": "Manage subscription",
+  "subscription_manage_stripe_note": "You manage this subscription from your account on superwizor.ai.",
+  "subscription_manage_org_note": "Your organisation manages this plan.",
+  "subscription_grace_title": "Payment problem",
+  "subscription_grace_body": "The store could not take the payment. Update your payment method by {date} to keep access.",
+  "@subscription_grace_body": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "subscription_past_due_body": "The store could not charge for the subscription. New sessions will not be processed until the payment succeeds.",
+  "subscription_fix_payment": "Fix payment in the store",
+  "subscription_open_store_failed": "We could not open the store.",
+  "subscription_choose_plan": "Choose a plan",
   "upload_offline_waiting": "No connection — the recording is safe on this device. We'll upload it automatically once you're back online",
   "pending_uploads_phase_pending": "In queue",
   "pending_uploads_phase_resuming": "Resuming upload...",
@@ -1471,5 +1597,25 @@
   "pending_uploads_file_missing_title": "Recording unavailable",
   "pending_uploads_file_missing_desc": "The audio file for this session no longer exists on this device, so the upload cannot be resumed. If the recording was long and valuable, contact us — we will check whether any data reached the server.",
   "report_ready_snackbar": "The session report is ready.",
-  "report_ready_snackbar_open": "Open"
+  "report_ready_snackbar_open": "Open",
+  "verify_email_title": "Check your inbox",
+  "verify_email_body": "We sent a confirmation link to {email}.",
+  "@verify_email_body": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verify_email_why": "Confirmation is only needed before you send your first recording for analysis. You can record right away.",
+  "verify_email_resend": "Resend",
+  "verify_email_resent": "A new message is on its way.",
+  "verify_email_resend_failed": "We could not send the message. Try again in a moment.",
+  "verify_email_later": "I'll do it later",
+  "verify_email_check_now": "I've confirmed it",
+  "verify_email_still_unverified": "The address is still not confirmed.",
+  "verify_email_confirmed": "Email address confirmed.",
+  "verify_email_banner_title": "Confirm your email address",
+  "verify_email_banner_body": "Recordings wait on your device until you confirm the address. Recording itself works as usual.",
+  "verify_email_banner_action": "Confirm"
 }

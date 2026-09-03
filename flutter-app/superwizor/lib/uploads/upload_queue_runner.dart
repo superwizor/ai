@@ -63,6 +63,15 @@ typedef OnUploadComplete = Future<void> Function(PendingUpload row);
 /// caches so the kartoteka picks up the new status string.
 typedef OnAnalysisComplete = Future<void> Function(PendingUpload row);
 
+/// Marker w `lastError` dla wiersza wstrzymanego przez niepotwierdzony adres
+/// e-mail. UI tłumaczy go na komunikat z ARB — nie jest to tekst dla
+/// użytkownika, tylko stabilny kod stanu.
+const String kEmailUnverifiedError = 'upload.email_unverified';
+
+/// Pyta, czy adres e-mail terapeuty jest potwierdzony. Null → brak bramki
+/// (testy, stary kod wywołujący).
+typedef IsEmailVerified = Future<bool> Function();
+
 /// Fires once per successful CreateAudioUpload (transition pending→created).
 /// UI uses this to apply a local decrement on billingQuotaProvider so the
 /// SubscriptionPlanScreen shows the reservation immediately without waiting
@@ -81,6 +90,7 @@ class UploadQueueRunner {
     OnUploadComplete? onUploadComplete,
     OnAnalysisComplete? onAnalysisComplete,
     OnReservationCreated? onReservationCreated,
+    IsEmailVerified? isEmailVerified,
     Future<Directory> Function()? documentsDirProvider,
   })  : _queue = queue,
         _worker = worker,
@@ -93,6 +103,7 @@ class UploadQueueRunner {
         _onUploadComplete = onUploadComplete,
         _onAnalysisComplete = onAnalysisComplete,
         _onReservationCreated = onReservationCreated,
+        _isEmailVerified = isEmailVerified,
         _documentsDir = documentsDirProvider ?? getApplicationDocumentsDirectory;
 
   final UploadQueue _queue;
@@ -111,12 +122,33 @@ class UploadQueueRunner {
   /// jednym ticku — patrz komentarz w `_tick`. Krótki, bo to nie jest
   /// kara za błąd, tylko oddanie sterowania innym wierszom.
   static const _phaseHopBudgetBackoff = Duration(minutes: 2);
+
+  /// Jak długo wiersz czeka po odbiciu się od bramki e-mail. Krótko, bo to
+  /// nie kara: użytkownik klika link w skrzynce i chce, żeby ruszyło. Poza
+  /// tickiem budzi kolejkę powrót do aplikacji oraz potwierdzenie adresu.
+  static const _emailGateBackoff = Duration(minutes: 3);
   final Stream<List<ConnectivityResult>> _connectivityStream;
   final Future<bool> Function() _hasNetwork;
   final SessionStatusStream? _sessionStatusStream;
   final OnUploadComplete? _onUploadComplete;
   final OnAnalysisComplete? _onAnalysisComplete;
   final OnReservationCreated? _onReservationCreated;
+
+  /// Bramka „potwierdzony e-mail" przed pierwszym CreateAudioUpload
+  /// (docs/70 S1 krok 3, E4). Świadomie NIE dotyka nagrywania ani
+  /// szyfrowania — te fazy chodzą dalej i audio zostaje bezpieczne na
+  /// urządzeniu (UX-1 z docs/17: nic nigdy nie blokuje mikrofonu).
+  ///
+  /// Powód, dla którego bramka stoi tutaj, a nie przy starcie sesji: bez
+  /// potwierdzonego adresu nie da się spalić tokenów STT/LLM, więc to jedno
+  /// miejsce zamyka „farmę triali" na zmyślone adresy. Jednocześnie jest to
+  /// najpóźniejszy moment, w którym da się to zrobić bez odbierania komuś
+  /// nagrania sesji, która właśnie trwa.
+  final IsEmailVerified? _isEmailVerified;
+
+  /// Adres potwierdzony w tym uruchomieniu. `emailVerified` nie wraca do
+  /// `false`, więc raz otwarta bramka nie wymaga kolejnych `reload()`.
+  bool _emailGateOpen = false;
   final Future<Directory> Function() _documentsDir;
 
   /// iOS rotates the app-container UUID on EVERY install/update, so an
@@ -582,6 +614,37 @@ class UploadQueueRunner {
     _emitSnapshot();
   }
 
+  /// Czy wolno wołać CreateAudioUpload. Brak wstrzykniętej bramki = wolno
+  /// (testy i wywołania sprzed docs/70 nie zmieniają zachowania).
+  Future<bool> _checkEmailGate() async {
+    final probe = _isEmailVerified;
+    if (probe == null || _emailGateOpen) return true;
+    try {
+      final verified = await probe();
+      if (verified) _emailGateOpen = true;
+      return verified;
+    } catch (e) {
+      // Nie umiemy sprawdzić (brak sieci, błąd Firebase) → przepuszczamy.
+      // Prawdziwą bramką jest i tak serwer; blokowanie uploadu na podstawie
+      // nieudanej sondy zamieniłoby usterkę sieci w utratę sesji.
+      debugPrint('[upload-runner] sonda weryfikacji e-maila nieudana: $e');
+      return true;
+    }
+  }
+
+  /// Wstrzymuje wiersz do czasu potwierdzenia adresu. Świadomie NIE używamy
+  /// `phase = quotaBlocked`: to inny stan, z innym komunikatem i inną drogą
+  /// wyjścia (tam „Wyślij ponownie", tu link w skrzynce). Wiersz zostaje
+  /// `pending` z odroczoną próbą, więc ruszy sam, gdy adres zostanie
+  /// potwierdzony.
+  PendingUpload _holdForEmailVerification(PendingUpload row) {
+    return row.copyWith(
+      attemptCount: row.attemptCount + 1,
+      nextAttemptAt: DateTime.now().toUtc().add(_emailGateBackoff),
+      lastError: kEmailUnverifiedError,
+    );
+  }
+
   // ── Tick ──────────────────────────────────────────────────────
 
   Future<void> _tick() async {
@@ -697,6 +760,24 @@ class UploadQueueRunner {
             _emitSnapshot();
             break;
           }
+
+          // Bramka „potwierdzony e-mail" (docs/70 S1 krok 3, E4). Stoi
+          // WEWNĄTRZ pętli faz, nie przed nią: wiersz z nagrania na żywo
+          // wchodzi w tick jako `encrypting` i dochodzi do `pending` w tej
+          // samej iteracji, więc sprawdzenie zrobione tylko na wejściu
+          // przepuściłoby CreateAudioUpload mimo zamkniętej bramki.
+          //
+          // Blokujemy wyłącznie `pending` — konwersja, szyfrowanie i
+          // dokańczanie rozpoczętych transferów idą dalej, a audio zostaje
+          // bezpieczne na urządzeniu (UX-1: nic nie blokuje nagrywania).
+          if (current.phase == UploadPhase.pending &&
+              !await _checkEmailGate()) {
+            await _queue.update(_holdForEmailVerification(current));
+            changed = true;
+            _emitSnapshot();
+            break;
+          }
+
           // Deadlock breaker (2026-07-23): a single hung await inside
           // runOne (deadline-less gRPC in airplane mode, sesja a5ce601f)
           // held _tickInFlight forever and froze the ENTIRE queue with

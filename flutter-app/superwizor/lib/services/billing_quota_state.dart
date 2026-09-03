@@ -32,6 +32,24 @@ class QuotaState {
   final String planTier;  // 'SOLO' | 'PRO' | 'CLINIC' | 'TRIAL' | ''
   final String planCycle; // 'MONTHLY' | 'ANNUAL' | ''
 
+  /// 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'PAUSED' | 'CANCELED' | ''
+  ///
+  /// PAUSED doszedł z Google Play (docs/70 §7.3): to NIE jest problem z
+  /// płatnością, tylko świadoma pauza użytkownika — i ma własny komunikat,
+  /// bo „napraw kartę" byłoby w tej sytuacji myląco nieprawdziwe.
+  final String status;
+
+  /// Kto sprzedał subskrypcję: 'STRIPE' | 'APPLE_IAP' | 'GOOGLE_IAP' |
+  /// 'MANUAL' | 'P24' | ''. Decyduje, dokąd prowadzi „Zarządzaj subskrypcją".
+  final String billingProvider;
+
+  /// Okres łaski po nieudanym odnowieniu (docs/70 E13): dostęp trwa,
+  /// ale sklep nie pobrał opłaty i użytkownik musi to naprawić do tej daty.
+  final DateTime? graceUntil;
+
+  /// Subskrypcja nie odnowi się po `periodEnd` (auto-renew wyłączone).
+  final bool cancelAtPeriodEnd;
+
   const QuotaState({
     required this.organizationId,
     required this.tokensUsed,
@@ -43,7 +61,18 @@ class QuotaState {
     this.periodEnd,
     this.planTier = '',
     this.planCycle = '',
+    this.status = '',
+    this.billingProvider = '',
+    this.graceUntil,
+    this.cancelAtPeriodEnd = false,
   });
+
+  bool get isStoreProvider =>
+      billingProvider == 'APPLE_IAP' || billingProvider == 'GOOGLE_IAP';
+
+  /// Czy trwa okres łaski (data w przyszłości).
+  bool get inGracePeriod =>
+      graceUntil != null && graceUntil!.isAfter(DateTime.now());
 
   /// Locally-recomputed copy with a different reservation count. Used by
   /// the cache after a successful CreateAudioUpload to optimistically
@@ -64,6 +93,10 @@ class QuotaState {
       periodEnd: periodEnd,
       planTier: planTier,
       planCycle: planCycle,
+      status: status,
+      billingProvider: billingProvider,
+      graceUntil: graceUntil,
+      cancelAtPeriodEnd: cancelAtPeriodEnd,
     );
   }
 

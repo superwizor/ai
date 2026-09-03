@@ -83,6 +83,11 @@ class BillingQuotaCache {
           : null,
       planTier: sub.planTier,
       planCycle: sub.planCycle,
+      status: sub.status,
+      billingProvider: sub.billingProvider,
+      graceUntil:
+          sub.hasGraceUntil() ? sub.graceUntil.toDateTime().toLocal() : null,
+      cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     );
   }
 }

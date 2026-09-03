@@ -73,10 +73,10 @@ class GrpcClients {
       interceptors: interceptors,
     );
 
-    // billing-svc jest internal (no allUsers). W obecnej fazie 3 Flutter NIE
-    // wywołuje go bezpośrednio — clinical-svc/ingestion-svc proxy'ują quota
-    // checks. Klient jest opcjonalny i wpinany tylko jeśli backend wystawi
-    // public proxy lub mamy custom auth proxy. Zostawiamy szkielet ready.
+    // Sklepowa część billingu (docs/70 §7.2) woła billing-svc BEZPOŚREDNIO —
+    // tak jak robi to dziś przeglądarka. Quota (GetMyBillingState) dalej idzie
+    // przez clinical-svc, więc brak `billingUrl` nie psuje niczego, co działa:
+    // klient zostaje nullem, a warstwa commerce po prostu się nie włącza.
     if (billingUrl != null && billingUrl.isNotEmpty) {
       billingChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
         host: billingUrl,

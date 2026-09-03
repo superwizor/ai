@@ -50,6 +50,26 @@ String? modalityDisplayKeyFor(String code) {
   return null;
 }
 
+/// Full localized display name for a modality code ("Terapia poznawczo-
+/// behawioralna"). Ta sama tabela co w `modality_sheet.dart`, ale publiczna —
+/// ekran rejestracji potrzebuje nazwy nurtu poza tamtym arkuszem.
+/// Nieznany kod zwraca się bez zmian.
+String modalityDisplayName(BuildContext context, String code) {
+  final t = AppLocalizations.of(context);
+  switch (code) {
+    case 'UNIV': return t.modality_integrative;
+    case 'CBT': return t.modality_cbt;
+    case 'PSYCHO': return t.modality_psychodynamic;
+    case 'GESTALT': return t.modality_gestalt;
+    case 'PPT': return t.modality_positive;
+    case 'ST': return t.modality_schema;
+    case 'SYS': return t.modality_systemic;
+    case 'EFT': return t.modality_eft;
+    case 'COACH': return t.modality_coaching;
+    default: return code;
+  }
+}
+
 /// Short localized display label used in patient cards and list headers.
 /// Returns `code` unchanged for unknown modalities.
 String modalityShortLabelFor(BuildContext context, String code) {

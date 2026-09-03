@@ -16,6 +16,8 @@ final grpcClientsProvider = Provider<GrpcClients>((ref) {
           ingestionPort: 8083,
           notificationUrl: '127.0.0.1',
           notificationPort: 8084,
+          billingUrl: '127.0.0.1',
+          billingPort: 8081,
         )
       : GrpcClients(
           identityUrl: 'identity-svc-344724821207.europe-central2.run.app',
@@ -26,6 +28,14 @@ final grpcClientsProvider = Provider<GrpcClients>((ref) {
           ingestionPort: 443,
           notificationUrl: 'notification-svc-344724821207.europe-central2.run.app',
           notificationPort: 443,
+          // Wzorzec „browser-direct" z docs/agents/03_billing-svc.md: sklepowe
+          // RPC (GetBillingSurface / BeginStorePurchase / VerifyStorePurchase /
+          // RestoreStorePurchases) idą PROSTO do billing-svc, bez hopa przez
+          // clinical-svc, który przy proxy dawał RST_STREAM. Ten sam host, na
+          // który wchodzi dziś przeglądarka (NEXT_PUBLIC_BILLING_URL).
+          // Quota (GetMyBillingState) zostaje na clinical-svc — bez zmian.
+          billingUrl: 'billing-svc-344724821207.europe-central2.run.app',
+          billingPort: 443,
         );
 
   ref.onDispose(clients.dispose);

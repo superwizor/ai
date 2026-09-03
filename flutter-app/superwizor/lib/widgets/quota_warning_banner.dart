@@ -8,14 +8,23 @@
 //   - level=critical:   orange accent, dismissible
 //   - level=exhausted:  red accent, NOT dismissible (sticky until renewal)
 //
-// No upgrade CTA — the banner is informational only. Plan management lives
-// in subscription_plan_screen reached from the menu.
+// CTA „Rozszerz plan" (docs/70 §7.4): wraca po dodaniu zakupów w aplikacji,
+// ale WYŁĄCZNIE gdy serwer potwierdzi `can_purchase` w `GetBillingSurface`.
+// Przycisk prowadzi do paywalla ze StoreKit/Play — nigdy poza aplikację.
+// Terapeuta z planem kliniki, z aktywnym Stripe albo z wyłączoną flagą IAP
+// widzi baner bez przycisku: informacja tak, ślepa zachęta nie.
+//
+// Wcześniejszy komentarz mówił „Reader App" (Apple 3.1.3(f)) — to już
+// nieaktualne. Aplikacja sprzedaje przez IAP, więc obowiązuje 3.1.3(b)
+// Multiplatform Services i przyciski zakupu są dozwolone.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/billing_quota_provider.dart';
+import '../providers/billing_surface_provider.dart';
+import '../screens/plan_picker_screen.dart';
 import '../services/billing_quota_state.dart';
 import '../theme/euphire_theme.dart';
 
@@ -28,14 +37,15 @@ class QuotaWarningBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(billingQuotaProvider);
+    final canPurchase = ref.watch(canPurchaseProvider);
 
     return state.maybeWhen(
-      data: (q) => _build(context, q),
+      data: (q) => _build(context, q, canPurchase),
       orElse: () => const SizedBox.shrink(),
     );
   }
 
-  Widget _build(BuildContext context, QuotaState? q) {
+  Widget _build(BuildContext context, QuotaState? q, bool canPurchase) {
     if (q == null || q.warningLevel == QuotaWarningLevel.none) {
       return const SizedBox.shrink();
     }
@@ -135,6 +145,38 @@ class QuotaWarningBanner extends ConsumerWidget {
                       fontFamily: 'Montserrat',
                       fontSize: 11,
                       letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+              if (canPurchase) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 26),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          settings:
+                              const RouteSettings(name: 'PlanPickerScreen'),
+                          builder: (_) => const PlanPickerScreen(),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        l.billing_expand_plan_cta,
+                        style: TextStyle(
+                          color: accentColor,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ),

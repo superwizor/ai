@@ -10,6 +10,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
 import '../analytics/analytics_collector.dart';
 import '../providers/sort_filter_provider.dart';
+import '../widgets/email_verification_banner.dart';
 import '../widgets/debug_test_overlay.dart';
 import '../widgets/sort_filter_sheet.dart';
 import '../widgets/client_invite_sheet.dart';
@@ -183,6 +184,9 @@ class HomeScreen extends ConsumerWidget {
 
                             // ── Offline Banner (Zero State) ─────────────────
                             const OfflineBanner(),
+
+                            // ── Weryfikacja e-maila (docs/70 S1 krok 3) ─────
+                            const EmailVerificationBanner(),
 
                             // ── Quota warning (Phase 3 §16.3) ───────────────
                             const QuotaWarningBanner(),
