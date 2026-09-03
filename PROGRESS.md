@@ -89,6 +89,45 @@ Gotchas:
 
 ## In progress
 
+### Platnosci in-app + kody rabatowe (docs/70) — BACKEND GOTOWY — 2026-09-03
+
+Galaz: `feat/iap-and-discount-codes`. Wdrozenie analizy z
+`docs/70_REJESTRACJA_I_PLATNOSCI_IN_APP.md`. Stan i runbook: docs/70 §11.
+
+**Zrobione (zacommitowane):**
+- `1c038b8e` migracje 000105 (discount_codes + redemptions) i 000106
+  (subscriptions.store_*, store_transactions, pending_checkouts,
+  mapowanie produktow Apple/Google, flagi IAP_* w app_config = false)
+  + kontrakt proto: 11 RPC w billing + identity.DeleteMyAccount.
+- `6973dd84` billing-svc: kody rabatowe (CRUD admina, ValidateDiscountCode,
+  dwufazowa rezerwacja uzycia, sync ze Stripe) i zakupy w aplikacji
+  (GetBillingSurface / Begin / Verify / Restore, applyStoreState,
+  weryfikacja JWS Apple, Play subscriptionsv2, notyfikacje + cron).
+- `4ae602a9` identity-svc: DeleteMyAccount (warunek Apple 5.1.1(v)).
+- `11d94728` docs/70 §11, cron `billing-store-reconcile` w terraformie
+  (NIEZAAPLIKOWANY), env IAP w ci.yml.
+
+**W toku:** marketing-site (panel kodow, pole kodu na /pricing i /upgrade,
+/account swiadome dostawcy) oraz Flutter (uproszczona rejestracja S1,
+paywall + in_app_purchase, ekran Subskrypcja, usuwanie konta).
+
+**Pulapki, ktore juz kosztowaly czas w tej sesji:**
+- `sqlc` nie wywnioskuje typu, gdy w jednym zapytaniu miesza sie
+  `sqlc.arg()` z pozycyjnymi `$n` — kod wraca wtedy jako `interface{}`.
+  Albo wszystkie nazwane, albo wszystkie pozycyjne.
+- `GetActiveSubscriptionByOrg` filtrowal statusy bez `PAUSED`, wiec
+  wstrzymana subskrypcja Google byla dla nas niewidoczna: aplikacja
+  pokazywalaby "brak subskrypcji" i pozwolila kupic druga, a wznowienie
+  tej wstrzymanej rozbiloby sie o `idx_subscriptions_one_active_per_org`.
+  PAUSED jest juz w zapytaniu i blokuje pule z wlasnym powodem.
+- `--set-secrets` z NIEISTNIEJACYM sekretem wywala caly deploy, nie tylko
+  jedna usluge — dlatego sekrety Apple sa w ci.yml opisane, a nie wpiete.
+
+**Otwarte decyzje biznesowe:** D1-D13 w docs/70 §9. Blokujace przed
+sprzedaza: D1 (Apple Small Business Program — bez niego +15% nie pokrywa
+prowizji), D2 (odpowiednik kuponow web w sklepach), D3 (tryb wzmianki o WWW).
+
+
 ### Soczewki czatu wyrownane do promptow raportowych — WGRANE — 2026-09-01
 
 Zweryfikowane i wgrane 7 soczewek (galaz feat/soczewki-wyrownanie;
