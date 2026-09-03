@@ -35,7 +35,7 @@ Wymagania wejściowe (Darek, 2026-09-03):
 | R6 | **W aplikacji iOS/Android nie wspominamy o zakupie na WWW** (tryb `NONE`), a zdalna flaga `IAP_WEB_LINK_MODE` w `app_config` pozwala włączyć tekst/link, gdy prawnie potwierdzimy warunki DMA (UE). Subskrypcje kupione na web są honorowane w aplikacji (Apple 3.1.3(b)). | Steering poza IAP to najczęstsza przyczyna odrzuceń. Flaga = zmiana bez wydania aplikacji. |
 | R7 | **Blokada krzyżowa providerów**: zakup in-app niemożliwy przy aktywnej subskrypcji Stripe (i odwrotnie) — do końca bieżącego okresu. Przełączenie „natychmiast z proporcjonalnym zwrotem" odkładamy do v2. | Jedyny sposób, by nie podwójnie obciążać terapeuty; Apple nie daje API do zwrotów. |
 | R8 | **Organizacje B2B (seat allocations, `MANUAL`) i konta z miejscem w klinice nie widzą paywalla w ogóle.** | Sub MANUAL jest aktywna; zakup terapeuty zderzyłby się z `idx_subscriptions_one_active_per_org`. |
-| R9 | **Rejestracja in-app tylko dla terapeutów solo** (auto-org `SOLO` jak dziś na web), **maksymalnie uproszczona pod konwersję**: social login (Apple/Google) bez weryfikacji e-mail, weryfikacja tylko dla e-mail+hasło i nieblokująca; profil = **imię, nazwisko, nurt**, reszta opcjonalnie (S1). Zaproszeni do klinik nadal przez magic-link. Wymaga dodania w aplikacji **usuwania konta** (Apple 5.1.1(v)). | Sign in with Apple już jest (`login_screen.dart`); Firebase zwraca `emailVerified=true` dla Apple/Google, więc krok weryfikacji jest dla nich zbędny. Brakuje rejestracji i usuwania konta. |
+| R9 | **Rejestracja in-app tylko dla terapeutów solo** (auto-org `SOLO` jak dziś na web), **maksymalnie uproszczona pod konwersję**: social login (Apple/Google) bez weryfikacji e-mail; dla e-mail+hasło weryfikacja **blokująca** — bramka aplikacji nie wpuszcza dalej (ani do profilu, ani do kartotek) bez potwierdzonego adresu; profil = **imię, nazwisko, nurt**, reszta opcjonalnie (S1). Zaproszeni do klinik nadal przez magic-link. Wymaga dodania w aplikacji **usuwania konta** (Apple 5.1.1(v)). | Sign in with Apple już jest (`login_screen.dart`); Firebase zwraca `emailVerified=true` dla Apple/Google, więc krok weryfikacji jest dla nich zbędny. Brakuje rejestracji i usuwania konta. |
 | R10 | Kolejność wdrożenia: **(1) kody rabatowe web** (niezależne, ~1 tydz.) → **(2) backend IAP** → **(3) Flutter: rejestracja + paywall** → **(4) web/admin provider-aware** → (5) opcjonalnie kody w sklepach, top-up, przełączanie z proratą. | §8. |
 
 Decyzje wymagające potwierdzenia biznesowego: §9.
@@ -142,17 +142,21 @@ Instalacja → ekran startowy: [Zaloguj się] [Załóż konto]
   │
   ├─ Załóż konto (maksymalnie uproszczone — 3 ekrany przy social loginie, 4 przy e-mail+hasło):
   │     ├─ 1. Ekran startowy: [Kontynuuj z Apple] [Kontynuuj z Google] | e-mail + hasło (Firebase)
-  │     │      Apple/Google zwracają zweryfikowany adres (emailVerified=true; „Hide My Email" też) i imię/nazwisko do prefill.
+  │     │      Apple/Google zwracają zweryfikowany adres (emailVerified=true; „Hide My Email” też) i imię/nazwisko do prefill.
   │     │      Apple podaje imię i nazwisko TYLKO przy pierwszym logowaniu — zapisać z credentiala od razu, zanim przepadnie.
-  │     ├─ 2. Profil — jeden ekran: Imię, Nazwisko (prefill z providera), Nurt (defaultModalityId — wymagany przez raporty)
+  │     │      Szkic rejestracji jest UZBRAJANY PRZED wywołaniem Firebase (arm()), bo nowa sesja emituje się w trakcie
+  │     │      kolejnych awaitów i bramka podmienia ekran, zanim zdążymy zapisać szkic po fakcie (incydent builda 58).
+  │     ├─ 2. Weryfikacja e-mail — TYLKO gdy Firebase emailVerified=false, czyli w praktyce tylko e-mail+hasło.
+  │     │      BLOKUJĄCA (decyzja 2026-09-03): bramka w main.dart pokazuje „Sprawdź skrzynkę” jako KORZEŃ aplikacji —
+  │     │      przed profilem, przed kartotekami, przed czymkolwiek. Sprawdzanie: co 5 s w tle, po powrocie aplikacji
+  │     │      na pierwszy plan i ręcznie. Jedyne wyjście poza potwierdzeniem: „Wyloguj się” (pomylony adres).
+  │     │      Skutek uboczny na plus: CreateUser idzie dopiero po potwierdzeniu, więc zmyślony adres nie zakłada
+  │     │      konta, organizacji ani trialu. Social login pomija ten ekran całkowicie.
+  │     ├─ 3. Profil — jeden ekran: Imię, Nazwisko (prefill z providera), Nurt (defaultModalityId — wymagany przez raporty)
   │     │      + jeden checkbox zgód (Regulamin, Polityka prywatności; DPA w regulaminie) → identity.RecordConsent
-  │     │      → identity.CreateUser(THERAPIST, first_name, last_name) → org SOLO „Imię Nazwisko - Praktyka" + sub(MANUAL, TRIAL, TRIALING)
+  │     │      → identity.CreateUser(THERAPIST, first_name, last_name) → org SOLO „Imię Nazwisko - Praktyka” + sub(MANUAL, TRIAL, TRIALING)
   │     │        + licznik 10 tokenów  [istniejące — bez zmian w backendzie]
   │     │      Tytuł, telefon, rozmiar praktyki, język raportów — opcjonalne, później w Ustawieniach (progressive profiling).
-  │     ├─ 3. Weryfikacja e-mail — TYLKO gdy Firebase emailVerified=false, czyli w praktyce tylko e-mail+hasło:
-  │     │      ekran „Sprawdź skrzynkę" (polling reload(), [Wyślij ponownie], [Zrobię to później]) — NIEBLOKUJĄCA:
-  │     │      użytkownik idzie dalej, sticky baner do czasu weryfikacji; egzekwowana dopiero przy pierwszym uploadzie
-  │     │      (nagranie nigdy nie jest blokowane — UX-1). Social login pomija ten ekran całkowicie.
   │     └─ 4. PlanPicker (poniżej)
   │
   ├─ PlanPicker: [Poznanie — bezpłatnie, 10 sesji/30 dni]  [Równowaga 174,99 zł/mies.]  [Rozkwit 349,99 zł/mies.]  (toggle mies./rok)
@@ -240,7 +244,7 @@ Reguła serwerowa (jedno miejsce — `BeginStorePurchase` i `/api/checkout`): za
 | E1 | „Przywróć zakupy" zwraca transakcję z `appAccountToken` innej organizacji (drugie konto SuperWizor, cudzy Apple ID na urządzeniu). | Odmowa: „Ten zakup jest przypisany do innego konta SuperWizor" + kontakt. Przeniesienie tylko przez admina (`AdminTransferStoreSubscription`, audyt). Transakcje bez tokenu (zakup sprzed logowania — nie występuje, bo paywall wymaga zalogowania) → odmowa. |
 | E2 | Ten sam terapeuta ma dwa konta (e-mail + Google, docs/44). | Trial ×2 bez zmian; sub sklepowa wiąże się z org, w której kupiono. Unifikacja kont poza zakresem. |
 | E3 | Family Sharing / współdzielony Apple ID. | Family Sharing wyłączone w ASC; `REVOKE` obsługiwany jak zwrot. |
-| E4 | Zakup przed weryfikacją e-maila (tylko konta e-mail+hasło — social login jest zweryfikowany przez providera). | Dozwolony: uprawnienie wisi na organizacji, a transakcja na `appAccountToken`, nie na e-mailu. Weryfikacja jest nieblokująca (S1 krok 3) i egzekwowana dopiero przy pierwszym uploadzie — to zamyka „farmę triali" na fikcyjne adresy (bez weryfikacji nie da się spalić tokenów STT/LLM). Ryzyko literówki w adresie: `UpdateMyEmail` + ponowna weryfikacja z ekranu Ustawień. |
+| E4 | Zakup przed weryfikacją e-maila (tylko konta e-mail+hasło — social login jest zweryfikowany przez providera). | **Nie występuje.** Bramka aplikacji wymaga potwierdzonego adresu PRZED profilem i paywallem (S1 krok 2, decyzja 2026-09-03). Bonus: bez potwierdzenia nie powstaje wiersz `users`, organizacja ani trial — „farma triali” na zmyślone adresy nie ma czego zbierać. Ryzyko literówki w adresie: „Wyloguj się” na ekranie weryfikacji i rejestracja od nowa. Gate w `UploadQueueRunner` zostaje jako druga linia obrony. |
 | E4b | Social login bez imienia/nazwiska (Apple zwraca `fullName` tylko przy pierwszym logowaniu; użytkownik może odmówić; „Hide My Email"). | Prefill, gdy provider dał dane; inaczej puste pola na ekranie profilu. Imię i nazwisko z credentiala Apple zapisujemy lokalnie przy pierwszym logowaniu i przekazujemy do `CreateUser`. Adres relay Apple działa z Firebase i drip e-mailami. |
 | E5 | Usunięcie konta (RODO) z aktywną subskrypcją sklepową. | Apple: nie możemy anulować — ekran usuwania konta wymaga potwierdzenia „anulowałem subskrypcję" + deep link; Google: opcjonalnie `purchases.subscriptions.revoke` (zwrot proporcjonalny) przez API. Notyfikacje po usunięciu org → `payment_events` `IGNORED`. |
 | E6 | Terapeuta solo z IAP przeniesiony przez admina do kliniki (`AdminAssignTherapistToOrg`). | Sub zostaje na starym org solo → RPC blokuje, jeśli aktywna sub sklepowa (`FAILED_PRECONDITION STORE_SUBSCRIPTION_ACTIVE`) — admin prosi terapeutę o anulowanie (Google: możliwy revoke z API). |
@@ -508,7 +512,7 @@ Zmiany w istniejącym kodzie:
 | Element | Zmiana |
 |---|---|
 | `pubspec.yaml` | `in_app_purchase` (+ `in_app_purchase_storekit` StoreKit 2, `in_app_purchase_android` PBL ≥ 7). Alternatywa RevenueCat (`purchases_flutter`) skraca backend (weryfikacja, notyfikacje, entitlementy), ale dokłada procesora danych w USA (DPA/SCC) i drugie źródło prawdy obok `subscriptions` — D10; rekomendacja: **in-house**, spójnie z Stripe. |
-| Rejestracja | Ekran startowy z Apple/Google na pierwszym miejscu + e-mail/hasło; `ProfileSetupScreen` (imię, nazwisko z prefillu providera, nurt, jeden checkbox zgód) → `RecordConsent` + `CreateUser`; `VerifyEmailScreen` pokazywany tylko gdy `emailVerified=false`, z opcją „Zrobię to później" i sticky banerem; gate „zweryfikowany e-mail" w `UploadQueueRunner` przed pierwszym `CreateAudioUpload` (nagranie bez zmian). Pola opcjonalne (tytuł, telefon, rozmiar praktyki, język raportów) trafiają do istniejącego `profile_edit_sheet.dart`. Rekomendacja: ujednolicić web wizard (7 kroków) do tego samego minimum — D12. |
+| Rejestracja | Ekran startowy z Apple/Google na pierwszym miejscu + e-mail/hasło; `ProfileSetupScreen` (imię, nazwisko z prefillu providera, nurt, jeden checkbox zgód) → `RecordConsent` + `CreateUser`; `VerifyEmailScreen` jako korzeń z bramki `main.dart`, gdy `emailVerified=false` — blokujący, bez „później”, z auto-sprawdzaniem (timer + powrót na pierwszy plan) i „Wyloguj się”; gate w `UploadQueueRunner` zostaje jako druga linia obrony. Szkic rejestracji uzbrajany przed Firebase (`arm()`), pamięć per-uid poza notifierem, odczyty przez `ProviderScope.containerOf` zamiast `ref` po awaitach. Pola opcjonalne (tytuł, telefon, rozmiar praktyki, język raportów) trafiają do istniejącego `profile_edit_sheet.dart`. Rekomendacja: ujednolicić web wizard (7 kroków) do tego samego minimum — D12. |
 | Usuwanie konta | `DeleteAccountScreen` + nowy RPC `identity.DeleteMyAccount` (soft-delete jak `RemoveTherapist`, przypomnienie o subskrypcji sklepowej — E5). |
 | Paywall | `PlanPickerScreen` (onboarding, dialog wyczerpania, trial wygasł, ekran Subskrypcja): karty z `displayPrice`, toggle mies./rok, tekst prawny (cena, okres, auto-odnawianie, Regulamin, Prywatność), `[Przywróć zakupy]`, brak pola kodu (iOS). Widoczność sterowana `GetBillingSurface`. |
 | `SubscriptionPlanScreen` | provider, „Zarządzaj subskrypcją" (deep link sklepu) / tekst dla Stripe, „Przywróć zakupy", status grace/PAST_DUE z deep linkiem. |
@@ -564,7 +568,7 @@ Zmiany w istniejącym kodzie:
 | D9 | Czas trwania rabatu z kodu (`ONCE`/`REPEATING`/`FOREVER`), domyślnie. | `FOREVER` jak dziś, ale pole w panelu. |
 | D10 | Build in-house vs RevenueCat. | In-house (spójność z `payment_events`, brak procesora w USA, brak drugiego źródła prawdy). |
 | D11 | Top-up (consumable) w fazie 6. | Tak, po IAP; zgodne z docs/17 §14.2 i docs/49. |
-| D12 | Rejestracja in-app pod konwersję (decyzja Darka 2026-09-03): weryfikacja e-mail tylko dla e-mail+hasło i nieblokująca (egzekwowana przy pierwszym uploadzie); profil = imię, nazwisko, nurt; reszta opcjonalnie. Otwarte: czy web wizard (7 kroków, obowiązkowa weryfikacja i telefon) ujednolicić do tego samego minimum. | Tak, ujednolicić — jeden lejek, jedna miara konwersji; telefon dla CRM zbierać później (progressive profiling), zgodnie z Apple 5.1.1. |
+| D12 | Rejestracja in-app pod konwersję. **Zrewidowane 2026-09-03 po teście builda 58 (Darek):** weryfikacja e-mail dla kont e-mail+hasło jest **BLOKUJĄCA** — bez potwierdzonego adresu nie da się używać aplikacji (ani zakładać kartotek, ani przejść profilu). Apple/Google bez weryfikacji. Profil = imię, nazwisko, nurt; reszta opcjonalnie. Otwarte: czy web wizard (7 kroków, telefon) ujednolicić do tego samego minimum. | Wdrożone w aplikacji. Web: ujednolicić — jeden lejek, jedna miara konwersji; telefon dla CRM zbierać później. |
 | D13 | Start: iOS i Android równocześnie czy iOS pierwszy. | Równocześnie w kodzie, flagi per platforma pozwalają włączać osobno. |
 
 ---
@@ -601,6 +605,18 @@ co trzeba zrobić RĘKAMI w konsolach, zanim sprzedaż w aplikacji ruszy.
 | Usuwanie konta | ✅ `DeleteMyAccount` (soft-delete + wyłączenie Firebase + blokada przy aktywnej subskrypcji ze sklepu) | `identity-svc/.../account_deletion.go` |
 | Cron uzgadniania | ✅ zdefiniowany w terraformie (**niezaaplikowany**) | `infra/environments/staging/billing_crons.tf` |
 | CI | ✅ `APPLE_BUNDLE_ID`, `PLAY_PACKAGE_NAME`; sekrety Apple opisane, ale **niepodpięte** | `.github/workflows/ci.yml` |
+
+**Incydent builda 58 (2026-09-03).** Rejestracja e-mailem kończyła się na
+„Nie znaleziono konta”: szkic rejestracji był zapisywany PO
+`createUserWithEmailAndPassword` i wysyłce maila, a w tym czasie Firebase
+emitował nową sesję, bramka podmieniała `LoginScreen` i zniszczony widget
+zabijał `ref.read(...).begin()`. Ścieżka Apple/Google miała ten sam wyścig na
+`_identityRowExists`. Naprawa: szkic uzbrajany PRZED Firebase (`arm()`),
+pamięć per-uid poza notifierem, odczyty przez `ProviderScope.containerOf`.
+Przy okazji usunięto z ekranu logowania zastaną cichą auto-rejestrację
+(`_ensureUserRegistered` → `CreateUser` dla każdej nieznanej tożsamości,
+także przy błędzie sieci) — dokładnie mechanizm z incydentu docs/39, który w
+`currentUserProvider` usunięto w lipcu, a w `login_screen.dart` przeżył.
 
 Sprzedaż jest **wyłączona z definicji**: `IAP_ENABLED_IOS` i
 `IAP_ENABLED_ANDROID` w `app_config` startują na `false`, a weryfikatory

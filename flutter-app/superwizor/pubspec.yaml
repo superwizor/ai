@@ -2,7 +2,7 @@ name: superwizor
 description: "Superwizor AI — clinical session co-pilot for psychotherapists."
 publish_to: 'none'
 
-version: 1.0.9+58
+version: 1.0.9+59
 
 environment:
   sdk: ^3.10.4

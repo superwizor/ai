@@ -17,7 +17,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String account_not_found_body(String email) {
-    return 'Signed in as $email, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. A therapist account can be created at superwizor.ai.';
+    return 'Signed in as $email, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. To create a therapist account, sign out and choose “Create account”.';
   }
 
   @override
@@ -3672,7 +3672,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verify_email_why =>
-      'Confirmation is only needed before you send your first recording for analysis. You can record right away.';
+      'Tap the link in the message and the app unlocks on its own. If the address is wrong, sign out and create the account again.';
 
   @override
   String get verify_email_resend => 'Resend';
@@ -3683,9 +3683,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get verify_email_resend_failed =>
       'We could not send the message. Try again in a moment.';
-
-  @override
-  String get verify_email_later => 'I\'ll do it later';
 
   @override
   String get verify_email_check_now => 'I\'ve confirmed it';

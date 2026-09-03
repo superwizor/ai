@@ -26,7 +26,6 @@ import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
-import '../providers/email_verification_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/signup_draft_provider.dart';
 import '../theme/euphire_theme.dart';
@@ -34,7 +33,6 @@ import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import 'legal_markdown_screen.dart';
 import 'plan_picker_screen.dart';
-import 'verify_email_screen.dart';
 
 const _kFont = 'Montserrat';
 
@@ -58,6 +56,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void initState() {
     super.initState();
     _prefill();
+  }
+
+  /// Imie z credentiala Apple/Google potrafi dojechac do szkicu chwile PO
+  /// tym, jak bramka juz zbudowala ten ekran (szkic jest uzbrajany przed
+  /// dostawca, a nazwisko znamy dopiero po powrocie od niego). Uzupelniamy
+  /// tylko puste pola — nic, co uzytkownik zdazyl wpisac, nie znika.
+  @override
+  void didUpdateWidget(covariant ProfileSetupScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final draft = widget.draft;
+    if (draft == null || draft == oldWidget.draft) return;
+    if (_firstCtrl.text.isEmpty && draft.firstName.isNotEmpty) {
+      _firstCtrl.text = draft.firstName;
+    }
+    if (_lastCtrl.text.isEmpty && draft.lastName.isNotEmpty) {
+      _lastCtrl.text = draft.lastName;
+    }
   }
 
   /// Kolejność źródeł: szkic rejestracji (jedyny, który ma dane z Apple) →
@@ -128,10 +143,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _error = null;
     });
 
-    // Nawigator zapamiętany PRZED awaitami: po `clear()` szkicu bramka
-    // uwierzytelniania podmienia korzeń na HomeScreen i ten `State` znika,
-    // a kolejne kroki (weryfikacja, paywall) muszą wejść na stos mimo to.
+    // Nawigator i kontener zapamiętane PRZED awaitami: po domknięciu
+    // rejestracji bramka uwierzytelniania podmienia korzeń na HomeScreen i
+    // ten `State` znika, a paywall musi wejść na stos mimo to. `ref`
+    // zniszczonego widgetu rzuca — kontener żyje z aplikacją.
     final navigator = Navigator.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
     final identity = ref.read(grpcClientsProvider).identity;
     final modalityCode = ref.read(selectedModalityProvider);
 
@@ -179,10 +196,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
       await user.updateDisplayName('$firstName $lastName');
 
-      // 4. Rejestracja domknięta — szkic już niepotrzebny, a odświeżony
-      //    profil przełącza korzeń aplikacji na ekran główny.
-      await ref.read(signupDraftProvider.notifier).clear(user.uid);
-      ref.invalidate(currentUserProvider);
+      // 4. Rejestracja domknięta. KOLEJNOŚĆ MA ZNACZENIE: najpierw
+      //    odświeżamy profil (bramka przestaje widzieć „brak konta"), dopiero
+      //    potem sprzątamy szkic. Odwrotnie bramka przez chwilę widziałaby
+      //    sesję bez konta i bez szkicu — czyli „Nie znaleziono konta" — a
+      //    zniszczony w tym momencie `State` nie dokończyłby reszty.
+      container.invalidate(currentUserProvider);
+      await container.read(signupDraftProvider.notifier).clear(user.uid);
     } catch (e) {
       debugPrint('[signup] CreateUser nieudany: $e');
       if (mounted) {
@@ -194,14 +214,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
-    // 5. Krok 3 (tylko konta e-mail+hasło) i krok 4 — jako zwykłe trasy nad
-    //    ekranem głównym. Oba są przeskakiwalne; żaden nie blokuje aplikacji.
-    if (!ref.read(emailVerifiedProvider)) {
-      await navigator.push(MaterialPageRoute<void>(
-        settings: const RouteSettings(name: 'VerifyEmailScreen'),
-        builder: (_) => const VerifyEmailScreen(),
-      ));
-    }
+    // 5. Wybór planu — jako zwykła trasa nad ekranem głównym. Weryfikacji
+    //    e-maila tu nie ma: bramka w main.dart wymaga jej PRZED tym ekranem,
+    //    więc każdy, kto tu dotarł, ma adres potwierdzony.
     await navigator.push(MaterialPageRoute<void>(
       settings: const RouteSettings(name: 'PlanPickerScreen'),
       builder: (_) => const PlanPickerScreen(onboarding: true),

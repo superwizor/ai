@@ -2,7 +2,7 @@
   "@@locale": "en",
   "account_deleted_body": "This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake.",
   "account_deleted_title": "Account blocked",
-  "account_not_found_body": "Signed in as {email}, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. A therapist account can be created at superwizor.ai.",
+  "account_not_found_body": "Signed in as {email}, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. To create a therapist account, sign out and choose “Create account”.",
   "@account_not_found_body": {
     "placeholders": {
       "email": {
@@ -1607,11 +1607,10 @@
       }
     }
   },
-  "verify_email_why": "Confirmation is only needed before you send your first recording for analysis. You can record right away.",
+  "verify_email_why": "Tap the link in the message and the app unlocks on its own. If the address is wrong, sign out and create the account again.",
   "verify_email_resend": "Resend",
   "verify_email_resent": "A new message is on its way.",
   "verify_email_resend_failed": "We could not send the message. Try again in a moment.",
-  "verify_email_later": "I'll do it later",
   "verify_email_check_now": "I've confirmed it",
   "verify_email_still_unverified": "The address is still not confirmed.",
   "verify_email_confirmed": "Email address confirmed.",

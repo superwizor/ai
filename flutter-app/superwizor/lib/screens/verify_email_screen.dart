@@ -1,14 +1,27 @@
-// VerifyEmailScreen — krok 3 rejestracji (docs/70 S1), pokazywany WYŁĄCZNIE
-// gdy `FirebaseAuth.currentUser.emailVerified == false`.
+// VerifyEmailScreen — potwierdzenie adresu e-mail (docs/70 S1, D12).
 //
-// W praktyce oznacza to tylko rejestrację e-mailem i hasłem: Apple i Google
+// Ekran jest **blokujący** (decyzja Darka z 2026-09-03, po teście builda 58):
+// dopóki adres nie jest potwierdzony, użytkownik nie wchodzi ani do
+// profilu, ani do kartotek. Bramka w `main.dart` pokazuje ten ekran jako
+// KORZEŃ aplikacji, więc nie ma z niego „dalej" — jest tylko „potwierdź"
+// albo „wyloguj się" (dla kogoś, kto pomylił adres i nigdy tego maila nie
+// dostanie).
+//
+// W praktyce dotyczy tylko rejestracji e-mailem i hasłem: Apple i Google
 // oddają adres już zweryfikowany (relay „Hide My Email" również), więc ich
 // użytkownicy tego ekranu nigdy nie zobaczą.
 //
-// Ekran jest **nieblokujący** — „Zrobię to później" prowadzi dalej, a
-// przypomnieniem zostaje sticky baner. Weryfikacja jest egzekwowana dopiero
-// przy pierwszym uploadzie (UploadQueueRunner), nigdy przy nagrywaniu:
-// mikrofon musi działać zawsze (UX-1, docs/17).
+// Sprawdzanie stanu idzie trzema drogami, żeby nikt nie musiał wracać
+// palcem do przycisku po kliknięciu linku w Mailu:
+//   1. co kilka sekund w tle (`Timer.periodic`),
+//   2. natychmiast po powrocie aplikacji na pierwszy plan
+//      (`AppLifecycleState.resumed` — użytkownik właśnie wraca z klienta
+//      poczty),
+//   3. ręcznie przyciskiem.
+// `emailVerified` w tokenie Firebase jest migawką z chwili logowania i sam
+// się nie odświeża — każda z tych dróg woła `reload()`.
+
+import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart';
@@ -19,27 +32,52 @@ import '../providers/email_verification_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
 
-class VerifyEmailScreen extends ConsumerStatefulWidget {
-  const VerifyEmailScreen({super.key, this.onDone});
+/// Odstęp między automatycznymi sprawdzeniami. Firebase nie ma limitu na
+/// `reload()`, ale nie ma też powodu pytać częściej — kliknięcie linku w
+/// poczcie i powrót do aplikacji trwają dłużej.
+const _kPollInterval = Duration(seconds: 5);
 
-  /// Wywoływane po „Zrobię to później" i po potwierdzeniu adresu. Gdy null,
-  /// ekran po prostu się zdejmuje ze stosu.
-  final VoidCallback? onDone;
+class VerifyEmailScreen extends ConsumerStatefulWidget {
+  const VerifyEmailScreen({super.key});
 
   @override
   ConsumerState<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
 }
 
-class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
+class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen>
+    with WidgetsBindingObserver {
   bool _busy = false;
+  Timer? _poll;
 
-  void _finish() {
-    final onDone = widget.onDone;
-    if (onDone != null) {
-      onDone();
-      return;
-    }
-    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Pierwsze sprawdzenie od razu: kto wraca do aplikacji po potwierdzeniu
+    // adresu przy zamkniętej apce, ma przeterminowaną migawkę `emailVerified`
+    // i bez tego widziałby ten ekran mimo potwierdzenia.
+    unawaited(_refreshQuietly());
+    _poll = Timer.periodic(_kPollInterval, (_) => unawaited(_refreshQuietly()));
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refreshQuietly());
+  }
+
+  /// Odświeża stan bez komunikatów. Gdy adres okaże się potwierdzony,
+  /// `emailVerifiedProvider` zmienia stan i bramka sama podmienia korzeń —
+  /// ten ekran znika, nie musi nic nawigować.
+  Future<void> _refreshQuietly() async {
+    if (!mounted || _busy) return;
+    await ref.read(emailVerifiedProvider.notifier).refresh();
   }
 
   Future<void> _resend() async {
@@ -65,10 +103,16 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     setState(() => _busy = false);
     if (verified) {
       EuphireToast.success(context, message: t.verify_email_confirmed);
-      _finish();
     } else {
       EuphireToast.error(context, message: t.verify_email_still_unverified);
     }
+  }
+
+  /// Wyjście awaryjne: pomylony adres oznacza, że mail nigdy nie przyjdzie.
+  /// Po wylogowaniu bramka pokazuje ekran logowania, gdzie można zacząć od
+  /// nowa z właściwym adresem.
+  Future<void> _signOut() async {
+    await fb_auth.FirebaseAuth.instance.signOut();
   }
 
   @override
@@ -180,11 +224,13 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                     ),
                   ),
                 ),
-                // Nieblokująca furtka — wymóg z S1 kroku 3.
-                TextButton(
-                  onPressed: _busy ? null : _finish,
-                  child: Text(
-                    t.verify_email_later,
+                // Jedyne wyjście poza potwierdzeniem: zły adres = brak maila.
+                TextButton.icon(
+                  onPressed: _busy ? null : _signOut,
+                  icon: const Icon(Icons.logout, size: 16,
+                      color: EuphireColors.mist),
+                  label: Text(
+                    t.deactivated_logout,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 14,

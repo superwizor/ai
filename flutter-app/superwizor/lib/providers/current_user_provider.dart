@@ -31,6 +31,17 @@ final firebaseUserProvider = StreamProvider<fb_auth.User?>(
   (ref) => ref.watch(firebaseAuthProvider).authStateChanges(),
 );
 
+/// Sam identyfikator sesji Firebase, bez obiektu `User`.
+///
+/// Osobny provider z dwóch powodów: konsumenci, którym wystarcza uid
+/// (szkic rejestracji), nie przebudowują się przy każdym odświeżeniu
+/// obiektu użytkownika, a w testach da się go podstawić zwykłym stringiem
+/// — `fb_auth.User` nie ma publicznego konstruktora i nie da się go
+/// sfałszować bez dodatkowego pakietu.
+final firebaseUidProvider = Provider<String?>(
+  (ref) => ref.watch(firebaseUserProvider).value?.uid,
+);
+
 /// The backend `users` row for the currently logged-in Firebase user.
 /// Returns `null` when there's no Firebase session.
 /// Throws on identity-svc network errors so UI can show retry.
