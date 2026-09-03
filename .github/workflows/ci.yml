@@ -494,7 +494,28 @@ jobs:
             --vpc-connector swvpc-connector \
             --use-http2 \
             --set-secrets="DATABASE_URL=postgres-database-url:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest" \
-            --set-env-vars="^|^GCP_PROJECT_ID=${{ env.PROJECT_ID }}|VERSION=${{ github.sha }}|IDENTITY_SVC_URL=${IDENTITY_URL}|SCHEDULER_OIDC_AUDIENCE=${BILLING_URL}|SCHEDULER_SA_EMAIL=cloud-scheduler-billing@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+            --set-env-vars="^|^GCP_PROJECT_ID=${{ env.PROJECT_ID }}|VERSION=${{ github.sha }}|IDENTITY_SVC_URL=${IDENTITY_URL}|SCHEDULER_OIDC_AUDIENCE=${BILLING_URL}|SCHEDULER_SA_EMAIL=cloud-scheduler-billing@${{ env.PROJECT_ID }}.iam.gserviceaccount.com|APPLE_BUNDLE_ID=ai.superwizor.superwizor|PLAY_PACKAGE_NAME=ai.superwizor.superwizor"
+          # ZAKUPY W APLIKACJI (docs/70 §7) — dwa kroki, w tej kolejności.
+          #
+          # Powyżej są tylko jawne identyfikatory aplikacji; SEKRETY dochodzą
+          # dopiero po ich utworzeniu w Secret Managerze, bo --set-secrets z
+          # nieistniejącym sekretem WYWALA CAŁY DEPLOY (nie tylko billing-svc).
+          # Dopóki ich nie ma, weryfikatory po prostu się nie rejestrują —
+          # billing-svc loguje ostrzeżenie i odrzuca VerifyStorePurchase
+          # z STORE_NOT_CONFIGURED. Sprzedaż i tak stoi za flagami
+          # IAP_ENABLED_* w app_config (domyślnie false).
+          #
+          # Krok 1 — utwórz sekrety (docs/70 §11):
+          #   apple-root-ca-pem       ← AppleRootCA-G3 w formacie PEM
+          #   apple-asc-private-key   ← klucz .p8 z App Store Connect
+          # Krok 2 — dopisz do --set-secrets POWYŻEJ (jedna linia!) i dołóż
+          # APPLE_ISSUER_ID + APPLE_KEY_ID do --set-env-vars:
+          #   ,APPLE_ROOT_CA_PEM=apple-root-ca-pem:latest,APPLE_PRIVATE_KEY_P8=apple-asc-private-key:latest
+          #   |APPLE_ISSUER_ID=<issuer>|APPLE_KEY_ID=<key id>
+          #
+          # Pamiętaj o regule, która kosztowała nas już 8 dni ciszy w
+          # cronach: --set-env-vars i --set-secrets ZASTĘPUJĄ całe swoje
+          # bloki, więc wszystko musi być wymienione TUTAJ.
           # Belt-and-braces parity with identity/clinical: pin allUsers
           # explicitly so the public invoker can't drift even if a future
           # deploy flag changes.

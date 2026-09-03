@@ -122,6 +122,31 @@ export async function mockCheckEmailExists(
 }
 
 /**
+ * Mock identity.v1.IdentityService/CheckPhoneNumberExists.
+ *
+ * Krok 4 rejestracji terapeuty sprawdza unikalność telefonu, zanim
+ * przejdzie dalej — a gdy sprawdzenie SIĘ NIE UDA (brak identity-svc pod
+ * dev-serwerem), formularz zostaje na kroku 4 z „błąd sieci". Bez tego
+ * mocka żaden test przechodzący przez wizard nie dociera do kroku 5;
+ * dokładnie tak zawodziło osiem przypadków z register-therapist.
+ */
+export async function mockCheckPhoneNumberExists(
+  page: Page,
+  exists = false,
+) {
+  await page.route(
+    /identity\.v1\.IdentityService\/CheckPhoneNumberExists/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ exists }),
+      });
+    },
+  );
+}
+
+/**
  * Mock identity.v1.IdentityService/GetMyOrganization.
  */
 export async function mockGetMyOrganization(

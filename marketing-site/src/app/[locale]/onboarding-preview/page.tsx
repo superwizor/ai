@@ -363,10 +363,10 @@ export default function OnboardingPreview() {
                 </div>
               )}
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] text-center mb-2 leading-tight">
-                Pamiętaj: Subskrypcje kupujesz tylko na stronie WWW!
+                Plan kupisz na stronie albo w aplikacji
               </h2>
               <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
-                Zarządzaj swoim kontem na www.superwizor.ai
+                Subskrypcję wykupisz i zmienisz zarówno na www.superwizor.ai, jak i w aplikacji mobilnej.
               </p>
 
               <div className="flex flex-col gap-3 mb-6">

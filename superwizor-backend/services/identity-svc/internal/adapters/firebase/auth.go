@@ -126,3 +126,20 @@ func (a *AuthClient) UpdateUserEmail(ctx context.Context, uid string, newEmail s
 }
 
 
+
+// DisableUser wyłącza konto w Firebase Auth.
+//
+// Używane przy samodzielnym usunięciu konta (Apple 5.1.1(v)): sam
+// soft-delete w naszej bazie nie unieważnia wydanego już tokena, więc
+// bez tego kroku użytkownik przez kolejną godzinę nadal by się
+// uwierzytelniał. Konto wyłączone, a nie skasowane — dowód, że wniosek
+// istniał, zostaje po stronie Firebase do czasu czyszczenia RODO.
+func (a *AuthClient) DisableUser(ctx context.Context, uid string) error {
+	if _, err := a.client.UpdateUser(ctx, uid, (&auth.UserToUpdate{}).Disabled(true)); err != nil {
+		if auth.IsUserNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("disable user: %w", err)
+	}
+	return nil
+}

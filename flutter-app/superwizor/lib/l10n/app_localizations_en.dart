@@ -385,6 +385,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Give your clients unique labels to quickly find them in records.';
 
   @override
+  String get billing_choose_plan_cta => 'Choose a plan';
+
+  @override
   String get billing_delete_confirm_action => 'Delete permanently';
 
   @override
@@ -934,6 +937,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'You will not be able to recover your data after completing this process. The operation is irreversible.';
 
   @override
+  String get delete_account_reason_label => 'Why are you leaving? (optional)';
+
+  @override
+  String get delete_account_reason_hint => 'Your answer helps us improve.';
+
+  @override
+  String get delete_account_failed =>
+      'We could not delete the account. Please try again.';
+
+  @override
   String get delete_account_relogin_error =>
       'Please log in again to delete your account.';
 
@@ -951,6 +964,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get delete_account_sheet_title => 'Final step';
+
+  @override
+  String get delete_account_store_sub_title => 'Cancel your subscription first';
+
+  @override
+  String get delete_account_store_sub_body =>
+      'You have an active subscription bought in the store. Deleting the account does not cancel it — do that in your subscription settings, otherwise the store will keep charging you.';
+
+  @override
+  String get delete_account_store_sub_open => 'Open subscription settings';
+
+  @override
+  String get delete_account_store_sub_force => 'I understand, delete anyway';
 
   @override
   String get delete_account_title => 'Delete account';
@@ -1878,6 +1904,299 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pending_uploads_phase_offline =>
       'Offline — will upload automatically';
+
+  @override
+  String get purchase_error_foreign_account =>
+      'This purchase belongs to a different Superwizor AI account. Sign in to that account or contact us.';
+
+  @override
+  String get purchase_error_store_not_configured =>
+      'Store purchases are not configured yet. Please try again later.';
+
+  @override
+  String get purchase_error_sandbox_not_allowed =>
+      'This account cannot make sandbox purchases.';
+
+  @override
+  String get plan_picker_unavailable_title =>
+      'Purchases are temporarily unavailable';
+
+  @override
+  String get plan_picker_unavailable_body =>
+      'You cannot buy a plan in this app right now. Your recordings and reports keep working as usual.';
+
+  @override
+  String plan_picker_blocked_until(String date) {
+    return 'Valid until $date.';
+  }
+
+  @override
+  String get register_title => 'Create an account';
+
+  @override
+  String get register_subtitle =>
+      'A few fields and you can record your first session.';
+
+  @override
+  String get register_email_divider => 'or with an email address';
+
+  @override
+  String get register_email_cta => 'Sign up with email';
+
+  @override
+  String get register_password_hint => 'Password (min. 8 characters)';
+
+  @override
+  String get register_have_account => 'Already have an account? ';
+
+  @override
+  String get register_sign_in_action => 'Sign in';
+
+  @override
+  String get profile_setup_title => 'Your profile';
+
+  @override
+  String get profile_setup_subtitle =>
+      'These three fields are enough to start. You can fill in the rest later in settings.';
+
+  @override
+  String get profile_setup_first_name => 'First name';
+
+  @override
+  String get profile_setup_last_name => 'Last name';
+
+  @override
+  String get profile_setup_modality_label => 'Therapy modality';
+
+  @override
+  String get profile_setup_modality_hint => 'Choose a modality';
+
+  @override
+  String get profile_setup_modality_help =>
+      'The modality shapes how AI writes your session reports. You can change it any time.';
+
+  @override
+  String get profile_setup_consent_prefix => 'I accept the ';
+
+  @override
+  String get profile_setup_consent_terms => 'Terms of Service';
+
+  @override
+  String get profile_setup_consent_conjunction => ' and the ';
+
+  @override
+  String get profile_setup_consent_privacy => 'Privacy Policy';
+
+  @override
+  String get profile_setup_error_first_name => 'Enter your first name.';
+
+  @override
+  String get profile_setup_error_last_name => 'Enter your last name.';
+
+  @override
+  String get profile_setup_error_consent =>
+      'Accept the Terms and Privacy Policy to continue.';
+
+  @override
+  String get profile_setup_submit => 'Create my account';
+
+  @override
+  String get profile_setup_failed =>
+      'We could not create your account. Check your connection and try again.';
+
+  @override
+  String get subscription_paused_title => 'Subscription paused';
+
+  @override
+  String get subscription_paused_body =>
+      'Your subscription is paused in Google Play. Resume it to process sessions again.';
+
+  @override
+  String get subscription_resume_in_store => 'Resume in Google Play';
+
+  @override
+  String get subscription_status_label => 'Status';
+
+  @override
+  String get subscription_status_active => 'Active';
+
+  @override
+  String get subscription_status_trialing => 'Trial';
+
+  @override
+  String get subscription_status_past_due => 'Payment overdue';
+
+  @override
+  String get subscription_status_paused => 'Paused';
+
+  @override
+  String get subscription_status_canceled => 'Ended';
+
+  @override
+  String subscription_cancel_at_period_end(String date) {
+    return 'This subscription will not renew — you have access until $date.';
+  }
+
+  @override
+  String get upload_error_email_unverified =>
+      'Confirm your email address to send this recording for analysis.';
+
+  @override
+  String get plan_picker_title => 'Choose a plan';
+
+  @override
+  String get plan_picker_subtitle =>
+      'You can change or cancel your plan at any time.';
+
+  @override
+  String get plan_picker_cycle_monthly => 'Monthly';
+
+  @override
+  String get plan_picker_cycle_annual => 'Yearly';
+
+  @override
+  String plan_picker_sessions(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions per billing period',
+      one: '1 session per billing period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plan_picker_cta => 'Subscribe';
+
+  @override
+  String get plan_picker_skip => 'Continue without a plan';
+
+  @override
+  String get plan_picker_restore => 'Restore purchases';
+
+  @override
+  String get plan_picker_empty =>
+      'There are no plans available for purchase on this device right now.';
+
+  @override
+  String get plan_picker_legal_monthly =>
+      'Billed monthly; the subscription renews automatically until cancelled. Cancel in your store settings at least 24 hours before the period ends. The store issues the receipt.';
+
+  @override
+  String get plan_picker_legal_annual =>
+      'Billed yearly; the subscription renews automatically until cancelled. Cancel in your store settings at least 24 hours before the period ends. The store issues the receipt.';
+
+  @override
+  String get plan_picker_legal_terms => 'Terms of Service';
+
+  @override
+  String get plan_picker_legal_privacy => 'Privacy Policy';
+
+  @override
+  String get plan_picker_current_plan => 'Your current plan';
+
+  @override
+  String get purchase_success => 'Your plan is active. Enjoy!';
+
+  @override
+  String get purchase_pending =>
+      'The store is waiting for the payment to clear. We will let you know when the plan is active.';
+
+  @override
+  String get purchase_error_store_unavailable =>
+      'The store is unavailable on this device.';
+
+  @override
+  String get purchase_error_product_unavailable =>
+      'This plan is temporarily unavailable in the store.';
+
+  @override
+  String get purchase_error_verification =>
+      'The payment went through but we could not confirm it on the server. Nothing is lost — we will finish this the next time you open the app.';
+
+  @override
+  String get purchase_error_generic => 'The purchase failed. Please try again.';
+
+  @override
+  String get purchase_restore_none => 'We found no purchases to restore.';
+
+  @override
+  String get purchase_restore_success => 'Purchases restored.';
+
+  @override
+  String get purchase_blocked_other_provider =>
+      'You already have an active subscription bought elsewhere.';
+
+  @override
+  String purchase_blocked_other_provider_until(String date) {
+    return 'You already have an active subscription bought elsewhere — valid until $date.';
+  }
+
+  @override
+  String get purchase_blocked_org_managed =>
+      'Your organisation manages this plan.';
+
+  @override
+  String get purchase_blocked_iap_disabled =>
+      'In-app purchases are temporarily disabled.';
+
+  @override
+  String get purchase_blocked_pending_checkout =>
+      'You have a payment open elsewhere. Finish it or try again later.';
+
+  @override
+  String get purchase_blocked_account_inactive => 'This account is inactive.';
+
+  @override
+  String get purchase_blocked_generic =>
+      'This purchase is not available right now.';
+
+  @override
+  String get subscription_provider_label => 'Provider';
+
+  @override
+  String get subscription_provider_apple => 'App Store';
+
+  @override
+  String get subscription_provider_google => 'Google Play';
+
+  @override
+  String get subscription_provider_stripe => 'superwizor.ai';
+
+  @override
+  String get subscription_provider_manual => 'Assigned plan';
+
+  @override
+  String get subscription_manage_button => 'Manage subscription';
+
+  @override
+  String get subscription_manage_stripe_note =>
+      'You manage this subscription from your account on superwizor.ai.';
+
+  @override
+  String get subscription_manage_org_note =>
+      'Your organisation manages this plan.';
+
+  @override
+  String get subscription_grace_title => 'Payment problem';
+
+  @override
+  String subscription_grace_body(String date) {
+    return 'The store could not take the payment. Update your payment method by $date to keep access.';
+  }
+
+  @override
+  String get subscription_past_due_body =>
+      'The store could not charge for the subscription. New sessions will not be processed until the payment succeeds.';
+
+  @override
+  String get subscription_fix_payment => 'Fix payment in the store';
+
+  @override
+  String get subscription_open_store_failed => 'We could not open the store.';
+
+  @override
+  String get subscription_choose_plan => 'Choose a plan';
 
   @override
   String get upload_offline_waiting =>
@@ -3342,4 +3661,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get report_ready_snackbar_open => 'Open';
+
+  @override
+  String get verify_email_title => 'Check your inbox';
+
+  @override
+  String verify_email_body(String email) {
+    return 'We sent a confirmation link to $email.';
+  }
+
+  @override
+  String get verify_email_why =>
+      'Confirmation is only needed before you send your first recording for analysis. You can record right away.';
+
+  @override
+  String get verify_email_resend => 'Resend';
+
+  @override
+  String get verify_email_resent => 'A new message is on its way.';
+
+  @override
+  String get verify_email_resend_failed =>
+      'We could not send the message. Try again in a moment.';
+
+  @override
+  String get verify_email_later => 'I\'ll do it later';
+
+  @override
+  String get verify_email_check_now => 'I\'ve confirmed it';
+
+  @override
+  String get verify_email_still_unverified =>
+      'The address is still not confirmed.';
+
+  @override
+  String get verify_email_confirmed => 'Email address confirmed.';
+
+  @override
+  String get verify_email_banner_title => 'Confirm your email address';
+
+  @override
+  String get verify_email_banner_body =>
+      'Recordings wait on your device until you confirm the address. Recording itself works as usual.';
+
+  @override
+  String get verify_email_banner_action => 'Confirm';
 }

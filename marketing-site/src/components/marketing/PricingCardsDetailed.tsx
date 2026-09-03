@@ -15,12 +15,26 @@ import { useTranslations, useLocale } from "next-intl";
 
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
 import { findPlan, formatPrice, TRIAL_COPY } from "@/lib/billing/plans";
+import {
+  DiscountCodeField,
+  discountAppliesTo,
+  type AppliedDiscount,
+} from "@/components/billing/DiscountCodeField";
 
 export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
   const t = useTranslations("pricing");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
+
+  // A validated code travels to /register/therapist as ?code=, and from
+  // there into /api/checkout (see lib/register/post-registration.ts).
+  // Quotes are cycle-specific, so switching the toggle drops them.
+  const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
+  const selectCycle = (next: BillingCycle) => {
+    setCycle(next);
+    setDiscount(null);
+  };
 
   const isAnnual = cycle === "ANNUAL";
 
@@ -49,7 +63,7 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
           <button
             role="tab"
             aria-selected={!isAnnual}
-            onClick={() => setCycle("MONTHLY")}
+            onClick={() => selectCycle("MONTHLY")}
             className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${!isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
               }`}
           >
@@ -58,7 +72,7 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
           <button
             role="tab"
             aria-selected={isAnnual}
-            onClick={() => setCycle("ANNUAL")}
+            onClick={() => selectCycle("ANNUAL")}
             className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
               }`}
           >
@@ -75,6 +89,18 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
         </div>
       </div>
 
+      {/* --- Discount code (docs/70 §6.4) --- */}
+      <div className="mb-12">
+        <DiscountCodeField
+          targets={[
+            { tier: "SOLO", cycle },
+            { tier: "PRO", cycle },
+          ]}
+          resetToken={cycle}
+          onChange={setDiscount}
+        />
+      </div>
+
       {/* --- Split Grid Layout (Left: 2x2 cards, Right: Cozy Office + Review) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Pricing Cards Grid */}
@@ -89,6 +115,7 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
             cycle={cycle}
             locale={locale}
             isHero={false}
+            discount={discount}
           />
 
           {/* Pro — HERO card */}
@@ -98,6 +125,7 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
             cycle={cycle}
             locale={locale}
             isHero={true}
+            discount={discount}
           />
 
           {/* Clinic */}
@@ -224,12 +252,14 @@ function PaidCard({
   cycle,
   locale,
   isHero,
+  discount,
 }: {
   tier: "solo" | "pro";
   row: PlanRow;
   cycle: BillingCycle;
   locale: string;
   isHero: boolean;
+  discount: AppliedDiscount | null;
 }) {
   const priceUnit = cycle === "MONTHLY"
     ? (locale === "en" ? "/mo" : "/mies.")
@@ -340,7 +370,11 @@ function PaidCard({
 
       {row.stripePriceId ? (
         <a
-          href={`/${locale === "en" ? "en/" : ""}register/therapist?plan=${tier}_${cycle.toLowerCase()}`}
+          href={`/${locale === "en" ? "en/" : ""}register/therapist?plan=${tier}_${cycle.toLowerCase()}${
+            discountAppliesTo(discount, tier.toUpperCase(), cycle)
+              ? `&code=${encodeURIComponent(discount!.code)}`
+              : ""
+          }`}
           className={`mt-8 w-full inline-flex items-center justify-center rounded-[5px] font-sans font-bold uppercase tracking-wider text-xs px-6 py-4 transition-all duration-200 active:scale-[0.98] cursor-pointer whitespace-nowrap ${ctaClasses}`}
         >
           {cta}

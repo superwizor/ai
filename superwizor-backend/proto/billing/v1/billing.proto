@@ -84,6 +84,58 @@ service BillingService {
   // GetMyOrgSeatUsage but org comes from the request, gated on the
   // platform-admin role.
   rpc AdminGetOrgSeatUsage(AdminGetOrgSeatUsageRequest) returns (OrgSeatSummary);
+
+  // ─── Kody rabatowe (docs/70 §6) ───────────────────────────────
+
+  // SUPERWIZOR_ADMIN. Zakłada kod rabatowy: nasz wiersz w
+  // discount_codes + coupon i promotion code po stronie Stripe'a
+  // (to Stripe atomowo pilnuje max_redemptions przy checkoucie).
+  // reason >= 10 znaków → audit_events.
+  rpc AdminCreateDiscountCode(AdminCreateDiscountCodeRequest) returns (DiscountCode);
+
+  // SUPERWIZOR_ADMIN. Zmienia nazwę / termin / limit / aktywność.
+  // Stripe nie pozwala zmienić expires_at ani max_redemptions na
+  // istniejącym promotion code, więc zmiana któregokolwiek z nich
+  // zakłada NOWY promotion code pod tym samym kuponem i wygasza stary
+  // (docs/70 §6.4 D10).
+  rpc AdminUpdateDiscountCode(AdminUpdateDiscountCodeRequest) returns (DiscountCode);
+
+  // SUPERWIZOR_ADMIN. Lista kodów do tabeli w panelu.
+  rpc AdminListDiscountCodes(AdminListDiscountCodesRequest) returns (AdminListDiscountCodesResponse);
+
+  // SUPERWIZOR_ADMIN. Kod + historia użyć (organizacja, data, kanał).
+  rpc AdminGetDiscountCode(AdminGetDiscountCodeRequest) returns (DiscountCodeDetails);
+
+  // Zalogowany użytkownik. Walidacja kodu PRZED checkoutem: czy ważny,
+  // czy obejmuje wybrany plan, ile wyniesie cena. Nie rezerwuje użycia —
+  // rezerwacja powstaje przy tworzeniu sesji Checkout.
+  rpc ValidateDiscountCode(ValidateDiscountCodeRequest) returns (DiscountCodeQuote);
+
+  // ─── Zakupy w aplikacji: App Store / Google Play (docs/70 §7.2) ─
+
+  // Zalogowany użytkownik. Co wolno pokazać na paywallu: aktywny
+  // dostawca, czy zakup jest w ogóle dozwolony (i dlaczego nie),
+  // katalog produktów sklepowych, tryb wzmianki o WWW. Aplikacja NIE
+  // decyduje o tym sama — flagi i blokady krzyżowe żyją na serwerze.
+  rpc GetBillingSurface(google.protobuf.Empty) returns (BillingSurface);
+
+  // Zalogowany użytkownik. Bramka przed otwarciem arkusza zakupu:
+  // sprawdza blokady (inny dostawca, organizacja na miejscach, flaga
+  // wyłączona, równoległy checkout) i zwraca app_account_token, którym
+  // aplikacja podpisuje transakcję w sklepie.
+  rpc BeginStorePurchase(BeginStorePurchaseRequest) returns (BeginStorePurchaseResponse);
+
+  // Zalogowany użytkownik. Weryfikuje zakup u Apple/Google i nadaje
+  // uprawnienie. Aplikacja NIGDY nie przyznaje go sobie sama; transakcji
+  // nie wolno finishować/acknowledge'ować przed sukcesem tego RPC.
+  rpc VerifyStorePurchase(VerifyStorePurchaseRequest) returns (Subscription);
+
+  // Zalogowany użytkownik. „Przywróć zakupy" (wymóg Apple 3.1.2).
+  // Odrzuca transakcje z app_account_token innej organizacji.
+  rpc RestoreStorePurchases(RestoreStorePurchasesRequest) returns (Subscription);
+
+  // SUPERWIZOR_ADMIN. Dziennik transakcji sklepowych organizacji.
+  rpc AdminListStoreTransactions(AdminListStoreTransactionsRequest) returns (AdminListStoreTransactionsResponse);
 }
 
 message CheckQuotaRequest {
@@ -200,6 +252,15 @@ message Subscription {
   int32  tokens_remaining            = 12;  // = max(0, limit - used - reserved)
   bool   cancel_at_period_end        = 13;
   google.protobuf.Timestamp canceled_at = 14;
+  // docs/70: kto sprzedał tę subskrypcję — STRIPE | APPLE_IAP |
+  // GOOGLE_IAP | MANUAL | P24. Decyduje, co pokazać na ekranie
+  // Subskrypcja: link do portalu Stripe, deep link do sklepu, czy
+  // komunikat "planem zarządza Twoja organizacja". Puste dla starych
+  // klientów, którzy nie znają tego pola.
+  string billing_provider            = 15;
+  // Koniec billing grace period ze sklepu (nieudane obciążenie, dostęp
+  // trwa). Puste poza tym stanem.
+  google.protobuf.Timestamp grace_until = 16;
 }
 
 
@@ -339,4 +400,214 @@ message Invoice {
   google.protobuf.Timestamp period_start = 7;
   google.protobuf.Timestamp period_end = 8;
   google.protobuf.Timestamp created_at = 9;
+}
+
+
+// ──────────────────────────────────────────────────────────────────
+// Kody rabatowe — docs/70 §6.
+// ──────────────────────────────────────────────────────────────────
+
+message DiscountCode {
+  string id            = 1;
+  string code          = 2;
+  string name          = 3;
+  // Procent zniżki jako string dziesiętny ("33.00") — ta sama
+  // konwencja co PlanInfo.price_gross, bez utraty precyzji na double.
+  string percent_off   = 4;
+  string duration      = 5;   // ONCE | REPEATING | FOREVER
+  int32  duration_periods = 6;
+  google.protobuf.Timestamp valid_from  = 7;
+  google.protobuf.Timestamp valid_until = 8;
+  int32  max_redemptions   = 9;
+  int32  redemptions_count = 10;
+  repeated string applies_to_tiers  = 11;  // puste = wszystkie plany
+  repeated string applies_to_cycles = 12;
+  bool   new_customers_only = 13;
+  repeated string channels  = 14;          // WEB | APPLE | GOOGLE
+  bool   is_active          = 15;
+  string stripe_promotion_code_id = 16;
+  google.protobuf.Timestamp created_at = 17;
+}
+
+message AdminCreateDiscountCodeRequest {
+  string code          = 1;   // [A-Z0-9_]{3,32}, normalizowany do wielkich liter
+  string name          = 2;
+  string percent_off   = 3;   // (0, 100]
+  string duration      = 4;   // domyślnie FOREVER
+  int32  duration_periods = 5;
+  google.protobuf.Timestamp valid_until = 6;   // wymagany, w przyszłości
+  int32  max_redemptions = 7;                  // > 0
+  repeated string applies_to_tiers  = 8;
+  repeated string applies_to_cycles = 9;
+  bool   new_customers_only = 10;
+  repeated string channels  = 11;              // domyślnie ["WEB"]
+  string reason = 15;                          // >= 10 znaków
+  string idempotency_key = 16;
+}
+
+message AdminUpdateDiscountCodeRequest {
+  string id   = 1;
+  string name = 2;                             // puste = bez zmian
+  google.protobuf.Timestamp valid_until = 3;   // brak = bez zmian
+  int32  max_redemptions = 4;                  // 0 = bez zmian
+  // -1 = bez zmian, 0 = dezaktywuj, 1 = aktywuj. Osobne pole zamiast
+  // bool, bo proto3 nie odróżnia false od "nie ustawione".
+  int32  set_active = 5;
+  string reason = 15;
+  string idempotency_key = 16;
+}
+
+message AdminListDiscountCodesRequest {
+  bool include_inactive = 1;
+}
+
+message AdminListDiscountCodesResponse {
+  repeated DiscountCode codes = 1;
+}
+
+message AdminGetDiscountCodeRequest {
+  string id = 1;
+}
+
+message DiscountCodeRedemption {
+  string organization_id   = 1;
+  string organization_name = 2;
+  string channel           = 3;
+  string status            = 4;   // RESERVED | COMMITTED | RELEASED
+  google.protobuf.Timestamp reserved_at  = 5;
+  google.protobuf.Timestamp committed_at = 6;
+}
+
+message DiscountCodeDetails {
+  DiscountCode code = 1;
+  repeated DiscountCodeRedemption redemptions = 2;
+}
+
+message ValidateDiscountCodeRequest {
+  string code       = 1;
+  string plan_tier  = 2;   // SOLO | PRO
+  string plan_cycle = 3;   // MONTHLY | ANNUAL
+  // Kanał zakupu. Puste = WEB.
+  string channel    = 4;
+}
+
+message DiscountCodeQuote {
+  bool   valid  = 1;
+  // Kod odmowy dla interfejsu: NOT_FOUND | EXPIRED | NOT_STARTED |
+  // EXHAUSTED | ALREADY_USED | PLAN_NOT_ELIGIBLE | CHANNEL_NOT_ELIGIBLE |
+  // NEW_CUSTOMERS_ONLY | INACTIVE.
+  string reason = 2;
+  string code   = 3;   // znormalizowany kod
+  string name   = 4;
+  string percent_off  = 5;
+  // Kwoty brutto jako stringi dziesiętne w walucie planu.
+  string price_before = 6;
+  string price_after  = 7;
+  string currency_code = 8;
+  string duration = 9;
+  int32  duration_periods = 10;
+  // Ile użyć zostało (przybliżenie — rozstrzyga Stripe przy checkoucie).
+  int32  redemptions_left = 11;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Zakupy w aplikacji — docs/70 §7.2.
+// ──────────────────────────────────────────────────────────────────
+
+message StoreProduct {
+  // Identyfikator produktu w sklepie, po którym aplikacja odpytuje
+  // StoreKit / Play o CENĘ. Ceny nie bierzemy z backendu — musi
+  // pochodzić ze sklepu, w walucie storefrontu użytkownika.
+  string product_id        = 1;
+  string plan_tier         = 2;
+  string plan_cycle        = 3;
+  int32  tokens_per_period = 4;
+  // Cena referencyjna brutto (PLN) — wyłącznie do porównań i telemetrii.
+  string reference_price_gross = 5;
+  string currency_code         = 6;
+}
+
+message BillingSurface {
+  // Kto sprzedał obecną subskrypcję: STRIPE | APPLE_IAP | GOOGLE_IAP |
+  // MANUAL | P24. Puste = brak aktywnej subskrypcji.
+  string active_provider = 1;
+  string plan_tier       = 2;
+  string status          = 3;
+
+  // Czy paywall ma w ogóle sprzedawać na TEJ platformie.
+  bool   can_purchase = 4;
+  // Gdy can_purchase = false: OTHER_PROVIDER_ACTIVE | ORG_MANAGED |
+  // IAP_DISABLED | PENDING_CHECKOUT | ACCOUNT_INACTIVE.
+  string block_reason = 5;
+  // Do kiedy blokada obowiązuje (koniec okresu u innego dostawcy).
+  google.protobuf.Timestamp blocked_until = 6;
+
+  // Produkty do pokazania na paywallu tej platformy. Puste, gdy
+  // can_purchase = false.
+  repeated StoreProduct products = 7;
+
+  // NONE | TEXT | LINK — czy aplikacja może wspomnieć o zakupie na
+  // superwizor.ai. NONE jest domyślne i jedyne bezpieczne bez analizy
+  // warunków DMA (docs/70 R6).
+  string web_link_mode = 8;
+
+  // Czy pokazać „Przywróć zakupy" (wymóg Apple 3.1.2 na platformach
+  // ze sprzedażą IAP).
+  bool show_restore = 9;
+
+  // Głęboki link do zarządzania subskrypcją: portal Stripe (web),
+  // ustawienia subskrypcji w sklepie (iOS/Android). Puste dla MANUAL.
+  string manage_url = 10;
+}
+
+message BeginStorePurchaseRequest {
+  string platform   = 1;  // IOS | ANDROID
+  string product_id = 2;
+}
+
+message BeginStorePurchaseResponse {
+  bool   allowed      = 1;
+  string block_reason = 2;
+  google.protobuf.Timestamp blocked_until = 3;
+  // UUID organizacji przekazywany do sklepu jako appAccountToken
+  // (Apple) / obfuscatedExternalAccountId (Google). Jedyne wiązanie
+  // transakcji z kontem.
+  string app_account_token = 4;
+}
+
+message VerifyStorePurchaseRequest {
+  string platform = 1;  // IOS | ANDROID
+  // iOS: podpisany JWS transakcji ze StoreKit 2.
+  string jws_transaction = 2;
+  // Android: purchaseToken + product_id z Play Billing.
+  string purchase_token = 3;
+  string product_id     = 4;
+}
+
+message RestoreStorePurchasesRequest {
+  string platform = 1;
+  repeated string jws_transactions = 2;  // iOS
+  repeated string purchase_tokens  = 3;  // Android
+  string product_id = 4;                 // Android: produkt tokenów powyżej
+}
+
+message AdminListStoreTransactionsRequest {
+  string organization_id = 1;
+  int32  limit = 2;
+}
+
+message StoreTransactionInfo {
+  string provider       = 1;
+  string transaction_id = 2;
+  string original_transaction_id = 3;
+  string product_id     = 4;
+  string environment    = 5;
+  google.protobuf.Timestamp purchase_date = 6;
+  google.protobuf.Timestamp expires_date  = 7;
+  google.protobuf.Timestamp revocation_date = 8;
+  string offer_identifier = 9;
+}
+
+message AdminListStoreTransactionsResponse {
+  repeated StoreTransactionInfo transactions = 1;
 }

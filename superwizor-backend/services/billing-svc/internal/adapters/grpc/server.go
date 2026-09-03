@@ -36,6 +36,7 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/stripepromo"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/tokens"
 )
 
@@ -101,6 +102,27 @@ type Server struct {
 	reservationTTL time.Duration
 	version        string
 	collector      *analytics.Collector
+	// promo — port na kupony Stripe'a (docs/70 §6.4). nil = brak klucza
+	// Stripe: kody na kanał WEB nie dają się wtedy założyć, zamiast
+	// powstawać martwe. Ustawiany przez SetPromoSyncer po konstrukcji,
+	// żeby nie zmieniać sygnatur konstruktorów używanych w testach.
+	promo stripepromo.Syncer
+	// stores — weryfikatory zakupów App Store / Google Play, po jednym
+	// na platformę (docs/70 §7.3). Brak wpisu = sprzedaż na tej
+	// platformie jest wyłączona niezależnie od flagi w app_config.
+	stores map[string]StoreVerifier
+}
+
+// SetPromoSyncer wstrzykuje port Stripe'a. Wołane raz, przy starcie.
+func (s *Server) SetPromoSyncer(p stripepromo.Syncer) { s.promo = p }
+
+// SetStoreVerifier rejestruje weryfikator zakupów dla providera
+// (APPLE_IAP / GOOGLE_IAP).
+func (s *Server) SetStoreVerifier(provider string, v StoreVerifier) {
+	if s.stores == nil {
+		s.stores = map[string]StoreVerifier{}
+	}
+	s.stores[provider] = v
 }
 
 // NewServer — produkcyjny konstruktor.
@@ -193,6 +215,17 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 		return &billingv1.QuotaDecision{
 			Allowed: false,
 			Reason:  "SUBSCRIPTION_PAST_DUE",
+		}, nil
+	}
+	// PAUSED wchodzi razem z subskrypcjami Google Play (docs/70 §7.3):
+	// użytkownik świadomie wstrzymał subskrypcję, więc dostęp jest
+	// zawieszony do wznowienia w sklepie. Osobny powód, nie PAST_DUE —
+	// aplikacja pokazuje inny komunikat i inny deep link.
+	if sub.Status == db.SubscriptionStatusPAUSED {
+		s.trackQuotaDenied(ctx, orgID, 0, 0)
+		return &billingv1.QuotaDecision{
+			Allowed: false,
+			Reason:  "SUBSCRIPTION_PAUSED",
 		}, nil
 	}
 
@@ -324,6 +357,9 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 	}
 	if sub.Status == db.SubscriptionStatusPASTDUE {
 		return nil, status.Error(codes.FailedPrecondition, "SUBSCRIPTION_PAST_DUE")
+	}
+	if sub.Status == db.SubscriptionStatusPAUSED {
+		return nil, status.Error(codes.FailedPrecondition, "SUBSCRIPTION_PAUSED")
 	}
 
 	// Transakcja: advisory lock → lock counter row → sprawdź dostępność →
@@ -906,6 +942,11 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		canceledAt = &sub.CanceledAt.Time
 	}
 
+	var graceUntil *time.Time
+	if sub.GraceUntil.Valid {
+		graceUntil = &sub.GraceUntil.Time
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -915,6 +956,8 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
 		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 		CanceledAt:         canceledAt,
+		Provider:           string(sub.Provider),
+		GraceUntil:         graceUntil,
 	}, tokensUsed, tokensReserved, tokensLimit), nil
 }
 
@@ -984,6 +1027,12 @@ type subFields struct {
 	CurrentPeriodEnd   time.Time
 	CancelAtPeriodEnd  bool
 	CanceledAt         *time.Time
+	// docs/70: kto sprzedał subskrypcję (STRIPE | APPLE_IAP |
+	// GOOGLE_IAP | MANUAL | P24) i do kiedy trwa okno grace ze sklepu.
+	// Puste dla wywołań, które tej informacji nie mają — proto po prostu
+	// nie niesie wtedy tych pól.
+	Provider   string
+	GraceUntil *time.Time
 }
 
 // buildSubscriptionProto is the single source of truth for converting a
@@ -1003,6 +1052,10 @@ func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit
 	if s.CanceledAt != nil {
 		canceledAtProto = timestamppb.New(*s.CanceledAt)
 	}
+	var graceUntilProto *timestamppb.Timestamp
+	if s.GraceUntil != nil {
+		graceUntilProto = timestamppb.New(*s.GraceUntil)
+	}
 	return &billingv1.Subscription{
 		Id:                       s.ID.String(),
 		PlanTier:                 s.PlanTier,
@@ -1018,6 +1071,8 @@ func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit
 		CurrentPeriodEnd:         timestamppb.New(s.CurrentPeriodEnd),
 		CancelAtPeriodEnd:        s.CancelAtPeriodEnd,
 		CanceledAt:               canceledAtProto,
+		BillingProvider:          s.Provider,
+		GraceUntil:               graceUntilProto,
 	}
 }
 

@@ -20,6 +20,7 @@ SELECT
     s.provider_subscription_id, s.status,
     s.current_period_start, s.current_period_end,
     s.cancel_at_period_end, s.canceled_at, s.trial_end_at,
+    s.grace_until, s.store_product_id,
     s.created_at, s.updated_at,
     p.tier AS plan_tier,
     p.cycle AS plan_cycle,
@@ -27,14 +28,22 @@ SELECT
     p.licenses_limit AS plan_licenses_limit
 FROM subscriptions s
 JOIN subscription_plans p ON p.id = s.plan_id
+-- PAUSED dołączony 2026-09 razem z subskrypcjami Google Play (docs/70
+-- §7.3). Wstrzymana subskrypcja MUSI być widoczna: bez tego zapytanie
+-- zwracało ErrNoRows, aplikacja pokazywała "brak subskrypcji" i pozwalała
+-- kupić drugą, a wznowienie tej wstrzymanej rozbijało się o
+-- idx_subscriptions_one_active_per_org. Blokuje pulę tak samo jak
+-- PAST_DUE, tyle że z własnym powodem (SUBSCRIPTION_PAUSED) — użytkownik
+-- ma wznowić subskrypcję w sklepie, a nie naprawiać płatność.
 WHERE s.organization_id = $1
-  AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
+  AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'PAUSED')
 ORDER BY
     CASE s.status
         WHEN 'ACTIVE'   THEN 0
         WHEN 'PAST_DUE' THEN 1
         WHEN 'TRIALING' THEN 2
-        ELSE 3
+        WHEN 'PAUSED'   THEN 3
+        ELSE 4
     END,
     s.created_at DESC
 LIMIT 1;

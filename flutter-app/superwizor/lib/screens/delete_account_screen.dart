@@ -1,16 +1,33 @@
-// delete_account_screen.dart
+// delete_account_screen.dart — usuwanie konta w aplikacji (Apple 5.1.1(v)).
 //
-// Flow:
-//   1. Ekran (slide from right) — tytuł "Usuń konto" + lista konsekwencji
-//   2. Na dole sticky: wiersz "Rozumiem konsekwencje..." + toggle
-//      → gdy toggle ON → przycisk "Usuń moje konto" aktywny
-//   3. Kliknięcie aktywnego przycisku → bottom sheet z polem "USUWAM"
-//      → po wpisaniu "USUWAM" przycisk aktywny → firebase delete
+// Przepływ:
+//   1. Ekran z listą konsekwencji + toggle „rozumiem"
+//   2. Bottom sheet: wpisz słowo potwierdzenia + opcjonalny powód
+//   3. `identity.DeleteMyAccount` — to SERWER usuwa konto i całą
+//      dokumentację; skasowanie samej tożsamości Firebase (co robił ten
+//      ekran do 09/2026) zostawiało kartoteki, sesje i raporty w bazie,
+//      a użytkownikowi odbierało jedyną drogę, żeby się o nie upomnieć.
+//   4. Wylogowanie i powrót na ekran startowy.
+//
+// Aktywna subskrypcja sklepowa (docs/70 E5): App Store nie daje nam żadnego
+// API do anulowania cudzej subskrypcji — może to zrobić wyłącznie właściciel
+// konta Apple. Serwer odrzuca wtedy żądanie przez `FAILED_PRECONDITION
+// STORE_SUBSCRIPTION_ACTIVE`, a my pokazujemy deep link do ustawień
+// subskrypcji i dopiero po świadomym potwierdzeniu wysyłamy
+// `acknowledged_subscription: true`. Bez tego kroku ludzie kasowaliby konto
+// i płacili dalej.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart' as grpc;
+import 'package:url_launcher/url_launcher.dart';
 
+import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../l10n/app_localizations.dart';
+import '../providers/billing_surface_provider.dart';
+import '../providers/grpc_provider.dart';
+import '../services/store_links.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
 
@@ -207,15 +224,17 @@ class _ConsequenceItem extends StatelessWidget {
 
 // ─── Bottom Sheet — wpisz USUWAM ─────────────────────────────
 
-class _ConfirmDeleteSheet extends StatefulWidget {
+class _ConfirmDeleteSheet extends ConsumerStatefulWidget {
   const _ConfirmDeleteSheet();
 
   @override
-  State<_ConfirmDeleteSheet> createState() => _ConfirmDeleteSheetState();
+  ConsumerState<_ConfirmDeleteSheet> createState() =>
+      _ConfirmDeleteSheetState();
 }
 
-class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
+class _ConfirmDeleteSheetState extends ConsumerState<_ConfirmDeleteSheet> {
   final _ctrl = TextEditingController();
+  final _reasonCtrl = TextEditingController();
   bool _confirmed = false;
   bool _deleting = false;
 
@@ -236,25 +255,128 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
   @override
   void dispose() {
     _ctrl.dispose();
+    _reasonCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _delete() async {
+  Future<void> _delete({bool acknowledgedSubscription = false}) async {
     if (!_confirmed) return;
     setState(() => _deleting = true);
+    final t = AppLocalizations.of(context);
     try {
-      await FirebaseAuth.instance.currentUser?.delete();
-      if (mounted) Navigator.of(context).pop(true);
-    } on FirebaseAuthException catch (e) {
+      await ref.read(grpcClientsProvider).identity.deleteMyAccount(
+            identity_pb.DeleteMyAccountRequest(
+              confirmation: _ctrl.text.trim(),
+              reason: _reasonCtrl.text.trim(),
+              acknowledgedSubscription: acknowledgedSubscription,
+            ),
+          );
+    } on grpc.GrpcError catch (e) {
       if (!mounted) return;
       setState(() => _deleting = false);
-      if (e.code == 'requires-recent-login') {
-        Navigator.of(context).pop(false);
-        EuphireToast.error(context, message: AppLocalizations.of(context).delete_account_relogin_error);
-        await FirebaseAuth.instance.signOut();
+      // Aktywna subskrypcja sklepowa — nie odmowa, tylko brakujące
+      // potwierdzenie od użytkownika (docs/70 E5).
+      if (e.code == grpc.StatusCode.failedPrecondition &&
+          (e.message ?? '').contains('STORE_SUBSCRIPTION_ACTIVE')) {
+        await _showStoreSubscriptionWarning();
+        return;
       }
+      EuphireToast.error(context, message: t.delete_account_failed);
+      return;
     } catch (_) {
-      if (mounted) setState(() => _deleting = false);
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      EuphireToast.error(context, message: t.delete_account_failed);
+      return;
+    }
+
+    // Konto po stronie serwera już nie istnieje — sesja Firebase musi
+    // zniknąć razem z nim, inaczej aplikacja wróci do ekranu „nie znaleziono
+    // konta" zamiast do logowania.
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      debugPrint('[delete-account] signOut: $e');
+    }
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  /// Ostrzeżenie o aktywnej subskrypcji: deep link do sklepu i świadome
+  /// „usuń mimo to". Deep link do WŁASNEJ subskrypcji jest dozwolony nawet
+  /// przy `web_link_mode == NONE` — to zarządzanie IAP, nie steering.
+  Future<void> _showStoreSubscriptionWarning() async {
+    final t = AppLocalizations.of(context);
+    final surface = ref.read(billingSurfaceProvider).value;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EuphireColors.surfaceTeal,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          t.delete_account_store_sub_title,
+          style: const TextStyle(
+            color: EuphireColors.frostWhite,
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+          ),
+        ),
+        content: Text(
+          t.delete_account_store_sub_body,
+          style: const TextStyle(
+            color: EuphireColors.mist,
+            fontFamily: 'Merriweather',
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actionsOverflowButtonSpacing: 8,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              t.common_cancel,
+              style: const TextStyle(
+                color: EuphireColors.mist,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              final target = surface != null && surface.manageUrl.isNotEmpty
+                  ? surface.manageUrl
+                  : storeSubscriptionsUrl(currentStorePlatform());
+              final uri = target == null ? null : Uri.tryParse(target);
+              if (uri != null) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Text(
+              t.delete_account_store_sub_open,
+              style: const TextStyle(
+                color: EuphireColors.ember,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              t.delete_account_store_sub_force,
+              style: const TextStyle(
+                color: EuphireColors.magma,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (proceed == true && mounted) {
+      await _delete(acknowledgedSubscription: true);
     }
   }
 
@@ -373,6 +495,39 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                   autocorrect: false,
                   enableSuggestions: false,
                 ),
+                const SizedBox(height: 16),
+
+                // Powód — opcjonalny, trafia do audytu (nie do CRM).
+                TextField(
+                  controller: _reasonCtrl,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 14,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: t.delete_account_reason_label,
+                    labelStyle: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      color: EuphireColors.mist.withValues(alpha: 0.8),
+                    ),
+                    hintText: t.delete_account_reason_hint,
+                    hintStyle: TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontSize: 12,
+                      color: EuphireColors.mist.withValues(alpha: 0.4),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                  ),
+                ),
                 const SizedBox(height: 20),
 
                 // Przycisk
@@ -382,7 +537,8 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                   child: SizedBox(
                     width: double.infinity, height: 54,
                     child: ElevatedButton(
-                      onPressed: _confirmed && !_deleting ? _delete : null,
+                      onPressed:
+                          _confirmed && !_deleting ? () => _delete() : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: EuphireColors.magma,
                         disabledBackgroundColor: EuphireColors.magma,

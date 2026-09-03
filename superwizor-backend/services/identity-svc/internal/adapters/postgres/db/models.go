@@ -188,6 +188,49 @@ func (ns NullNotificationStatus) Value() (driver.Value, error) {
 	return string(ns.NotificationStatus), nil
 }
 
+type OntologyStatus string
+
+const (
+	OntologyStatusDraft          OntologyStatus = "draft"
+	OntologyStatusReadyForReview OntologyStatus = "ready_for_review"
+	OntologyStatusApproved       OntologyStatus = "approved"
+)
+
+func (e *OntologyStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OntologyStatus(s)
+	case string:
+		*e = OntologyStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OntologyStatus: %T", src)
+	}
+	return nil
+}
+
+type NullOntologyStatus struct {
+	OntologyStatus OntologyStatus `json:"ontology_status"`
+	Valid          bool           `json:"valid"` // Valid is true if OntologyStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOntologyStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.OntologyStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OntologyStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOntologyStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OntologyStatus), nil
+}
+
 type OrganizationType string
 
 const (
@@ -647,6 +690,7 @@ const (
 	UserRolePATIENT         UserRole = "PATIENT"
 	UserRoleORGADMIN        UserRole = "ORG_ADMIN"
 	UserRoleSUPERWIZORADMIN UserRole = "SUPERWIZOR_ADMIN"
+	UserRoleONTOLOGYEDITOR  UserRole = "ONTOLOGY_EDITOR"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -714,6 +758,18 @@ type AnalyticsEvent struct {
 	CreatedAt      time.Time   `json:"created_at"`
 }
 
+// Runtime configuration with per-organization overrides. Read via pkg/appconfig (30 s cache). Hosts the AI chat kill switch — see docs/63 F0/F5 and ADR 62 section 11. NOT covered by the GDPR purger: contains no personal data.
+type AppConfig struct {
+	ID    uuid.UUID `json:"id"`
+	Key   string    `json:"key"`
+	Value string    `json:"value"`
+	// NULL = global default; non-NULL = override for that organization.
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Note           string      `json:"note"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	UpdatedBy      pgtype.UUID `json:"updated_by"`
+}
+
 type AudioChunk struct {
 	ID            uuid.UUID `json:"id"`
 	AudioUploadID uuid.UUID `json:"audio_upload_id"`
@@ -768,6 +824,46 @@ type AuditEvent struct {
 	OccurredAt     time.Time   `json:"occurred_at"`
 	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
 	Reason *string `json:"reason"`
+}
+
+// Audit trail for AI assistant interactions. Content is KMS envelope-encrypted (ADR-DM-002). Cascades from patient_files for RODO erasure.
+type ChatInteraction struct {
+	ID                  uuid.UUID `json:"id"`
+	TherapistID         uuid.UUID `json:"therapist_id"`
+	PatientFileID       uuid.UUID `json:"patient_file_id"`
+	ConversationID      uuid.UUID `json:"conversation_id"`
+	InteractionType     string    `json:"interaction_type"`
+	ContentCiphertext   []byte    `json:"content_ciphertext"`
+	ContentEncryptedDek []byte    `json:"content_encrypted_dek"`
+	RagHitsCount        int32     `json:"rag_hits_count"`
+	ModelUsed           string    `json:"model_used"`
+	InputTokens         int32     `json:"input_tokens"`
+	OutputTokens        int32     `json:"output_tokens"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
+// Per-therapist AI chat budget in micro-USD. Reserve-before-classifier, commit-by-UsageMetadata. See docs/63 F6 and ADR 62 section 10.
+type ChatUsageCounter struct {
+	ID           uuid.UUID `json:"id"`
+	TherapistID  uuid.UUID `json:"therapist_id"`
+	PeriodStart  time.Time `json:"period_start"`
+	PeriodEnd    time.Time `json:"period_end"`
+	MicroUsdUsed int64     `json:"micro_usd_used"`
+	// In-flight reservations, NOT spend. A crashed turn leaves one behind; the reclaim path in internal/chat/quota.go sweeps stale reservations.
+	MicroUsdReserved int64 `json:"micro_usd_reserved"`
+	// Copied from app_config at period creation. Deliberately not read live: a mid-period change to the global default must not rewrite a period already in progress.
+	MicroUsdLimit int64              `json:"micro_usd_limit"`
+	WarnedAt      pgtype.Timestamptz `json:"warned_at"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+// Open reservations, one row per in-flight turn. Deleted on commit or release; swept when older than the stale window (see quota.go).
+type ChatUsageReservation struct {
+	ID        uuid.UUID `json:"id"`
+	CounterID uuid.UUID `json:"counter_id"`
+	MicroUsd  int64     `json:"micro_usd"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ConsentRecord struct {
@@ -830,6 +926,45 @@ type CrmTestUser struct {
 	Reason   *string   `json:"reason"`
 }
 
+type DiscountCode struct {
+	ID                    uuid.UUID          `json:"id"`
+	Code                  string             `json:"code"`
+	Name                  string             `json:"name"`
+	PercentOff            pgtype.Numeric     `json:"percent_off"`
+	Duration              string             `json:"duration"`
+	DurationPeriods       *int32             `json:"duration_periods"`
+	ValidFrom             time.Time          `json:"valid_from"`
+	ValidUntil            time.Time          `json:"valid_until"`
+	MaxRedemptions        int32              `json:"max_redemptions"`
+	RedemptionsCount      int32              `json:"redemptions_count"`
+	AppliesToTiers        []string           `json:"applies_to_tiers"`
+	AppliesToCycles       []string           `json:"applies_to_cycles"`
+	NewCustomersOnly      bool               `json:"new_customers_only"`
+	Channels              []string           `json:"channels"`
+	StripeCouponID        *string            `json:"stripe_coupon_id"`
+	StripePromotionCodeID *string            `json:"stripe_promotion_code_id"`
+	AppleOfferCodeID      *string            `json:"apple_offer_code_id"`
+	GoogleOfferID         *string            `json:"google_offer_id"`
+	IsActive              bool               `json:"is_active"`
+	CreatedBy             pgtype.UUID        `json:"created_by"`
+	Reason                string             `json:"reason"`
+	CreatedAt             time.Time          `json:"created_at"`
+	UpdatedAt             time.Time          `json:"updated_at"`
+	DeactivatedAt         pgtype.Timestamptz `json:"deactivated_at"`
+}
+
+type DiscountCodeRedemption struct {
+	ID                uuid.UUID          `json:"id"`
+	CodeID            uuid.UUID          `json:"code_id"`
+	OrganizationID    uuid.UUID          `json:"organization_id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	Channel           string             `json:"channel"`
+	Status            string             `json:"status"`
+	ProviderReference *string            `json:"provider_reference"`
+	ReservedAt        time.Time          `json:"reserved_at"`
+	CommittedAt       pgtype.Timestamptz `json:"committed_at"`
+}
+
 type EmailDripLog struct {
 	ID             uuid.UUID `json:"id"`
 	UserID         string    `json:"user_id"`
@@ -845,6 +980,22 @@ type EmailTemplate struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Zamowienia raportow eksperymentalnych (plan 16 §2.5). Liczone PRZED generacja, bo wiersz w reports powstaje dopiero po niej.
+type ExperimentalReportRequest struct {
+	ID                uuid.UUID   `json:"id"`
+	TherapistID       uuid.UUID   `json:"therapist_id"`
+	SessionID         uuid.UUID   `json:"session_id"`
+	ModalityCode      string      `json:"modality_code"`
+	OntologyVersionID pgtype.UUID `json:"ontology_version_id"`
+	Origin            string      `json:"origin"`
+	// NULL dla zamowien w locie i nieudanych. Oba liczą sie do dobowego limitu — oba kosztowaly wywolania modelu.
+	ReportID  pgtype.UUID `json:"report_id"`
+	CreatedAt time.Time   `json:"created_at"`
+	// Niepuste = raport NIE powstał mimo włączonego przełącznika. Takie wiersze NIE liczą się do dobowego limitu — inaczej odmowa z powodu limitu sama zużywałaby limit.
+	SkipReason *string `json:"skip_reason"`
+	SkipDetail *string `json:"skip_detail"`
+}
+
 type FcmToken struct {
 	ID                uuid.UUID          `json:"id"`
 	UserID            uuid.UUID          `json:"user_id"`
@@ -857,6 +1008,32 @@ type FcmToken struct {
 	CreatedAt         time.Time          `json:"created_at"`
 	InvalidatedAt     pgtype.Timestamptz `json:"invalidated_at"`
 	InvalidatedReason *string            `json:"invalidated_reason"`
+}
+
+// MDR article 94 evidence log for the AI chat guardrail. 24-month retention. CONTAINS NO PERSONAL DATA and is DELIBERATELY EXCLUDED from the GDPR purger — see migration 000085 header and the negative test in clinical-svc. Do not add a patient_file_id, a therapist_id, or any free text derived from the conversation to this table.
+type GuardrailDecision struct {
+	ID uuid.UUID `json:"id"`
+	// One-way digest of the conversation ID. Not a foreign key: a join path back to patient material is what this table must not have.
+	ChatSessionHash  string `json:"chat_session_hash"`
+	Intent           string `json:"intent"`
+	RiskFlag         bool   `json:"risk_flag"`
+	ConfidenceBucket string `json:"confidence_bucket"`
+	Decision         string `json:"decision"`
+	EffectiveIntent  string `json:"effective_intent"`
+	DecisionReason   string `json:"decision_reason"`
+	VerifierResult   string `json:"verifier_result"`
+	BlockReason      string `json:"block_reason"`
+	// Quotes carried by the served response. Zero on a generative intent is an alarm condition (ADR section 8.3).
+	GroundingQuoteCount     int32     `json:"grounding_quote_count"`
+	ClassifierPromptVersion string    `json:"classifier_prompt_version"`
+	VerifierPromptVersion   string    `json:"verifier_prompt_version"`
+	ClassifierModel         string    `json:"classifier_model"`
+	GeneratorModel          string    `json:"generator_model"`
+	ChatMode                string    `json:"chat_mode"`
+	Platform                string    `json:"platform"`
+	CostMicroUsd            int64     `json:"cost_micro_usd"`
+	LatencyMs               int32     `json:"latency_ms"`
+	CreatedAt               time.Time `json:"created_at"`
 }
 
 type HitopDimension struct {
@@ -928,6 +1105,8 @@ type Modality struct {
 	CreatedAt                 time.Time    `json:"created_at"`
 	UpdatedAt                 time.Time    `json:"updated_at"`
 	ModalityType              ModalityType `json:"modality_type"`
+	// Wersja serwowana na produkcji. Ustawia WYLACZNIE SUPERWIZOR_ADMIN na wersji approved z zielonym benchmarkiem. NULL = potok ontologiczny niedostepny dla tej modalnosci (fail-closed na legacy).
+	ActiveOntologyVersionID pgtype.UUID `json:"active_ontology_version_id"`
 }
 
 type ModalityPromptVersion struct {
@@ -953,6 +1132,23 @@ type NotificationDelivery struct {
 	ErrorMessage     *string            `json:"error_message"`
 	CreatedAt        time.Time          `json:"created_at"`
 	SentAt           pgtype.Timestamptz `json:"sent_at"`
+}
+
+type OntologyVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    string    `json:"version"`
+	// Tresc ontologii w YAML, doslownie — z komentarzami. Zrodlem prawdy o strukturze jest pkg/ontology, nie typ kolumny.
+	Content        string             `json:"content"`
+	Status         OntologyStatus     `json:"status"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ChangeNote     string             `json:"change_note"`
+	SubmittedAt    pgtype.Timestamptz `json:"submitted_at"`
+	ApprovedBy     pgtype.UUID        `json:"approved_by"`
+	ApprovedAt     pgtype.Timestamptz `json:"approved_at"`
+	ApprovalNote   *string            `json:"approval_note"`
+	ConstructCount int32              `json:"construct_count"`
 }
 
 // Per-organization seat purchase: how many therapist seats in which plan, at what negotiated price. Occupancy = active seat_assignments + pending invitations for the allocation (docs/38 §3).
@@ -1045,6 +1241,14 @@ type PaymentEvent struct {
 	ReceivedAt       time.Time          `json:"received_at"`
 }
 
+type PendingCheckout struct {
+	OrganizationID uuid.UUID `json:"organization_id"`
+	Channel        string    `json:"channel"`
+	Reference      string    `json:"reference"`
+	CreatedAt      time.Time `json:"created_at"`
+	ExpiresAt      time.Time `json:"expires_at"`
+}
+
 type PendingReservation struct {
 	ID             uuid.UUID          `json:"id"`
 	SessionID      uuid.UUID          `json:"session_id"`
@@ -1116,6 +1320,102 @@ type Report struct {
 	ParentReportID       pgtype.UUID    `json:"parent_report_id"`
 	GenerationCount      int32          `json:"generation_count"`
 	CreatedAt            time.Time      `json:"created_at"`
+	// Template that produced this document, if any. NULL = the standard per-modality pipeline.
+	TemplateID      pgtype.UUID `json:"template_id"`
+	TemplateVersion *int32      `json:"template_version"`
+	// Ktorym potokiem powstal raport. Raporty *_experimental nie licza sie do ReportsAvailable i nie wyzwalaja powiadomien (plan 16 sekcja 2.5).
+	PipelineVersion  string  `json:"pipeline_version"`
+	OntologyVersion  *string `json:"ontology_version"`
+	PromptVersions   []byte  `json:"prompt_versions"`
+	ValidatorVersion *string `json:"validator_version"`
+}
+
+type ReportClaim struct {
+	ID                    uuid.UUID      `json:"id"`
+	ReportID              uuid.UUID      `json:"report_id"`
+	ConstructID           string         `json:"construct_id"`
+	Categories            []string       `json:"categories"`
+	EpistemicStatus       string         `json:"epistemic_status"`
+	Confidence            pgtype.Numeric `json:"confidence"`
+	ReasoningCiphertext   []byte         `json:"reasoning_ciphertext"`
+	ReasoningEncryptedDek []byte         `json:"reasoning_encrypted_dek"`
+	IsEtiological         bool           `json:"is_etiological"`
+	CreatedAt             time.Time      `json:"created_at"`
+}
+
+type ReportClaimEvidence struct {
+	ClaimID uuid.UUID `json:"claim_id"`
+	SpanID  uuid.UUID `json:"span_id"`
+	Role    string    `json:"role"`
+}
+
+type ReportClaimLink struct {
+	ID               uuid.UUID   `json:"id"`
+	ReportID         uuid.UUID   `json:"report_id"`
+	Kind             string      `json:"kind"`
+	CurrentClaimID   pgtype.UUID `json:"current_claim_id"`
+	PastClaimID      uuid.UUID   `json:"past_claim_id"`
+	Relation         string      `json:"relation"`
+	EvidenceSpanRefs []string    `json:"evidence_span_refs"`
+	CreatedAt        time.Time   `json:"created_at"`
+}
+
+// Rejestr odrzuceń walidatora (S3) i naruszeń weryfikatora (S5). Od migracji 000095 niesie także uzasadnienie odrzuconego twierdzenia — szyfrowane, kasowane kaskadowo z raportem. Powód zmiany: progi i prompty stroi się na przykładach, a przykład bez treści nie stroi niczego (kanarek CBT 2026-08-23).
+type ReportClaimRejection struct {
+	ID          uuid.UUID `json:"id"`
+	ReportID    uuid.UUID `json:"report_id"`
+	ConstructID string    `json:"construct_id"`
+	Rule        string    `json:"rule"`
+	Detail      *string   `json:"detail"`
+	CreatedAt   time.Time `json:"created_at"`
+	// Uzasadnienie modelu dla odrzuconego twierdzenia. NULL dla odrzuceń niezwiązanych z pojedynczym twierdzeniem.
+	ReasoningCiphertext   []byte         `json:"reasoning_ciphertext"`
+	ReasoningEncryptedDek []byte         `json:"reasoning_encrypted_dek"`
+	ProposedCategories    []string       `json:"proposed_categories"`
+	EpistemicStatus       *string        `json:"epistemic_status"`
+	Confidence            pgtype.Numeric `json:"confidence"`
+	// span_ref spanów, na które powoływało się odrzucone twierdzenie. Bez FK do report_spans: to materiał do analizy, nie część grafu raportu.
+	EvidenceSpanRefs []string `json:"evidence_span_refs"`
+}
+
+type ReportInferenceIndex struct {
+	ID            uuid.UUID `json:"id"`
+	PatientFileID uuid.UUID `json:"patient_file_id"`
+	SessionID     uuid.UUID `json:"session_id"`
+	ReportID      uuid.UUID `json:"report_id"`
+	// claim = twierdzenie po walidacji S3 (może być dowodem). hypothesis = proza S4 (NIGDY dowodem — wyłącznie kanał ciągłości).
+	Kind            string      `json:"kind"`
+	SourceClaimID   pgtype.UUID `json:"source_claim_id"`
+	ItemRef         string      `json:"item_ref"`
+	ConstructID     string      `json:"construct_id"`
+	EpistemicStatus string      `json:"epistemic_status"`
+	Confidence      *float32    `json:"confidence"`
+	// Klasa potoku. Odczyt MUSI filtrować: raport produkcyjny nie widzi twierdzeń ze szkicu ontologii, a szkic kalibruje się na własnej historii.
+	PipelineVersion  string           `json:"pipeline_version"`
+	TextCiphertext   []byte           `json:"text_ciphertext"`
+	TextEncryptedDek []byte           `json:"text_encrypted_dek"`
+	Embedding        *pgvector.Vector `json:"embedding"`
+	// Wektory z różnych modeli leżą w różnych przestrzeniach — bez tej kolumny zmiana modelu cicho zmieniałaby wyniki wyszukiwania.
+	EmbeddingModel string      `json:"embedding_model"`
+	SessionAt      pgtype.Date `json:"session_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
+type ReportPattern struct {
+	ID            uuid.UUID `json:"id"`
+	ReportID      uuid.UUID `json:"report_id"`
+	PatternRef    string    `json:"pattern_ref"`
+	PatternType   string    `json:"pattern_type"`
+	Topics        []string  `json:"topics"`
+	Method        string    `json:"method"`
+	MethodVersion string    `json:"method_version"`
+	SessionsCount int32     `json:"sessions_count"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+type ReportPatternSpan struct {
+	PatternID uuid.UUID `json:"pattern_id"`
+	SpanID    uuid.UUID `json:"span_id"`
 }
 
 // LLM-chat-style 👍/👎 feedback on therapist_reports. See docs/10_REPORT_CUSTOMIZATION.md §5.
@@ -1131,6 +1431,76 @@ type ReportRating struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	// Admin review status for the feedback dashboard. pending = unreviewed/to-do, done = admin marked as actioned.
 	AdminReviewStatus string `json:"admin_review_status"`
+}
+
+// Co przebieg zobaczył z poprzednich sesji (dok. 65 §N2). Warunek twardy dla F7b: bez zapisu wejścia niedeterministyczny retrieval jest nieaudytowalny.
+type ReportRunContext struct {
+	ID              uuid.UUID `json:"id"`
+	ReportID        uuid.UUID `json:"report_id"`
+	ItemKind        string    `json:"item_kind"`
+	Channel         string    `json:"channel"`
+	SourceSessionID uuid.UUID `json:"source_session_id"`
+	ItemRef         string    `json:"item_ref"`
+	ConstructID     *string   `json:"construct_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	// Podobieństwo kosinusowe (1 - odległość) dla kanału semantycznego. NULL dla okna deterministycznego — tam selekcja nie ma miary.
+	Similarity *float32 `json:"similarity"`
+}
+
+type ReportRunContextStat struct {
+	ReportID       uuid.UUID `json:"report_id"`
+	WindowSize     int32     `json:"window_size"`
+	SessionsLoaded int32     `json:"sessions_loaded"`
+	// Starsze sesje kartoteki wciąż przetwarzane w chwili przebiegu. Pomijane świadomie (nie czekamy — brak zakleszczenia), ale jawnie.
+	SessionsSkippedUnfinished int32     `json:"sessions_skipped_unfinished"`
+	ClaimsShown               int32     `json:"claims_shown"`
+	ClaimsDroppedBudget       int32     `json:"claims_dropped_budget"`
+	SpansShown                int32     `json:"spans_shown"`
+	SpansDroppedBudget        int32     `json:"spans_dropped_budget"`
+	CreatedAt                 time.Time `json:"created_at"`
+	SemanticEnabled           bool      `json:"semantic_enabled"`
+	SemanticFound             int32     `json:"semantic_found"`
+	// Sąsiedzi odrzuceni progiem. Materiał do kalibracji (F7b-4): dużo odrzuconych przy zerze przyjętych znaczy „próg za wysoki", a nie „brak historii".
+	SemanticBelowThreshold int32 `json:"semantic_below_threshold"`
+}
+
+type ReportSpan struct {
+	ID                uuid.UUID `json:"id"`
+	SessionID         uuid.UUID `json:"session_id"`
+	TranscriptID      uuid.UUID `json:"transcript_id"`
+	SpanRef           string    `json:"span_ref"`
+	QuoteCiphertext   []byte    `json:"quote_ciphertext"`
+	QuoteEncryptedDek []byte    `json:"quote_encrypted_dek"`
+	TsStartMs         *int32    `json:"ts_start_ms"`
+	TsEndMs           *int32    `json:"ts_end_ms"`
+	Speaker           *string   `json:"speaker"`
+	Kind              string    `json:"kind"`
+	ObservedBy        string    `json:"observed_by"`
+	AboutPast         bool      `json:"about_past"`
+	RiskContent       bool      `json:"risk_content"`
+	SilenceBeforeMs   int32     `json:"silence_before_ms"`
+	CreatedAt         time.Time `json:"created_at"`
+	// Hasła tematyczne z S1 (1–3, mianownik). Wejście rekurencji międzysesyjnej w S1.5. Puste dla spanów sprzed migracji 000097 — takie spany nie liczą się do rekurencji i nie są uzupełniane wstecz.
+	Topics []string `json:"topics"`
+	// E4/T42a: rodzaj faktu sesyjnego (NULL = zwykly span); katalog w pkg/ontology FactKinds
+	FactKind *string `json:"fact_kind"`
+}
+
+// Therapist-authored document templates. A template composes typed SECTIONS over guardrailed executors — it is not a saved prompt (decision D7, docs/63 F10). Versions are append-only; sharing forks a version rather than linking to it.
+type ReportTemplate struct {
+	ID               uuid.UUID   `json:"id"`
+	OwnerTherapistID uuid.UUID   `json:"owner_therapist_id"`
+	OrganizationID   pgtype.UUID `json:"organization_id"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	Version          int32       `json:"version"`
+	// Array of typed sections. Validated at save time by pkg/guardrail. Prohibited operations are unreachable: no section type produces one.
+	Sections          []byte             `json:"sections"`
+	ForkedFromID      pgtype.UUID        `json:"forked_from_id"`
+	ForkedFromVersion *int32             `json:"forked_from_version"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type SeatAssignment struct {
@@ -1166,6 +1536,26 @@ type Session struct {
 	// Set when the therapist shares this session (incl. transcript) with the client panel (docs/39 D2). NULL = not visible to the client. Unshare = back to NULL.
 	SharedWithClientAt pgtype.Timestamptz `json:"shared_with_client_at"`
 	ClientHiddenAt     pgtype.Timestamptz `json:"client_hidden_at"`
+}
+
+type StoreTransaction struct {
+	ID                    uuid.UUID          `json:"id"`
+	Provider              PaymentProvider    `json:"provider"`
+	TransactionID         string             `json:"transaction_id"`
+	OriginalTransactionID string             `json:"original_transaction_id"`
+	OrganizationID        pgtype.UUID        `json:"organization_id"`
+	UserID                pgtype.UUID        `json:"user_id"`
+	ProductID             string             `json:"product_id"`
+	PurchaseDate          time.Time          `json:"purchase_date"`
+	ExpiresDate           pgtype.Timestamptz `json:"expires_date"`
+	Environment           string             `json:"environment"`
+	AppAccountToken       pgtype.UUID        `json:"app_account_token"`
+	OfferType             *string            `json:"offer_type"`
+	OfferIdentifier       *string            `json:"offer_identifier"`
+	RevocationDate        pgtype.Timestamptz `json:"revocation_date"`
+	RevocationReason      *string            `json:"revocation_reason"`
+	RawPayload            []byte             `json:"raw_payload"`
+	VerifiedAt            time.Time          `json:"verified_at"`
 }
 
 type SttOperation struct {
@@ -1204,6 +1594,12 @@ type Subscription struct {
 	TrialEndAt                     pgtype.Timestamptz `json:"trial_end_at"`
 	CreatedAt                      time.Time          `json:"created_at"`
 	UpdatedAt                      time.Time          `json:"updated_at"`
+	StoreEnvironment               *string            `json:"store_environment"`
+	StoreProductID                 *string            `json:"store_product_id"`
+	AutoRenew                      *bool              `json:"auto_renew"`
+	// Koniec billing grace period ze sklepu. Status zostaje ACTIVE, licznik przedłużony do tej daty bez nowej puli (docs/70 E13).
+	GraceUntil    pgtype.Timestamptz `json:"grace_until"`
+	PendingPlanID pgtype.UUID        `json:"pending_plan_id"`
 }
 
 type SubscriptionPlan struct {
@@ -1223,6 +1619,8 @@ type SubscriptionPlan struct {
 	GoogleProductID      *string        `json:"google_product_id"`
 	IsActive             bool           `json:"is_active"`
 	CreatedAt            time.Time      `json:"created_at"`
+	// Cena w sklepach = cena web +15% zaokrąglona do punktu cenowego Apple (docs/70 §3.1). Referencyjna: aplikacja pokazuje displayPrice ze StoreKit/Play.
+	StorePriceGross pgtype.Numeric `json:"store_price_gross"`
 }
 
 type TherapistPatientRelation struct {
@@ -1340,37 +1738,43 @@ type VAnalyticsPipelineLatency struct {
 }
 
 type VAnalyticsSatisfaction struct {
-	Week            pgtype.Interval `json:"week"`
-	TotalRatings    int64           `json:"total_ratings"`
-	Positive        int64           `json:"positive"`
-	Negative        int64           `json:"negative"`
-	SatisfactionPct pgtype.Numeric  `json:"satisfaction_pct"`
+	Week            interface{}    `json:"week"`
+	TotalRatings    int64          `json:"total_ratings"`
+	Positive        int64          `json:"positive"`
+	Negative        int64          `json:"negative"`
+	SatisfactionPct pgtype.Numeric `json:"satisfaction_pct"`
 }
 
+// Koszt jednostkowy sesji: jeden wiersz na sesję, która doczekała się raportu. STT wyceniane po transcripts.stt_model (migracja 000101), LLM sumowane po wszystkich generacjach raportu. Dodając dostawcę STT trzeba dopisać jego stawkę do CASE w tym widoku — inaczej stt_cost_usd wyjdzie NULL.
 type VAnalyticsSessionCost struct {
 	SessionID       uuid.UUID      `json:"session_id"`
 	TherapistID     uuid.UUID      `json:"therapist_id"`
 	OrganizationID  pgtype.UUID    `json:"organization_id"`
 	DurationSeconds *int32         `json:"duration_seconds"`
-	LlmInputTokens  *int32         `json:"llm_input_tokens"`
-	LlmOutputTokens *int32         `json:"llm_output_tokens"`
-	LlmCostUsd      pgtype.Numeric `json:"llm_cost_usd"`
+	LlmInputTokens  int64          `json:"llm_input_tokens"`
+	LlmOutputTokens int64          `json:"llm_output_tokens"`
+	LlmCostUsd      int64          `json:"llm_cost_usd"`
+	ReportCount     int32          `json:"report_count"`
+	SttModel        *string        `json:"stt_model"`
 	SttCostUsd      pgtype.Numeric `json:"stt_cost_usd"`
 	TotalCostUsd    pgtype.Numeric `json:"total_cost_usd"`
 	CreatedAt       time.Time      `json:"created_at"`
 }
 
 type VAnalyticsSessionFreq struct {
-	TherapistID     uuid.UUID       `json:"therapist_id"`
-	Week            pgtype.Interval `json:"week"`
-	SessionCount    int64           `json:"session_count"`
-	AvgDurationS    float64         `json:"avg_duration_s"`
-	MedianDurationS float64         `json:"median_duration_s"`
+	TherapistID     uuid.UUID   `json:"therapist_id"`
+	Week            interface{} `json:"week"`
+	SessionCount    int64       `json:"session_count"`
+	AvgDurationS    float64     `json:"avg_duration_s"`
+	MedianDurationS float64     `json:"median_duration_s"`
 }
 
+// Liczniki zużycia tokenów sprowadzone do JEDNEGO zakresu na (subskrypcja, okres): org-level gdy istnieje, per-terapeuta w przeciwnym razie (migracja 000102). Odwrotnie niż w ReserveCredit — panel mierzy zużycie ORGANIZACJI, a liczniki seatowe są mintowane leniwie, więc ich suma limitów nie jest limitem organizacji. utilization_pct jest ilorazem POJEDYNCZEGO wiersza — agregując po organizacji licz SUM(tokens_used)/SUM(tokens_limit), nie AVG(utilization_pct).
 type VAnalyticsTokenUtil struct {
 	SubscriptionID uuid.UUID      `json:"subscription_id"`
 	OrganizationID uuid.UUID      `json:"organization_id"`
+	TherapistID    pgtype.UUID    `json:"therapist_id"`
+	Scope          string         `json:"scope"`
 	PeriodStart    time.Time      `json:"period_start"`
 	PeriodEnd      time.Time      `json:"period_end"`
 	TokensLimit    int32          `json:"tokens_limit"`
@@ -1379,6 +1783,6 @@ type VAnalyticsTokenUtil struct {
 }
 
 type VAnalyticsWau struct {
-	Week             pgtype.Interval `json:"week"`
-	ActiveTherapists int64           `json:"active_therapists"`
+	Week             interface{} `json:"week"`
+	ActiveTherapists int64       `json:"active_therapists"`
 }

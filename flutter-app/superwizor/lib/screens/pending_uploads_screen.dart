@@ -999,7 +999,11 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
   static String _friendlyError(String raw, AppLocalizations l) {
     final lower = raw.toLowerCase();
     String reason = raw;
-    if (lower.contains('source_file_missing')) {
+    if (lower.contains('email_unverified')) {
+      // Bramka z docs/70 S1: nagranie jest bezpieczne, brakuje tylko
+      // kliknięcia w link ze skrzynki.
+      reason = l.upload_error_email_unverified;
+    } else if (lower.contains('source_file_missing')) {
       // Stan nieodwracalny (fix 2026-08-24): plik nagrania zniknął z
       // urządzenia. Bez tej gałęzi użytkownik widział surowy
       // "PathNotFoundException…" i obietnicę automatycznego wznowienia.

@@ -5,8 +5,9 @@
 // `output: "export"` doesn't support API routes on static hosting.
 //
 // Endpoints:
-//   POST /api/checkout       — creates a Stripe Checkout Session
-//   POST /api/billing-portal — creates a Stripe Billing Portal session
+//
+//	POST /api/checkout       — creates a Stripe Checkout Session
+//	POST /api/billing-portal — creates a Stripe Billing Portal session
 //
 // Auth: none (same as the old Next.js routes — the Stripe session is the
 // authorization). The frontend passes organizationId + email from its own
@@ -19,12 +20,20 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
 
 	"github.com/stripe/stripe-go/v82"
 	billingportal "github.com/stripe/stripe-go/v82/billingportal/session"
@@ -37,14 +46,30 @@ import (
 
 var uuidRE = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
+// DiscountReserver rezerwuje użycie kodu rabatowego z naszego katalogu i
+// zwraca odpowiadający mu promotion code Stripe'a (docs/70 §6.4).
+// Interfejs, nie konkret — handler nie musi znać warstwy gRPC.
+type DiscountReserver interface {
+	ReserveDiscountRedemption(
+		ctx context.Context, code string, orgID uuid.UUID, userID *uuid.UUID,
+		channel, reference string,
+	) (uuid.UUID, string, error)
+}
+
 // CheckoutHandler serves /api/checkout and /api/billing-portal.
 type CheckoutHandler struct {
 	logger    *slog.Logger
 	secretKey string
+	queries   *db.Queries
+	discounts DiscountReserver
 }
 
 // NewCheckoutHandler creates the handler. Reads STRIPE_SECRET_KEY from env.
-func NewCheckoutHandler(logger *slog.Logger) *CheckoutHandler {
+//
+// pool i discounts są opcjonalne (mogą być nil w testach kontraktowych):
+// bez nich endpoint działa jak dotąd, tyle że bez blokady krzyżowej
+// dostawców i bez rezerwacji użycia kodu.
+func NewCheckoutHandler(logger *slog.Logger, pool *pgxpool.Pool, discounts DiscountReserver) *CheckoutHandler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -52,7 +77,11 @@ func NewCheckoutHandler(logger *slog.Logger) *CheckoutHandler {
 	if sk == "" {
 		logger.Warn("STRIPE_SECRET_KEY not set — /api/checkout and /api/billing-portal will return 503")
 	}
-	return &CheckoutHandler{logger: logger, secretKey: sk}
+	h := &CheckoutHandler{logger: logger, secretKey: sk, discounts: discounts}
+	if pool != nil {
+		h.queries = db.New(pool)
+	}
+	return h
 }
 
 // RegisterRoutes wires the handler into the mux.
@@ -135,17 +164,64 @@ func (h *CheckoutHandler) handleCheckout(w http.ResponseWriter, r *http.Request)
 		cancelURL = origin + req.ReturnURL + "?plan=cancelled"
 	}
 
+	orgUUID, orgErr := uuid.Parse(req.OrganizationID)
+
+	// ── Blokada krzyżowa dostawców (docs/70 §5.1, E22) ───────────────────
+	// Organizacja z aktywną subskrypcją ze sklepu nie może kupić drugiej
+	// przez Stripe'a: skończyłoby się to dwiema płatnościami za to samo, a
+	// zwrotu po stronie Apple'a nie jesteśmy w stanie wykonać.
+	if h.queries != nil && orgErr == nil {
+		sub, serr := h.queries.GetActiveSubscriptionByOrg(ctx, orgUUID)
+		switch {
+		case serr == nil && (sub.Provider == "APPLE_IAP" || sub.Provider == "GOOGLE_IAP"):
+			store := "App Store"
+			if sub.Provider == "GOOGLE_IAP" {
+				store = "Google Play"
+			}
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error":         "OTHER_PROVIDER_ACTIVE",
+				"provider":      string(sub.Provider),
+				"blocked_until": sub.CurrentPeriodEnd.Format(time.RFC3339),
+				"message":       "Subskrypcja jest aktywna w " + store + " — zarządzasz nią w ustawieniach sklepu.",
+			})
+			return
+		case serr != nil && !errors.Is(serr, pgx.ErrNoRows):
+			h.logger.WarnContext(ctx, "checkout: nie udało się sprawdzić aktywnej subskrypcji", "error", serr)
+		}
+	}
+
 	// ── Promo code resolution ────────────────────────────────────────────
+	//
+	// Najpierw nasz katalog (docs/70 §6): rezerwuje użycie kodu dla tej
+	// organizacji i zwraca powiązany promotion code Stripe'a. Kody
+	// założone ręcznie w dashboardzie, zanim powstał panel, nie mają u nas
+	// wiersza — dla nich zostaje wyszukiwanie po nazwie, jak dotąd.
 	var resolvedPromoID *string
 	if req.PromoCode != "" {
-		params := &stripe.PromotionCodeListParams{}
-		params.Filters.AddFilter("code", "", req.PromoCode)
-		params.Filters.AddFilter("active", "", "true")
-		params.Filters.AddFilter("limit", "", "1")
-		iter := promotioncode.List(params)
-		if iter.Next() {
-			id := iter.PromotionCode().ID
-			resolvedPromoID = &id
+		if h.discounts != nil && orgErr == nil {
+			if _, promoID, derr := h.discounts.ReserveDiscountRedemption(
+				ctx, req.PromoCode, orgUUID, nil, "WEB", "",
+			); derr == nil && promoID != "" {
+				resolvedPromoID = &promoID
+			} else if derr != nil && !errors.Is(derr, pgx.ErrNoRows) {
+				// Kod istnieje, ale rezerwacja się nie udała (np. ta
+				// organizacja już go użyła). Nie przerywamy checkoutu —
+				// Stripe i tak odrzuci nieuprawnione użycie, a użytkownik
+				// ma zapłacić.
+				h.logger.WarnContext(ctx, "checkout: rezerwacja kodu rabatowego nieudana",
+					"code", req.PromoCode, "error", derr)
+			}
+		}
+		if resolvedPromoID == nil {
+			params := &stripe.PromotionCodeListParams{}
+			params.Filters.AddFilter("code", "", req.PromoCode)
+			params.Filters.AddFilter("active", "", "true")
+			params.Filters.AddFilter("limit", "", "1")
+			iter := promotioncode.List(params)
+			if iter.Next() {
+				id := iter.PromotionCode().ID
+				resolvedPromoID = &id
+			}
 		}
 	}
 
@@ -308,6 +384,20 @@ func (h *CheckoutHandler) handleCheckout(w http.ResponseWriter, r *http.Request)
 	h.logger.InfoContext(ctx, "checkout: session created",
 		"session_id", sess.ID,
 		"org_id", req.OrganizationID)
+	// Otwarta sesja Checkout blokuje zakup w sklepie do czasu wygaśnięcia
+	// (sesje Stripe żyją 24 h). Bez tego użytkownik z otwartą kartą
+	// przeglądarki mógłby równolegle kupić IAP — docs/70 E22.
+	if h.queries != nil && orgErr == nil {
+		if perr := h.queries.UpsertPendingCheckout(ctx, db.UpsertPendingCheckoutParams{
+			OrganizationID: orgUUID,
+			Channel:        "WEB",
+			Reference:      sess.ID,
+			ExpiresAt:      time.Now().Add(24 * time.Hour),
+		}); perr != nil {
+			h.logger.WarnContext(ctx, "checkout: nie zapisano blokady kanału", "error", perr)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"url": sess.URL})
 }
 

@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
@@ -42,7 +42,11 @@ import {
   UpdateReportPreferencesRequestSchema,
   ReportPreferencesSchema,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
-import type { Subscription, Invoice } from "@superwizor/proto-ts/billing/v1/billing_pb";
+import type {
+  Subscription,
+  Invoice,
+  BillingSurface,
+} from "@superwizor/proto-ts/billing/v1/billing_pb";
 
 import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities";
 import { PhoneInput } from "@/components/forms/Field";
@@ -887,6 +891,25 @@ function OrgSection({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const locale = useLocale();
 
+  // Organizacja, ktora juz zasilila formularz.
+  //
+  // Efekt ponizej zalezy od `profile`, a ten przychodzi z gory jako nowy
+  // obiekt przy kazdym renderze rodzica — wiec pobranie organizacji
+  // potrafi sie powtorzyc PO tym, jak uzytkownik zaczal pisac. Bez tego
+  // strażnika kazde takie powtorzenie nadpisywalo `draft` wartosciami z
+  // serwera i po cichu kasowalo wpisane zmiany: formularz wygladal na
+  // wypelniony po staremu, a zapis wysylal niezmieniona nazwe.
+  //
+  // Tak wlasnie zawodzil przypadek e2e "can update profile and
+  // organization successfully" — opisany w tescie jako NIEROZWIAZANY od
+  // 2026-08-07 i tlumaczony krucha selekcja pola. Selektor byl w porzadku;
+  // znikala tresc, nie element.
+  //
+  // `draft` jest roboczą kopią użytkownika: ponowny odczyt z serwera ma
+  // prawo odswiezyc `org`, ale nie ma prawa nadpisac tego, co ktos wlasnie
+  // wpisuje.
+  const seededOrgIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!profile) return;
     if (!profile.organizationId) {
@@ -899,19 +922,23 @@ function OrgSection({
         const o = await identityClient.getMyOrganization(create(EmptySchema, {}));
         if (cancelled) return;
         setOrg(o);
-        setDraft({
-          legalName: o.legalName ?? "",
-          taxId: o.taxId ?? "",
-          vatIdEu: o.vatIdEu ?? "",
-          countryCode: o.headquartersAddress?.countryCode ?? "PL",
-          region: o.headquartersAddress?.region ?? "",
-          city: o.headquartersAddress?.city ?? "",
-          postalCode: o.headquartersAddress?.postalCode ?? "",
-          streetLine: o.headquartersAddress?.streetLine ?? "",
-          buildingNumber: o.headquartersAddress?.buildingNumber ?? "",
-          unitNumber: o.headquartersAddress?.unitNumber ?? "",
-          directions: o.headquartersAddress?.directions ?? "",
-        });
+        const alreadySeeded = seededOrgIdRef.current === o.id;
+        seededOrgIdRef.current = o.id;
+        if (!alreadySeeded) {
+          setDraft({
+            legalName: o.legalName ?? "",
+            taxId: o.taxId ?? "",
+            vatIdEu: o.vatIdEu ?? "",
+            countryCode: o.headquartersAddress?.countryCode ?? "PL",
+            region: o.headquartersAddress?.region ?? "",
+            city: o.headquartersAddress?.city ?? "",
+            postalCode: o.headquartersAddress?.postalCode ?? "",
+            streetLine: o.headquartersAddress?.streetLine ?? "",
+            buildingNumber: o.headquartersAddress?.buildingNumber ?? "",
+            unitNumber: o.headquartersAddress?.unitNumber ?? "",
+            directions: o.headquartersAddress?.directions ?? "",
+          });
+        }
         setPhase("ready");
       } catch (e) {
         if (cancelled) return;
@@ -1516,6 +1543,15 @@ function BillingSection({
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
 
+  // docs/70 S5 — who sold this subscription decides what this card may
+  // offer. GetBillingSurface is the authoritative answer and carries the
+  // store deep link; it is additive and may not be deployed yet, so any
+  // failure degrades to today's Stripe-only view rather than blanking
+  // the card. The org type is only a fallback signal for "your
+  // organization manages this plan" when the surface is unavailable.
+  const [surface, setSurface] = useState<BillingSurface | null>(null);
+  const [orgType, setOrgType] = useState<OrganizationType | null>(null);
+
   const handleManageBilling = async () => {
     if (!fbUser?.email) return;
     setPortalLoading(true);
@@ -1569,6 +1605,29 @@ function BillingSection({
       fetchInvoices();
     }
   };
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await billingClient.getBillingSurface(create(EmptySchema, {}));
+        if (!cancelled) setSurface(s);
+      } catch {
+        // RPC not deployed yet / not permitted — fall back to
+        // Subscription.billing_provider alone.
+      }
+      try {
+        const o = await identityClient.getMyOrganization(create(EmptySchema, {}));
+        if (!cancelled) setOrgType(o?.type ?? null);
+      } catch {
+        // Without it we simply never claim "managed by your organization".
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -1630,12 +1689,29 @@ function BillingSection({
     );
   }
   if (phase === "none") {
+    // No subscription of our own — but the org may still be on someone
+    // else's seat, in which case offering a checkout is a dead end.
+    const noneOrgManaged =
+      surface?.blockReason === "ORG_MANAGED" || isManagedOrgType(orgType);
     return (
       <SettingsCard title={t("sectionBilling")}>
         <div className="px-6 pt-7 pb-7">
-          <p className="font-sans text-sm text-[#8FA5A0] mb-1">{t("billingNone")}</p>
-          <p className="font-sans text-[13px] text-[#8FA5A0]/60 mb-4">{t("billingNoneBody")}</p>
-          <UpgradeLink href={`${prefix}/upgrade?from=account`} label={t("billingNoneCta")} />
+          {noneOrgManaged ? (
+            <>
+              <p className="font-sans text-sm text-[#F2F0EA] mb-1">
+                {t("billingOrgManagedTitle")}
+              </p>
+              <p className="font-sans text-[13px] text-[#8FA5A0]/80">
+                {t("billingOrgManagedBody")}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-sans text-sm text-[#8FA5A0] mb-1">{t("billingNone")}</p>
+              <p className="font-sans text-[13px] text-[#8FA5A0]/60 mb-4">{t("billingNoneBody")}</p>
+              <UpgradeLink href={`${prefix}/upgrade?from=account`} label={t("billingNoneCta")} />
+            </>
+          )}
         </div>
       </SettingsCard>
     );
@@ -1670,6 +1746,35 @@ function BillingSection({
       : `Active (canceled, expires ${periodEnd})`;
   }
 
+  // ── Provider awareness (docs/70 §5.1 + S5) ────────────────────────
+  const provider = (sub.billingProvider || "").toUpperCase();
+  const isApple = provider === "APPLE_IAP";
+  const isGoogle = provider === "GOOGLE_IAP";
+  const isStore = isApple || isGoogle;
+  // Only trust manage_url for store subscriptions: for Stripe it points
+  // at the portal we already open through /api/billing-portal.
+  const storeManageUrl = isStore ? surface?.manageUrl || "" : "";
+  // MANUAL covers both the trial everyone starts on AND B2B seats. Only
+  // the latter is "your organization manages this" — saying it to a
+  // trial user would be plain wrong.
+  const isFreeTier = sub.planTier === "TRIAL" || sub.planTier === "BETA";
+  const orgManaged =
+    surface?.blockReason === "ORG_MANAGED" ||
+    (provider === "MANUAL" && !isFreeTier && isManagedOrgType(orgType));
+  // Store and org-managed plans have no Stripe portal to open.
+  const managementHidden = isStore || orgManaged;
+  // Buying is additionally off the table while another provider holds an
+  // active subscription (docs/70 §5.1, E22).
+  const purchaseBlocked =
+    managementHidden ||
+    (surface?.canPurchase === false &&
+      (surface.blockReason === "OTHER_PROVIDER_ACTIVE" ||
+        surface.blockReason === "ORG_MANAGED"));
+  const providerName = providerLabel(t, provider, orgManaged);
+  const graceUntil = sub.graceUntil
+    ? new Date(Number(sub.graceUntil.seconds) * 1000).toLocaleDateString(locale)
+    : null;
+
   return (
     <SettingsCard
       id="billing"
@@ -1679,7 +1784,7 @@ function BillingSection({
     >
       <div className="px-6 pt-7 pb-7">
         {/* Plan & Status metadata */}
-        <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-white/[0.06]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 pb-4 border-b border-white/[0.06]">
           <div>
             <span className="font-sans text-[11px] font-medium uppercase tracking-wider text-[#8FA5A0]">{t("billingPlanName")}</span>
             <div className="flex items-center gap-2 mt-0.5">
@@ -1695,7 +1800,27 @@ function BillingSection({
             <span className="font-sans text-[11px] font-medium uppercase tracking-wider text-[#8FA5A0]">{t("billingStatus")}</span>
             <p className="font-sans text-[15px] font-semibold text-[#F2F0EA] mt-0.5">{statusName}</p>
           </div>
+          {providerName && (
+            <div>
+              <span className="font-sans text-[11px] font-medium uppercase tracking-wider text-[#8FA5A0]">{t("billingProviderLabel")}</span>
+              <p className="font-sans text-[15px] font-semibold text-[#F2F0EA] mt-0.5">{providerName}</p>
+            </div>
+          )}
         </div>
+
+        {/* Store billing grace period (docs/70 E13): access continues,
+            but only until the store gives up on the card. */}
+        {graceUntil && (
+          <div className="mb-5 p-4 rounded-xl border border-[#F5A623]/30 bg-[#F5A623]/10 text-[#F5A623] flex items-start gap-3 text-left">
+            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="text-xs font-sans leading-relaxed">
+              <p className="font-bold text-[#F2F0EA] mb-0.5">{t("billingGraceTitle")}</p>
+              <p>{t("billingGraceBody", { date: graceUntil })}</p>
+            </div>
+          </div>
+        )}
 
         {sub.cancelAtPeriodEnd && sub.status === "ACTIVE" && (
           <div className="mb-5 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-[#fca5a5] flex items-start gap-3 text-left">
@@ -1746,7 +1871,47 @@ function BillingSection({
           </div>
         )}
 
-        {sub.planTier !== "TRIAL" ? (
+        {/* Store-bought subscription: no Stripe portal exists for it —
+            Apple/Google are the merchant of record (docs/70 S5, E23). */}
+        {isStore && (
+          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+            <p className="font-sans text-[13px] font-bold text-[#F2F0EA]">
+              {isApple ? t("billingStoreAppleTitle") : t("billingStoreGoogleTitle")}
+            </p>
+            <p className="font-sans text-[12px] text-[#8FA5A0] mt-1 leading-relaxed">
+              {isApple ? t("billingStoreAppleBody") : t("billingStoreGoogleBody")}
+            </p>
+            {storeManageUrl && (
+              <a
+                href={storeManageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-[#F2F0EA] border border-white/[0.1] font-sans font-bold text-[12px] uppercase tracking-wider px-4 py-2.5 transition"
+              >
+                {isApple
+                  ? t("billingStoreManageAppleCta")
+                  : t("billingStoreManageGoogleCta")}
+                <svg className="w-3.5 h-3.5 text-[#F5A623]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* B2B seat: the paywall is hidden entirely (docs/70 §5.1). */}
+        {orgManaged && !isStore && (
+          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+            <p className="font-sans text-[13px] font-bold text-[#F2F0EA]">
+              {t("billingOrgManagedTitle")}
+            </p>
+            <p className="font-sans text-[12px] text-[#8FA5A0] mt-1 leading-relaxed">
+              {t("billingOrgManagedBody")}
+            </p>
+          </div>
+        )}
+
+        {managementHidden ? null : sub.planTier !== "TRIAL" ? (
           <div className="space-y-3">
             {sub.cancelAtPeriodEnd && (
               <button
@@ -1777,7 +1942,7 @@ function BillingSection({
               </button>
             )}
 
-            {sub.planTier === "SOLO" && !sub.cancelAtPeriodEnd && (
+            {sub.planTier === "SOLO" && !sub.cancelAtPeriodEnd && !purchaseBlocked && (
               <Link
                 href={`${prefix}/upgrade?from=account`}
                 className="group w-full flex items-center justify-between px-5 py-4 rounded-xl bg-gradient-to-r from-[#F5A623] to-[#E09500] hover:brightness-110 border border-transparent shadow-[0_4px_15px_rgba(245,166,35,0.15)] hover:shadow-[0_4px_25px_rgba(245,166,35,0.25)] transition-all duration-300 active:scale-99 text-left text-[#1B2522]"
@@ -1830,11 +1995,24 @@ function BillingSection({
               <p className="font-sans text-[12px] text-[#ff4444] mt-1.5">{portalError}</p>
             )}
           </div>
-        ) : (
+        ) : purchaseBlocked ? null : (
           <UpgradeLink href={`${prefix}/upgrade?from=account`} label={t("billingUpgrade")} />
         )}
 
+        {/* Store receipts live in the store — billing-svc `invoices` is
+            Stripe-only by design (docs/70 §7.1, E23). */}
+        {isStore && (
+          <div className="mt-6 pt-6 border-t border-white/[0.06] w-full">
+            <p className="font-sans text-[13px] text-[#8FA5A0] leading-relaxed">
+              {isApple
+                ? t("billingStoreInvoicesApple")
+                : t("billingStoreInvoicesGoogle")}
+            </p>
+          </div>
+        )}
+
         {/* Toggle Button for Invoices */}
+        {!isStore && (
         <div className="mt-6 pt-6 border-t border-white/[0.06] flex flex-col items-start w-full">
           <button
             type="button"
@@ -1988,6 +2166,7 @@ function BillingSection({
             )}
           </AnimatePresence>
         </div>
+        )}
       </div>
     </SettingsCard>
   );
@@ -2003,6 +2182,40 @@ function UpgradeLink({ href, label }: { href: string; label: string }) {
       {label}
     </Link>
   );
+}
+
+// Connect-Web JSON gives us either the numeric enum or its string name;
+// tolerate both, exactly like OrgsList does.
+function isManagedOrgType(type: OrganizationType | null): boolean {
+  if (type === null || type === undefined) return false;
+  const v = type as unknown;
+  return (
+    v === OrganizationType.CLINIC ||
+    v === "ORGANIZATION_TYPE_CLINIC" ||
+    v === OrganizationType.ENTERPRISE ||
+    v === "ORGANIZATION_TYPE_ENTERPRISE"
+  );
+}
+
+// Naming the seller is only useful when it tells the user where to go.
+// MANUAL on a trial means "nobody sold you anything yet" — stay quiet.
+function providerLabel(
+  t: ReturnType<typeof useTranslations>,
+  provider: string,
+  orgManaged: boolean,
+): string | null {
+  switch (provider) {
+    case "STRIPE":
+      return t("billingProviderStripe");
+    case "APPLE_IAP":
+      return t("billingProviderApple");
+    case "GOOGLE_IAP":
+      return t("billingProviderGoogle");
+    case "MANUAL":
+      return orgManaged ? t("billingProviderManual") : null;
+    default:
+      return null;
+  }
 }
 
 // planLabel + statusLabel map raw enum strings to localised copy

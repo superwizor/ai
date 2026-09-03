@@ -191,6 +191,34 @@ service IdentityService {
 
   // Updates the email address of the authenticated caller in both Firebase and the database.
   rpc UpdateMyEmail(UpdateMyEmailRequest) returns (google.protobuf.Empty);
+
+  // Samodzielne usunięcie konta przez zalogowanego terapeutę.
+  //
+  // Apple 5.1.1(v): aplikacja, w której można ZAŁOŻYĆ konto, musi
+  // pozwalać je USUNĄĆ z poziomu aplikacji — nie wystarczy odesłanie na
+  // stronę. Wymóg staje się blokujący razem z rejestracją in-app
+  // (docs/70 R9).
+  //
+  // Soft-delete, ta sama ścieżka co RemoveTherapist (users.deleted_at) +
+  // wyłączenie konta w Firebase, żeby token przestał działać od razu.
+  // Sesje i kartoteki znikają z widoku; twarde czyszczenie danych idzie
+  // osobnym procesem RODO.
+  rpc DeleteMyAccount(DeleteMyAccountRequest) returns (google.protobuf.Empty);
+}
+
+message DeleteMyAccountRequest {
+  // Tekst potwierdzenia wpisany przez użytkownika ("USUWAM" / "DELETE").
+  // Chroni przed przypadkowym tapnięciem — nie jest hasłem.
+  string confirmation = 1;
+  // Opcjonalny powód rezygnacji. Trafia do audytu, nie do CRM.
+  string reason = 2;
+  // Potwierdzenie, że użytkownik wie o aktywnej subskrypcji ze sklepu.
+  //
+  // Subskrypcji kupionej w App Store nie umiemy anulować — może to
+  // zrobić tylko właściciel konta Apple. Bez tej flagi RPC odrzuca
+  // żądanie z FAILED_PRECONDITION "STORE_SUBSCRIPTION_ACTIVE", a
+  // aplikacja pokazuje deep link do ustawień subskrypcji (docs/70 E5).
+  bool acknowledged_subscription = 3;
 }
 
 message AppLoginToken {

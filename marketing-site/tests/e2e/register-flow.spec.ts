@@ -10,6 +10,10 @@
 // - Apple compliance: no upsells in the path
 
 import { test, expect } from "@playwright/test";
+import {
+  billingSvcReachable,
+  BILLING_SVC_SKIP_REASON,
+} from "./fixtures/billing-svc";
 import { forLocale, urlPrefix } from "./_locales";
 
 // ─────────────────────────────────────────────────────────────
@@ -430,6 +434,14 @@ test.describe("Bad Path: 404 Pages", () => {
 // ─────────────────────────────────────────────────────────────
 
 test.describe("Bad Path: API /api/checkout", () => {
+  // /api/checkout obsluguje billing-svc, nie Next.js — bez uruchomionej
+  // uslugi dev-serwer zwraca 500 z ECONNREFUSED. Walidacje wejscia
+  // pokrywa checkout_handler_test.go po stronie Go; tutaj sprawdzamy
+  // przepisanie trasy, wiec bez zaleznosci nie ma czego sprawdzac.
+  test.beforeEach(async () => {
+    test.skip(!(await billingSvcReachable()), BILLING_SVC_SKIP_REASON);
+  });
+
   test("POST /api/checkout without body returns 400", async ({ request }) => {
     const response = await request.post("/api/checkout", {
       data: {},

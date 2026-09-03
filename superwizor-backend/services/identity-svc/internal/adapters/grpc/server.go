@@ -31,6 +31,10 @@ type TokenVerifier interface {
 	CustomToken(ctx context.Context, uid string) (string, error)
 	UserExistsByEmail(ctx context.Context, email string) (bool, error)
 	IsEmailVerified(ctx context.Context, uid string) (bool, error)
+	// DisableUser wyłącza konto w Firebase — używane przy samodzielnym
+	// usunięciu konta (Apple 5.1.1(v)); bez tego wydany już token działa
+	// aż do wygaśnięcia.
+	DisableUser(ctx context.Context, uid string) error
 	EmailVerificationLink(ctx context.Context, email, continueURL string) (string, error)
 	UpdateUserEmail(ctx context.Context, uid string, newEmail string) error
 }

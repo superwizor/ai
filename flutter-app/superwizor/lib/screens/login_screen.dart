@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:grpc/grpc.dart' as grpc;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/signup_draft_provider.dart';
 import '../services/grpc_client.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
@@ -93,11 +95,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ── Social sign-in ──────────────────────────────────────────────────────
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _signInWithGoogle({bool register = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
+      final UserCredential credential;
       if (kIsWeb) {
-        await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+        credential =
+            await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
       } else {
         // google_sign_in v7: singleton + initialize + authenticate
         final gsi = GoogleSignIn.instance;
@@ -106,10 +110,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
         final account = await gsi.authenticate();
         final idToken = account.authentication.idToken;
-        final credential = GoogleAuthProvider.credential(idToken: idToken);
-        await FirebaseAuth.instance.signInWithCredential(credential);
+        final authCredential = GoogleAuthProvider.credential(idToken: idToken);
+        credential =
+            await FirebaseAuth.instance.signInWithCredential(authCredential);
       }
-      await _ensureUserRegistered();
+      await _afterProviderAuth(credential, register: register);
     } on FirebaseAuthException catch (e) {
       debugPrint('[auth] Google FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
@@ -132,18 +137,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithApple() async {
+  Future<void> _signInWithApple({bool register = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
       final provider = OAuthProvider('apple.com')
         ..addScope('email')
         ..addScope('name');
-      if (kIsWeb) {
-        await FirebaseAuth.instance.signInWithPopup(provider);
-      } else {
-        await FirebaseAuth.instance.signInWithProvider(provider);
-      }
-      await _ensureUserRegistered();
+      final credential = kIsWeb
+          ? await FirebaseAuth.instance.signInWithPopup(provider)
+          : await FirebaseAuth.instance.signInWithProvider(provider);
+      await _afterProviderAuth(credential, register: register);
     } on FirebaseAuthException catch (e) {
       debugPrint('[auth] Apple FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
@@ -190,6 +193,118 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) setState(() => _error = AppLocalizations.of(context).auth_error_generic);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submitRegisterWithEmail() async {
+    setState(() { _loading = true; _error = null; });
+    final email = _emailCtrl.text.trim().toLowerCase();
+    final pass = _passwordCtrl.text;
+    try {
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email, password: pass,
+      );
+      TextInput.finishAutofillContext();
+      // Konto e-mail+haslo jest jedynym, ktore startuje z
+      // `emailVerified == false` — wysylamy link od razu, zeby ekran
+      // weryfikacji mial co potwierdzac. Blad wysylki nie przerywa
+      // rejestracji: ekran weryfikacji ma wlasne „Wyslij ponownie".
+      try {
+        await credential.user?.sendEmailVerification();
+      } catch (e) {
+        debugPrint('[auth] sendEmailVerification: $e');
+      }
+      final uid = credential.user?.uid;
+      if (uid != null) {
+        await ref.read(signupDraftProvider.notifier).begin(uid);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = _friendlyError(e.code));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context).auth_error_generic);
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Imie i nazwisko oddane przez dostawce tozsamosci.
+  ///
+  /// Apple podaje `fullName` **wylacznie przy pierwszym logowaniu** i nigdy
+  /// wiecej (docs/70 E4b) — dlatego czytamy je z credentiala od razu tutaj,
+  /// a wywolujacy natychmiast utrwala je w szkicu rejestracji. Google trzyma
+  /// te dane w `given_name`/`family_name`, a w ostatecznosci zostaje
+  /// `displayName`. Brak danych to normalny przypadek (odmowa udostepnienia,
+  /// „Hide My Email") — uzytkownik wpisze je recznie na ekranie profilu.
+  (String, String) _providerName(UserCredential credential) {
+    var first = '';
+    var last = '';
+    final profile = credential.additionalUserInfo?.profile;
+    if (profile != null) {
+      final name = profile['name'];
+      if (name is Map) {
+        first = (name['firstName'] ?? name['givenName'] ?? '').toString();
+        last = (name['lastName'] ?? name['familyName'] ?? '').toString();
+      }
+      if (first.isEmpty) first = (profile['given_name'] ?? '').toString();
+      if (last.isEmpty) last = (profile['family_name'] ?? '').toString();
+    }
+    if (first.isEmpty && last.isEmpty) {
+      final display = (credential.user?.displayName ?? '').trim();
+      if (display.isNotEmpty) {
+        final parts = display.split(RegExp(r'\s+'));
+        first = parts.first;
+        last = parts.length > 1 ? parts.skip(1).join(' ') : '';
+      }
+    }
+    return (first, last);
+  }
+
+  /// Wspolne zakonczenie logowania przez Apple/Google.
+  ///
+  /// W trybie rejestracji NIE tworzymy konta po cichu (docs/39: ciche
+  /// zakladanie wierszy THERAPIST dla dowolnej nieznanej tozsamosci zablokowalo
+  /// realne zaproszenia). Zamiast tego zostawiamy szkic rejestracji — to on
+  /// przelacza bramke uwierzytelniania na ekran profilu, gdzie uzytkownik
+  /// swiadomie zaklada konto.
+  Future<void> _afterProviderAuth(
+    UserCredential credential, {
+    required bool register,
+  }) async {
+    if (!register) {
+      await _ensureUserRegistered();
+      return;
+    }
+    final user = credential.user;
+    if (user == null) return;
+    // Wyluskujemy imie ZANIM cokolwiek innego sie zdarzy — przy Apple to
+    // jedyna okazja w zyciu konta.
+    final (firstName, lastName) = _providerName(credential);
+    if (await _identityRowExists(user.uid)) {
+      // „Zaloz konto" na istniejacym koncie to po prostu logowanie.
+      return;
+    }
+    await ref.read(signupDraftProvider.notifier).begin(
+          user.uid,
+          firstName: firstName,
+          lastName: lastName,
+        );
+  }
+
+  /// Czy identity-svc ma juz wiersz dla tej tozsamosci. Blad inny niz
+  /// NOT_FOUND leci dalej: przy padniętej sieci nie wolno zgadywac, ze konta
+  /// nie ma, i zaczynac rejestracji od nowa.
+  Future<bool> _identityRowExists(String uid) async {
+    try {
+      await ref.read(grpcClientsProvider).identity.getUserByFirebaseUID(
+            identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: uid),
+          );
+      return true;
+    } on grpc.GrpcError catch (e) {
+      if (e.code == grpc.StatusCode.notFound) return false;
+      rethrow;
     }
   }
 
@@ -358,7 +473,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const SizedBox(height: 28),
           _buildModeSwitch(
             t.auth_toggle_to_register,
-            t.auth_toggle_register_action,
+            t.auth_register_primary,
             _goToRegister,
           ),
         ],
@@ -366,77 +481,62 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // ── Account Creation Info page ──────────────────────────────────────────
+  // ── Register page (docs/70 S1 krok 1) ──────────────────────────────────
+  //
+  // Kolejność jest zamierzona i wymuszona przez wytyczne oraz przez dane:
+  // Apple i Google NAJPIERW (jedno tapnięcie, adres już zweryfikowany,
+  // imię i nazwisko w prefillu), e-mail z hasłem jako trzecia opcja pod
+  // separatorem. Sign in with Apple jest zresztą obowiązkowe, skoro
+  // oferujemy logowanie zewnętrzne (Apple 4.8).
+  //
+  // Do 09/2026 stała tu tylko informacja „konto założysz na superwizor.ai".
+  // Po dodaniu zakupów w aplikacji taka ślepa uliczka byłaby jednocześnie
+  // problemem konwersji i problemem recenzji.
 
   Widget _buildRegisterContent() {
     final t = AppLocalizations.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildLogo(),
-        const SizedBox(height: 28),
-        _buildTitle(t.login_account_info_title, ''),
-        const SizedBox(height: 28),
-        Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _kWhite08,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kWhite15),
+    return AutofillGroup(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLogo(),
+          const SizedBox(height: 28),
+          _buildTitle(t.register_title, t.register_subtitle),
+          const SizedBox(height: 36),
+          _buildSocialButtons(register: true),
+          const SizedBox(height: 24),
+          _buildDividerWithLabel(t.register_email_divider),
+          const SizedBox(height: 24),
+          _buildFloatingField(
+            controller: _emailCtrl,
+            label: t.auth_email_label,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            prefixIcon: Icons.mail_outline_rounded,
           ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: _kWhite08,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.verified_user_outlined,
-                  color: _kEmber,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 16),
-              RichText(
-                textAlign: TextAlign.center,
-                text: const TextSpan(
-                  style: TextStyle(
-                    fontFamily: _kFont, fontSize: 14,
-                    fontWeight: FontWeight.w400, color: _kWhite70,
-                    height: 1.5,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'Ze względów bezpieczeństwa oraz spójności konfiguracji Twojej praktyki terapeutycznej, rejestracja nowych kont odbywa się ',
-                    ),
-                    TextSpan(
-                      text: 'wyłącznie na naszej stronie internetowej.',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: _kWhite,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                t.login_account_info_body_2,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: _kFont, fontSize: 14,
-                  fontWeight: FontWeight.w400, color: _kWhite70,
-                  height: 1.5,
-                ),
-              ),
-            ],
+          const SizedBox(height: 16),
+          _buildFloatingField(
+            controller: _passwordCtrl,
+            label: t.register_password_hint,
+            obscureText: _obscurePassword,
+            autofillHints: const [AutofillHints.newPassword],
+            prefixIcon: Icons.lock_outline_rounded,
+            suffixIcon: _buildVisibilityToggle(),
           ),
-        ),
-        const SizedBox(height: 32),
-        _buildCta(t.login_back_to_sign_in, _goToLogin),
-      ],
+          const SizedBox(height: 20),
+          if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
+          _buildCta(
+            t.register_email_cta,
+            _loading ? null : _submitRegisterWithEmail,
+          ),
+          const SizedBox(height: 28),
+          _buildModeSwitch(
+            t.register_have_account,
+            t.register_sign_in_action,
+            _goToLogin,
+          ),
+        ],
+      ),
     );
   }
 
@@ -478,35 +578,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ]);
   }
 
-  Widget _buildSocialButtons() {
+  Widget _buildSocialButtons({bool register = false}) {
     final t = AppLocalizations.of(context);
+    // Na iOS Apple idzie PIERWSZE (docs/70 S1); na Androidzie przycisku Apple
+    // nie ma w ogóle, bo Sign in with Apple nie jest tam natywne.
+    final apple = _SocialButton(
+      onPressed: _loading ? null : () => _signInWithApple(register: register),
+      icon: const _AppleIcon(),
+      label: t.auth_sign_in_with_apple,
+      backgroundColor: _kObsidian,
+      textColor: _kWhite,
+    );
+    final google = _SocialButton(
+      onPressed: _loading ? null : () => _signInWithGoogle(register: register),
+      icon: const _GoogleIcon(),
+      label: t.auth_sign_in_with_google,
+      backgroundColor: _kWhite,
+      textColor: _kObsidian,
+    );
     return Column(children: [
-      _SocialButton(
-        onPressed: _loading ? null : _signInWithGoogle,
-        icon: const _GoogleIcon(),
-        label: t.auth_sign_in_with_google,
-        backgroundColor: _kWhite,
-        textColor: _kObsidian,
-      ),
-      const SizedBox(height: 12),
-      if (!_isAndroid) ...[
-        _SocialButton(
-          onPressed: _loading ? null : _signInWithApple,
-          icon: const _AppleIcon(),
-          label: t.auth_sign_in_with_apple,
-          backgroundColor: _kObsidian,
-          textColor: _kWhite,
-        ),
-      ],
+      if (!_isAndroid) ...[apple, const SizedBox(height: 12)],
+      google,
     ]);
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider() =>
+      _buildDividerWithLabel(AppLocalizations.of(context).common_or);
+
+  Widget _buildDividerWithLabel(String label) {
     return Row(children: [
       Expanded(child: Container(height: 1, color: _kWhite15)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Text(AppLocalizations.of(context).common_or, style: const TextStyle(
+        child: Text(label, style: const TextStyle(
           fontFamily: _kFont, fontSize: 13,
           fontWeight: FontWeight.w500, color: _kWhite40,
         )),

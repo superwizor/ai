@@ -16,6 +16,7 @@ import {
   mockUpdateProfile,
   mockListModalities,
   mockCheckEmailExists,
+  mockCheckPhoneNumberExists,
 } from "./fixtures/connect-rpc";
 import { RegisterTherapistPage } from "./pages/register.page";
 
@@ -25,6 +26,7 @@ test.beforeEach(async ({ page }) => {
   await mockFirebaseAuth(page, THERAPIST_USER);
   await mockListModalities(page);
   await mockCheckEmailExists(page, false);
+  await mockCheckPhoneNumberExists(page, false);
 });
 
 // ── Scenarios ──────────────────────────────────────────────────────

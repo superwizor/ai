@@ -46,8 +46,11 @@ import (
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/appstore"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/playstore"
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/stripepromo"
 )
 
 func main() {
@@ -128,6 +131,55 @@ func main() {
 
 	billingServer := grpcadapter.NewServer(pool, version, analyticsCollector)
 
+	// ── Kody rabatowe (docs/70 §6) ───────────────────────────────────
+	// Bez klucza Stripe'a handler odmówi założenia kodu na kanał WEB —
+	// świadomie, bo kod bez odpowiednika w Stripie panel pokazywałby jako
+	// działający, a Checkout by go ignorował.
+	if promo := stripepromo.New(os.Getenv("STRIPE_SECRET_KEY")); promo != nil {
+		billingServer.SetPromoSyncer(promo)
+	} else {
+		slog.Warn("billing-svc: STRIPE_SECRET_KEY unset — zakładanie kodów rabatowych na kanał WEB będzie odrzucane")
+	}
+
+	// ── Zakupy w aplikacji (docs/70 §7) ──────────────────────────────
+	// Weryfikatory rejestrujemy tylko wtedy, gdy da się NAPRAWDĘ
+	// zweryfikować zakup. Brak konfiguracji = brak weryfikatora =
+	// VerifyStorePurchase zwraca STORE_NOT_CONFIGURED. Sprzedaż i tak
+	// stoi za flagami IAP_ENABLED_* w app_config, które startują na false.
+	var appleVerifier *appstore.Verifier
+	if rootCA := os.Getenv("APPLE_ROOT_CA_PEM"); rootCA != "" {
+		av, err := appstore.New(appstore.Config{
+			BundleID:     getEnv("APPLE_BUNDLE_ID", "ai.superwizor.superwizor"),
+			IssuerID:     os.Getenv("APPLE_ISSUER_ID"),
+			KeyID:        os.Getenv("APPLE_KEY_ID"),
+			PrivateKeyP8: os.Getenv("APPLE_PRIVATE_KEY_P8"),
+			RootCAPEM:    rootCA,
+		})
+		if err != nil {
+			slog.Error("billing-svc: App Store verifier init failed — zakupy iOS pozostaną wyłączone", "error", err)
+		} else {
+			appleVerifier = av
+			billingServer.SetStoreVerifier("APPLE_IAP", av)
+			slog.Info("billing-svc: App Store verifier ready")
+		}
+	} else {
+		slog.Warn("billing-svc: APPLE_ROOT_CA_PEM unset — weryfikacja zakupów iOS wyłączona")
+	}
+
+	var playVerifier *playstore.Verifier
+	if pkgName := os.Getenv("PLAY_PACKAGE_NAME"); pkgName != "" {
+		pv, err := playstore.New(rootCtx, pkgName)
+		if err != nil {
+			slog.Error("billing-svc: Play verifier init failed — zakupy Android pozostaną wyłączone", "error", err)
+		} else {
+			playVerifier = pv
+			billingServer.SetStoreVerifier("GOOGLE_IAP", pv)
+			slog.Info("billing-svc: Google Play verifier ready", "package", pkgName)
+		}
+	} else {
+		slog.Warn("billing-svc: PLAY_PACKAGE_NAME unset — weryfikacja zakupów Android wyłączona")
+	}
+
 	// Native-gRPC auth (security #2/#9). The native path serves only S2S
 	// callers (quota ledger + GetSubscription); Admin* RPCs are rejected
 	// here since no backend service calls them over gRPC. When the OIDC
@@ -169,7 +221,21 @@ func main() {
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth, schedAuth)
 	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux, adminAuth)
 	httpadapter.NewStripeHandler(pool, logger, identityClient).RegisterRoutes(httpMux)
-	httpadapter.NewCheckoutHandler(logger).RegisterRoutes(httpMux)
+	httpadapter.NewCheckoutHandler(logger, pool, billingServer).RegisterRoutes(httpMux)
+	// Wejścia ze sklepów: notyfikacje App Store (uwierzytelnione podpisem
+	// JWS, bez OIDC — Apple go nie wysyła), RTDN Google jako push z
+	// Pub/Suba i cron uzgadniania. Dwa ostatnie idą przez ten sam
+	// middleware OIDC co crony billingowe.
+	var appleDecoder httpadapter.AppleNotificationDecoder
+	if appleVerifier != nil {
+		appleDecoder = appleVerifier
+	}
+	var playFetcher httpadapter.PlayStateFetcher
+	if playVerifier != nil {
+		playFetcher = playVerifier
+	}
+	httpadapter.NewStoreHandler(pool, logger, appleDecoder, playFetcher, billingServer).
+		RegisterRoutes(httpMux, schedAuth)
 	httpadapter.NewContactHandler(notificationClient, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
 	// logic as the gRPC path via the ConnectAdapter. The connectmd

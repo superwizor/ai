@@ -58,8 +58,9 @@ import (
 // i routingiem eventów do logiki billing-svc.
 type StripeHandler struct {
 	pool           *pgxpool.Pool
+	queries        *db.Queries
 	logger         *slog.Logger
-	webhookSecret  string // wartość STRIPE_WEBHOOK_SECRET (z Secret Manager przez env)
+	webhookSecret  string                           // wartość STRIPE_WEBHOOK_SECRET (z Secret Manager przez env)
 	identityClient identityv1.IdentityServiceClient // opcjonalny — do syncu danych org ze Stripe
 }
 
@@ -82,6 +83,7 @@ func NewStripeHandler(pool *pgxpool.Pool, logger *slog.Logger, identityClient id
 	}
 	return &StripeHandler{
 		pool:           pool,
+		queries:        db.New(pool),
 		logger:         logger,
 		webhookSecret:  secret,
 		identityClient: identityClient,
@@ -276,6 +278,8 @@ func (h *StripeHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event.Type {
 	case "checkout.session.completed":
 		handleErr = h.handleCheckoutSessionCompleted(ctx, event)
+	case "checkout.session.expired":
+		handleErr = h.handleCheckoutSessionExpired(ctx, event)
 	case "customer.subscription.created":
 		handleErr = h.handleSubscriptionCreated(ctx, event)
 	case "customer.subscription.updated":
@@ -358,6 +362,21 @@ func (h *StripeHandler) handleCheckoutSessionCompleted(ctx context.Context, even
 		"org_id", orgIDStr,
 		"stripe_sub_id", sess.Subscription)
 
+	// ── Kod rabatowy: rezerwacja → użycie (docs/70 §6.4) ─────────────
+	// Rezerwacja powstała przy tworzeniu sesji Checkout; dopiero
+	// potwierdzona płatność zamienia ją w użycie. Sesja porzucona
+	// wygasa i zwalnia rezerwację (checkout.session.expired poniżej).
+	if orgID, perr := uuid.Parse(orgIDStr); perr == nil {
+		h.commitDiscountRedemption(ctx, orgID)
+		// Zakup dobiegł końca — blokada kanału WEB nie jest już potrzebna.
+		if derr := h.queries.DeletePendingCheckout(ctx, db.DeletePendingCheckoutParams{
+			OrganizationID: orgID,
+			Channel:        "WEB",
+		}); derr != nil {
+			h.logger.WarnContext(ctx, "stripe checkout: nie zdjęto blokady kanału", "error", derr)
+		}
+	}
+
 	// ── Sync danych firmy ze Stripe do organizations (best-effort) ───
 	// Stripe Checkout zbiera dane klienta (imię/firma, adres, NIP) —
 	// synchronizujemy je do tabeli organizations przez identity-svc
@@ -370,6 +389,65 @@ func (h *StripeHandler) handleCheckoutSessionCompleted(ctx context.Context, even
 		}()
 	}
 
+	return nil
+}
+
+// commitDiscountRedemption zamienia rezerwację kodu w użycie i
+// odświeża licznik pokazywany w panelu.
+//
+// Organizacja może mieć najwyżej jedną rezerwację na kod (UNIQUE), ale
+// nie wiemy tutaj, KTÓREGO kodu użyto — Stripe zwraca to w
+// total_details, którego nasz uproszczony parser zdarzeń nie czyta.
+// Domykamy więc wszystkie rezerwacje RESERVED tej organizacji: w
+// praktyce jest ich zero albo jedna, bo checkout dopuszcza jeden kod.
+func (h *StripeHandler) commitDiscountRedemption(ctx context.Context, orgID uuid.UUID) {
+	codeIDs, err := h.queries.ListReservedRedemptionCodesForOrg(ctx, orgID)
+	if err != nil {
+		h.logger.WarnContext(ctx, "kod rabatowy: nie udało się odczytać rezerwacji", "error", err)
+		return
+	}
+	for _, codeID := range codeIDs {
+		if _, cerr := h.queries.CommitRedemptionByReference(ctx, db.CommitRedemptionByReferenceParams{
+			CodeID:         codeID,
+			OrganizationID: orgID,
+		}); cerr != nil {
+			h.logger.WarnContext(ctx, "kod rabatowy: domknięcie rezerwacji nieudane", "error", cerr)
+			continue
+		}
+		if serr := h.queries.SyncRedemptionsCount(ctx, codeID); serr != nil {
+			h.logger.WarnContext(ctx, "kod rabatowy: przeliczenie licznika nieudane", "error", serr)
+		}
+	}
+}
+
+// handleCheckoutSessionExpired zwalnia rezerwację kodu i blokadę kanału,
+// gdy użytkownik porzucił opłacanie.
+func (h *StripeHandler) handleCheckoutSessionExpired(ctx context.Context, event stripeEvent) error {
+	var sess stripeCheckoutSession
+	if err := json.Unmarshal(event.Data.Object, &sess); err != nil {
+		return fmt.Errorf("unmarshal checkout session: %w", err)
+	}
+	orgID, perr := uuid.Parse(sess.ClientMetadata.OrganizationID)
+	if perr != nil {
+		return nil
+	}
+	codeIDs, err := h.queries.ListReservedRedemptionCodesForOrg(ctx, orgID)
+	if err == nil {
+		for _, codeID := range codeIDs {
+			if _, rerr := h.queries.ReleaseRedemption(ctx, db.ReleaseRedemptionParams{
+				CodeID:         codeID,
+				OrganizationID: orgID,
+			}); rerr != nil {
+				h.logger.WarnContext(ctx, "kod rabatowy: zwolnienie rezerwacji nieudane", "error", rerr)
+			}
+		}
+	}
+	if derr := h.queries.DeletePendingCheckout(ctx, db.DeletePendingCheckoutParams{
+		OrganizationID: orgID,
+		Channel:        "WEB",
+	}); derr != nil {
+		h.logger.WarnContext(ctx, "stripe checkout: nie zdjęto blokady kanału", "error", derr)
+	}
 	return nil
 }
 

@@ -764,6 +764,12 @@ abstract class AppLocalizations {
   /// **'Nadaj swoim klientom unikalne oznaczenia, aby szybko znaleźć ich w kartotece.'**
   String get avatar_customize_desc;
 
+  /// No description provided for @billing_choose_plan_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz plan'**
+  String get billing_choose_plan_cta;
+
   /// No description provided for @billing_delete_confirm_action.
   ///
   /// In pl, this message translates to:
@@ -1722,6 +1728,24 @@ abstract class AppLocalizations {
   /// **'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.'**
   String get delete_account_consequence_3;
 
+  /// No description provided for @delete_account_reason_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dlaczego odchodzisz? (opcjonalnie)'**
+  String get delete_account_reason_label;
+
+  /// No description provided for @delete_account_reason_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja odpowiedź pomoże nam się poprawić.'**
+  String get delete_account_reason_hint;
+
+  /// No description provided for @delete_account_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się usunąć konta. Spróbuj ponownie.'**
+  String get delete_account_failed;
+
   /// No description provided for @delete_account_relogin_error.
   ///
   /// In pl, this message translates to:
@@ -1757,6 +1781,30 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Ostatni krok'**
   String get delete_account_sheet_title;
+
+  /// No description provided for @delete_account_store_sub_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Najpierw anuluj subskrypcję'**
+  String get delete_account_store_sub_title;
+
+  /// No description provided for @delete_account_store_sub_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz aktywną subskrypcję kupioną w sklepie. Usunięcie konta jej nie anuluje — zrób to w ustawieniach subskrypcji, inaczej sklep będzie pobierał opłaty dalej.'**
+  String get delete_account_store_sub_body;
+
+  /// No description provided for @delete_account_store_sub_open.
+  ///
+  /// In pl, this message translates to:
+  /// **'Otwórz ustawienia subskrypcji'**
+  String get delete_account_store_sub_open;
+
+  /// No description provided for @delete_account_store_sub_force.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem, usuń mimo to'**
+  String get delete_account_store_sub_force;
 
   /// No description provided for @delete_account_title.
   ///
@@ -3401,6 +3449,504 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Offline — wyślemy automatycznie'**
   String get pending_uploads_phase_offline;
+
+  /// No description provided for @purchase_error_foreign_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ten zakup jest przypisany do innego konta Superwizor AI. Zaloguj się na to konto albo napisz do nas.'**
+  String get purchase_error_foreign_account;
+
+  /// No description provided for @purchase_error_store_not_configured.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakupy w sklepie nie są jeszcze skonfigurowane. Spróbuj ponownie później.'**
+  String get purchase_error_store_not_configured;
+
+  /// No description provided for @purchase_error_sandbox_not_allowed.
+  ///
+  /// In pl, this message translates to:
+  /// **'To konto nie ma dostępu do zakupów testowych.'**
+  String get purchase_error_sandbox_not_allowed;
+
+  /// No description provided for @plan_picker_unavailable_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakupy chwilowo niedostępne'**
+  String get plan_picker_unavailable_title;
+
+  /// No description provided for @plan_picker_unavailable_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie możesz teraz wykupić planu w tej aplikacji. Twoje nagrania i raporty działają bez zmian.'**
+  String get plan_picker_unavailable_body;
+
+  /// No description provided for @plan_picker_blocked_until.
+  ///
+  /// In pl, this message translates to:
+  /// **'Obowiązuje do {date}.'**
+  String plan_picker_blocked_until(String date);
+
+  /// No description provided for @register_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Załóż konto'**
+  String get register_title;
+
+  /// No description provided for @register_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kilka pól i możesz nagrać pierwszą sesję.'**
+  String get register_subtitle;
+
+  /// No description provided for @register_email_divider.
+  ///
+  /// In pl, this message translates to:
+  /// **'albo adresem e-mail'**
+  String get register_email_divider;
+
+  /// No description provided for @register_email_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Załóż konto e-mailem'**
+  String get register_email_cta;
+
+  /// No description provided for @register_password_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Hasło (min. 8 znaków)'**
+  String get register_password_hint;
+
+  /// No description provided for @register_have_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz już konto? '**
+  String get register_have_account;
+
+  /// No description provided for @register_sign_in_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się'**
+  String get register_sign_in_action;
+
+  /// No description provided for @profile_setup_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój profil'**
+  String get profile_setup_title;
+
+  /// No description provided for @profile_setup_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Te trzy pola wystarczą, żeby zacząć. Resztę uzupełnisz później w ustawieniach.'**
+  String get profile_setup_subtitle;
+
+  /// No description provided for @profile_setup_first_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Imię'**
+  String get profile_setup_first_name;
+
+  /// No description provided for @profile_setup_last_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nazwisko'**
+  String get profile_setup_last_name;
+
+  /// No description provided for @profile_setup_modality_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nurt terapeutyczny'**
+  String get profile_setup_modality_label;
+
+  /// No description provided for @profile_setup_modality_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz nurt'**
+  String get profile_setup_modality_hint;
+
+  /// No description provided for @profile_setup_modality_help.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nurt decyduje o tym, jak AI układa raporty z sesji. Zmienisz go w każdej chwili.'**
+  String get profile_setup_modality_help;
+
+  /// No description provided for @profile_setup_consent_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Akceptuję '**
+  String get profile_setup_consent_prefix;
+
+  /// No description provided for @profile_setup_consent_terms.
+  ///
+  /// In pl, this message translates to:
+  /// **'Regulamin'**
+  String get profile_setup_consent_terms;
+
+  /// No description provided for @profile_setup_consent_conjunction.
+  ///
+  /// In pl, this message translates to:
+  /// **' i '**
+  String get profile_setup_consent_conjunction;
+
+  /// No description provided for @profile_setup_consent_privacy.
+  ///
+  /// In pl, this message translates to:
+  /// **'Politykę prywatności'**
+  String get profile_setup_consent_privacy;
+
+  /// No description provided for @profile_setup_error_first_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj imię.'**
+  String get profile_setup_error_first_name;
+
+  /// No description provided for @profile_setup_error_last_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj nazwisko.'**
+  String get profile_setup_error_last_name;
+
+  /// No description provided for @profile_setup_error_consent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaakceptuj Regulamin i Politykę prywatności, aby kontynuować.'**
+  String get profile_setup_error_consent;
+
+  /// No description provided for @profile_setup_submit.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakładam konto'**
+  String get profile_setup_submit;
+
+  /// No description provided for @profile_setup_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się założyć konta. Sprawdź połączenie i spróbuj ponownie.'**
+  String get profile_setup_failed;
+
+  /// No description provided for @subscription_paused_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja wstrzymana'**
+  String get subscription_paused_title;
+
+  /// No description provided for @subscription_paused_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja jest wstrzymana w Google Play. Wznów ją, żeby znów przetwarzać sesje.'**
+  String get subscription_paused_body;
+
+  /// No description provided for @subscription_resume_in_store.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wznów w Google Play'**
+  String get subscription_resume_in_store;
+
+  /// No description provided for @subscription_status_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Status'**
+  String get subscription_status_label;
+
+  /// No description provided for @subscription_status_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aktywna'**
+  String get subscription_status_active;
+
+  /// No description provided for @subscription_status_trialing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Okres próbny'**
+  String get subscription_status_trialing;
+
+  /// No description provided for @subscription_status_past_due.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaległa płatność'**
+  String get subscription_status_past_due;
+
+  /// No description provided for @subscription_status_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstrzymana'**
+  String get subscription_status_paused;
+
+  /// No description provided for @subscription_status_canceled.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakończona'**
+  String get subscription_status_canceled;
+
+  /// No description provided for @subscription_cancel_at_period_end.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja nie odnowi się — dostęp masz do {date}.'**
+  String subscription_cancel_at_period_end(String date);
+
+  /// No description provided for @upload_error_email_unverified.
+  ///
+  /// In pl, this message translates to:
+  /// **'Potwierdź adres e-mail, żeby wysłać nagranie do analizy.'**
+  String get upload_error_email_unverified;
+
+  /// No description provided for @plan_picker_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz plan'**
+  String get plan_picker_title;
+
+  /// No description provided for @plan_picker_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan możesz zmienić lub anulować w każdej chwili.'**
+  String get plan_picker_subtitle;
+
+  /// No description provided for @plan_picker_cycle_monthly.
+  ///
+  /// In pl, this message translates to:
+  /// **'Miesięcznie'**
+  String get plan_picker_cycle_monthly;
+
+  /// No description provided for @plan_picker_cycle_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rocznie'**
+  String get plan_picker_cycle_annual;
+
+  /// No description provided for @plan_picker_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =1{1 sesja w okresie rozliczeniowym} few{{n} sesje w okresie rozliczeniowym} many{{n} sesji w okresie rozliczeniowym} other{{n} sesji w okresie rozliczeniowym}}'**
+  String plan_picker_sessions(int n);
+
+  /// No description provided for @plan_picker_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wykup plan'**
+  String get plan_picker_cta;
+
+  /// No description provided for @plan_picker_skip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Na razie bez planu'**
+  String get plan_picker_skip;
+
+  /// No description provided for @plan_picker_restore.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przywróć zakupy'**
+  String get plan_picker_restore;
+
+  /// No description provided for @plan_picker_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Na tym urządzeniu nie ma teraz planów do kupienia.'**
+  String get plan_picker_empty;
+
+  /// No description provided for @plan_picker_legal_monthly.
+  ///
+  /// In pl, this message translates to:
+  /// **'Płatność co miesiąc, subskrypcja odnawia się automatycznie do czasu anulowania. Anulujesz w ustawieniach sklepu, najpóźniej 24 godziny przed końcem okresu. Rachunek wystawia sklep.'**
+  String get plan_picker_legal_monthly;
+
+  /// No description provided for @plan_picker_legal_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'Płatność co rok, subskrypcja odnawia się automatycznie do czasu anulowania. Anulujesz w ustawieniach sklepu, najpóźniej 24 godziny przed końcem okresu. Rachunek wystawia sklep.'**
+  String get plan_picker_legal_annual;
+
+  /// No description provided for @plan_picker_legal_terms.
+  ///
+  /// In pl, this message translates to:
+  /// **'Regulamin'**
+  String get plan_picker_legal_terms;
+
+  /// No description provided for @plan_picker_legal_privacy.
+  ///
+  /// In pl, this message translates to:
+  /// **'Polityka prywatności'**
+  String get plan_picker_legal_privacy;
+
+  /// No description provided for @plan_picker_current_plan.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój obecny plan'**
+  String get plan_picker_current_plan;
+
+  /// No description provided for @purchase_success.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan aktywny. Miłej pracy!'**
+  String get purchase_success;
+
+  /// No description provided for @purchase_pending.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sklep czeka na potwierdzenie płatności. Damy znać, gdy plan będzie aktywny.'**
+  String get purchase_pending;
+
+  /// No description provided for @purchase_error_store_unavailable.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sklep jest niedostępny na tym urządzeniu.'**
+  String get purchase_error_store_unavailable;
+
+  /// No description provided for @purchase_error_product_unavailable.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ten plan jest chwilowo niedostępny w sklepie.'**
+  String get purchase_error_product_unavailable;
+
+  /// No description provided for @purchase_error_verification.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapłaciłeś, ale nie udało się potwierdzić zakupu na serwerze. Nic nie przepadło — dokończymy przy następnym uruchomieniu aplikacji.'**
+  String get purchase_error_verification;
+
+  /// No description provided for @purchase_error_generic.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakup się nie powiódł. Spróbuj ponownie.'**
+  String get purchase_error_generic;
+
+  /// No description provided for @purchase_restore_none.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie znaleźliśmy zakupów do przywrócenia.'**
+  String get purchase_restore_none;
+
+  /// No description provided for @purchase_restore_success.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakupy przywrócone.'**
+  String get purchase_restore_success;
+
+  /// No description provided for @purchase_blocked_other_provider.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz już aktywną subskrypcję kupioną gdzie indziej.'**
+  String get purchase_blocked_other_provider;
+
+  /// No description provided for @purchase_blocked_other_provider_until.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz już aktywną subskrypcję kupioną gdzie indziej — obowiązuje do {date}.'**
+  String purchase_blocked_other_provider_until(String date);
+
+  /// No description provided for @purchase_blocked_org_managed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Planem zarządza Twoja organizacja.'**
+  String get purchase_blocked_org_managed;
+
+  /// No description provided for @purchase_blocked_iap_disabled.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakupy w aplikacji są chwilowo wyłączone.'**
+  String get purchase_blocked_iap_disabled;
+
+  /// No description provided for @purchase_blocked_pending_checkout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz otwartą płatność w innym miejscu. Dokończ ją albo spróbuj ponownie później.'**
+  String get purchase_blocked_pending_checkout;
+
+  /// No description provided for @purchase_blocked_account_inactive.
+  ///
+  /// In pl, this message translates to:
+  /// **'To konto jest nieaktywne.'**
+  String get purchase_blocked_account_inactive;
+
+  /// No description provided for @purchase_blocked_generic.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakup nie jest teraz możliwy.'**
+  String get purchase_blocked_generic;
+
+  /// No description provided for @subscription_provider_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dostawca'**
+  String get subscription_provider_label;
+
+  /// No description provided for @subscription_provider_apple.
+  ///
+  /// In pl, this message translates to:
+  /// **'App Store'**
+  String get subscription_provider_apple;
+
+  /// No description provided for @subscription_provider_google.
+  ///
+  /// In pl, this message translates to:
+  /// **'Google Play'**
+  String get subscription_provider_google;
+
+  /// No description provided for @subscription_provider_stripe.
+  ///
+  /// In pl, this message translates to:
+  /// **'superwizor.ai'**
+  String get subscription_provider_stripe;
+
+  /// No description provided for @subscription_provider_manual.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan przydzielony'**
+  String get subscription_provider_manual;
+
+  /// No description provided for @subscription_manage_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zarządzaj subskrypcją'**
+  String get subscription_manage_button;
+
+  /// No description provided for @subscription_manage_stripe_note.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcją zarządzasz na swoim koncie na superwizor.ai.'**
+  String get subscription_manage_stripe_note;
+
+  /// No description provided for @subscription_manage_org_note.
+  ///
+  /// In pl, this message translates to:
+  /// **'Planem zarządza Twoja organizacja.'**
+  String get subscription_manage_org_note;
+
+  /// No description provided for @subscription_grace_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Problem z płatnością'**
+  String get subscription_grace_title;
+
+  /// No description provided for @subscription_grace_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sklep nie pobrał opłaty. Zaktualizuj metodę płatności do {date}, żeby nie stracić dostępu.'**
+  String subscription_grace_body(String date);
+
+  /// No description provided for @subscription_past_due_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sklep nie pobrał opłaty za subskrypcję. Nowe sesje nie będą przetwarzane, dopóki płatność się nie powiedzie.'**
+  String get subscription_past_due_body;
+
+  /// No description provided for @subscription_fix_payment.
+  ///
+  /// In pl, this message translates to:
+  /// **'Napraw płatność w sklepie'**
+  String get subscription_fix_payment;
+
+  /// No description provided for @subscription_open_store_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się otworzyć sklepu.'**
+  String get subscription_open_store_failed;
+
+  /// No description provided for @subscription_choose_plan.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz plan'**
+  String get subscription_choose_plan;
 
   /// No description provided for @upload_offline_waiting.
   ///
@@ -5980,6 +6526,84 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Otwórz'**
   String get report_ready_snackbar_open;
+
+  /// No description provided for @verify_email_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdź skrzynkę'**
+  String get verify_email_title;
+
+  /// No description provided for @verify_email_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłaliśmy link potwierdzający na {email}.'**
+  String verify_email_body(String email);
+
+  /// No description provided for @verify_email_why.
+  ///
+  /// In pl, this message translates to:
+  /// **'Potwierdzenie jest potrzebne dopiero przy wysyłce pierwszego nagrania do analizy. Nagrywać możesz od razu.'**
+  String get verify_email_why;
+
+  /// No description provided for @verify_email_resend.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ponownie'**
+  String get verify_email_resend;
+
+  /// No description provided for @verify_email_resent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłaliśmy nową wiadomość.'**
+  String get verify_email_resent;
+
+  /// No description provided for @verify_email_resend_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się wysłać wiadomości. Spróbuj za chwilę.'**
+  String get verify_email_resend_failed;
+
+  /// No description provided for @verify_email_later.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zrobię to później'**
+  String get verify_email_later;
+
+  /// No description provided for @verify_email_check_now.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdziłem, potwierdzone'**
+  String get verify_email_check_now;
+
+  /// No description provided for @verify_email_still_unverified.
+  ///
+  /// In pl, this message translates to:
+  /// **'Adres nadal nie jest potwierdzony.'**
+  String get verify_email_still_unverified;
+
+  /// No description provided for @verify_email_confirmed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Adres e-mail potwierdzony.'**
+  String get verify_email_confirmed;
+
+  /// No description provided for @verify_email_banner_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Potwierdź adres e-mail'**
+  String get verify_email_banner_title;
+
+  /// No description provided for @verify_email_banner_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrania czekają lokalnie, dopóki nie potwierdzisz adresu. Nagrywanie działa normalnie.'**
+  String get verify_email_banner_body;
+
+  /// No description provided for @verify_email_banner_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Potwierdź'**
+  String get verify_email_banner_action;
 }
 
 class _AppLocalizationsDelegate

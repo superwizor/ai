@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/billing_quota_provider.dart';
 import '../providers/current_user_provider.dart';
+import '../providers/email_verification_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
@@ -140,6 +141,12 @@ final uploadQueueRunnerProvider =
         debugPrint('[upload-runner] onReservationCreated failed: $e');
       });
     },
+    // Bramka „potwierdzony e-mail" przed pierwszym CreateAudioUpload
+    // (docs/70 S1 krok 3). `refresh()` robi `currentUser.reload()`, bo
+    // `emailVerified` w tokenie jest migawką z chwili logowania i sam się
+    // nie odświeża po kliknięciu linku w skrzynce.
+    isEmailVerified: () =>
+        ref.read(emailVerifiedProvider.notifier).refresh(),
   );
 
   _holder.queue = queue;
@@ -148,6 +155,18 @@ final uploadQueueRunnerProvider =
 
   await runner.start();
   _attachQuotaListener(ref, runner);
+
+  // Potwierdzenie adresu odblokowuje zaparkowane wiersze natychmiast, bez
+  // czekania na trzyminutowy backoff bramki ani na restart aplikacji.
+  ref.listen<bool>(emailVerifiedProvider, (previous, next) {
+    if (next && previous == false) {
+      debugPrint('[upload-runner] adres potwierdzony — budzę kolejkę');
+      unawaited(() async {
+        await runner.resetBackoffsForColdStart();
+        await runner.kick();
+      }());
+    }
+  });
   return runner;
 });
 

@@ -35,6 +35,47 @@ describe("translateError", () => {
     );
   });
 
+  it("rozpoznaje błędy kodów rabatowych po prefiksie z billing-svc", () => {
+    // Prefiksy (DISCOUNT_CODE_*) są częścią kontraktu z Go — po ich
+    // stronie pilnuje ich test, po naszej ten. Bez dopasowania admin
+    // widzi "sprawdź wprowadzone wartości" i nie wie, KTÓRE pole.
+    expect(
+      translateError(new Error("DISCOUNT_CODE_FORMAT: kod może zawierać..."), t),
+    ).toBe("backend.discountCodeFormat");
+    expect(
+      translateError(new Error("DISCOUNT_CODE_EXISTS: kod WIOSNA25 już istnieje"), t),
+    ).toBe("backend.discountCodeExists");
+    expect(
+      translateError(
+        new Error("DISCOUNT_CODE_EXPIRED_ON_CREATE: termin musi być w przyszłości"),
+        t,
+      ),
+    ).toBe("backend.discountCodeExpiredOnCreate");
+  });
+
+  it("DISCOUNT_CODE_EXPIRED_ON_CREATE nie wpada w regułę od EXISTS", () => {
+    // Oba wzorce zaczynają się tak samo; kolejność w BACKEND_PATTERNS
+    // jest jedynym, co je rozdziela. Test broni tej kolejności.
+    expect(
+      translateError(new Error("discount_code_expired_on_create"), t),
+    ).not.toBe("backend.discountCodeExists");
+  });
+
+  it("brak konfiguracji Stripe to nie błąd formularza", () => {
+    expect(
+      translateError(new Error("STRIPE_NOT_CONFIGURED: brak STRIPE_SECRET_KEY"), t),
+    ).toBe("backend.stripeNotConfigured");
+  });
+
+  it("rozpoznaje blokadę krzyżową dostawców (docs/70 E22)", () => {
+    expect(
+      translateError(
+        new ConnectError("OTHER_PROVIDER_ACTIVE", Code.FailedPrecondition),
+        t,
+      ),
+    ).toBe("backend.otherProviderActive");
+  });
+
   it("rozpoznaje zbyt krótkie uzasadnienie akcji admina", () => {
     expect(
       translateError(new Error("reason must be >= 10 characters"), t),

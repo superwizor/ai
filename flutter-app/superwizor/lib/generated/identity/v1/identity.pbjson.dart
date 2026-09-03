@@ -72,6 +72,28 @@ final $typed_data.Uint8List adminAssignTherapistStatusDescriptor = $convert.base
     'U0lHTkVEEAESQAo8QURNSU5fQVNTSUdOX1RIRVJBUElTVF9TVEFUVVNfVFJBTlNGRVJfQ09ORk'
     'lSTUFUSU9OX1JFUVVJUkVEEAI=');
 
+@$core.Deprecated('Use deleteMyAccountRequestDescriptor instead')
+const DeleteMyAccountRequest$json = {
+  '1': 'DeleteMyAccountRequest',
+  '2': [
+    {'1': 'confirmation', '3': 1, '4': 1, '5': 9, '10': 'confirmation'},
+    {'1': 'reason', '3': 2, '4': 1, '5': 9, '10': 'reason'},
+    {
+      '1': 'acknowledged_subscription',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'acknowledgedSubscription'
+    },
+  ],
+};
+
+/// Descriptor for `DeleteMyAccountRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteMyAccountRequestDescriptor = $convert.base64Decode(
+    'ChZEZWxldGVNeUFjY291bnRSZXF1ZXN0EiIKDGNvbmZpcm1hdGlvbhgBIAEoCVIMY29uZmlybW'
+    'F0aW9uEhYKBnJlYXNvbhgCIAEoCVIGcmVhc29uEjsKGWFja25vd2xlZGdlZF9zdWJzY3JpcHRp'
+    'b24YAyABKAhSGGFja25vd2xlZGdlZFN1YnNjcmlwdGlvbg==');
+
 @$core.Deprecated('Use appLoginTokenDescriptor instead')
 const AppLoginToken$json = {
   '1': 'AppLoginToken',
@@ -986,6 +1008,7 @@ const AcceptInvitationRequest$json = {
       '10': 'hasMarketingConsent'
     },
     {'1': 'pairing_code', '3': 10, '4': 1, '5': 9, '10': 'pairingCode'},
+    {'1': 'phone_number', '3': 11, '4': 1, '5': 9, '10': 'phoneNumber'},
   ],
 };
 
@@ -997,7 +1020,8 @@ final $typed_data.Uint8List acceptInvitationRequestDescriptor = $convert.base64D
     'UgASgJUhFkZWZhdWx0TW9kYWxpdHlJZBIfCgt1aV9sYW5ndWFnZRgGIAEoCVIKdWlMYW5ndWFn'
     'ZRIaCgh0aW1lem9uZRgHIAEoCVIIdGltZXpvbmUSKAoQaGFzX2FjY2VwdGVkX3RvcxgIIAEoCF'
     'IOaGFzQWNjZXB0ZWRUb3MSMgoVaGFzX21hcmtldGluZ19jb25zZW50GAkgASgIUhNoYXNNYXJr'
-    'ZXRpbmdDb25zZW50EiEKDHBhaXJpbmdfY29kZRgKIAEoCVILcGFpcmluZ0NvZGU=');
+    'ZXRpbmdDb25zZW50EiEKDHBhaXJpbmdfY29kZRgKIAEoCVILcGFpcmluZ0NvZGUSIQoMcGhvbm'
+    'VfbnVtYmVyGAsgASgJUgtwaG9uZU51bWJlcg==');
 
 @$core.Deprecated('Use getInvitationPreviewRequestDescriptor instead')
 const GetInvitationPreviewRequest$json = {

@@ -167,6 +167,110 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$adminGetOrgSeatUsage, request, options: options);
   }
 
+  /// SUPERWIZOR_ADMIN. Zakłada kod rabatowy: nasz wiersz w
+  /// discount_codes + coupon i promotion code po stronie Stripe'a
+  /// (to Stripe atomowo pilnuje max_redemptions przy checkoucie).
+  /// reason >= 10 znaków → audit_events.
+  $grpc.ResponseFuture<$0.DiscountCode> adminCreateDiscountCode(
+    $0.AdminCreateDiscountCodeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminCreateDiscountCode, request,
+        options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN. Zmienia nazwę / termin / limit / aktywność.
+  /// Stripe nie pozwala zmienić expires_at ani max_redemptions na
+  /// istniejącym promotion code, więc zmiana któregokolwiek z nich
+  /// zakłada NOWY promotion code pod tym samym kuponem i wygasza stary
+  /// (docs/70 §6.4 D10).
+  $grpc.ResponseFuture<$0.DiscountCode> adminUpdateDiscountCode(
+    $0.AdminUpdateDiscountCodeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminUpdateDiscountCode, request,
+        options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN. Lista kodów do tabeli w panelu.
+  $grpc.ResponseFuture<$0.AdminListDiscountCodesResponse>
+      adminListDiscountCodes(
+    $0.AdminListDiscountCodesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListDiscountCodes, request,
+        options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN. Kod + historia użyć (organizacja, data, kanał).
+  $grpc.ResponseFuture<$0.DiscountCodeDetails> adminGetDiscountCode(
+    $0.AdminGetDiscountCodeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminGetDiscountCode, request, options: options);
+  }
+
+  /// Zalogowany użytkownik. Walidacja kodu PRZED checkoutem: czy ważny,
+  /// czy obejmuje wybrany plan, ile wyniesie cena. Nie rezerwuje użycia —
+  /// rezerwacja powstaje przy tworzeniu sesji Checkout.
+  $grpc.ResponseFuture<$0.DiscountCodeQuote> validateDiscountCode(
+    $0.ValidateDiscountCodeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$validateDiscountCode, request, options: options);
+  }
+
+  /// Zalogowany użytkownik. Co wolno pokazać na paywallu: aktywny
+  /// dostawca, czy zakup jest w ogóle dozwolony (i dlaczego nie),
+  /// katalog produktów sklepowych, tryb wzmianki o WWW. Aplikacja NIE
+  /// decyduje o tym sama — flagi i blokady krzyżowe żyją na serwerze.
+  $grpc.ResponseFuture<$0.BillingSurface> getBillingSurface(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getBillingSurface, request, options: options);
+  }
+
+  /// Zalogowany użytkownik. Bramka przed otwarciem arkusza zakupu:
+  /// sprawdza blokady (inny dostawca, organizacja na miejscach, flaga
+  /// wyłączona, równoległy checkout) i zwraca app_account_token, którym
+  /// aplikacja podpisuje transakcję w sklepie.
+  $grpc.ResponseFuture<$0.BeginStorePurchaseResponse> beginStorePurchase(
+    $0.BeginStorePurchaseRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$beginStorePurchase, request, options: options);
+  }
+
+  /// Zalogowany użytkownik. Weryfikuje zakup u Apple/Google i nadaje
+  /// uprawnienie. Aplikacja NIGDY nie przyznaje go sobie sama; transakcji
+  /// nie wolno finishować/acknowledge'ować przed sukcesem tego RPC.
+  $grpc.ResponseFuture<$0.Subscription> verifyStorePurchase(
+    $0.VerifyStorePurchaseRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$verifyStorePurchase, request, options: options);
+  }
+
+  /// Zalogowany użytkownik. „Przywróć zakupy" (wymóg Apple 3.1.2).
+  /// Odrzuca transakcje z app_account_token innej organizacji.
+  $grpc.ResponseFuture<$0.Subscription> restoreStorePurchases(
+    $0.RestoreStorePurchasesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$restoreStorePurchases, request, options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN. Dziennik transakcji sklepowych organizacji.
+  $grpc.ResponseFuture<$0.AdminListStoreTransactionsResponse>
+      adminListStoreTransactions(
+    $0.AdminListStoreTransactionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListStoreTransactions, request,
+        options: options);
+  }
+
   // method descriptors
 
   static final _$checkQuota =
@@ -234,6 +338,57 @@ class BillingServiceClient extends $grpc.Client {
           '/billing.v1.BillingService/AdminGetOrgSeatUsage',
           ($0.AdminGetOrgSeatUsageRequest value) => value.writeToBuffer(),
           $0.OrgSeatSummary.fromBuffer);
+  static final _$adminCreateDiscountCode =
+      $grpc.ClientMethod<$0.AdminCreateDiscountCodeRequest, $0.DiscountCode>(
+          '/billing.v1.BillingService/AdminCreateDiscountCode',
+          ($0.AdminCreateDiscountCodeRequest value) => value.writeToBuffer(),
+          $0.DiscountCode.fromBuffer);
+  static final _$adminUpdateDiscountCode =
+      $grpc.ClientMethod<$0.AdminUpdateDiscountCodeRequest, $0.DiscountCode>(
+          '/billing.v1.BillingService/AdminUpdateDiscountCode',
+          ($0.AdminUpdateDiscountCodeRequest value) => value.writeToBuffer(),
+          $0.DiscountCode.fromBuffer);
+  static final _$adminListDiscountCodes = $grpc.ClientMethod<
+          $0.AdminListDiscountCodesRequest, $0.AdminListDiscountCodesResponse>(
+      '/billing.v1.BillingService/AdminListDiscountCodes',
+      ($0.AdminListDiscountCodesRequest value) => value.writeToBuffer(),
+      $0.AdminListDiscountCodesResponse.fromBuffer);
+  static final _$adminGetDiscountCode = $grpc.ClientMethod<
+          $0.AdminGetDiscountCodeRequest, $0.DiscountCodeDetails>(
+      '/billing.v1.BillingService/AdminGetDiscountCode',
+      ($0.AdminGetDiscountCodeRequest value) => value.writeToBuffer(),
+      $0.DiscountCodeDetails.fromBuffer);
+  static final _$validateDiscountCode =
+      $grpc.ClientMethod<$0.ValidateDiscountCodeRequest, $0.DiscountCodeQuote>(
+          '/billing.v1.BillingService/ValidateDiscountCode',
+          ($0.ValidateDiscountCodeRequest value) => value.writeToBuffer(),
+          $0.DiscountCodeQuote.fromBuffer);
+  static final _$getBillingSurface =
+      $grpc.ClientMethod<$1.Empty, $0.BillingSurface>(
+          '/billing.v1.BillingService/GetBillingSurface',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.BillingSurface.fromBuffer);
+  static final _$beginStorePurchase = $grpc.ClientMethod<
+          $0.BeginStorePurchaseRequest, $0.BeginStorePurchaseResponse>(
+      '/billing.v1.BillingService/BeginStorePurchase',
+      ($0.BeginStorePurchaseRequest value) => value.writeToBuffer(),
+      $0.BeginStorePurchaseResponse.fromBuffer);
+  static final _$verifyStorePurchase =
+      $grpc.ClientMethod<$0.VerifyStorePurchaseRequest, $0.Subscription>(
+          '/billing.v1.BillingService/VerifyStorePurchase',
+          ($0.VerifyStorePurchaseRequest value) => value.writeToBuffer(),
+          $0.Subscription.fromBuffer);
+  static final _$restoreStorePurchases =
+      $grpc.ClientMethod<$0.RestoreStorePurchasesRequest, $0.Subscription>(
+          '/billing.v1.BillingService/RestoreStorePurchases',
+          ($0.RestoreStorePurchasesRequest value) => value.writeToBuffer(),
+          $0.Subscription.fromBuffer);
+  static final _$adminListStoreTransactions = $grpc.ClientMethod<
+          $0.AdminListStoreTransactionsRequest,
+          $0.AdminListStoreTransactionsResponse>(
+      '/billing.v1.BillingService/AdminListStoreTransactions',
+      ($0.AdminListStoreTransactionsRequest value) => value.writeToBuffer(),
+      $0.AdminListStoreTransactionsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('billing.v1.BillingService')
@@ -345,6 +500,95 @@ abstract class BillingServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.AdminGetOrgSeatUsageRequest.fromBuffer(value),
             ($0.OrgSeatSummary value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminCreateDiscountCodeRequest, $0.DiscountCode>(
+            'AdminCreateDiscountCode',
+            adminCreateDiscountCode_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminCreateDiscountCodeRequest.fromBuffer(value),
+            ($0.DiscountCode value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminUpdateDiscountCodeRequest, $0.DiscountCode>(
+            'AdminUpdateDiscountCode',
+            adminUpdateDiscountCode_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminUpdateDiscountCodeRequest.fromBuffer(value),
+            ($0.DiscountCode value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminListDiscountCodesRequest,
+            $0.AdminListDiscountCodesResponse>(
+        'AdminListDiscountCodes',
+        adminListDiscountCodes_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminListDiscountCodesRequest.fromBuffer(value),
+        ($0.AdminListDiscountCodesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminGetDiscountCodeRequest,
+            $0.DiscountCodeDetails>(
+        'AdminGetDiscountCode',
+        adminGetDiscountCode_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminGetDiscountCodeRequest.fromBuffer(value),
+        ($0.DiscountCodeDetails value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ValidateDiscountCodeRequest,
+            $0.DiscountCodeQuote>(
+        'ValidateDiscountCode',
+        validateDiscountCode_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ValidateDiscountCodeRequest.fromBuffer(value),
+        ($0.DiscountCodeQuote value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.BillingSurface>(
+        'GetBillingSurface',
+        getBillingSurface_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.BillingSurface value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.BeginStorePurchaseRequest,
+            $0.BeginStorePurchaseResponse>(
+        'BeginStorePurchase',
+        beginStorePurchase_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.BeginStorePurchaseRequest.fromBuffer(value),
+        ($0.BeginStorePurchaseResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.VerifyStorePurchaseRequest, $0.Subscription>(
+            'VerifyStorePurchase',
+            verifyStorePurchase_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.VerifyStorePurchaseRequest.fromBuffer(value),
+            ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.RestoreStorePurchasesRequest, $0.Subscription>(
+            'RestoreStorePurchases',
+            restoreStorePurchases_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RestoreStorePurchasesRequest.fromBuffer(value),
+            ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminListStoreTransactionsRequest,
+            $0.AdminListStoreTransactionsResponse>(
+        'AdminListStoreTransactions',
+        adminListStoreTransactions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminListStoreTransactionsRequest.fromBuffer(value),
+        ($0.AdminListStoreTransactionsResponse value) =>
+            value.writeToBuffer()));
   }
 
   $async.Future<$0.QuotaDecision> checkQuota_Pre($grpc.ServiceCall $call,
@@ -453,4 +697,94 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.OrgSeatSummary> adminGetOrgSeatUsage(
       $grpc.ServiceCall call, $0.AdminGetOrgSeatUsageRequest request);
+
+  $async.Future<$0.DiscountCode> adminCreateDiscountCode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminCreateDiscountCodeRequest> $request) async {
+    return adminCreateDiscountCode($call, await $request);
+  }
+
+  $async.Future<$0.DiscountCode> adminCreateDiscountCode(
+      $grpc.ServiceCall call, $0.AdminCreateDiscountCodeRequest request);
+
+  $async.Future<$0.DiscountCode> adminUpdateDiscountCode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminUpdateDiscountCodeRequest> $request) async {
+    return adminUpdateDiscountCode($call, await $request);
+  }
+
+  $async.Future<$0.DiscountCode> adminUpdateDiscountCode(
+      $grpc.ServiceCall call, $0.AdminUpdateDiscountCodeRequest request);
+
+  $async.Future<$0.AdminListDiscountCodesResponse> adminListDiscountCodes_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminListDiscountCodesRequest> $request) async {
+    return adminListDiscountCodes($call, await $request);
+  }
+
+  $async.Future<$0.AdminListDiscountCodesResponse> adminListDiscountCodes(
+      $grpc.ServiceCall call, $0.AdminListDiscountCodesRequest request);
+
+  $async.Future<$0.DiscountCodeDetails> adminGetDiscountCode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminGetDiscountCodeRequest> $request) async {
+    return adminGetDiscountCode($call, await $request);
+  }
+
+  $async.Future<$0.DiscountCodeDetails> adminGetDiscountCode(
+      $grpc.ServiceCall call, $0.AdminGetDiscountCodeRequest request);
+
+  $async.Future<$0.DiscountCodeQuote> validateDiscountCode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ValidateDiscountCodeRequest> $request) async {
+    return validateDiscountCode($call, await $request);
+  }
+
+  $async.Future<$0.DiscountCodeQuote> validateDiscountCode(
+      $grpc.ServiceCall call, $0.ValidateDiscountCodeRequest request);
+
+  $async.Future<$0.BillingSurface> getBillingSurface_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return getBillingSurface($call, await $request);
+  }
+
+  $async.Future<$0.BillingSurface> getBillingSurface(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.BeginStorePurchaseResponse> beginStorePurchase_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.BeginStorePurchaseRequest> $request) async {
+    return beginStorePurchase($call, await $request);
+  }
+
+  $async.Future<$0.BeginStorePurchaseResponse> beginStorePurchase(
+      $grpc.ServiceCall call, $0.BeginStorePurchaseRequest request);
+
+  $async.Future<$0.Subscription> verifyStorePurchase_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.VerifyStorePurchaseRequest> $request) async {
+    return verifyStorePurchase($call, await $request);
+  }
+
+  $async.Future<$0.Subscription> verifyStorePurchase(
+      $grpc.ServiceCall call, $0.VerifyStorePurchaseRequest request);
+
+  $async.Future<$0.Subscription> restoreStorePurchases_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RestoreStorePurchasesRequest> $request) async {
+    return restoreStorePurchases($call, await $request);
+  }
+
+  $async.Future<$0.Subscription> restoreStorePurchases(
+      $grpc.ServiceCall call, $0.RestoreStorePurchasesRequest request);
+
+  $async.Future<$0.AdminListStoreTransactionsResponse>
+      adminListStoreTransactions_Pre($grpc.ServiceCall $call,
+          $async.Future<$0.AdminListStoreTransactionsRequest> $request) async {
+    return adminListStoreTransactions($call, await $request);
+  }
+
+  $async.Future<$0.AdminListStoreTransactionsResponse>
+      adminListStoreTransactions(
+          $grpc.ServiceCall call, $0.AdminListStoreTransactionsRequest request);
 }
