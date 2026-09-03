@@ -411,3 +411,13 @@ func (a *ConnectAdapter) UpdateMyEmail(ctx context.Context, req *connect.Request
 	return connect.NewResponse(resp), nil
 }
 
+
+// DeleteMyAccount — samodzielne usunięcie konta (Apple 5.1.1(v),
+// docs/70 R9). Dostępne z aplikacji i z weba przez ten sam handler.
+func (a *ConnectAdapter) DeleteMyAccount(ctx context.Context, req *connect.Request[identityv1.DeleteMyAccountRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.DeleteMyAccount(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

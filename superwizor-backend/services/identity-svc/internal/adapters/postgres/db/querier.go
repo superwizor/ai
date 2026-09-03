@@ -72,6 +72,13 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreateSeatAssignment(ctx context.Context, arg CreateSeatAssignmentParams) (SeatAssignment, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// Czy organizacja ma aktywną subskrypcję kupioną w App Store / Google Play.
+	//
+	// Potrzebne przy usuwaniu konta (docs/70 E5): subskrypcji ze sklepu NIE
+	// umiemy anulować — może to zrobić wyłącznie właściciel konta Apple albo
+	// Google. Kasowanie konta bez ostrzeżenia zostawiłoby użytkownika z
+	// płatnym, comiesięcznym obciążeniem za usługę, do której stracił dostęp.
+	GetActiveStoreSubscriptionForOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveStoreSubscriptionForOrgRow, error)
 	GetAddressByID(ctx context.Context, id uuid.UUID) (Address, error)
 	GetConsentHistory(ctx context.Context, userID uuid.UUID) ([]ConsentRecord, error)
 	GetInvitationByOrgEmail(ctx context.Context, arg GetInvitationByOrgEmailParams) (Invitation, error)

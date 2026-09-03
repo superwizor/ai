@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -203,20 +204,23 @@ func (q *Queries) CheckPhoneNumberExists(ctx context.Context, phoneNumber *strin
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     role, firebase_uid, email,
-    first_name, last_name, ui_language, timezone, has_accepted_tos
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    first_name, last_name, ui_language, timezone, has_accepted_tos,
+    phone_number, has_marketing_consent
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at, first_app_login_at
 `
 
 type CreateUserParams struct {
-	Role           UserRole `json:"role"`
-	FirebaseUid    *string  `json:"firebase_uid"`
-	Email          *string  `json:"email"`
-	FirstName      string   `json:"first_name"`
-	LastName       string   `json:"last_name"`
-	UiLanguage     string   `json:"ui_language"`
-	Timezone       string   `json:"timezone"`
-	HasAcceptedTos bool     `json:"has_accepted_tos"`
+	Role                UserRole `json:"role"`
+	FirebaseUid         *string  `json:"firebase_uid"`
+	Email               *string  `json:"email"`
+	FirstName           string   `json:"first_name"`
+	LastName            string   `json:"last_name"`
+	UiLanguage          string   `json:"ui_language"`
+	Timezone            string   `json:"timezone"`
+	HasAcceptedTos      bool     `json:"has_accepted_tos"`
+	PhoneNumber         *string  `json:"phone_number"`
+	HasMarketingConsent bool     `json:"has_marketing_consent"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -229,6 +233,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.UiLanguage,
 		arg.Timezone,
 		arg.HasAcceptedTos,
+		arg.PhoneNumber,
+		arg.HasMarketingConsent,
 	)
 	var i User
 	err := row.Scan(
@@ -258,6 +264,33 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DeactivatedAt,
 		&i.FirstAppLoginAt,
 	)
+	return i, err
+}
+
+const getActiveStoreSubscriptionForOrg = `-- name: GetActiveStoreSubscriptionForOrg :one
+SELECT provider::text AS provider, current_period_end
+  FROM subscriptions
+ WHERE organization_id = $1
+   AND provider IN ('APPLE_IAP', 'GOOGLE_IAP')
+   AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'PAUSED')
+ LIMIT 1
+`
+
+type GetActiveStoreSubscriptionForOrgRow struct {
+	Provider         string    `json:"provider"`
+	CurrentPeriodEnd time.Time `json:"current_period_end"`
+}
+
+// Czy organizacja ma aktywną subskrypcję kupioną w App Store / Google Play.
+//
+// Potrzebne przy usuwaniu konta (docs/70 E5): subskrypcji ze sklepu NIE
+// umiemy anulować — może to zrobić wyłącznie właściciel konta Apple albo
+// Google. Kasowanie konta bez ostrzeżenia zostawiłoby użytkownika z
+// płatnym, comiesięcznym obciążeniem za usługę, do której stracił dostęp.
+func (q *Queries) GetActiveStoreSubscriptionForOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveStoreSubscriptionForOrgRow, error) {
+	row := q.db.QueryRow(ctx, getActiveStoreSubscriptionForOrg, organizationID)
+	var i GetActiveStoreSubscriptionForOrgRow
+	err := row.Scan(&i.Provider, &i.CurrentPeriodEnd)
 	return i, err
 }
 

@@ -166,3 +166,17 @@ UPDATE users
 SET first_app_login_at = now()
 WHERE id = $1 AND first_app_login_at IS NULL AND deleted_at IS NULL;
 
+
+-- name: GetActiveStoreSubscriptionForOrg :one
+-- Czy organizacja ma aktywną subskrypcję kupioną w App Store / Google Play.
+--
+-- Potrzebne przy usuwaniu konta (docs/70 E5): subskrypcji ze sklepu NIE
+-- umiemy anulować — może to zrobić wyłącznie właściciel konta Apple albo
+-- Google. Kasowanie konta bez ostrzeżenia zostawiłoby użytkownika z
+-- płatnym, comiesięcznym obciążeniem za usługę, do której stracił dostęp.
+SELECT provider::text AS provider, current_period_end
+  FROM subscriptions
+ WHERE organization_id = $1
+   AND provider IN ('APPLE_IAP', 'GOOGLE_IAP')
+   AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'PAUSED')
+ LIMIT 1;
