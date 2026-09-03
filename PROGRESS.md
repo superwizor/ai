@@ -89,7 +89,7 @@ Gotchas:
 
 ## In progress
 
-### Platnosci in-app + kody rabatowe (docs/70) — BACKEND GOTOWY — 2026-09-03
+### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
 Galaz: `feat/iap-and-discount-codes`. Wdrozenie analizy z
 `docs/70_REJESTRACJA_I_PLATNOSCI_IN_APP.md`. Stan i runbook: docs/70 §11.
@@ -107,9 +107,19 @@ Galaz: `feat/iap-and-discount-codes`. Wdrozenie analizy z
 - `11d94728` docs/70 §11, cron `billing-store-reconcile` w terraformie
   (NIEZAAPLIKOWANY), env IAP w ci.yml.
 
-**W toku:** marketing-site (panel kodow, pole kodu na /pricing i /upgrade,
-/account swiadome dostawcy) oraz Flutter (uproszczona rejestracja S1,
-paywall + in_app_purchase, ekran Subskrypcja, usuwanie konta).
+- `f32e1179` marketing-site: panel /admin/discount-codes, pole kodu na
+  /pricing i /upgrade (klient RPC ladowany dopiero po kliknieciu — LCP),
+  /account swiadome dostawcy, sekcja Sklep w /admin/orgs/[id].
+- `da07d4e7` Flutter: rejestracja in-app (S1), paywall + in_app_purchase,
+  ekran Subskrypcja z deep linkami, usuwanie konta.
+
+**Dowody:** `evidence/iap-discount-codes/` — migracje przepuszczone przez
+zywy Postgres 17 (pelne up 106/106, wymuszone ograniczenia, down 2 i
+ponowne up) oraz atrybucja E2E.
+
+**Stan weryfikacji:** backend build/vet/test/lint zielony; marketing-site
+typecheck + 137/137 + parytet l10n; Flutter analyze bez bledow +
+352/352. E2E marketing-site: 23 bledy PRZED i PO zmianach — bez regresji.
 
 **Pulapki, ktore juz kosztowaly czas w tej sesji:**
 - `sqlc` nie wywnioskuje typu, gdy w jednym zapytaniu miesza sie
@@ -122,6 +132,20 @@ paywall + in_app_purchase, ekran Subskrypcja, usuwanie konta).
   PAUSED jest juz w zapytaniu i blokuje pule z wlasnym powodem.
 - `--set-secrets` z NIEISTNIEJACYM sekretem wywala caly deploy, nie tylko
   jedna usluge — dlatego sekrety Apple sa w ci.yml opisane, a nie wpiete.
+- Lokalny Postgres do testu migracji: pgvector jest zbudowany dla PG 17
+  i 18, NIE dla 16 — klaster testowy trzeba stawiac binarkami z
+  `/opt/homebrew/opt/postgresql@17/bin`, inaczej migracja 000001 pada na
+  `CREATE EXTENSION vector`. Do tego `LC_ALL=C` (inaczej postmaster ginie
+  na "stal sie wielowatkowy") i katalog gniazda w `/tmp` (sciezka
+  scratchpada przekracza limit 103 bajtow na gniazdo uniksowe).
+
+**DLUG ZASTANY DO OSOBNEGO ZADANIA:** suite E2E marketing-site odjechal z
+udokumentowanych 0-3 bledow do 23. Zawodza `crm-onboarding-stripe` i
+`register-flow` (testuja kontrakt `/api/checkout`, ktory przeniesiono z
+trasy Next.js do billing-svc, wiec lokalnie zwraca 404),
+`register-therapist` (przycisk submit nie staje sie widoczny) i
+`accept-invite-phone`. Dopoki tam siedzi, nastepna osoba nie odrozni
+swojej regresji od tla. Szczegoly: evidence/iap-discount-codes/e2e-atrybucja.md
 
 **Otwarte decyzje biznesowe:** D1-D13 w docs/70 §9. Blokujace przed
 sprzedaza: D1 (Apple Small Business Program — bez niego +15% nie pokrywa
