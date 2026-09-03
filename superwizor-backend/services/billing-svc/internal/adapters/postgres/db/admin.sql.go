@@ -18,7 +18,7 @@ UPDATE subscriptions
 SET plan_id    = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at
+RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at, store_environment, store_product_id, auto_renew, grace_until, pending_plan_id
 `
 
 type AdminChangeSubscriptionPlanParams struct {
@@ -50,13 +50,18 @@ func (q *Queries) AdminChangeSubscriptionPlan(ctx context.Context, arg AdminChan
 		&i.TrialEndAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StoreEnvironment,
+		&i.StoreProductID,
+		&i.AutoRenew,
+		&i.GraceUntil,
+		&i.PendingPlanID,
 	)
 	return i, err
 }
 
 const adminGetPlanByTierCycle = `-- name: AdminGetPlanByTierCycle :one
 
-SELECT id, tier, cycle, display_name, price_gross, currency_code, tokens_per_period, licenses_limit, has_b2b_dashboard, marketing_description, stripe_price_id, p24_plan_id, apple_product_id, google_product_id, is_active, created_at FROM subscription_plans
+SELECT id, tier, cycle, display_name, price_gross, currency_code, tokens_per_period, licenses_limit, has_b2b_dashboard, marketing_description, stripe_price_id, p24_plan_id, apple_product_id, google_product_id, is_active, created_at, store_price_gross FROM subscription_plans
 WHERE tier  = $1::plan_tier
   AND cycle = $2::billing_cycle
   AND is_active = TRUE
@@ -93,6 +98,7 @@ func (q *Queries) AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanB
 		&i.GoogleProductID,
 		&i.IsActive,
 		&i.CreatedAt,
+		&i.StorePriceGross,
 	)
 	return i, err
 }

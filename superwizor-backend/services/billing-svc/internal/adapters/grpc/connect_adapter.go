@@ -125,3 +125,91 @@ func (a *ConnectAdapter) ListInvoices(ctx context.Context, req *connect.Request[
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// ─── Kody rabatowe i zakupy w aplikacji (docs/70) ─────────────────────
+//
+// Ścieżka Connect jest tu jedyną, która ma znaczenie: panel admina i
+// aplikacja mobilna wołają billing-svc bezpośrednio (wzorzec
+// "browser-direct" z docs/agents/03_billing-svc.md). Natywny gRPC
+// obsługuje wyłącznie ruch server-to-server, a NativeAuthInterceptor i
+// tak odrzuca na nim RPC administracyjne.
+
+func (a *ConnectAdapter) AdminCreateDiscountCode(ctx context.Context, req *connect.Request[billingv1.AdminCreateDiscountCodeRequest]) (*connect.Response[billingv1.DiscountCode], error) {
+	resp, err := a.s.AdminCreateDiscountCode(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminUpdateDiscountCode(ctx context.Context, req *connect.Request[billingv1.AdminUpdateDiscountCodeRequest]) (*connect.Response[billingv1.DiscountCode], error) {
+	resp, err := a.s.AdminUpdateDiscountCode(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminListDiscountCodes(ctx context.Context, req *connect.Request[billingv1.AdminListDiscountCodesRequest]) (*connect.Response[billingv1.AdminListDiscountCodesResponse], error) {
+	resp, err := a.s.AdminListDiscountCodes(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminGetDiscountCode(ctx context.Context, req *connect.Request[billingv1.AdminGetDiscountCodeRequest]) (*connect.Response[billingv1.DiscountCodeDetails], error) {
+	resp, err := a.s.AdminGetDiscountCode(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ValidateDiscountCode(ctx context.Context, req *connect.Request[billingv1.ValidateDiscountCodeRequest]) (*connect.Response[billingv1.DiscountCodeQuote], error) {
+	resp, err := a.s.ValidateDiscountCode(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) GetBillingSurface(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[billingv1.BillingSurface], error) {
+	resp, err := a.s.GetBillingSurface(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) BeginStorePurchase(ctx context.Context, req *connect.Request[billingv1.BeginStorePurchaseRequest]) (*connect.Response[billingv1.BeginStorePurchaseResponse], error) {
+	resp, err := a.s.BeginStorePurchase(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) VerifyStorePurchase(ctx context.Context, req *connect.Request[billingv1.VerifyStorePurchaseRequest]) (*connect.Response[billingv1.Subscription], error) {
+	resp, err := a.s.VerifyStorePurchase(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) RestoreStorePurchases(ctx context.Context, req *connect.Request[billingv1.RestoreStorePurchasesRequest]) (*connect.Response[billingv1.Subscription], error) {
+	resp, err := a.s.RestoreStorePurchases(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminListStoreTransactions(ctx context.Context, req *connect.Request[billingv1.AdminListStoreTransactionsRequest]) (*connect.Response[billingv1.AdminListStoreTransactionsResponse], error) {
+	resp, err := a.s.AdminListStoreTransactions(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

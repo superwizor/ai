@@ -75,14 +75,25 @@ type Querier interface {
 	// tokens_used NIE jest zerowane: skrócony okres zachowuje swoje
 	// zużycie jako zapis historyczny rozliczenia.
 	CloseActiveCountersForSubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error)
+	// Wywoływane z webhooka Stripe'a po potwierdzeniu płatności.
+	CommitRedemptionByReference(ctx context.Context, arg CommitRedemptionByReferenceParams) (int64, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
+	CountCommittedRedemptions(ctx context.Context, codeID uuid.UUID) (int64, error)
 	// Web-admin actions (SUPERWIZOR_ADMIN) on billing data land here. Mirrors
 	// identity-svc's audit_events insert. reason is enforced >=10 chars at
 	// the handler level, NOT NULL-allowed at the schema level (legacy events
 	// don't have it populated).
 	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
+	// Kody rabatowe (docs/70 §6). Katalog jest nasz, egzekwowanie na webie
+	// należy do Stripe'a — dlatego limit użyć nigdy nie jest tu sprawdzany
+	// pod blokadą: `redemptions_count` to lustro do panelu, a o ostatnie
+	// użycie rozstrzyga `max_redemptions` na promotion code'zie Stripe'a.
+	// Wszystkie parametry nazwane: mieszanie sqlc.arg() z pozycyjnymi $n w
+	// jednym zapytaniu uniemożliwia sqlc wywnioskowanie typu (kod wracał
+	// wtedy jako interface{}).
+	CreateDiscountCode(ctx context.Context, arg CreateDiscountCodeParams) (DiscountCode, error)
 	CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error)
 	// Admin-provisioned B2B subscription (docs/38 §4). provider_subscription_id
 	// is deterministic ("b2b-<org>") so a wizard retry — or an edit after the
@@ -133,10 +144,20 @@ type Querier interface {
 	// Nie używamy ON CONFLICT DO NOTHING bo chcemy rozróżnić "świeży insert"
 	// (zwiększyć counter) od "duplikatu" (no-op).
 	CreateUsageEvent(ctx context.Context, arg CreateUsageEventParams) (UsageEvent, error)
+	// Zakup w sklepie wygasza WYŁĄCZNIE darmowe wejście (TRIAL/BETA na
+	// providerze MANUAL). Płatnej subskrypcji innego dostawcy NIE ruszamy —
+	// to jest dokładnie sytuacja z docs/70 E22 (dwie płatności za tę samą
+	// organizację), którą trzeba zgłosić, a nie po cichu przykryć.
+	DeactivateNonStoreSubscriptions(ctx context.Context, arg DeactivateNonStoreSubscriptionsParams) error
 	// Anuluje wszystkie inne aktywne/trialing/past_due subskrypcje dla danej organizacji,
 	// oprócz tej o podanym Stripe ID (jeśli podane). Zapobiega to naruszeniu unique index
 	// idx_subscriptions_one_active_per_org przy przejściu na płatną subskrypcję.
 	DeactivateOtherActiveSubscriptions(ctx context.Context, arg DeactivateOtherActiveSubscriptionsParams) error
+	DeleteExpiredPendingCheckouts(ctx context.Context) (int64, error)
+	DeletePendingCheckout(ctx context.Context, arg DeletePendingCheckoutParams) error
+	// Zwrot (Apple REFUND / Google REVOKED): tokeny już spalone nie wracają
+	// (BR-5), ale dalszego kredytu nie ma. Limit schodzi do zużycia.
+	FreezeCounterAfterRefund(ctx context.Context, subscriptionID uuid.UUID) error
 	// Pobiera bieżący usage_counters row dla subskrypcji.
 	// Zakładamy że istnieje dokładnie jeden aktywny okres na timestamp now()
 	// (gwarancja ze §9 — webhook/cron tworzy nowy row przy renewal).
@@ -162,16 +183,40 @@ type Querier interface {
 	//   2. najnowszy created_at          (upgrade jest nowszy niż trial)
 	// Dzięki temu reserve/quota zawsze patrzy na plan, za który klient
 	// faktycznie płaci, nawet jeśli inwariant zostanie kiedyś naruszony.
+	// PAUSED dołączony 2026-09 razem z subskrypcjami Google Play (docs/70
+	// §7.3). Wstrzymana subskrypcja MUSI być widoczna: bez tego zapytanie
+	// zwracało ErrNoRows, aplikacja pokazywała "brak subskrypcji" i pozwalała
+	// kupić drugą, a wznowienie tej wstrzymanej rozbijało się o
+	// idx_subscriptions_one_active_per_org. Blokuje pulę tak samo jak
+	// PAST_DUE, tyle że z własnym powodem (SUBSCRIPTION_PAUSED) — użytkownik
+	// ma wznowić subskrypcję w sklepie, a nie naprawiać płatność.
 	GetActiveSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveSubscriptionByOrgRow, error)
+	GetDiscountCodeByCode(ctx context.Context, code string) (DiscountCode, error)
+	GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error)
+	// ── app_config (flagi IAP) ─────────────────────────────────────────────
+	GetGlobalAppConfig(ctx context.Context, key string) (string, error)
 	// Newest subscription regardless of status. AdminResetTokens uses it to
 	// find the CANCELED/expired MANUAL sub of a test org and reactivate it
 	// (live-fix 2026-07-04: "Zresetuj tokeny" died with
 	// SUBSCRIPTION_INACTIVE on every non-Stripe org after its first period).
 	GetLatestSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (Subscription, error)
+	// Czy trwa zakup w INNYM kanale niż ten, o który pytamy.
+	GetOtherPendingCheckout(ctx context.Context, arg GetOtherPendingCheckoutParams) (GetOtherPendingCheckoutRow, error)
 	GetPlanByID(ctx context.Context, id uuid.UUID) (GetPlanByIDRow, error)
+	// Zakupy w aplikacji: App Store / Google Play (docs/70 §7).
+	//
+	// Subskrypcja sklepowa ląduje w tej samej tabeli `subscriptions` co Stripe
+	// i MANUAL — zmienia się tylko `provider` i klucz zewnętrzny
+	// (`provider_subscription_id` = Apple originalTransactionId / Google
+	// purchaseToken korzenia łańcucha). Dzięki temu ReserveCredit, liczniki i
+	// cały gate tokenów działają bez zmian.
+	// Jedno zapytanie dla obu sklepów: aplikacja przysyła product_id, my
+	// rozstrzygamy plan po kolumnie właściwej dla platformy.
+	GetPlanByStoreProductID(ctx context.Context, arg GetPlanByStoreProductIDParams) (GetPlanByStoreProductIDRow, error)
 	// Lookup planu po stripe_price_id — używane przy checkout.session.completed
 	// żeby wiedzieć ile tokenów przypisać i jaki tier.
 	GetPlanByStripePriceID(ctx context.Context, stripePriceID *string) (GetPlanByStripePriceIDRow, error)
+	GetRedemptionForOrg(ctx context.Context, arg GetRedemptionForOrgParams) (DiscountCodeRedemption, error)
 	// Idempotency lookup PRZED próbą INSERT-u. Zwraca aktywną lub już sfinalizowaną
 	// rezerwację (status determinuje co handler robi).
 	GetReservationBySession(ctx context.Context, sessionID uuid.UUID) (PendingReservation, error)
@@ -179,6 +224,11 @@ type Querier interface {
 	// open seat sit in? ErrNoRows = therapist has no seat (org-level
 	// fallback applies).
 	GetSeatPlanForTherapist(ctx context.Context, userID uuid.UUID) (GetSeatPlanForTherapistRow, error)
+	// docs/70 E1: "Przywróć zakupy" nie może przenieść subskrypcji na inne
+	// konto. Zwraca organizację, do której transakcja została przypisana
+	// przy pierwszym zakupie.
+	GetStoreTransactionOwner(ctx context.Context, arg GetStoreTransactionOwnerParams) (GetStoreTransactionOwnerRow, error)
+	GetSubscriptionByProviderID(ctx context.Context, arg GetSubscriptionByProviderIDParams) (GetSubscriptionByProviderIDRow, error)
 	// Lookup subskrypcji po stripe subscription ID.
 	GetSubscriptionByStripeID(ctx context.Context, providerSubscriptionID string) (GetSubscriptionByStripeIDRow, error)
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
@@ -223,18 +273,34 @@ type Querier interface {
 	// próbnych naraz (sprawdzone na stagingu 2026-08-01) i utonąłby
 	// w szumie razem z dwoma prawdziwymi trafieniami.
 	ListCountersBelowPlanLimit(ctx context.Context) ([]ListCountersBelowPlanLimitRow, error)
+	// @include_inactive = false zwraca tylko aktywne (niezależnie od terminu —
+	// wygasłe kody zostają na liście, panel pokazuje je jako "wygasł").
+	ListDiscountCodes(ctx context.Context, includeInactive bool) ([]DiscountCode, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
 	// których bieżący okres rozliczeniowy się skończył (period_end < now).
 	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).
 	// Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
 	ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error)
 	ListInvoicesByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invoice, error)
+	ListRedemptionsByCode(ctx context.Context, codeID uuid.UUID) ([]ListRedemptionsByCodeRow, error)
+	// Kody, których użycie ta organizacja zarezerwowała i jeszcze nie
+	// domknęła. W praktyce zero albo jeden — checkout dopuszcza jeden kod.
+	ListReservedRedemptionCodesForOrg(ctx context.Context, organizationID uuid.UUID) ([]uuid.UUID, error)
 	// Allocation + catalog plan join + both occupancy halves (docs/38 §3:
 	// active assignments + pending unexpired invitations).
 	ListSeatAllocationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]ListSeatAllocationsByOrgRow, error)
 	// Active (seated) therapists + their seat's plan — counter provisioning
 	// in AdminSetSeatAllocations and the GetMyOrgSeatUsage dashboard.
 	ListSeatedTherapistsByOrg(ctx context.Context, organizationID uuid.UUID) ([]ListSeatedTherapistsByOrgRow, error)
+	// Katalog na paywall. Zwraca tylko plany, które mają produkt w danym
+	// sklepie — bez tego aplikacja pokazałaby kartę, której StoreKit/Play
+	// nie potrafi wycenić.
+	ListStorePlans(ctx context.Context, dollar_1 string) ([]ListStorePlansRow, error)
+	// Cron uzgadniania (docs/70 E12): notyfikacja bywa zgubiona lub
+	// opóźniona, więc raz na dobę pytamy sklep o stan każdej subskrypcji,
+	// której okres (lub grace) właśnie minął.
+	ListStoreSubscriptionsForReconcile(ctx context.Context) ([]ListStoreSubscriptionsForReconcileRow, error)
+	ListStoreTransactionsByOrg(ctx context.Context, arg ListStoreTransactionsByOrgParams) ([]ListStoreTransactionsByOrgRow, error)
 	// Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają
 	// aktywnego usage_counters dla bieżącego momentu. Jeśli się pojawi
 	// którakolwiek — alert (cron triggeruje monitoring).
@@ -257,6 +323,9 @@ type Querier interface {
 	MarkReservationCommitted(ctx context.Context, sessionID uuid.UUID) error
 	// Wywoływane przez ReleaseCredit (jawne anulowanie sesji).
 	MarkReservationReleased(ctx context.Context, sessionID uuid.UUID) error
+	// Dla `new_customers_only`: czy organizacja miała KIEDYKOLWIEK płatną
+	// subskrypcję (dowolny status). Sam trial/beta nie dyskwalifikuje.
+	OrgHasPaidSubscriptionHistory(ctx context.Context, organizationID uuid.UUID) (bool, error)
 	// Renewal-policy switch (docs/38): admin-provisioned B2B orgs (invoiced
 	// offline) auto-renew their MANUAL subscription; other MANUAL subs are
 	// canceled at period end (2026-07 incident policy).
@@ -265,9 +334,19 @@ type Querier interface {
 	// subs are Stripe's source of truth). Rolls the billing period to start
 	// now so a fresh counter can be minted for it.
 	ReactivateManualSubscription(ctx context.Context, id uuid.UUID) (Subscription, error)
+	ReleaseRedemption(ctx context.Context, arg ReleaseRedemptionParams) (int64, error)
 	// Dekrementuje tokens_reserved (clamp do 0). Wywoływane przy ReleaseCredit
 	// i przy CommitUsage (transfer rezerwacja → used).
 	ReleaseReservedTokens(ctx context.Context, arg ReleaseReservedTokensParams) error
+	// Idempotentne po (code_id, organization_id): ponowne wejście w checkout
+	// z tym samym kodem nie tworzy drugiego wiersza. RELEASED wraca do
+	// RESERVED, bo poprzednia sesja wygasła, a użytkownik próbuje znowu.
+	ReserveRedemption(ctx context.Context, arg ReserveRedemptionParams) (DiscountCodeRedemption, error)
+	SetDiscountCodeStripeIDs(ctx context.Context, arg SetDiscountCodeStripeIDsParams) error
+	// Grace period ze sklepu: dostęp trwa, ale nowej puli nie ma. Przedłużamy
+	// bieżący licznik zamiast tworzyć następny (docs/70 E13).
+	SetSubscriptionGraceWindow(ctx context.Context, arg SetSubscriptionGraceWindowParams) error
+	SetSubscriptionPendingPlan(ctx context.Context, arg SetSubscriptionPendingPlanParams) error
 	// Atomic shift okresu rozliczeniowego — używane przez manual renewal cron
 	// ORAZ (w slice 2) przez Stripe invoice.paid handler.
 	ShiftSubscriptionPeriod(ctx context.Context, arg ShiftSubscriptionPeriodParams) error
@@ -275,6 +354,10 @@ type Querier interface {
 	// current period. GetSubscription fallback for allocation-managed orgs
 	// (which may have no org-level row).
 	SumActiveCounters(ctx context.Context, subscriptionID uuid.UUID) (SumActiveCountersRow, error)
+	SyncRedemptionsCount(ctx context.Context, id uuid.UUID) error
+	// Pola nieustawione (NULL) zostają bez zmian — ta sama semantyka co
+	// UpdateProfile w identity-svc.
+	UpdateDiscountCode(ctx context.Context, arg UpdateDiscountCodeParams) (DiscountCode, error)
 	// Aktualizuje status subskrypcji i opcjonalnie cancel_at_period_end.
 	// Używane przy invoice.payment_failed, customer.subscription.deleted,
 	// customer.subscription.updated.
@@ -282,6 +365,8 @@ type Querier interface {
 	// Aktualizuje tokens_limit i period_end dla istniejącego usage_counter
 	// przy zmianie planu (upgrade/downgrade). Nie resetuje tokens_used/reserved.
 	UpdateUsageCounterOnPlanChange(ctx context.Context, arg UpdateUsageCounterOnPlanChangeParams) error
+	// ── pending_checkouts (docs/70 E22) ────────────────────────────────────
+	UpsertPendingCheckout(ctx context.Context, arg UpsertPendingCheckoutParams) error
 	// Seat allocations — billing-svc side (docs/38 §3-4).
 	//
 	// billing-svc OWNS org_seat_allocations writes (AdminSetSeatAllocations);
@@ -289,6 +374,11 @@ type Querier interface {
 	// is written by identity-svc (AcceptInvitation / SetTherapistStatus);
 	// billing reads it for occupancy + counter provisioning.
 	UpsertSeatAllocation(ctx context.Context, arg UpsertSeatAllocationParams) (OrgSeatAllocation, error)
+	// Odpowiednik UpsertStripeSubscription dla sklepów. Klucz konfliktu ten
+	// sam: UNIQUE (provider, provider_subscription_id).
+	UpsertStoreSubscription(ctx context.Context, arg UpsertStoreSubscriptionParams) (UpsertStoreSubscriptionRow, error)
+	// ── store_transactions ─────────────────────────────────────────────────
+	UpsertStoreTransaction(ctx context.Context, arg UpsertStoreTransactionParams) (StoreTransaction, error)
 	// Tworzy lub aktualizuje subskrypcję po zdarzeniu Stripe.
 	// ON CONFLICT (provider, provider_subscription_id) aktualizuje pola.
 	// Używane przy checkout.session.completed i customer.subscription.created.

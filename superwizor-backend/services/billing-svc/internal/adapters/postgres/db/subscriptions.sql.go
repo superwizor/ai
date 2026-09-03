@@ -42,6 +42,7 @@ SELECT
     s.provider_subscription_id, s.status,
     s.current_period_start, s.current_period_end,
     s.cancel_at_period_end, s.canceled_at, s.trial_end_at,
+    s.grace_until, s.store_product_id,
     s.created_at, s.updated_at,
     p.tier AS plan_tier,
     p.cycle AS plan_cycle,
@@ -50,13 +51,14 @@ SELECT
 FROM subscriptions s
 JOIN subscription_plans p ON p.id = s.plan_id
 WHERE s.organization_id = $1
-  AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
+  AND s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'PAUSED')
 ORDER BY
     CASE s.status
         WHEN 'ACTIVE'   THEN 0
         WHEN 'PAST_DUE' THEN 1
         WHEN 'TRIALING' THEN 2
-        ELSE 3
+        WHEN 'PAUSED'   THEN 3
+        ELSE 4
     END,
     s.created_at DESC
 LIMIT 1
@@ -74,6 +76,8 @@ type GetActiveSubscriptionByOrgRow struct {
 	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
 	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
 	TrialEndAt             pgtype.Timestamptz `json:"trial_end_at"`
+	GraceUntil             pgtype.Timestamptz `json:"grace_until"`
+	StoreProductID         *string            `json:"store_product_id"`
 	CreatedAt              time.Time          `json:"created_at"`
 	UpdatedAt              time.Time          `json:"updated_at"`
 	PlanTier               PlanTier           `json:"plan_tier"`
@@ -99,6 +103,13 @@ type GetActiveSubscriptionByOrgRow struct {
 //
 // Dzięki temu reserve/quota zawsze patrzy na plan, za który klient
 // faktycznie płaci, nawet jeśli inwariant zostanie kiedyś naruszony.
+// PAUSED dołączony 2026-09 razem z subskrypcjami Google Play (docs/70
+// §7.3). Wstrzymana subskrypcja MUSI być widoczna: bez tego zapytanie
+// zwracało ErrNoRows, aplikacja pokazywała "brak subskrypcji" i pozwalała
+// kupić drugą, a wznowienie tej wstrzymanej rozbijało się o
+// idx_subscriptions_one_active_per_org. Blokuje pulę tak samo jak
+// PAST_DUE, tyle że z własnym powodem (SUBSCRIPTION_PAUSED) — użytkownik
+// ma wznowić subskrypcję w sklepie, a nie naprawiać płatność.
 func (q *Queries) GetActiveSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveSubscriptionByOrgRow, error) {
 	row := q.db.QueryRow(ctx, getActiveSubscriptionByOrg, organizationID)
 	var i GetActiveSubscriptionByOrgRow
@@ -114,6 +125,8 @@ func (q *Queries) GetActiveSubscriptionByOrg(ctx context.Context, organizationID
 		&i.CancelAtPeriodEnd,
 		&i.CanceledAt,
 		&i.TrialEndAt,
+		&i.GraceUntil,
+		&i.StoreProductID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PlanTier,
@@ -125,7 +138,7 @@ func (q *Queries) GetActiveSubscriptionByOrg(ctx context.Context, organizationID
 }
 
 const getLatestSubscriptionByOrg = `-- name: GetLatestSubscriptionByOrg :one
-SELECT id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at FROM subscriptions
+SELECT id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at, store_environment, store_product_id, auto_renew, grace_until, pending_plan_id FROM subscriptions
 WHERE organization_id = $1
 ORDER BY created_at DESC
 LIMIT 1
@@ -154,6 +167,11 @@ func (q *Queries) GetLatestSubscriptionByOrg(ctx context.Context, organizationID
 		&i.TrialEndAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StoreEnvironment,
+		&i.StoreProductID,
+		&i.AutoRenew,
+		&i.GraceUntil,
+		&i.PendingPlanID,
 	)
 	return i, err
 }
@@ -262,7 +280,7 @@ SET status = 'ACTIVE',
     current_period_end   = now() + interval '1 month',
     updated_at = now()
 WHERE id = $1 AND provider = 'MANUAL'
-RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at
+RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at, store_environment, store_product_id, auto_renew, grace_until, pending_plan_id
 `
 
 // Support/test path only — the handler guards provider='MANUAL' (Stripe
@@ -287,6 +305,11 @@ func (q *Queries) ReactivateManualSubscription(ctx context.Context, id uuid.UUID
 		&i.TrialEndAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StoreEnvironment,
+		&i.StoreProductID,
+		&i.AutoRenew,
+		&i.GraceUntil,
+		&i.PendingPlanID,
 	)
 	return i, err
 }
