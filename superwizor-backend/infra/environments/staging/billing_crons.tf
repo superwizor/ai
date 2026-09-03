@@ -107,3 +107,46 @@ resource "google_cloud_scheduler_job" "billing_safety_check" {
     google_cloud_run_v2_service_iam_member.scheduler_invoke_billing,
   ]
 }
+
+# ── Uzgadnianie subskrypcji sklepowych (docs/70 §7.3, E12) ────────────
+#
+# Notyfikacje App Store i RTDN Google potrafią się zgubić albo spóźnić, a
+# wtedy uprawnienie w naszej bazie rozjeżdża się ze stanem w sklepie —
+# najczęściej na naszą niekorzyść (odnowienie, o którym nie wiemy) albo na
+# niekorzyść użytkownika (wygaśnięcie, którego nie odnotowaliśmy).
+#
+# Ten cron raz na dobę bierze subskrypcje sklepowe, którym minął okres lub
+# okno łaski, i pyta sklep, co się z nimi naprawdę stało. Notyfikacja jest
+# sygnałem, API sklepu jest prawdą.
+#
+# Godzina: 03:15 UTC — po dobowym oknie odnowień Apple'a i przed
+# porannymi raportami.
+resource "google_cloud_scheduler_job" "billing_store_reconcile" {
+  name        = "billing-store-reconcile"
+  project     = var.project_id
+  region      = "europe-central2"
+  description = "docs/70: dobowe uzgodnienie subskrypcji App Store / Google Play ze stanem w sklepie"
+  schedule    = "15 3 * * *"
+  time_zone   = "UTC"
+  paused      = !local.billing_crons_enabled
+
+  http_target {
+    http_method = "POST"
+    uri         = "${local.billing_svc_url}/admin/store-reconcile"
+
+    oidc_token {
+      service_account_email = google_service_account.cloud_scheduler_billing.email
+      audience              = local.billing_svc_url
+    }
+  }
+
+  retry_config {
+    retry_count          = 2
+    min_backoff_duration = "60s"
+    max_backoff_duration = "300s"
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service_iam_member.scheduler_invoke_billing,
+  ]
+}

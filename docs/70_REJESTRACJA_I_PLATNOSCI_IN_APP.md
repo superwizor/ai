@@ -9,7 +9,9 @@ timestamp: 2026-09-03T12:00:00+02:00
 
 # 70. Rejestracja terapeuty i płatności in-app (Apple / Google) — analiza przypadków, kody rabatowe
 
-Status: **ANALIZA / DESIGN (2026-09-03)**. Dokument jest deltą względem działającego
+Status: **WDROŻENIE W TOKU (2026-09-03)** — analiza z tego dokumentu jest
+realizowana na branchu `feat/iap-and-discount-codes`. Co już jest w kodzie,
+a czego brakuje, opisuje §11. Dokument jest deltą względem działającego
 systemu billingowego (docs/17, 18, 29, 32, 43). Nie zmienia zasad P1–P5 ani ADR-BL-*.
 Wymagania wejściowe (Darek, 2026-09-03):
 
@@ -577,3 +579,116 @@ Zmiany w istniejącym kodzie:
 - docs/49 (e-maile: koniec limitów, dunning), docs/52 §5 (IAP w Companion — ta sama zasada „tożsamość płatnicza zostaje w sklepie")
 - docs/64 (kill switch przez `app_config` — wzorzec dla `IAP_*`)
 - `docs/agents/03_billing-svc.md` (browser-direct, `ConnectAuthInterceptor`, gotchas)
+
+---
+
+## 11. Stan wdrożenia i runbook uruchomienia
+
+Branch: `feat/iap-and-discount-codes`. Sekcja opisuje, co jest zrobione, a
+co trzeba zrobić RĘKAMI w konsolach, zanim sprzedaż w aplikacji ruszy.
+
+### 11.1 Co jest w kodzie
+
+| Obszar | Stan | Gdzie |
+|---|---|---|
+| Migracje | ✅ 000105 (kody rabatowe), 000106 (sklepy + flagi `IAP_*` = false) | `superwizor-backend/migrations/` |
+| Kontrakt proto | ✅ 11 nowych RPC + `Subscription.billing_provider` / `grace_until` + `identity.DeleteMyAccount` | `proto/billing/v1`, `proto/identity/v1` |
+| Kody rabatowe | ✅ CRUD admina, `ValidateDiscountCode`, dwufazowa rezerwacja użycia, sync ze Stripe, ścieżka awaryjna dla kodów z dashboardu | `billing-svc/internal/adapters/grpc/discount_codes.go`, `.../stripepromo/` |
+| Zakupy w aplikacji | ✅ `GetBillingSurface`, `BeginStorePurchase`, `VerifyStorePurchase`, `RestoreStorePurchases`, `applyStoreState`, blokady krzyżowe | `billing-svc/internal/adapters/grpc/store.go` |
+| Weryfikacja Apple | ✅ JWS (łańcuch x5c + ES256), App Store Server API, notyfikacje V2 | `billing-svc/internal/adapters/appstore/` |
+| Weryfikacja Google | ✅ `purchases.subscriptionsv2` + acknowledge | `billing-svc/internal/adapters/playstore/` |
+| Wejścia ze sklepów | ✅ `POST /apple/notifications`, `POST /google/rtdn`, cron `POST /admin/store-reconcile` | `billing-svc/internal/adapters/http/store_handler.go` |
+| Usuwanie konta | ✅ `DeleteMyAccount` (soft-delete + wyłączenie Firebase + blokada przy aktywnej subskrypcji ze sklepu) | `identity-svc/.../account_deletion.go` |
+| Cron uzgadniania | ✅ zdefiniowany w terraformie (**niezaaplikowany**) | `infra/environments/staging/billing_crons.tf` |
+| CI | ✅ `APPLE_BUNDLE_ID`, `PLAY_PACKAGE_NAME`; sekrety Apple opisane, ale **niepodpięte** | `.github/workflows/ci.yml` |
+
+Sprzedaż jest **wyłączona z definicji**: `IAP_ENABLED_IOS` i
+`IAP_ENABLED_ANDROID` w `app_config` startują na `false`, a weryfikatory
+rejestrują się tylko przy komplecie sekretów. Bez tych dwóch rzeczy
+`GetBillingSurface` zwraca `can_purchase=false, block_reason=IAP_DISABLED`
+i aplikacja nie pokazuje przycisków zakupu.
+
+### 11.2 Czego jeszcze nie ma
+
+1. **Produktów w sklepach** — bez nich StoreKit i Play nie wycenią kart na
+   paywallu (§11.3 krok 1–2).
+2. **Sekretów Apple'a** w Secret Managerze (§11.3 krok 3).
+3. **Uprawnień konta usługi** billing-svc w Play Console (§11.3 krok 4).
+4. **Zaaplikowanego terraformu** i podpiętych sekretów w CI.
+5. **Decyzji D1–D13** z §9 — zwłaszcza D1 (Small Business Program), D2
+   (odpowiednik kuponów web) i D3 (tryb wzmianki o WWW).
+6. Kodów rabatowych w sklepach (§6.5) — świadomie odłożone do fazy 6.
+
+### 11.3 Runbook — kolejność ma znaczenie
+
+**Krok 1. App Store Connect.** Umowa Paid Apps → grupa subskrypcji
+„SuperWizor" z poziomami Rozkwit (1) > Równowaga (2) → cztery produkty o
+identyfikatorach z migracji 000106 (`ai.superwizor.solo.monthly`,
+`.solo.annual`, `.pro.monthly`, `.pro.annual`) → ceny wg D1 → Family
+Sharing WYŁĄCZONE. Zgłoszenie do Small Business Program (D1).
+
+**Krok 2. Play Console.** Dwie subskrypcje (`solo`, `pro`), po dwa plany
+bazowe (`monthly`, `annual`) — identyfikatory muszą dać
+`solo:monthly`, `solo:annual`, `pro:monthly`, `pro:annual`, dokładnie jak w
+`subscription_plans.google_product_id`.
+
+**Krok 3. Sekrety Apple'a.**
+```bash
+# AppleRootCA-G3 pobrany z https://www.apple.com/certificateauthority/
+# (plik .cer → PEM: openssl x509 -inform der -in AppleRootCA-G3.cer -out root.pem)
+gcloud secrets create apple-root-ca-pem --data-file=root.pem
+gcloud secrets create apple-asc-private-key --data-file=AuthKey_XXXXXXXX.p8
+gcloud secrets add-iam-policy-binding apple-root-ca-pem \
+  --member=serviceAccount:billing-svc@superwizor-ai-25ecd.iam.gserviceaccount.com \
+  --role=roles/secretmanager.secretAccessor
+# to samo dla apple-asc-private-key
+```
+Potem odkomentuj sekrety w kroku deployu billing-svc w `ci.yml` i dopisz
+`APPLE_ISSUER_ID` oraz `APPLE_KEY_ID`.
+
+> Uwaga: klucz `AuthKey_56B8A5D38H.p8` leży dziś luzem w katalogu roboczym
+> repo. Przy okazji tego kroku trafia do Secret Managera i znika z dysku.
+
+**Krok 4. Google Play — uprawnienia.** Konto
+`billing-svc@superwizor-ai-25ecd.iam.gserviceaccount.com` dodaj w Play
+Console (Users and permissions) z uprawnieniem **Zarządzanie zamówieniami i
+subskrypcjami** dla `ai.superwizor.superwizor`. Bez tego
+`subscriptionsv2.get` zwraca 401, a każda weryfikacja Androida kończy się
+`STORE_VERIFICATION_FAILED`.
+
+**Krok 5. Notyfikacje.**
+- Apple: App Store Connect → App Information → App Store Server
+  Notifications → V2 → URL produkcyjny i sandboxowy:
+  `https://billing-svc-e3f32b232q-lm.a.run.app/apple/notifications`.
+  Endpoint jest publiczny — uwierzytelnia go podpis JWS.
+- Google: Play Console → Monetization setup → temat Pub/Sub w
+  `europe-central2` (P3!) → subskrypcja **push** na
+  `https://billing-svc-e3f32b232q-lm.a.run.app/google/rtdn` z tokenem OIDC
+  konta `cloud-scheduler-billing@…` (ten sam middleware co crony).
+  Sprawdź „Send test notification" — powinno wrócić `{"status":"ignored"}`.
+
+**Krok 6. Terraform.** `terragrunt apply` w
+`infra/environments/staging` — dokłada cron `billing-store-reconcile`.
+
+**Krok 7. Migracje i deploy.** Push na branch → CI aplikuje 000105–000106
+krokiem `db-migrator` przed deployem (kolejność jak w docs/admin-analytics).
+
+**Krok 8. Włączenie sprzedaży.** Dopiero teraz, po jednym udanym zakupie
+sandbox na każdej platformie:
+```sql
+UPDATE app_config SET value = 'true' WHERE key = 'IAP_ENABLED_IOS' AND organization_id IS NULL;
+UPDATE app_config SET value = 'true' WHERE key = 'IAP_ENABLED_ANDROID' AND organization_id IS NULL;
+```
+Zmiana działa w 30 s (cache `pkg/appconfig`), bez deployu i bez wydania
+aplikacji. Tą samą drogą wyłącza się sprzedaż, gdyby coś poszło nie tak.
+
+### 11.4 Weryfikacja po wdrożeniu
+
+| Co | Jak |
+|---|---|
+| Weryfikator Apple wstał | `gcloud logging read 'jsonPayload.msg="billing-svc: App Store verifier ready"' --freshness=1h` |
+| Weryfikator Play wstał | jw., `"billing-svc: Google Play verifier ready"` |
+| Notyfikacja doszła | `SELECT provider, event_type, processing_status, received_at FROM payment_events WHERE provider IN ('APPLE_IAP','GOOGLE_IAP') ORDER BY received_at DESC LIMIT 10;` |
+| Zakup nadał uprawnienie | `SELECT provider, status, store_product_id, store_environment, current_period_end FROM subscriptions WHERE organization_id = '<org>';` |
+| Cron uzgadniania działa | `gcloud scheduler jobs run billing-store-reconcile --location=europe-central2` + odpowiedź `{"checked":N,...}` |
+| Kod rabatowy liczy użycia | `SELECT code, redemptions_count, max_redemptions FROM discount_codes;` |
