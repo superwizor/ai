@@ -113,7 +113,7 @@ abstract class AppLocalizations {
   /// No description provided for @account_not_found_body.
   ///
   /// In pl, this message translates to:
-  /// **'Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.'**
+  /// **'Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz w aplikacji: wyloguj się i wybierz „Załóż konto”.'**
   String account_not_found_body(String email);
 
   /// No description provided for @account_not_found_title.
@@ -6542,7 +6542,7 @@ abstract class AppLocalizations {
   /// No description provided for @verify_email_why.
   ///
   /// In pl, this message translates to:
-  /// **'Potwierdzenie jest potrzebne dopiero przy wysyłce pierwszego nagrania do analizy. Nagrywać możesz od razu.'**
+  /// **'Kliknij link w wiadomości, a aplikacja odblokuje się sama. Jeśli adres jest błędny, wyloguj się i załóż konto ponownie.'**
   String get verify_email_why;
 
   /// No description provided for @verify_email_resend.
@@ -6562,12 +6562,6 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Nie udało się wysłać wiadomości. Spróbuj za chwilę.'**
   String get verify_email_resend_failed;
-
-  /// No description provided for @verify_email_later.
-  ///
-  /// In pl, this message translates to:
-  /// **'Zrobię to później'**
-  String get verify_email_later;
 
   /// No description provided for @verify_email_check_now.
   ///

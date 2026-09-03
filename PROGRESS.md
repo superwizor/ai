@@ -89,6 +89,47 @@ Gotchas:
 
 ## In progress
 
+### Rejestracja in-app: incydent builda 58 + blokujaca weryfikacja — 2026-09-03
+
+Darek przetestowal rejestracje e-mailem na TestFlight 1.0.9+58
+(dpiotrak2+pay@gmail.com) i wyladowal na "Nie znaleziono konta".
+
+**Przyczyna (wyscig):** szkic rejestracji byl zapisywany PO
+`createUserWithEmailAndPassword` i po `sendEmailVerification` (kilkaset ms).
+W tym oknie Firebase emitowal nowa sesje, bramka w main.dart widziala sesje
+bez wiersza `users` i BEZ szkicu -> podmieniala LoginScreen na
+AccountNotFoundScreen -> zniszczony widget zabijal `ref.read(...).begin()`.
+Sciezka Apple/Google miala ten sam wyscig na `_identityRowExists`.
+
+**Naprawa:**
+- `signupDraftProvider.arm()` PRZED wywolaniem Firebase; `build()` adoptuje
+  uzbrojony szkic synchronicznie w chwili pojawienia sie uid; pamiec per-uid
+  poza notifierem (przebudowa nie zaczyna od null). Testy:
+  test/providers/signup_draft_provider_test.dart (9 przypadkow).
+- Po awaitach czytamy przez `ProviderScope.containerOf(context)`, nie `ref`
+  zniszczonego widgetu (login_screen, profile_setup).
+- ProfileSetup: najpierw `invalidate(currentUserProvider)`, dopiero potem
+  `clear()` szkicu — odwrotna kolejnosc dawala to samo "Nie znaleziono konta".
+- Nowy `firebaseUidProvider` (Provider<String?>) — testowalny bez fakeowania
+  `fb_auth.User`.
+
+**Zmiana produktowa (decyzja Darka):** weryfikacja e-mail jest BLOKUJACA.
+Bramka w main.dart pokazuje VerifyEmailScreen jako korzen dla kazdej sesji
+z `emailVerified == false` — przed profilem i kartotekami. Bez "Zrobie to
+pozniej"; auto-sprawdzanie co 5 s + po powrocie na pierwszy plan; "Wyloguj
+sie" jako wyjscie przy pomylonym adresie. Skutek uboczny: CreateUser idzie
+dopiero po potwierdzeniu, wiec zmyslony adres nie zaklada konta ani trialu.
+
+**Usuniete przy okazji:** cicha auto-rejestracja `_ensureUserRegistered` w
+login_screen.dart (zastana sprzed galezi, zakladala THERAPIST dla kazdej
+nieznanej tozsamosci Google/Apple, takze przy bledzie sieci) — mechanizm z
+incydentu docs/39, ktory w currentUserProvider usunieto w lipcu.
+
+**Pulapka:** w ARB polskie cudzyslowy to „…” (U+201E/U+201D). Prosty `"`
+jako zamkniecie psuje JSON, a `flutter gen-l10n` wypisuje blad i KONCZY SIE
+KODEM 0 z nieodswiezonym plikiem — sprawdzaj wynik, nie exit code.
+
+
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
 Galaz: `feat/iap-and-discount-codes`. Wdrozenie analizy z

@@ -1,10 +1,11 @@
-// Stan weryfikacji adresu e-mail (docs/70 S1 krok 3, E4).
+// Stan weryfikacji adresu e-mail (docs/70 S1, D12).
 //
-// Weryfikacja jest **nieblokująca**: nie zatrzymuje logowania, nawigacji ani
-// — co najważniejsze — nagrywania (UX-1 z docs/17: brak czegokolwiek nigdy nie
-// blokuje mikrofonu). Jedyne miejsce, w którym jest egzekwowana, to wysyłka
-// nagrania do analizy: bez potwierdzonego adresu nie da się spalić tokenów
-// STT/LLM, co zamyka „farmę triali" na zmyślone adresy.
+// Weryfikacja jest **blokująca** (decyzja 2026-09-03, po teście builda 58):
+// bramka w `main.dart` pokazuje `VerifyEmailScreen` jako korzeń aplikacji
+// dla każdej sesji z niepotwierdzonym adresem — przed profilem, przed
+// kartotekami, przed nagrywaniem. Pierwsza wersja była nieblokująca i
+// egzekwowała adres dopiero przy uploadzie; zostało po niej twarde
+// sprawdzenie w `UploadQueueRunner` jako druga linia obrony.
 //
 // Konta z Apple/Google wracają z `emailVerified == true` (dostawca już
 // zweryfikował adres, „Hide My Email" też), więc w praktyce dotyczy to
@@ -19,9 +20,9 @@ import 'current_user_provider.dart';
 /// `true`, gdy zalogowany użytkownik MA potwierdzony adres — albo gdy nie ma
 /// sensu o to pytać (brak sesji, konto bez adresu e-mail).
 ///
-/// Domyślnie zakładamy „zweryfikowany". Fałszywy alarm banerem u kogoś, kto
-/// adres potwierdził, byłby gorszy niż jego chwilowy brak: baner wraca przy
-/// pierwszym `refresh()`, a upload i tak ma własną, twardą bramkę.
+/// Sesja bez użytkownika albo bez adresu (konta telefoniczne) liczy się jako
+/// zweryfikowana — nie ma czego potwierdzać. Dla zwykłych kont wartość
+/// startowa to migawka z tokena; `refresh()` odświeża ją przez `reload()`.
 class EmailVerifiedNotifier extends Notifier<bool> {
   @override
   bool build() {

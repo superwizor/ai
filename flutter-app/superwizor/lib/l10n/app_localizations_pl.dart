@@ -17,7 +17,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String account_not_found_body(String email) {
-    return 'Zalogowano jako $email, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.';
+    return 'Zalogowano jako $email, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz w aplikacji: wyloguj się i wybierz „Załóż konto”.';
   }
 
   @override
@@ -3698,7 +3698,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get verify_email_why =>
-      'Potwierdzenie jest potrzebne dopiero przy wysyłce pierwszego nagrania do analizy. Nagrywać możesz od razu.';
+      'Kliknij link w wiadomości, a aplikacja odblokuje się sama. Jeśli adres jest błędny, wyloguj się i załóż konto ponownie.';
 
   @override
   String get verify_email_resend => 'Wyślij ponownie';
@@ -3709,9 +3709,6 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get verify_email_resend_failed =>
       'Nie udało się wysłać wiadomości. Spróbuj za chwilę.';
-
-  @override
-  String get verify_email_later => 'Zrobię to później';
 
   @override
   String get verify_email_check_now => 'Sprawdziłem, potwierdzone';

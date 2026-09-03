@@ -29,10 +29,12 @@ import 'l10n/app_localizations.dart';
 import 'client/client_home_screen.dart';
 import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
 import 'providers/billing_surface_provider.dart';
+import 'providers/email_verification_provider.dart';
 import 'providers/signup_draft_provider.dart';
 import 'screens/account_not_found_screen.dart';
 import 'screens/deactivated_account_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'screens/verify_email_screen.dart';
 import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
@@ -404,9 +406,20 @@ class _AuthGate extends ConsumerWidget {
     // którego świadomie NIE leczymy cichym zakładaniem konta.
     final signupDraft = ref.watch(signupDraftProvider);
 
+    // Potwierdzony adres e-mail jest warunkiem wejscia — przed profilem,
+    // przed kartotekami, przed czymkolwiek (decyzja 2026-09-03, docs/70
+    // D12). Dotyczy w praktyce tylko kont e-mail+haslo: Apple i Google
+    // oddaja adres juz zweryfikowany. Blokada stoi TUTAJ, w korzeniu, a nie
+    // na pojedynczych ekranach, zeby restart aplikacji ani zaden skrot
+    // nawigacyjny nie omijaly jej. Dodatkowy skutek: `CreateUser` idzie
+    // dopiero po potwierdzeniu, wiec pomylony albo zmyslony adres nie
+    // zakłada konta, organizacji ani trialu.
+    final emailVerified = ref.watch(emailVerifiedProvider);
+
     return authState.when(
       data: (user) {
         if (user == null) return const LoginScreen();
+        if (!emailVerified) return const VerifyEmailScreen();
         if (notRegistered) {
           if (signupDraft != null) {
             return ProfileSetupScreen(draft: signupDraft);

@@ -2,7 +2,7 @@
   "@@locale": "pl",
   "account_deleted_body": "To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.",
   "account_deleted_title": "Konto zablokowane",
-  "account_not_found_body": "Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.",
+  "account_not_found_body": "Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz w aplikacji: wyloguj się i wybierz „Załóż konto”.",
   "@account_not_found_body": {
     "placeholders": {
       "email": {
@@ -1615,11 +1615,10 @@
       }
     }
   },
-  "verify_email_why": "Potwierdzenie jest potrzebne dopiero przy wysyłce pierwszego nagrania do analizy. Nagrywać możesz od razu.",
+  "verify_email_why": "Kliknij link w wiadomości, a aplikacja odblokuje się sama. Jeśli adres jest błędny, wyloguj się i załóż konto ponownie.",
   "verify_email_resend": "Wyślij ponownie",
   "verify_email_resent": "Wysłaliśmy nową wiadomość.",
   "verify_email_resend_failed": "Nie udało się wysłać wiadomości. Spróbuj za chwilę.",
-  "verify_email_later": "Zrobię to później",
   "verify_email_check_now": "Sprawdziłem, potwierdzone",
   "verify_email_still_unverified": "Adres nadal nie jest potwierdzony.",
   "verify_email_confirmed": "Adres e-mail potwierdzony.",

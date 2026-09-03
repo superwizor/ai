@@ -8,7 +8,6 @@ import 'package:grpc/grpc.dart' as grpc;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/signup_draft_provider.dart';
-import '../services/grpc_client.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
 import '../analytics/analytics_collector.dart';
@@ -97,6 +96,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithGoogle({bool register = false}) async {
     setState(() { _loading = true; _error = null; });
+    // Kontener zamiast `ref`: po powrocie od dostawcy bramka moze juz
+    // podmienic ten ekran (patrz _afterProviderAuth), a `ref` zniszczonego
+    // widgetu rzuca. Kontener zyje z aplikacja.
+    final container = ProviderScope.containerOf(context, listen: false);
+    if (register) container.read(signupDraftProvider.notifier).arm();
     try {
       final UserCredential credential;
       if (kIsWeb) {
@@ -114,13 +118,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         credential =
             await FirebaseAuth.instance.signInWithCredential(authCredential);
       }
-      await _afterProviderAuth(credential, register: register);
+      await _afterProviderAuth(container, credential, register: register);
     } on FirebaseAuthException catch (e) {
+      container.read(signupDraftProvider.notifier).disarm();
       debugPrint('[auth] Google FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
         setState(() => _error = _socialErrorMessage(e));
       }
     } on GoogleSignInException catch (e) {
+      container.read(signupDraftProvider.notifier).disarm();
       debugPrint('[auth] GoogleSignInException: ${e.code} — ${e.description}');
       if (e.code == GoogleSignInExceptionCode.canceled) {
         // user cancelled — no error shown
@@ -128,6 +134,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _error = 'Google: ${e.description ?? e.code.name}');
       }
     } catch (e, stack) {
+      container.read(signupDraftProvider.notifier).disarm();
       debugPrint('[auth] Google unexpected: $e\n$stack');
       if (mounted) {
         setState(() => _error = 'Google: ${e.toString().length > 200 ? e.toString().substring(0, 200) : e}');
@@ -139,6 +146,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithApple({bool register = false}) async {
     setState(() { _loading = true; _error = null; });
+    final container = ProviderScope.containerOf(context, listen: false);
+    if (register) container.read(signupDraftProvider.notifier).arm();
     try {
       final provider = OAuthProvider('apple.com')
         ..addScope('email')
@@ -146,13 +155,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final credential = kIsWeb
           ? await FirebaseAuth.instance.signInWithPopup(provider)
           : await FirebaseAuth.instance.signInWithProvider(provider);
-      await _afterProviderAuth(credential, register: register);
+      await _afterProviderAuth(container, credential, register: register);
     } on FirebaseAuthException catch (e) {
+      container.read(signupDraftProvider.notifier).disarm();
       debugPrint('[auth] Apple FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
         setState(() => _error = _socialErrorMessage(e));
       }
     } catch (e, stack) {
+      container.read(signupDraftProvider.notifier).disarm();
       debugPrint('[auth] Apple unexpected: $e\n$stack');
       if (mounted) {
         setState(() => _error = 'Apple: ${e.toString().length > 200 ? e.toString().substring(0, 200) : e}');
@@ -186,7 +197,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         email: email, password: pass,
       );
       TextInput.finishAutofillContext();
-      await _ensureUserRegistered();
+      // Konta NIE zakladamy przy logowaniu (docs/39). Sesja bez wiersza w
+      // `users` trafia z bramki na „Nie znaleziono konta" z podpowiedzia,
+      // zeby uzyc „Zaloz konto".
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e.code));
     } catch (_) {
@@ -200,6 +213,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() { _loading = true; _error = null; });
     final email = _emailCtrl.text.trim().toLowerCase();
     final pass = _passwordCtrl.text;
+    // Szkic uzbrajamy ZANIM Firebase zalozy konto. Nowa sesja wyemituje sie
+    // w trakcie kolejnych awaitow, bramka podmieni ten ekran na korzen
+    // rejestracji i zniszczy ten State — kazde pozniejsze `ref.read` tutaj
+    // rzuca. Tak wlasnie build 58 ladowal na „Nie znaleziono konta":
+    // `begin(uid)` szlo PO wysylce maila weryfikacyjnego i nigdy sie nie
+    // wykonalo.
+    final drafts = ref.read(signupDraftProvider.notifier);
+    drafts.arm();
     try {
       final credential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -215,13 +236,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } catch (e) {
         debugPrint('[auth] sendEmailVerification: $e');
       }
-      final uid = credential.user?.uid;
-      if (uid != null) {
-        await ref.read(signupDraftProvider.notifier).begin(uid);
-      }
     } on FirebaseAuthException catch (e) {
+      drafts.disarm();
       if (mounted) setState(() => _error = _friendlyError(e.code));
     } catch (_) {
+      drafts.disarm();
       if (mounted) {
         setState(() => _error = AppLocalizations.of(context).auth_error_generic);
       }
@@ -270,35 +289,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// przelacza bramke uwierzytelniania na ekran profilu, gdzie uzytkownik
   /// swiadomie zaklada konto.
   Future<void> _afterProviderAuth(
+    ProviderContainer container,
     UserCredential credential, {
     required bool register,
   }) async {
-    if (!register) {
-      await _ensureUserRegistered();
-      return;
-    }
     final user = credential.user;
     if (user == null) return;
-    // Wyluskujemy imie ZANIM cokolwiek innego sie zdarzy — przy Apple to
-    // jedyna okazja w zyciu konta.
-    final (firstName, lastName) = _providerName(credential);
-    if (await _identityRowExists(user.uid)) {
-      // „Zaloz konto" na istniejacym koncie to po prostu logowanie.
+    if (!register) {
+      // Tryb „Zaloguj": konta NIE zakladamy. Sesja bez wiersza w `users`
+      // dostaje od bramki ekran „Nie znaleziono konta" z podpowiedzia, zeby
+      // wybrac „Zaloz konto" — to jest zachowanie z docs/39. Wczesniejszy
+      // `_ensureUserRegistered` zakladal tu po cichu konto THERAPIST dla
+      // KAZDEJ nieznanej tozsamosci Google/Apple (razem z organizacja i
+      // trialem), a lapal przy tym wszystkie bledy, wiec robil to nawet przy
+      // padnietej sieci. Dokladnie ten mechanizm opisuje incydent z
+      // 2026-07-04 w current_user_provider.dart — tam go usunieto, tutaj
+      // przezyl.
       return;
     }
-    await ref.read(signupDraftProvider.notifier).begin(
-          user.uid,
-          firstName: firstName,
-          lastName: lastName,
-        );
+    // Wyluskujemy imie ZANIM cokolwiek innego sie zdarzy — przy Apple to
+    // jedyna okazja w zyciu konta. Szkic jest juz uzbrojony (arm() przed
+    // dostawca) i zaadoptowany przez sesje; tu tylko dokladamy imie.
+    final (firstName, lastName) = _providerName(credential);
+    final drafts = container.read(signupDraftProvider.notifier);
+    await drafts.begin(user.uid, firstName: firstName, lastName: lastName);
+    if (await _identityRowExists(container, user.uid)) {
+      // „Zaloz konto" na istniejacym koncie to po prostu logowanie —
+      // szkic nie ma czego otwierac.
+      await drafts.clear(user.uid);
+    }
   }
 
   /// Czy identity-svc ma juz wiersz dla tej tozsamosci. Blad inny niz
   /// NOT_FOUND leci dalej: przy padniętej sieci nie wolno zgadywac, ze konta
   /// nie ma, i zaczynac rejestracji od nowa.
-  Future<bool> _identityRowExists(String uid) async {
+  Future<bool> _identityRowExists(ProviderContainer container, String uid) async {
     try {
-      await ref.read(grpcClientsProvider).identity.getUserByFirebaseUID(
+      await container.read(grpcClientsProvider).identity.getUserByFirebaseUID(
             identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: uid),
           );
       return true;
@@ -317,45 +344,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _registerInIdentityService(GrpcClients grpc, User user,
-      {String? firstName, String? lastName}) async {
-    String fName = firstName ?? '';
-    String lName = lastName ?? '';
-    if (fName.isEmpty && user.displayName != null) {
-      final parts = (user.displayName ?? '').split(' ');
-      fName = parts.isNotEmpty ? parts.first : '';
-      lName = parts.length > 1 ? parts.skip(1).join(' ') : '';
-    }
-    final identityClient = grpc.identity;
-    try {
-      await identityClient.createUser(identity_pb.CreateUserRequest(
-        firebaseUid: user.uid,
-        email: user.email ?? _emailCtrl.text.trim(),
-        role: identity_pb.UserRole.USER_ROLE_THERAPIST,
-        firstName: fName, lastName: lName,
-        uiLanguage: 'pl', timezone: 'Europe/Warsaw',
-        hasAcceptedTos: true,
-      ));
-    } catch (e) {
-      debugPrint('[auth] identity-svc registration error: $e');
-    }
-  }
-
-  Future<void> _ensureUserRegistered() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    if (!mounted) return;
-    final grpc = ref.read(grpcClientsProvider);
-    final identityClient = grpc.identity;
-    try {
-      await identityClient.getUserByFirebaseUID(
-        identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: user.uid),
-      );
-    } catch (_) {
-      await _registerInIdentityService(grpc, user);
-    }
   }
 
   String _friendlyError(String code) {
