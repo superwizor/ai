@@ -125,6 +125,12 @@ login_screen.dart (zastana sprzed galezi, zakladala THERAPIST dla kazdej
 nieznanej tozsamosci Google/Apple, takze przy bledzie sieci) — mechanizm z
 incydentu docs/39, ktory w currentUserProvider usunieto w lipcu.
 
+**Wydania:** TestFlight 1.0.9+58 (VALID, z bledem) -> 1.0.9+59 z naprawa,
+UPLOAD SUCCEEDED 2026-09-03 17:19 (Delivery UUID 6a8cff60-917e-4020-a927-
+586875855f8f), processingState VALID potwierdzony przez API ASC; stan przetwarzania sprawdzaj przez API ASC (skrypt w
+KOMENDY/9 + endpoint /v1/builds?filter[app]=6774975751), nie przez log
+altoola — altool potwierdza tylko odbior paczki.
+
 **Pulapka:** w ARB polskie cudzyslowy to „…” (U+201E/U+201D). Prosty `"`
 jako zamkniecie psuje JSON, a `flutter gen-l10n` wypisuje blad i KONCZY SIE
 KODEM 0 z nieodswiezonym plikiem — sprawdzaj wynik, nie exit code.
