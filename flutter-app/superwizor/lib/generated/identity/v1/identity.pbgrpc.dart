@@ -486,6 +486,24 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$updateMyEmail, request, options: options);
   }
 
+  /// Samodzielne usunięcie konta przez zalogowanego terapeutę.
+  ///
+  /// Apple 5.1.1(v): aplikacja, w której można ZAŁOŻYĆ konto, musi
+  /// pozwalać je USUNĄĆ z poziomu aplikacji — nie wystarczy odesłanie na
+  /// stronę. Wymóg staje się blokujący razem z rejestracją in-app
+  /// (docs/70 R9).
+  ///
+  /// Soft-delete, ta sama ścieżka co RemoveTherapist (users.deleted_at) +
+  /// wyłączenie konta w Firebase, żeby token przestał działać od razu.
+  /// Sesje i kartoteki znikają z widoku; twarde czyszczenie danych idzie
+  /// osobnym procesem RODO.
+  $grpc.ResponseFuture<$1.Empty> deleteMyAccount(
+    $0.DeleteMyAccountRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteMyAccount, request, options: options);
+  }
+
   // method descriptors
 
   static final _$validateToken =
@@ -717,6 +735,11 @@ class IdentityServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.UpdateMyEmailRequest, $1.Empty>(
           '/identity.v1.IdentityService/UpdateMyEmail',
           ($0.UpdateMyEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$deleteMyAccount =
+      $grpc.ClientMethod<$0.DeleteMyAccountRequest, $1.Empty>(
+          '/identity.v1.IdentityService/DeleteMyAccount',
+          ($0.DeleteMyAccountRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
 }
 
@@ -1108,6 +1131,14 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.UpdateMyEmailRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeleteMyAccountRequest, $1.Empty>(
+        'DeleteMyAccount',
+        deleteMyAccount_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeleteMyAccountRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.UserContext> validateToken_Pre($grpc.ServiceCall $call,
@@ -1498,4 +1529,12 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> updateMyEmail(
       $grpc.ServiceCall call, $0.UpdateMyEmailRequest request);
+
+  $async.Future<$1.Empty> deleteMyAccount_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeleteMyAccountRequest> $request) async {
+    return deleteMyAccount($call, await $request);
+  }
+
+  $async.Future<$1.Empty> deleteMyAccount(
+      $grpc.ServiceCall call, $0.DeleteMyAccountRequest request);
 }

@@ -22,6 +22,95 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'identity.pbenum.dart';
 
+class DeleteMyAccountRequest extends $pb.GeneratedMessage {
+  factory DeleteMyAccountRequest({
+    $core.String? confirmation,
+    $core.String? reason,
+    $core.bool? acknowledgedSubscription,
+  }) {
+    final result = create();
+    if (confirmation != null) result.confirmation = confirmation;
+    if (reason != null) result.reason = reason;
+    if (acknowledgedSubscription != null)
+      result.acknowledgedSubscription = acknowledgedSubscription;
+    return result;
+  }
+
+  DeleteMyAccountRequest._();
+
+  factory DeleteMyAccountRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteMyAccountRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteMyAccountRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'confirmation')
+    ..aOS(2, _omitFieldNames ? '' : 'reason')
+    ..aOB(3, _omitFieldNames ? '' : 'acknowledgedSubscription')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteMyAccountRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteMyAccountRequest copyWith(
+          void Function(DeleteMyAccountRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteMyAccountRequest))
+          as DeleteMyAccountRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteMyAccountRequest create() => DeleteMyAccountRequest._();
+  @$core.override
+  DeleteMyAccountRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteMyAccountRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteMyAccountRequest>(create);
+  static DeleteMyAccountRequest? _defaultInstance;
+
+  /// Tekst potwierdzenia wpisany przez użytkownika ("USUWAM" / "DELETE").
+  /// Chroni przed przypadkowym tapnięciem — nie jest hasłem.
+  @$pb.TagNumber(1)
+  $core.String get confirmation => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set confirmation($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasConfirmation() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearConfirmation() => $_clearField(1);
+
+  /// Opcjonalny powód rezygnacji. Trafia do audytu, nie do CRM.
+  @$pb.TagNumber(2)
+  $core.String get reason => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set reason($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReason() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReason() => $_clearField(2);
+
+  /// Potwierdzenie, że użytkownik wie o aktywnej subskrypcji ze sklepu.
+  ///
+  /// Subskrypcji kupionej w App Store nie umiemy anulować — może to
+  /// zrobić tylko właściciel konta Apple. Bez tej flagi RPC odrzuca
+  /// żądanie z FAILED_PRECONDITION "STORE_SUBSCRIPTION_ACTIVE", a
+  /// aplikacja pokazuje deep link do ustawień subskrypcji (docs/70 E5).
+  @$pb.TagNumber(3)
+  $core.bool get acknowledgedSubscription => $_getBF(2);
+  @$pb.TagNumber(3)
+  set acknowledgedSubscription($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAcknowledgedSubscription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAcknowledgedSubscription() => $_clearField(3);
+}
+
 class AppLoginToken extends $pb.GeneratedMessage {
   factory AppLoginToken({
     $core.String? token,
@@ -3161,6 +3250,7 @@ class AcceptInvitationRequest extends $pb.GeneratedMessage {
     $core.bool? hasAcceptedTos,
     $core.bool? hasMarketingConsent,
     $core.String? pairingCode,
+    $core.String? phoneNumber,
   }) {
     final result = create();
     if (token != null) result.token = token;
@@ -3174,6 +3264,7 @@ class AcceptInvitationRequest extends $pb.GeneratedMessage {
     if (hasMarketingConsent != null)
       result.hasMarketingConsent = hasMarketingConsent;
     if (pairingCode != null) result.pairingCode = pairingCode;
+    if (phoneNumber != null) result.phoneNumber = phoneNumber;
     return result;
   }
 
@@ -3200,6 +3291,7 @@ class AcceptInvitationRequest extends $pb.GeneratedMessage {
     ..aOB(8, _omitFieldNames ? '' : 'hasAcceptedTos')
     ..aOB(9, _omitFieldNames ? '' : 'hasMarketingConsent')
     ..aOS(10, _omitFieldNames ? '' : 'pairingCode')
+    ..aOS(11, _omitFieldNames ? '' : 'phoneNumber')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3323,6 +3415,21 @@ class AcceptInvitationRequest extends $pb.GeneratedMessage {
   $core.bool hasPairingCode() => $_has(9);
   @$pb.TagNumber(10)
   void clearPairingCode() => $_clearField(10);
+
+  /// Wymagany dla zaproszeń THERAPIST i ORG_ADMIN, IGNOROWANY dla
+  /// PATIENT (docs/43 §4 — konto klienta jest pseudonimowe i e-mail jest
+  /// jego jedynym identyfikatorem). Ścieżka samodzielnej rejestracji
+  /// terapeuty wymaga numeru „ze względów bezpieczeństwa", więc
+  /// akceptacja zaproszenia nie może być furtką pozwalającą założyć
+  /// konto personelu bez niego.
+  @$pb.TagNumber(11)
+  $core.String get phoneNumber => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set phoneNumber($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPhoneNumber() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPhoneNumber() => $_clearField(11);
 }
 
 class GetInvitationPreviewRequest extends $pb.GeneratedMessage {
