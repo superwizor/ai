@@ -8,6 +8,10 @@
 //   5. Plan catalog integrity — prices match Stripe Price IDs
 
 import { test, expect } from "@playwright/test";
+import {
+  billingSvcReachable,
+  BILLING_SVC_SKIP_REASON,
+} from "./fixtures/billing-svc";
 import { forLocale, urlPrefix } from "./_locales";
 
 // ═════════════════════════════════════════════════════════════════
@@ -398,6 +402,9 @@ test.describe("Onboarding Wizard", () => {
 
 test.describe("Stripe Checkout Config", () => {
   test("checkout API route exists", async ({ page }) => {
+    // Patrz fixtures/billing-svc.ts: to zadanie idzie przez rewrite do
+    // billing-svc, wiec bez uruchomionej uslugi nie ma czego sprawdzac.
+    test.skip(!(await billingSvcReachable()), BILLING_SVC_SKIP_REASON);
     // POST /api/checkout should return 400 (bad request) without body
     const response = await page.request.post("/api/checkout", {
       data: {},
@@ -410,6 +417,9 @@ test.describe("Stripe Checkout Config", () => {
   });
 
   test("checkout rejects missing organizationId", async ({ page }) => {
+    // Patrz fixtures/billing-svc.ts: to zadanie idzie przez rewrite do
+    // billing-svc, wiec bez uruchomionej uslugi nie ma czego sprawdzac.
+    test.skip(!(await billingSvcReachable()), BILLING_SVC_SKIP_REASON);
     const response = await page.request.post("/api/checkout", {
       data: { priceId: "price_test_123" },
       headers: { "Content-Type": "application/json" },
@@ -420,6 +430,9 @@ test.describe("Stripe Checkout Config", () => {
   });
 
   test("checkout rejects invalid UUID for organizationId", async ({ page }) => {
+    // Patrz fixtures/billing-svc.ts: to zadanie idzie przez rewrite do
+    // billing-svc, wiec bez uruchomionej uslugi nie ma czego sprawdzac.
+    test.skip(!(await billingSvcReachable()), BILLING_SVC_SKIP_REASON);
     const response = await page.request.post("/api/checkout", {
       data: {
         priceId: "price_test_123",

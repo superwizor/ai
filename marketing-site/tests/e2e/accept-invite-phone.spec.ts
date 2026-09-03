@@ -36,11 +36,34 @@ async function fillStaffInvite(page: import("@playwright/test").Page) {
   await page.locator("#password").fill("Sup3rwizor!x");
   await page.locator("#firstName").fill("Jan");
   await page.locator("#lastName").fill("Zaproszony");
-  await page.locator("#modality").selectOption({ index: 1 });
+
+  // Lista nurtów dojeżdża osobnym RPC (ListModalities), więc `#modality`
+  // jest przez chwilę pustym <select> z samym placeholderem. Wybór po
+  // indeksie trafiał wtedy w nic i przy --workers=2, gdy dev server
+  // dopiero kompiluje trasę, zjadał budżet testu — stąd nawracający
+  // flak tego pliku. Czekamy na OPCJE, a nie na sam element.
+  const modality = page.locator("#modality");
+  await expect
+    .poll(async () => modality.locator("option").count(), { timeout: 15_000 })
+    .toBeGreaterThan(1);
+  await modality.selectOption({ index: 1 });
+
   await page.locator("#tos").check();
 }
 
 test.describe("Akceptacja zaproszenia — numer telefonu", () => {
+  // Budżet ponad domyślne 30 s z playwright.config.
+  //
+  // Ten plik jako jedyny wchodzi na /accept-invite, więc przy pełnym
+  // przebiegu (--workers=2) trafia na PIERWSZĄ kompilację tej trasy przez
+  // dev server — i robi to konkurując o CPU z drugim workerem. Sam w sobie
+  // przechodzi w ~14 s, w pełnym suicie potrafi przekroczyć 20 s i paść na
+  // ostatnim `expect.poll`, choć formularz działa poprawnie.
+  //
+  // To ograniczenie środowiska, nie regresja produktu: podnosimy budżet
+  // zamiast osłabiać asercje.
+  test.setTimeout(60_000);
+
   test.beforeEach(async ({ page }) => {
     await mockFirebaseAuth(page);
     await mockListModalities(page);
@@ -72,7 +95,7 @@ test.describe("Akceptacja zaproszenia — numer telefonu", () => {
     // Dłuższy poll niż domyślny: przy --workers=2 (tak jeździ test:e2e)
     // pierwsze wejście na trasę bywa kompilowane przez dev server i
     // 5 s potrafi nie wystarczyć — jeden taki flak już tu wystąpił.
-    await expect.poll(() => getCaptured(), { timeout: 15_000 }).not.toBeNull();
+    await expect.poll(() => getCaptured(), { timeout: 30_000 }).not.toBeNull();
     const sent = getCaptured() as Record<string, unknown>;
     // PhoneInput wysyła numer sformatowany razem z kierunkowym
     // („+48 512-837-461"), więc porównujemy same cyfry — inaczej test

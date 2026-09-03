@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
@@ -891,6 +891,25 @@ function OrgSection({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const locale = useLocale();
 
+  // Organizacja, ktora juz zasilila formularz.
+  //
+  // Efekt ponizej zalezy od `profile`, a ten przychodzi z gory jako nowy
+  // obiekt przy kazdym renderze rodzica — wiec pobranie organizacji
+  // potrafi sie powtorzyc PO tym, jak uzytkownik zaczal pisac. Bez tego
+  // strażnika kazde takie powtorzenie nadpisywalo `draft` wartosciami z
+  // serwera i po cichu kasowalo wpisane zmiany: formularz wygladal na
+  // wypelniony po staremu, a zapis wysylal niezmieniona nazwe.
+  //
+  // Tak wlasnie zawodzil przypadek e2e "can update profile and
+  // organization successfully" — opisany w tescie jako NIEROZWIAZANY od
+  // 2026-08-07 i tlumaczony krucha selekcja pola. Selektor byl w porzadku;
+  // znikala tresc, nie element.
+  //
+  // `draft` jest roboczą kopią użytkownika: ponowny odczyt z serwera ma
+  // prawo odswiezyc `org`, ale nie ma prawa nadpisac tego, co ktos wlasnie
+  // wpisuje.
+  const seededOrgIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!profile) return;
     if (!profile.organizationId) {
@@ -903,19 +922,23 @@ function OrgSection({
         const o = await identityClient.getMyOrganization(create(EmptySchema, {}));
         if (cancelled) return;
         setOrg(o);
-        setDraft({
-          legalName: o.legalName ?? "",
-          taxId: o.taxId ?? "",
-          vatIdEu: o.vatIdEu ?? "",
-          countryCode: o.headquartersAddress?.countryCode ?? "PL",
-          region: o.headquartersAddress?.region ?? "",
-          city: o.headquartersAddress?.city ?? "",
-          postalCode: o.headquartersAddress?.postalCode ?? "",
-          streetLine: o.headquartersAddress?.streetLine ?? "",
-          buildingNumber: o.headquartersAddress?.buildingNumber ?? "",
-          unitNumber: o.headquartersAddress?.unitNumber ?? "",
-          directions: o.headquartersAddress?.directions ?? "",
-        });
+        const alreadySeeded = seededOrgIdRef.current === o.id;
+        seededOrgIdRef.current = o.id;
+        if (!alreadySeeded) {
+          setDraft({
+            legalName: o.legalName ?? "",
+            taxId: o.taxId ?? "",
+            vatIdEu: o.vatIdEu ?? "",
+            countryCode: o.headquartersAddress?.countryCode ?? "PL",
+            region: o.headquartersAddress?.region ?? "",
+            city: o.headquartersAddress?.city ?? "",
+            postalCode: o.headquartersAddress?.postalCode ?? "",
+            streetLine: o.headquartersAddress?.streetLine ?? "",
+            buildingNumber: o.headquartersAddress?.buildingNumber ?? "",
+            unitNumber: o.headquartersAddress?.unitNumber ?? "",
+            directions: o.headquartersAddress?.directions ?? "",
+          });
+        }
         setPhase("ready");
       } catch (e) {
         if (cancelled) return;
