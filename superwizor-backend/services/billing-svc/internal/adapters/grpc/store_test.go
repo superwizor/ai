@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
 )
@@ -235,6 +236,47 @@ func TestStoreProviderForPlatform(t *testing.T) {
 		if got := storeProviderForPlatform(in); got != want {
 			t.Errorf("storeProviderForPlatform(%q) = %q, chciano %q", in, got, want)
 		}
+	}
+}
+
+// Regresja z 04.09.2026: aplikacja Flutter wysyła w x-client-platform
+// stałe „flutter-app" (identity-svc stempluje po nim first_app_login_at),
+// więc paywall na telefonie nie miał z czego wybrać sklepu i nie pokazywał
+// ANI JEDNEGO produktu — także po włączeniu IAP_ENABLED_IOS. Prawdziwy
+// system jedzie od tego czasu osobnym kluczem x-client-os.
+func TestPlatformFromMetadata(t *testing.T) {
+	cases := []struct {
+		name string
+		md   metadata.MD
+		want string
+	}{
+		{"x-client-os wygrywa", metadata.Pairs(
+			"x-client-os", "IOS", "x-client-platform", "flutter-app"), "IOS"},
+		{"android", metadata.Pairs(
+			"x-client-os", "android", "x-client-platform", "flutter-app"), "ANDROID"},
+		{"sam flutter-app nie wskazuje sklepu", metadata.Pairs(
+			"x-client-platform", "flutter-app"), "FLUTTER-APP"},
+		{"zapas dla klientów bez x-client-os", metadata.Pairs(
+			"x-client-platform", "IOS"), "IOS"},
+		{"pusty x-client-os schodzi na zapas", metadata.Pairs(
+			"x-client-os", "  ", "x-client-platform", "ANDROID"), "ANDROID"},
+		{"brak metadanych", metadata.MD{}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := metadata.NewIncomingContext(context.Background(), tc.md)
+			if got := platformFromMetadata(ctx); got != tc.want {
+				t.Errorf("platformFromMetadata = %q, chciano %q", got, tc.want)
+			}
+		})
+	}
+	// Sedno całej poprawki: „flutter-app" nie wybiera żadnego sklepu, a
+	// „IOS" wybiera App Store.
+	if storeProviderForPlatform("FLUTTER-APP") != "" {
+		t.Error("flutter-app nie może wskazywać sklepu")
+	}
+	if storeProviderForPlatform("IOS") != providerApple {
+		t.Error("IOS musi wskazywać App Store")
 	}
 }
 

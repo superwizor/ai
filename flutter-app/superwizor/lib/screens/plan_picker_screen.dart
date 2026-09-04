@@ -30,6 +30,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/billing_surface_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/onboarding_paywall_provider.dart';
 import '../services/billing_surface_state.dart';
 import '../services/store_purchase_service.dart';
 import '../theme/euphire_theme.dart';
@@ -105,6 +106,23 @@ class _PlanPickerScreenState extends ConsumerState<PlanPickerScreen> {
 
   // ── Akcje ───────────────────────────────────────────────────────────────
 
+  /// Zamyka paywall niezależnie od tego, JAK się tu weszło.
+  ///
+  /// Po rejestracji ten ekran jest KORZENIEM aplikacji (bramka w
+  /// `main.dart` pokazuje go na podstawie `onboardingPaywallProvider`), więc
+  /// nie ma czego zdejmować ze stosu — trzeba zgasić flagę. Wejście z menu
+  /// Subskrypcja to zwykła trasa i tam wystarczy `pop`. Jedna metoda na oba
+  /// przypadki, żeby nie dało się dodać wyjścia, które działa tylko w
+  /// jednym z nich.
+  void _dismiss() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    ref.read(onboardingPaywallProvider.notifier).dismiss();
+  }
+
   Future<void> _buy(StoreProductOffer offer) async {
     setState(() => _busyProductId = offer.productId);
     final result =
@@ -115,7 +133,7 @@ class _PlanPickerScreenState extends ConsumerState<PlanPickerScreen> {
 
     if (result.isSuccess) {
       EuphireToast.success(context, message: t.purchase_success);
-      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+      _dismiss();
       return;
     }
     if (result.outcome == StorePurchaseOutcome.cancelled) return;
@@ -130,7 +148,7 @@ class _PlanPickerScreenState extends ConsumerState<PlanPickerScreen> {
     final t = AppLocalizations.of(context);
     if (result.isSuccess) {
       EuphireToast.success(context, message: t.purchase_restore_success);
-      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+      _dismiss();
       return;
     }
     if (result.outcome == StorePurchaseOutcome.nothingToRestore) {
@@ -212,8 +230,13 @@ class _PlanPickerScreenState extends ConsumerState<PlanPickerScreen> {
       ),
       body: SafeArea(
         child: surface.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: EuphireColors.ember),
+          // Ładowanie z wyjściem: przy rejestracji ten ekran jest korzeniem
+          // aplikacji, więc kręcące się kółko bez „Na razie bez planu"
+          // byłoby ślepą uliczką, gdyby serwer milczał.
+          loading: () => _Unavailable(
+            reason: t.plan_picker_loading,
+            onSkip: _skipAction(),
+            busy: true,
           ),
           error: (_, _) => _Unavailable(onSkip: _skipAction()),
           data: (s) => _body(context, s),
@@ -224,9 +247,7 @@ class _PlanPickerScreenState extends ConsumerState<PlanPickerScreen> {
 
   VoidCallback? _skipAction() {
     if (!widget.onboarding) return null;
-    return () {
-      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-    };
+    return _dismiss;
   }
 
   Widget _body(BuildContext context, BillingSurfaceState s) {
@@ -628,10 +649,14 @@ class _LegalBlock extends StatelessWidget {
 /// Stan „nie sprzedajemy tu i teraz". Zawsze z powodem i zawsze z wyjściem —
 /// paywall bez drogi dalej byłby ślepą uliczką tuż po rejestracji.
 class _Unavailable extends StatelessWidget {
-  const _Unavailable({this.reason, this.onSkip});
+  const _Unavailable({this.reason, this.onSkip, this.busy = false});
 
   final String? reason;
   final VoidCallback? onSkip;
+
+  /// Stan przejściowy (czekamy na serwer), a nie werdykt — zamiast ikony
+  /// sklepu kręci się kółko, a tytuł mówi „sprawdzamy", nie „niedostępne".
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -642,11 +667,18 @@ class _Unavailable extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront_outlined,
-                color: EuphireColors.mist, size: 48),
+            if (busy)
+              const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(color: EuphireColors.ember),
+              )
+            else
+              const Icon(Icons.storefront_outlined,
+                  color: EuphireColors.mist, size: 48),
             const SizedBox(height: 16),
             Text(
-              t.plan_picker_unavailable_title,
+              busy ? t.plan_picker_loading_title : t.plan_picker_unavailable_title,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: _kFont,

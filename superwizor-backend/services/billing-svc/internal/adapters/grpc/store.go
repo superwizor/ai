@@ -696,17 +696,32 @@ func (s *Server) appConfig(ctx context.Context, key, fallback string) string {
 	return strings.TrimSpace(v)
 }
 
-// platformFromMetadata czyta x-client-platform — ten sam nagłówek, który
-// aplikacja wysyła już przy uploadach. Klucz jest na statycznej
-// allowliście CORS w pkg/cors (incydent 2026-07-24: każdy własny klucz
-// metadanych gRPC to osobny nagłówek CORS).
+// platformFromMetadata rozstrzyga, w którym sklepie stoi ten klient.
+//
+// Pierwszeństwo ma x-client-os (IOS / ANDROID / MACOS) — nagłówek dodany
+// 04.09.2026 właśnie po to. Wcześniej czytaliśmy tu x-client-platform, ale
+// aplikacja Flutter wysyła w nim STAŁE „flutter-app" (identity-svc używa
+// go do stempla first_app_login_at), więc storeProviderForPlatform zawsze
+// dostawał pustkę: paywall na telefonie nie mógł pokazać ANI JEDNEGO
+// produktu, nawet z włączoną flagą IAP_ENABLED_IOS.
+//
+// x-client-platform zostaje jako zapas dla klientów, które wysyłają w nim
+// konkretny system (i dla starszych buildów nic tu nie psuje — „flutter-app"
+// mapuje się na pustkę tak samo jak dotąd).
+//
+// Oba klucze są na statycznej allowliście CORS w pkg/cors (incydent
+// 2026-07-24: każdy własny klucz metadanych gRPC to osobny nagłówek CORS).
 func platformFromMetadata(ctx context.Context) string {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return ""
 	}
-	if v := md.Get("x-client-platform"); len(v) > 0 {
-		return strings.ToUpper(strings.TrimSpace(v[0]))
+	for _, key := range []string{"x-client-os", "x-client-platform"} {
+		if v := md.Get(key); len(v) > 0 {
+			if p := strings.ToUpper(strings.TrimSpace(v[0])); p != "" {
+				return p
+			}
+		}
 	}
 	return ""
 }

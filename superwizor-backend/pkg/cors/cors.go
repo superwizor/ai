@@ -57,6 +57,13 @@ var defaultAllowedHeaders = []string{
 	// pre-flight and never sends the request (2026-07-24 incident:
 	// x-client-platform took down every RPC from superwizor-app.web.app).
 	"X-Client-Platform",
+	// Konkretny system klienta (IOS / ANDROID). Rozstrzyga, w którym
+	// sklepie stoi użytkownik — X-Client-Platform niesie stałe
+	// "flutter-app" i tego nie odróżnia. Dodane do allowlisty razem z
+	// nagłówkiem, choć aplikacja wysyła go tylko poza webem: reguła z
+	// incydentu 2026-07-24 mówi, że każdy klucz metadanych ma tu być,
+	// zanim ktokolwiek zawoła RPC z przeglądarki.
+	"X-Client-Os",
 }
 
 // Default headers we expose to the browser so the Connect client can

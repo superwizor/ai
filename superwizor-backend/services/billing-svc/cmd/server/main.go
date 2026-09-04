@@ -180,10 +180,13 @@ func main() {
 		slog.Warn("billing-svc: PLAY_PACKAGE_NAME unset — weryfikacja zakupów Android wyłączona")
 	}
 
-	// Native-gRPC auth (security #2/#9). The native path serves only S2S
-	// callers (quota ledger + GetSubscription); Admin* RPCs are rejected
-	// here since no backend service calls them over gRPC. When the OIDC
-	// env vars are set the quota RPCs also require an allow-listed caller.
+	// Native-gRPC auth (security #2/#9). The native path serves S2S callers
+	// (quota ledger + GetSubscription) and the MOBILE APP's store RPCs;
+	// Admin* RPCs are rejected here since no backend service calls them
+	// over gRPC. When the OIDC env vars are set the quota RPCs also require
+	// an allow-listed caller. Store RPCs are authenticated with the user's
+	// Firebase token via identityClient — nil there means they are refused
+	// (fail-closed), same policy as the Connect path below.
 	internalAud := os.Getenv("INTERNAL_OIDC_AUDIENCE")
 	allowedSAs := grpcadapter.ParseAllowedSAs(os.Getenv("INTERNAL_ALLOWED_SAS"))
 	if internalAud == "" || len(allowedSAs) == 0 {
@@ -192,7 +195,7 @@ func main() {
 
 	// gRPC server (in-process — handler reused via ServeHTTP).
 	gs := grpc.NewServer(grpc.UnaryInterceptor(
-		grpcadapter.NativeAuthInterceptor(internalAud, allowedSAs, nil)))
+		grpcadapter.NativeAuthInterceptor(internalAud, allowedSAs, nil, identityClient)))
 	billingv1.RegisterBillingServiceServer(gs, billingServer)
 	hs := health.NewServer()
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)

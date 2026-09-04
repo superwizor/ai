@@ -1918,6 +1918,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'This account cannot make sandbox purchases.';
 
   @override
+  String get plan_picker_loading_title => 'Checking available plans';
+
+  @override
+  String get plan_picker_loading =>
+      'We are asking the server about your subscription. This usually takes a moment.';
+
+  @override
   String get plan_picker_unavailable_title =>
       'Purchases are temporarily unavailable';
 

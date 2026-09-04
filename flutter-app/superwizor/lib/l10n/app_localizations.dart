@@ -3468,6 +3468,18 @@ abstract class AppLocalizations {
   /// **'To konto nie ma dostępu do zakupów testowych.'**
   String get purchase_error_sandbox_not_allowed;
 
+  /// No description provided for @plan_picker_loading_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdzamy dostępne plany'**
+  String get plan_picker_loading_title;
+
+  /// No description provided for @plan_picker_loading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pytamy serwer o Twoją subskrypcję. To zwykle chwila.'**
+  String get plan_picker_loading;
+
   /// No description provided for @plan_picker_unavailable_title.
   ///
   /// In pl, this message translates to:

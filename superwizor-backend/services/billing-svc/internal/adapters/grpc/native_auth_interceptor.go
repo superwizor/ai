@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 )
 
 // Native-gRPC auth for billing-svc (security #2 / #9).
@@ -19,15 +21,30 @@ import (
 // `x-superwizor-role: SUPERWIZOR_ADMIN` header (resolveAdminCaller trusts
 // metadata). The Connect path is guarded; the native path was not.
 //
-// Who actually calls billing over native gRPC: only backend services
-// (clinical-svc, ingestion-svc, stt-worker) invoking the quota ledger +
-// GetSubscription, authenticated by a Google OIDC id-token. Browsers use
-// Connect. So the policy is:
-//   - health / reflection            → pass.
-//   - quota RPCs + GetSubscription    → strip forged identity metadata;
-//     require an allow-listed OIDC caller **when configured**.
-//   - everything else (Admin*, org-admin browser RPCs) → REJECT — they have
-//     no native caller, which is what closes the escalation hole.
+// Trzy klasy wywołujących, trzy różne reguły:
+//
+//   - health / reflection            → przepuszczamy bez uwierzytelnienia.
+//   - RPC kolejki tokenów + GetSubscription → wołane przez usługi zaplecza
+//     (clinical-svc, ingestion-svc, stt-worker) z tokenem OIDC Google.
+//     Zdejmujemy podrobioną tożsamość; przy skonfigurowanym OIDC wymagamy
+//     wywołującego z allowlisty.
+//   - RPC sklepowe (docs/70 §7.2) → wołane przez APLIKACJĘ MOBILNĄ z
+//     tokenem Firebase. Tożsamość rozstrzyga identity-svc, dokładnie tak
+//     jak na ścieżce Connect. Bez identity-svc odrzucamy (fail-closed).
+//   - reszta (Admin*, RPC panelu organizacji) → ODRZUCAMY. Nie mają
+//     natywnego wywołującego, i to zamyka dziurę eskalacyjną.
+//
+// ─── Dlaczego RPC sklepowe musiały tu trafić (2026-09-04) ────────────────
+//
+// Aplikacja na iOS i Androidzie rozmawia z billing-svc po NATYWNYM gRPC
+// (`GrpcOrGrpcWebClientChannel` schodzi do gRPC-Web wyłącznie na webie).
+// Przeglądarka używa Connecta i działała, więc paywall wyglądał na
+// sprawny w testach webowych — a na telefonie każdy sklepowy RPC wracał
+// jako `Unauthenticated: … is not callable over native gRPC`. Aplikacja
+// tłumaczy każdy błąd na „brak commerce", więc ekran wyboru planu
+// pokazywał „Zakupy chwilowo niedostępne" i nie było widać, że to awaria,
+// a nie wyłączona sprzedaż. Zgłoszone z produkcji 04.09.2026 na buildzie
+// 1.0.9+59; potwierdzone gołym żądaniem HTTP/2 do Cloud Runa.
 
 // idTokenValidator matches idtoken.Validate so tests inject a fake (same
 // pattern as the HTTP scheduler auth).
@@ -54,6 +71,17 @@ var nativeInternalMethods = map[string]struct{}{
 	"/billing.v1.BillingService/GetSubscription": {},
 }
 
+// nativeUserMethods to RPC sklepowe wołane przez aplikację mobilną w
+// imieniu ZALOGOWANEGO użytkownika (token Firebase, nie OIDC usługi).
+// Świadomie wąska lista: wpuszczamy dokładnie te cztery, bo dokładnie te
+// cztery wywołuje `StorePurchaseService`.
+var nativeUserMethods = map[string]struct{}{
+	"/billing.v1.BillingService/GetBillingSurface":     {},
+	"/billing.v1.BillingService/BeginStorePurchase":    {},
+	"/billing.v1.BillingService/VerifyStorePurchase":   {},
+	"/billing.v1.BillingService/RestoreStorePurchases": {},
+}
+
 // NativeAuthInterceptor guards the native gRPC path (see file header).
 //
 // audience = billing-svc's own Cloud Run URL (what internal callers mint as
@@ -63,7 +91,16 @@ var nativeInternalMethods = map[string]struct{}{
 // with client-supplied `x-superwizor-*` metadata stripped — so this is safe
 // to deploy ahead of the infra change without breaking the pipeline, while
 // the Admin* rejection (the Critical) takes effect immediately regardless.
-func NativeAuthInterceptor(audience string, allowedSAs map[string]struct{}, validate idTokenValidator) grpc.UnaryServerInterceptor {
+//
+// identityClient uwierzytelnia RPC sklepowe tokenem Firebase. Gdy jest
+// nilem (identity-svc niepodpięty), te RPC są odrzucane — nigdy nie
+// wpuszczamy ich na podstawie metadanych, które klient może podrobić.
+func NativeAuthInterceptor(
+	audience string,
+	allowedSAs map[string]struct{},
+	validate idTokenValidator,
+	identityClient identityv1.IdentityServiceClient,
+) grpc.UnaryServerInterceptor {
 	if validate == nil {
 		validate = idtoken.Validate
 	}
@@ -72,17 +109,26 @@ func NativeAuthInterceptor(audience string, allowedSAs map[string]struct{}, vali
 		if _, ok := nativeAnonymousMethods[info.FullMethod]; ok {
 			return handler(ctx, req)
 		}
+
+		md, _ := metadata.FromIncomingContext(ctx)
+		// Always strip client-supplied trusted-identity headers so a forged
+		// x-superwizor-* can never reach resolveAdminCaller / orgIDFromContext.
+		clean := stripReservedMetadata(md)
+
+		if _, ok := nativeUserMethods[info.FullMethod]; ok {
+			next, err := authenticateStoreCaller(ctx, md, clean, identityClient)
+			if err != nil {
+				return nil, err
+			}
+			return handler(next, req)
+		}
+
 		if _, ok := nativeInternalMethods[info.FullMethod]; !ok {
 			// No backend service calls this over native gRPC. Refuse — this
 			// is what kills the Admin* escalation (#2).
 			return nil, status.Errorf(codes.Unauthenticated,
 				"%s is not callable over native gRPC", info.FullMethod)
 		}
-
-		md, _ := metadata.FromIncomingContext(ctx)
-		// Always strip client-supplied trusted-identity headers so a forged
-		// x-superwizor-* can never reach resolveAdminCaller / orgIDFromContext.
-		clean := stripReservedMetadata(md)
 
 		if oidcConfigured {
 			auths := md.Get("authorization")
@@ -102,6 +148,44 @@ func NativeAuthInterceptor(audience string, allowedSAs map[string]struct{}, vali
 		}
 		return handler(metadata.NewIncomingContext(ctx, clean), req)
 	}
+}
+
+// authenticateStoreCaller zamienia token Firebase na zaufaną tożsamość w
+// metadanych — natywny odpowiednik ConnectAuthInterceptor. Zwraca kontekst
+// z DOPISANYMI x-superwizor-*, budowany na oczyszczonych metadanych, żeby
+// wartość podana przez klienta nie mogła przebić tej z identity-svc.
+func authenticateStoreCaller(
+	ctx context.Context,
+	md, clean metadata.MD,
+	identityClient identityv1.IdentityServiceClient,
+) (context.Context, error) {
+	if identityClient == nil {
+		// Bez identity-svc nie ma jak sprawdzić tokena. Odmawiamy —
+		// wpuszczenie na podstawie samych metadanych oddałoby cudzą
+		// organizację każdemu, kto wpisze jej UUID (ta sama zasada, co
+		// FailClosedConnectInterceptor).
+		return nil, status.Error(codes.Unauthenticated,
+			"store RPCs unavailable: identity-svc not wired")
+	}
+	auths := md.Get("authorization")
+	if len(auths) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+	}
+	res, err := identityClient.ValidateToken(ctx, &identityv1.ValidateTokenRequest{
+		FirebaseIdToken: strings.TrimPrefix(auths[0], "Bearer "),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	}
+	out := clean.Copy()
+	out.Set("x-superwizor-role", protoRoleName(res.Role))
+	if res.UserId != "" {
+		out.Set("x-superwizor-user-id", res.UserId)
+	}
+	if res.OrganizationId != "" {
+		out.Set("x-superwizor-organization-id", res.OrganizationId)
+	}
+	return metadata.NewIncomingContext(ctx, out), nil
 }
 
 func saAllowed(allowed map[string]struct{}, email string) bool {

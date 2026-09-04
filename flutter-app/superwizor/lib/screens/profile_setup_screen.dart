@@ -27,12 +27,12 @@ import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/onboarding_paywall_provider.dart';
 import '../providers/signup_draft_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import 'legal_markdown_screen.dart';
-import 'plan_picker_screen.dart';
 
 const _kFont = 'Montserrat';
 
@@ -143,11 +143,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _error = null;
     });
 
-    // Nawigator i kontener zapamiętane PRZED awaitami: po domknięciu
-    // rejestracji bramka uwierzytelniania podmienia korzeń na HomeScreen i
-    // ten `State` znika, a paywall musi wejść na stos mimo to. `ref`
-    // zniszczonego widgetu rzuca — kontener żyje z aplikacją.
-    final navigator = Navigator.of(context);
+    // Kontener zapamiętany PRZED awaitami: po domknięciu rejestracji bramka
+    // uwierzytelniania podmienia korzeń i ten `State` znika, a `ref`
+    // zniszczonego widgetu rzuca. Kontener żyje z aplikacją.
     final container = ProviderScope.containerOf(context, listen: false);
     final identity = ref.read(grpcClientsProvider).identity;
     final modalityCode = ref.read(selectedModalityProvider);
@@ -194,13 +192,30 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         debugPrint('[signup] zapis zgody nieudany: $e');
       }
 
-      await user.updateDisplayName('$firstName $lastName');
+      // Nazwa w Firebase to wygoda, nie warunek konta. Wyjątek stąd
+      //    (odświeżenie tokena, brak sieci) nie może wywrócić rejestracji,
+      //    którą backend przed chwilą domknął — inaczej ląduje w `catch`
+      //    niżej i użytkownik widzi „nie udało się", mając już konto.
+      try {
+        await user.updateDisplayName('$firstName $lastName');
+      } catch (e) {
+        debugPrint('[signup] zapis displayName nieudany: $e');
+      }
 
-      // 4. Rejestracja domknięta. KOLEJNOŚĆ MA ZNACZENIE: najpierw
-      //    odświeżamy profil (bramka przestaje widzieć „brak konta"), dopiero
-      //    potem sprzątamy szkic. Odwrotnie bramka przez chwilę widziałaby
-      //    sesję bez konta i bez szkicu — czyli „Nie znaleziono konta" — a
-      //    zniszczony w tym momencie `State` nie dokończyłby reszty.
+      // 4. Rejestracja domknięta. KOLEJNOŚĆ MA ZNACZENIE.
+      //
+      //    Najpierw uzbrajamy paywall, dopiero potem ruszamy bramkę. Ekran
+      //    wyboru planu jest STANEM, nie trasą (patrz
+      //    `onboarding_paywall_provider.dart`): poprzednia wersja pchała go
+      //    przez `Navigator.push` już PO tym, jak bramka zdążyła zniszczyć
+      //    ten widget, więc każdy potknięcie po drodze gubiło paywall bez
+      //    śladu — i tak się to zachowało u Darka 04.09.2026.
+      //
+      //    Potem odświeżamy profil (bramka przestaje widzieć „brak konta"),
+      //    a szkic sprzątamy na końcu. Odwrotnie bramka przez chwilę
+      //    widziałaby sesję bez konta i bez szkicu — czyli „Nie znaleziono
+      //    konta".
+      container.read(onboardingPaywallProvider.notifier).show();
       container.invalidate(currentUserProvider);
       await container.read(signupDraftProvider.notifier).clear(user.uid);
     } catch (e) {
@@ -214,13 +229,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
-    // 5. Wybór planu — jako zwykła trasa nad ekranem głównym. Weryfikacji
-    //    e-maila tu nie ma: bramka w main.dart wymaga jej PRZED tym ekranem,
-    //    więc każdy, kto tu dotarł, ma adres potwierdzony.
-    await navigator.push(MaterialPageRoute<void>(
-      settings: const RouteSettings(name: 'PlanPickerScreen'),
-      builder: (_) => const PlanPickerScreen(onboarding: true),
-    ));
+    // Nic więcej tu nie robimy. Paywall pokaże bramka, gdy `CurrentUser`
+    // wróci z serwera; ten `State` w tym momencie już nie istnieje.
   }
 
   @override

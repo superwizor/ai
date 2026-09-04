@@ -136,6 +136,77 @@ jako zamkniecie psuje JSON, a `flutter gen-l10n` wypisuje blad i KONCZY SIE
 KODEM 0 z nieodswiezonym plikiem — sprawdzaj wynik, nie exit code.
 
 
+### Build 59: trzy bledy z pierwszego udanego zalozenia konta — 2026-09-04
+
+Darek zalozyl konto na TestFlight 1.0.9+59. Rejestracja przeszla, ale:
+(1) zaraz po potwierdzeniu maila pokazywal sie ekran glowny, a dopiero po
+kilkunastu sekundach ekran uzupelnienia profilu; (2) po uzupelnieniu profilu
+nie uruchomil sie wybor planow. Przy okazji znalazlem trzeci, powazniejszy.
+
+**1. "Jeszcze nie wiem" wygladalo jak "wszystko OK".** Bramka pytala
+`currentUserProvider` o brak konta / dezaktywacje / role klienta i kazde z
+tych pytan odpowiadalo "nie", dopoki serwer milczal — wiec wpuszczala na
+HomeScreen kogos, o kim nie wiedziala nic. Na zimnym starcie jest gorzej niz
+sie wydaje: `authStateChanges` emituje najpierw `null`, wiec provider konczy
+jako `AsyncData(null)` i `hasValue` NIE znaczy "wie". Doszedl czwarty stan
+`resolving`, z furtka offline (zapisane mapowanie firebaseUid -> users.id
+wpuszcza od razu, poprawka z 2026-07-23 zostaje nienaruszona).
+Kolejnosc ekranow wyjechala do czystej funkcji `lib/utils/auth_gate.dart` —
+wczesniej nie dalo sie jej przetestowac, bo `fb_auth.User` nie ma
+publicznego konstruktora. 11 testow, sprawdzone mutacja (stara kolejnosc =
+3 czerwone).
+
+**2. Paywall pchany z widgetu, ktory wlasnie znikal.** `_submit()` konczylo
+sie `Navigator.push` PO `invalidate(currentUserProvider)`, czyli po tym, jak
+bramka zniszczyla ten `State`. Nawigator byl zapamietany przed awaitami, ale
+`if (mounted)` w `catch` bylo juz falszem — wiec kazde potkniecie po drodze
+gubilo i blad, i paywall, bez sladu w UI. Ekran wyboru planu jest od teraz
+STANEM (`onboardingPaywallProvider`), pokazuje go bramka.
+`PlanPickerScreen._dismiss()` dziala w obu rolach: jako trasa robi `pop`,
+jako korzen gasi flage. Przy okazji `updateDisplayName` dostal wlasny
+try/catch — jego wyjatek wywracal cala rejestracje, ktora backend juz
+domknal.
+
+**3. KAZDY sklepowy RPC odbijal sie od billing-svc.** To jest przyczyna
+"Zakupy chwilowo niedostepne" na zrzucie. Aplikacja na iOS/Androidzie
+rozmawia z billing-svc po NATYWNYM gRPC (`GrpcOrGrpcWebClientChannel`
+schodzi do gRPC-Web wylacznie na webie), a `NativeAuthInterceptor` wpuszczal
+tam tylko szesc RPC kolejki tokenow. Reszta dostawala
+`Unauthenticated: ... is not callable over native gRPC`. Przegladarka uzywa
+Connecta, wiec testy webowe tego nie widzialy. Potwierdzone na produkcji
+golym zadaniem HTTP/2:
+
+    printf '\x00\x00\x00\x00\x00' > /tmp/f.bin
+    curl -s --http2-prior-knowledge -D- -o/dev/null -X POST \
+      -H 'content-type: application/grpc' -H 'te: trailers' \
+      --data-binary @/tmp/f.bin \
+      https://billing-svc-.../billing.v1.BillingService/GetBillingSurface
+
+Cztery RPC sklepowe maja teraz wlasna klase na sciezce natywnej: token
+Firebase -> `identity-svc.ValidateToken` -> `x-superwizor-*` stemplowane na
+OCZYSZCZONYCH metadanych (podrobiona organizacja nie moze przebic), brak
+identity-svc = odmowa. `Admin*` nadal odrzucane. Sprawdzone dwiema
+mutacjami.
+
+**3b. Sklep nie do rozpoznania.** `GetBillingSurface` czytal
+`x-client-platform`, w ktorym aplikacja wysyla stale `flutter-app`
+(identity-svc stempluje po nim `first_app_login_at`), wiec
+`storeProviderForPlatform` dostawal pustke i lista produktow byla pusta
+nawet z `IAP_ENABLED_IOS=true`. Prawdziwy system jedzie osobnym kluczem
+`x-client-os`, dopisanym tez do allowlisty CORS (regula z incydentu
+2026-07-24: kazdy klucz metadanych gRPC to osobny naglowek CORS).
+
+**Czego to NIE naprawia:** sprzedazy dalej nie ma. `IAP_ENABLED_IOS` =
+`false` w `app_config` i produkty w App Store Connect nie istnieja, wiec
+paywall pokaze teraz PRAWDZIWY powod ("Zakupy w aplikacji sa chwilowo
+wylaczone") zamiast generycznego. Runbook docs/70 §11.3 obowiazuje w
+calosci.
+
+**Pulapka na przyszlosc:** kazdy nowy RPC billing-svc wolany z aplikacji
+mobilnej trzeba dopisac do `nativeUserMethods`. Sam wpis w proto i
+regeneracja klientow nie wystarczy — na webie zadziala, na telefonie nie.
+
+
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
 Galaz: `feat/iap-and-discount-codes`. Wdrozenie analizy z

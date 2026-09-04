@@ -888,6 +888,8 @@
   "purchase_error_foreign_account": "Ten zakup jest przypisany do innego konta Superwizor AI. Zaloguj się na to konto albo napisz do nas.",
   "purchase_error_store_not_configured": "Zakupy w sklepie nie są jeszcze skonfigurowane. Spróbuj ponownie później.",
   "purchase_error_sandbox_not_allowed": "To konto nie ma dostępu do zakupów testowych.",
+  "plan_picker_loading_title": "Sprawdzamy dostępne plany",
+  "plan_picker_loading": "Pytamy serwer o Twoją subskrypcję. To zwykle chwila.",
   "plan_picker_unavailable_title": "Zakupy chwilowo niedostępne",
   "plan_picker_unavailable_body": "Nie możesz teraz wykupić planu w tej aplikacji. Twoje nagrania i raporty działają bez zmian.",
   "plan_picker_blocked_until": "Obowiązuje do {date}.",

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:grpc/grpc.dart';
 import 'package:grpc/grpc_or_grpcweb.dart';
 import '../generated/identity/v1/identity.pbgrpc.dart';
@@ -171,6 +172,14 @@ class AuthInterceptor extends ClientInterceptor {
     // odznaka „pierwsze logowanie w apce" w CRM i tak się nie zapala.
     if (!kIsWeb) {
       metadata['x-client-platform'] = 'flutter-app';
+      // Konkretny system, OSOBNYM kluczem. `x-client-platform` niesie stałe
+      // „flutter-app", bo identity-svc stempluje po nim first_app_login_at —
+      // nie da się z niego odczytać, czy stoimy w App Storze, czy w Google
+      // Play. billing-svc potrzebuje tego do wyboru sklepu; bez tego
+      // GetBillingSurface nie zwracał ani jednego produktu i paywall na
+      // telefonie był pusty (naprawione 04.09.2026).
+      final os = clientOperatingSystem();
+      if (os.isNotEmpty) metadata['x-client-os'] = os;
     }
     final user = fb_auth.FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -179,5 +188,25 @@ class AuthInterceptor extends ClientInterceptor {
         metadata['authorization'] = 'Bearer $token';
       }
     }
+  }
+}
+
+/// System, na którym stoi klient, w postaci, którą rozumie billing-svc
+/// (`platformFromMetadata` → `storeProviderForPlatform`).
+///
+/// macOS zwraca „IOS" celowo i zgodnie z `currentStorePlatform()` w
+/// `billing_surface_provider.dart`: build na Maca to Mac Catalyst nad tym
+/// samym App Storem, więc rozdzielanie ich dałoby dwie prawdy o jednym
+/// sklepie. Puste na webie i wszędzie indziej — tam sklepu nie ma.
+String clientOperatingSystem() {
+  if (kIsWeb) return '';
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.iOS:
+    case TargetPlatform.macOS:
+      return 'IOS';
+    case TargetPlatform.android:
+      return 'ANDROID';
+    default:
+      return '';
   }
 }

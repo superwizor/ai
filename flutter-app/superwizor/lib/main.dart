@@ -30,12 +30,15 @@ import 'client/client_home_screen.dart';
 import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
 import 'providers/billing_surface_provider.dart';
 import 'providers/email_verification_provider.dart';
+import 'providers/onboarding_paywall_provider.dart';
 import 'providers/signup_draft_provider.dart';
 import 'screens/account_not_found_screen.dart';
 import 'screens/deactivated_account_screen.dart';
+import 'screens/plan_picker_screen.dart';
 import 'screens/profile_setup_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'utils/account_status.dart';
+import 'utils/auth_gate.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
@@ -397,6 +400,34 @@ class _AuthGate extends ConsumerWidget {
             ) ??
         false;
 
+    // Czy w ogóle WIEMY, kim jest ten użytkownik po naszej stronie.
+    //
+    // `currentUserProvider` przechodzi przez trzy stany, a bramka do
+    // 04.09.2026 rozróżniała tylko dwa. Na zimnym starcie `authStateChanges`
+    // emituje najpierw `null` (sesja jeszcze się nie odtworzyła), więc
+    // provider kończy jako `AsyncData(null)` i dopiero potem rusza z
+    // zapytaniem o prawdziwego użytkownika. W tym oknie `notRegistered`,
+    // `deactivated` i `isClient` są fałszem — czyli bramka wpuszczała na
+    // ekran główny KOGOŚ, o kim nie wiedziała jeszcze nic. Świeżo
+    // zarejestrowany terapeuta widział wtedy „Witaj, z kim dzisiaj
+    // pracujemy?" z kręcącym się kółkiem przez kilkanaście sekund, zanim
+    // pojawił się ekran uzupełnienia profilu (zgłoszone z produkcji na
+    // buildzie 1.0.9+59).
+    final userAsync = ref.watch(currentUserProvider);
+    final accountUnresolved = userAsync.value == null && !userAsync.hasError;
+
+    // Furtka offline (poprawka z 2026-07-23): kto zalogował się kiedyś na
+    // tym urządzeniu, ma zapisane mapowanie firebaseUid → users.id i wchodzi
+    // do aplikacji od razu, z pamięci podręcznej — bez czekania na sieć,
+    // której w trybie samolotowym nie ma. Blokada niżej dotyczy więc
+    // wyłącznie pierwszego logowania na urządzeniu, czyli dokładnie tego
+    // przypadku, w którym ekran główny i tak nie miałby co pokazać.
+    final knownBackendUserId = ref.watch(backendUserIdProvider).value;
+
+    // Paywall powitalny (docs/70 S1 krok 4) — patrz komentarz w
+    // `onboarding_paywall_provider.dart`: to stan, nie `Navigator.push`.
+    final showOnboardingPaywall = ref.watch(onboardingPaywallProvider);
+
     final authState = ref.watch(firebaseUserProvider);
 
     // Sesja Firebase bez wiersza w `users` ma dwa różne znaczenia. Gdy
@@ -418,23 +449,67 @@ class _AuthGate extends ConsumerWidget {
 
     return authState.when(
       data: (user) {
-        if (user == null) return const LoginScreen();
-        if (!emailVerified) return const VerifyEmailScreen();
-        if (notRegistered) {
-          if (signupDraft != null) {
+        // Kolejność ekranów mieszka w `utils/auth_gate.dart` — czysta
+        // funkcja, żeby dało się ją przetestować bez `fb_auth.User`,
+        // którego nie da się sfałszować.
+        switch (authGateDestination(
+          signedIn: user != null,
+          emailVerified: emailVerified,
+          accountUnresolved: accountUnresolved,
+          hasKnownBackendUserId: knownBackendUserId != null,
+          notRegistered: notRegistered,
+          hasSignupDraft: signupDraft != null,
+          deactivated: deactivated,
+          isClient: isClient,
+          showOnboardingPaywall: showOnboardingPaywall,
+        )) {
+          case AuthGateDestination.login:
+            return const LoginScreen();
+          case AuthGateDestination.verifyEmail:
+            return const VerifyEmailScreen();
+          case AuthGateDestination.resolving:
+            return const _ResolvingAccountScreen();
+          case AuthGateDestination.profileSetup:
             return ProfileSetupScreen(draft: signupDraft);
-          }
-          return const AccountNotFoundScreen();
+          case AuthGateDestination.accountNotFound:
+            return const AccountNotFoundScreen();
+          case AuthGateDestination.deactivated:
+            return DeactivatedAccountScreen(deleted: deleted);
+          case AuthGateDestination.clientHome:
+            return const ClientHomeScreen();
+          case AuthGateDestination.onboardingPaywall:
+            return const PlanPickerScreen(onboarding: true);
+          case AuthGateDestination.app:
+            return const _LockGate();
         }
-        if (deactivated) return DeactivatedAccountScreen(deleted: deleted);
-        if (isClient) return const ClientHomeScreen();
-        return const _LockGate();
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (e, st) => Scaffold(
         body: Center(child: Text('Auth error: $e')),
+      ),
+    );
+  }
+}
+
+/// Ekran na czas rozstrzygania, kim jest zalogowany użytkownik.
+///
+/// Świadomie w barwach aplikacji, a nie gołe kółko na białym tle: to jest
+/// pierwsza rzecz, jaką widzi ktoś, kto właśnie potwierdził adres e-mail, i
+/// ma wyglądać jak ładowanie, a nie jak pusty ekran główny.
+class _ResolvingAccountScreen extends StatelessWidget {
+  const _ResolvingAccountScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: EuphireColors.nocturne,
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: EuphireColors.backgroundGradient),
+        child: Center(
+          child: CircularProgressIndicator(color: EuphireColors.ember),
+        ),
       ),
     );
   }

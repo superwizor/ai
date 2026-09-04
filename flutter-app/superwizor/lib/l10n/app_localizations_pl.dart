@@ -1941,6 +1941,13 @@ class AppLocalizationsPl extends AppLocalizations {
       'To konto nie ma dostępu do zakupów testowych.';
 
   @override
+  String get plan_picker_loading_title => 'Sprawdzamy dostępne plany';
+
+  @override
+  String get plan_picker_loading =>
+      'Pytamy serwer o Twoją subskrypcję. To zwykle chwila.';
+
+  @override
   String get plan_picker_unavailable_title => 'Zakupy chwilowo niedostępne';
 
   @override

@@ -887,6 +887,8 @@
   "purchase_error_foreign_account": "This purchase belongs to a different Superwizor AI account. Sign in to that account or contact us.",
   "purchase_error_store_not_configured": "Store purchases are not configured yet. Please try again later.",
   "purchase_error_sandbox_not_allowed": "This account cannot make sandbox purchases.",
+  "plan_picker_loading_title": "Checking available plans",
+  "plan_picker_loading": "We are asking the server about your subscription. This usually takes a moment.",
   "plan_picker_unavailable_title": "Purchases are temporarily unavailable",
   "plan_picker_unavailable_body": "You cannot buy a plan in this app right now. Your recordings and reports keep working as usual.",
   "plan_picker_blocked_until": "Valid until {date}.",

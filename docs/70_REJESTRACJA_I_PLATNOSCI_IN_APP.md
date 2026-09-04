@@ -698,6 +698,57 @@ UPDATE app_config SET value = 'true' WHERE key = 'IAP_ENABLED_ANDROID' AND organ
 Zmiana działa w 30 s (cache `pkg/appconfig`), bez deployu i bez wydania
 aplikacji. Tą samą drogą wyłącza się sprzedaż, gdyby coś poszło nie tak.
 
+### 11.3b Poprawki po pierwszym teście z produkcji (04.09.2026)
+
+Test na buildzie TestFlight 1.0.9+59 wyłapał trzy rzeczy. Dwie zgłoszone,
+jedna znaleziona przy okazji i najpoważniejsza.
+
+**1. Ekran główny przed rozstrzygnięciem konta.** Bramka startowa pytała
+`currentUserProvider` o trzy rzeczy (brak konta / dezaktywacja / rola
+klienta) i każda z nich odpowiadała „nie", dopóki serwer milczał — więc
+„jeszcze nie wiem" wyglądało jak „wszystko w porządku". Świeżo
+zarejestrowany terapeuta oglądał „Witaj, z kim dzisiaj pracujemy?" z
+kręcącym się kółkiem przez kilkanaście sekund, zanim pojawił się ekran
+uzupełnienia profilu. Doszedł czwarty stan (`resolving`) z furtką dla pracy
+offline: kto ma zapisane mapowanie `firebaseUid → users.id` z poprzedniego
+logowania, wchodzi od razu z pamięci podręcznej. Kolejność ekranów mieszka
+teraz w czystej funkcji `lib/utils/auth_gate.dart` — wcześniej nie dało się
+jej przetestować, bo `fb_auth.User` nie ma publicznego konstruktora.
+
+**2. Paywall powitalny gubiony po drodze.** `ProfileSetupScreen._submit()`
+kończyło się `Navigator.push` wykonywanym już PO tym, jak
+`invalidate(currentUserProvider)` przestawił bramkę i zniszczył ten widget.
+Nawigator był zapamiętany przed awaitami, ale `if (mounted)` w `catch` było
+już fałszem, więc każde potknięcie po drodze gubiło i błąd, i paywall.
+Nawigacja z widgetu, który znika, jest z definicji wyścigiem — ekran wyboru
+planu jest od teraz STANEM (`onboardingPaywallProvider`), a pokazuje go
+bramka. `PlanPickerScreen` umie się zamknąć w obu rolach: jako trasa robi
+`pop`, jako korzeń gasi flagę.
+
+**3. Każdy sklepowy RPC odbijał się od billing-svc.** To jest przyczyna
+„Zakupy chwilowo niedostępne" na zrzucie z 09:09. Aplikacja na iOS i
+Androidzie rozmawia z billing-svc po NATYWNYM gRPC (`GrpcOrGrpcWebClientChannel`
+schodzi do gRPC-Web wyłącznie na webie), a `NativeAuthInterceptor` wpuszczał
+tam wyłącznie sześć RPC kolejki tokenów. Reszta dostawała
+`Unauthenticated: … is not callable over native gRPC` — potwierdzone gołym
+żądaniem HTTP/2 do Cloud Runa. Przeglądarka używa Connecta, więc testy
+webowe tego nie widziały. Cztery RPC sklepowe mają teraz własną klasę na
+ścieżce natywnej: token Firebase, tożsamość z identity-svc, podrobione
+`x-superwizor-*` zdejmowane przed handlerem, brak identity-svc = odmowa.
+`Admin*` nadal odrzucane.
+
+**3b. Sklep nie do rozpoznania.** `GetBillingSurface` czytał
+`x-client-platform`, w którym aplikacja wysyła stałe `flutter-app`
+(identity-svc stempluje po nim `first_app_login_at`). `storeProviderForPlatform`
+dostawał więc pustkę i lista produktów wychodziła pusta nawet z włączoną
+flagą `IAP_ENABLED_IOS`. Prawdziwy system jedzie od teraz osobnym kluczem
+`x-client-os` (`IOS` / `ANDROID`), dopisanym też do allowlisty CORS.
+
+Po tych poprawkach paywall pokazuje **prawdziwy** powód. Przy dzisiejszej
+konfiguracji będzie to „Zakupy w aplikacji są chwilowo wyłączone", bo
+`IAP_ENABLED_IOS` = `false` i produkty w App Store Connect nie istnieją —
+runbook 11.3 nadal obowiązuje w całości.
+
 ### 11.4 Weryfikacja po wdrożeniu
 
 | Co | Jak |
@@ -708,3 +759,4 @@ aplikacji. Tą samą drogą wyłącza się sprzedaż, gdyby coś poszło nie tak
 | Zakup nadał uprawnienie | `SELECT provider, status, store_product_id, store_environment, current_period_end FROM subscriptions WHERE organization_id = '<org>';` |
 | Cron uzgadniania działa | `gcloud scheduler jobs run billing-store-reconcile --location=europe-central2` + odpowiedź `{"checked":N,...}` |
 | Kod rabatowy liczy użycia | `SELECT code, redemptions_count, max_redemptions FROM discount_codes;` |
+| RPC sklepowe żyją na ścieżce natywnej | `printf '\x00\x00\x00\x00\x00' > /tmp/f.bin && curl -s --http2-prior-knowledge -D- -o/dev/null -X POST -H 'content-type: application/grpc' -H 'te: trailers' --data-binary @/tmp/f.bin https://billing-svc-344724821207.europe-central2.run.app/billing.v1.BillingService/GetBillingSurface` — `grpc-message` MUSI mówić o braku nagłówka autoryzacji, a NIE „is not callable over native gRPC" |
