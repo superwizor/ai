@@ -66,6 +66,35 @@ void main() {
     test('rozstrzygnięte konto idzie dalej normalnie', () {
       expect(gate(), AuthGateDestination.app);
     });
+
+    test('szkic rejestracji nie czeka na serwer', () {
+      // Drugie zgłoszenie z 04.09.2026. Pierwsza poprawka usunęła zły
+      // ekran w tym oknie (ekran główny zamiast ładowania), ale nie samo
+      // czekanie: użytkownik dalej patrzył kilkanaście sekund na kółko,
+      // bo `identity-svc` nie ma `--min-instances` i płacił za zimny
+      // start. A pytanie było zbędne — szkic rejestracji jest naszym
+      // własnym dowodem, że konta jeszcze nie ma.
+      expect(
+        gate(accountUnresolved: true, hasSignupDraft: true),
+        AuthGateDestination.profileSetup,
+      );
+    });
+
+    test('bez szkicu nadal czekamy — cudzej tożsamości nie zgadujemy', () {
+      // Sesja bez szkicu to albo zaproszenie, albo cudze konto Google.
+      // Tu odpowiedź serwera jest jedynym źródłem prawdy.
+      expect(
+        gate(accountUnresolved: true, hasSignupDraft: false),
+        AuthGateDestination.resolving,
+      );
+    });
+
+    test('niepotwierdzony adres wyprzedza nawet szkic', () {
+      expect(
+        gate(emailVerified: false, accountUnresolved: true, hasSignupDraft: true),
+        AuthGateDestination.verifyEmail,
+      );
+    });
   });
 
   group('weryfikacja adresu jest blokująca', () {

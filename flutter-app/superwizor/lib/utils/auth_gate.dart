@@ -71,8 +71,19 @@ AuthGateDestination authGateDestination({
 }) {
   if (!signedIn) return AuthGateDestination.login;
   if (!emailVerified) return AuthGateDestination.verifyEmail;
-  if (accountUnresolved && !hasKnownBackendUserId) {
-    return AuthGateDestination.resolving;
+  if (accountUnresolved) {
+    // Szkic rejestracji to nasz WŁASNY dowód, że ta osoba przed chwilą
+    // przeszła „Załóż konto" i konta jeszcze nie ma. Nie ma więc o co
+    // pytać serwera — ekran profilu należy się jej natychmiast.
+    //
+    // Bez tego użytkownik płacił za zimny start identity-svc: usługa nie
+    // ma `--min-instances`, więc pierwsze wejście po dłuższej przerwie
+    // czekało kilkanaście sekund na `getUserByFirebaseUID`, którego
+    // odpowiedź i tak była z góry znana („nie ma takiego konta").
+    // Zgłoszone 04.09.2026, drugi raz — poprzednia poprawka usunęła zły
+    // ekran w tym oknie, ale nie samo czekanie.
+    if (hasSignupDraft) return AuthGateDestination.profileSetup;
+    if (!hasKnownBackendUserId) return AuthGateDestination.resolving;
   }
   if (notRegistered) {
     return hasSignupDraft
