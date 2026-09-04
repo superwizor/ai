@@ -1,0 +1,45 @@
+Sonda natywnego gRPC do billing-svc na PRODUKCJI (Cloud Run, europe-central2).
+Cel: rozstrzygnac, czy "Zakupy chwilowo niedostepne" w aplikacji to wylaczona
+sprzedaz, czy awaria. Aplikacja na iOS/Androidzie uzywa tego wlasnie
+transportu (application/grpc po HTTP/2); przegladarka uzywa Connecta.
+
+Zadanie (5 zerowych bajtow = poprawna pusta ramka gRPC, bez tokena):
+
+  printf '\x00\x00\x00\x00\x00' > /tmp/f.bin
+  curl -s --http2-prior-knowledge -D- -o/dev/null -X POST \
+    -H 'content-type: application/grpc' -H 'te: trailers' \
+    --data-binary @/tmp/f.bin \
+    https://billing-svc-344724821207.europe-central2.run.app/billing.v1.BillingService/<Metoda>
+
+Uwaga na pulapke: w zsh `$'\x00...'` gubi bajty NUL, wiec ramke trzeba podac
+z pliku. Podanie jej wprost dawalo "EOF" i wygladalo jak inny blad.
+
+--- PRZED naprawa (rewizja sprzed commita 40042070), 2026-09-04 07:25 UTC ---
+
+GetBillingSurface        grpc-status: 16
+                         grpc-message: /billing.v1.BillingService/GetBillingSurface
+                                       is not callable over native gRPC
+
+Czyli: NativeAuthInterceptor odrzucal metode z powodu allowlisty, jeszcze
+zanim ktokolwiek spytal o token. Aplikacja tlumaczy kazdy blad billingu na
+"brak commerce", wiec awaria wygladala jak wylaczona sprzedaz.
+
+--- PO naprawie (commit 40042070, CI/CD Pipeline: success), 2026-09-04 ---
+
+GetBillingSurface        grpc-message: missing authorization header  grpc-status: 16
+BeginStorePurchase       grpc-message: missing authorization header  grpc-status: 16
+VerifyStorePurchase      grpc-message: missing authorization header  grpc-status: 16
+RestoreStorePurchases    grpc-message: missing authorization header  grpc-status: 16
+AdminChangePlan          grpc-message: /billing.v1.BillingService/AdminChangePlan
+                                       is not callable over native gRPC  grpc-status: 16
+ReserveCredit            grpc-message: session_id required  grpc-status: 3
+
+Trzy rzeczy naraz, i wszystkie trzy sa istotne:
+
+ 1. Cztery RPC sklepowe doszly do uwierzytelniania — pytaja o token zamiast
+    odbijac sie od allowlisty. To jest naprawa.
+ 2. AdminChangePlan nadal odrzucany. Dziura eskalacyjna (security #2), ktora
+    zamknieto w lipcu, zostaje zamknieta — wpuszczenie czterech metod nie
+    otworzylo niczego wiecej.
+ 3. ReserveCredit odpowiada bledem walidacji, nie autoryzacji. Sciezka
+    kolejki tokenow (clinical-svc, ingestion-svc, stt-worker) jest nietknieta.

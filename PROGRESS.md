@@ -206,6 +206,17 @@ calosci.
 mobilnej trzeba dopisac do `nativeUserMethods`. Sam wpis w proto i
 regeneracja klientow nie wystarczy — na webie zadziala, na telefonie nie.
 
+**Wdrozenie:** commit 40042070 na main, CI/CD Pipeline success — billing-svc
+wdrozone. Sonda produkcyjna PRZED i PO w
+`evidence/paywall-natywne-grpc/sonda-natywnego-grpc.log`: cztery RPC sklepowe
+pytaja teraz o token zamiast odbijac sie od allowlisty, `AdminChangePlan`
+nadal odrzucany (dziura eskalacyjna zostaje zamknieta), `ReserveCredit`
+odpowiada bledem walidacji, wiec sciezka kolejki tokenow nietknieta.
+
+**Wydanie:** TestFlight 1.0.9+60, UPLOAD SUCCEEDED 2026-09-04 (Delivery UUID
+a6420c59-a1a1-42cb-b7b4-a80424e8fb27), commit 2d63d11b. Stan przetwarzania
+przez API ASC, nie przez log altoola.
+
 
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
