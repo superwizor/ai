@@ -3448,13 +3448,13 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get subscription_tier_clinic => 'Rozkwit';
+  String get subscription_tier_clinic => 'Klinika';
 
   @override
-  String get subscription_tier_pro => 'Równowaga';
+  String get subscription_tier_pro => 'Rozkwit';
 
   @override
-  String get subscription_tier_solo => 'Poznanie';
+  String get subscription_tier_solo => 'Równowaga';
 
   @override
   String get subscription_tier_trial => 'Wersja próbna';

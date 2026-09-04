@@ -3422,13 +3422,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get subscription_tier_clinic => 'Flourishing';
+  String get subscription_tier_clinic => 'Clinic';
 
   @override
-  String get subscription_tier_pro => 'Balance';
+  String get subscription_tier_pro => 'Flourishing';
 
   @override
-  String get subscription_tier_solo => 'Discovery';
+  String get subscription_tier_solo => 'Balance';
 
   @override
   String get subscription_tier_trial => 'Trial';

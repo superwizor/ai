@@ -1469,9 +1469,9 @@
       }
     }
   },
-  "subscription_tier_clinic": "Flourishing",
-  "subscription_tier_pro": "Balance",
-  "subscription_tier_solo": "Discovery",
+  "subscription_tier_clinic": "Clinic",
+  "subscription_tier_pro": "Flourishing",
+  "subscription_tier_solo": "Balance",
   "subscription_tier_trial": "Trial",
   "suggestion_banner_applied_toast": "Changed, future reports will reflect this.",
   "suggestion_banner_apply": "Apply",

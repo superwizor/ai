@@ -1476,9 +1476,9 @@
       }
     }
   },
-  "subscription_tier_clinic": "Rozkwit",
-  "subscription_tier_pro": "Równowaga",
-  "subscription_tier_solo": "Poznanie",
+  "subscription_tier_clinic": "Klinika",
+  "subscription_tier_pro": "Rozkwit",
+  "subscription_tier_solo": "Równowaga",
   "subscription_tier_trial": "Wersja próbna",
   "suggestion_banner_applied_toast": "Zmieniono, kolejne raporty uwzględnią to ustawienie.",
   "suggestion_banner_apply": "Zmień",
