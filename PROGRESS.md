@@ -217,6 +217,36 @@ odpowiada bledem walidacji, wiec sciezka kolejki tokenow nietknieta.
 a6420c59-a1a1-42cb-b7b4-a80424e8fb27), commit 2d63d11b. Stan przetwarzania
 przez API ASC, nie przez log altoola.
 
+**Runda 2 (to samo zgloszenie, ten sam dzien).** Darek: "przez kilkanascie
+sekund jest ekran zaladowany i dopiero potem Twoj profil". Zrzut pokazywal
+ekran GLOWNY (naglowek + FAB), czyli stary build — ale skarga byla trafna
+niezaleznie od tego: poprawka z rundy 1 zamieniala ZLY EKRAN na poprawny
+ekran ladowania i nie ruszala samego CZEKANIA.
+
+Przyczyna czekania: `identity-svc` nie ma `--min-instances` (w ci.yml ma je
+wylacznie ingestion-svc), wiec schodzi do zera i pierwsze wejscie po przerwie
+placi za zimny start. Zmierzone tego dnia na rozgrzanej usludze: **0,14 s**
+przez natywne gRPC. Czyli kilkanascie sekund to samo budzenie kontenera.
+
+Naprawa bez kosztu infrastruktury: gdy istnieje szkic rejestracji, bramka
+NIE pyta serwera. Szkic jest naszym wlasnym dowodem, ze konta jeszcze nie ma
+— odpowiedz byla z gory znana. Szkic wraca z SharedPreferences w
+milisekundach, wiec okno oczekiwania znika. Bez szkicu nadal czekamy: sesja
+bez szkicu to zaproszenie albo cudza tozsamosc Google i tam serwer jest
+jedynym zrodlem prawdy (docs/39).
+
+Otwarte: `--min-instances 1` na identity-svc zdjeloby zimne starty ze
+WSZYSTKICH sciezek (logowanie, pierwsze otwarcie dnia), kosztem jednej
+rozgrzanej instancji. Decyzja kosztowa, nie podjeta.
+
+**Wydanie:** TestFlight 1.0.9+61, UPLOAD SUCCEEDED 2026-09-04 (Delivery UUID
+3a38b752-dda6-41ef-b9f2-4f2e2fd34d5a), commit 4d5f894d.
+
+**Do zapamietania przy nastepnym zgloszeniu z terenu:** numer builda jest w
+aplikacji, w menu na dole ("Superwizor AI v1.0.9+61", tapniecie kopiuje).
+Pytaj o niego ZANIM zaczniesz szukac bledu — zrzut z rundy 2 pokazywal
+zachowanie sprzed poprawki, ktora byla juz wydana.
+
 
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
