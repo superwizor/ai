@@ -483,9 +483,10 @@ class _AuthGate extends ConsumerWidget {
             return const _LockGate();
         }
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      // Pierwsza klatka zimnego startu — ten sam ekran, co przy
+      // rozstrzyganiu konta. Gołe kółko na białym tle błyskało jasnym
+      // prostokątem przed ciemnym motywem aplikacji.
+      loading: () => const _ResolvingAccountScreen(),
       error: (e, st) => Scaffold(
         body: Center(child: Text('Auth error: $e')),
       ),
