@@ -283,6 +283,11 @@ galezia `error`, tam skutek to chwilowy spinner, nie zly ekran).
 **POTWIERDZONE W TERENIE 2026-09-04 (Darek):** „ekran profilu od razu".
 Trzy rundy jednego objawu zamkniete. Poprawka poszla prosto na main
 (bez galezi) — nic do mergowania, main == origin/main.
+Pulapka narzedziowa: poller stanu ASC (`/tmp/asc_build_state.py`) zglosil
+„build 62 NIE POJAWIL SIE w 30 min", bo /tmp zostal wyczyszczony w trakcie
+i skrypt zniknal — petla z `2>/dev/null` milczala do timeoutu. Skrypt
+trzymac w scratchpadzie sesji albo w KOMENDY/, a w pollerze rozrozniac
+„brak builda" od „brak skryptu".
 
 
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
