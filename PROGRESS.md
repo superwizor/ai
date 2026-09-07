@@ -278,6 +278,9 @@ klasyfikuje blad providera przez `maybeWhen(error:)`, ma ten sam problem —
 przejrzane: poza bramka tylko home_screen.dart:205 (`patientsAsync.when` z
 galezia `error`, tam skutek to chwilowy spinner, nie zly ekran).
 
+**Wydanie:** TestFlight 1.0.9+62, UPLOAD SUCCEEDED 2026-09-04 (Delivery UUID
+8bf2426d-66c0-4d2b-8d7d-39c24f66da93), commit ef53402b + 1a2e81cc.
+
 
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
