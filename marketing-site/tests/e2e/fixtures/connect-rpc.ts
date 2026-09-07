@@ -130,6 +130,27 @@ export async function mockCheckEmailExists(
  * mocka żaden test przechodzący przez wizard nie dociera do kroku 5;
  * dokładnie tak zawodziło osiem przypadków z register-therapist.
  */
+/// Sonda unikalności PADA (sieć / identity-svc). Rejestrowane w teście PO
+/// mockach z beforeEach — Playwright dopasowuje trasy od ostatnio dodanej,
+/// więc abort wygrywa z fulfill.
+export async function abortCheckEmailExists(page: Page) {
+  await page.route(
+    /identity\.v1\.IdentityService\/CheckEmailExists/,
+    async (route) => {
+      await route.abort("connectionrefused");
+    },
+  );
+}
+
+export async function abortCheckPhoneNumberExists(page: Page) {
+  await page.route(
+    /identity\.v1\.IdentityService\/CheckPhoneNumberExists/,
+    async (route) => {
+      await route.abort("connectionrefused");
+    },
+  );
+}
+
 export async function mockCheckPhoneNumberExists(
   page: Page,
   exists = false,

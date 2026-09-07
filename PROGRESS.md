@@ -136,6 +136,31 @@ jako zamkniecie psuje JSON, a `flutter gen-l10n` wypisuje blad i KONCZY SIE
 KODEM 0 z nieodswiezonym plikiem — sprawdzaj wynik, nie exit code.
 
 
+### Kreator rejestracji (web): sondy unikalnosci fail-open — 2026-09-04
+
+`TherapistEmailForm.handleNext`, kroki 3 i 4: wyjatek z `checkEmailExists` /
+`checkPhoneNumberExists` ustawial „blad sieci" i NIE przechodzil dalej —
+chwilowa usterka sieci albo niedostepny identity-svc = „nie da sie zalozyc
+konta", bez drogi naprzod. Sonda jest wygoda (wczesniejszy komunikat), nie
+bramka: unikalnosc egzekwuje CreateUser na koncu.
+
+Zmiana: przy wyjatku przepuszczamy dalej; twarda blokada zostaje WYLACZNIE
+dla udanego sprawdzenia z `exists: true`. Ta sama zasada co
+`upload_queue_runner.dart` (sonda e-maila) i `reserveCreditOrBlock` w
+ingestion-svc. Komentarz „dlaczego" w kodzie.
+
+Testy: `register-therapist.spec.ts` +2 (abort sond -> kreator dochodzi do
+CreateUser; exists=true -> nadal krok 3, CreateUser nie leci). Fixtures
+`abortCheckEmailExists` / `abortCheckPhoneNumberExists` w connect-rpc.ts.
+Pelny spec 23/24 (1 zastana flaka, 6/6 w izolacji), mutacja: 2 czerwone.
+Pelne test:all: typecheck czysty, 137/137 jednostkowych, E2E 264 passed /
+2 failed / 14 skipped — oba padniecia (admin-analytics, account-settings, tylko
+pl) 8/8 w izolacji = flaki; 14 skipped = brak lokalnego billing-svc.
+Dowody: `evidence/register-fail-open/e2e.log`.
+
+Decyzja produktowa (fail-open) przyjeta z tresci zadania; latwa do cofniecia
+— dwa bloki catch.
+
 ### Build 59: trzy bledy z pierwszego udanego zalozenia konta — 2026-09-04
 
 Darek zalozyl konto na TestFlight 1.0.9+59. Rejestracja przeszla, ale:

@@ -323,8 +323,16 @@ export function TherapistEmailForm() {
           setDirection(1);
           setStep(4);
         } catch (e) {
-          console.error("Failed to check email exists:", e);
-          setServerError(tErr("networkError"));
+          // Nie umiemy sprawdzić (brak sieci, identity-svc niedostępny) →
+          // przepuszczamy. Prawdziwą bramką jest i tak CreateUser na
+          // końcu (zajęty e-mail = błąd serwera); to sprawdzenie daje tylko
+          // wcześniejszy, ładniejszy komunikat. Blokowanie kroku na
+          // podstawie nieudanej sondy zamieniałoby usterkę sieci w „nie da
+          // się założyć konta" — ta sama zasada co w upload_queue_runner
+          // (sonda e-maila) i reserveCreditOrBlock w ingestion-svc.
+          console.warn("CheckEmailExists unavailable, continuing:", e);
+          setDirection(1);
+          setStep(4);
         } finally {
           setCheckingEmail(false);
         }
@@ -348,8 +356,12 @@ export function TherapistEmailForm() {
           setDirection(1);
           setStep(5);
         } catch (e) {
-          console.error("Failed to check phone number exists:", e);
-          setServerError(tErr("networkError"));
+          // Jak wyżej: nieudana sonda nie jest dowodem kolizji. Twarda
+          // blokada zostaje wyłącznie dla udanego sprawdzenia z
+          // `exists: true` (gałąź powyżej).
+          console.warn("CheckPhoneNumberExists unavailable, continuing:", e);
+          setDirection(1);
+          setStep(5);
         } finally {
           setCheckingPhone(false);
         }

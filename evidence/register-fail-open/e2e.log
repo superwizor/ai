@@ -1,0 +1,49 @@
+Fail-open sond unikalnosci w kreatorze rejestracji terapeuty — dowody, 2026-09-04
+Plik: marketing-site/src/components/register/TherapistEmailForm.tsx, handleNext (kroki 3 i 4)
+
+1) PELNY SPEC register-therapist.spec.ts, czysty .next, --workers=2 (obie lokalizacje):
+  ✓   7 [chromium-pl] › tests/e2e/register-therapist.spec.ts:222:7 › Therapist Registration › padnięte sprawdzenie unikalności NIE blokuje kreatora (fail-open) (4.8s)
+  ✓   8 [chromium-pl] › tests/e2e/register-therapist.spec.ts:247:7 › Therapist Registration › udane sprawdzenie z exists=true nadal blokuje (fail-open ≠ brak kontroli) (2.6s)
+  ✘   5 [chromium-pl] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (30.0s)
+  ✓  19 [chromium-en] › tests/e2e/register-therapist.spec.ts:222:7 › Therapist Registration › padnięte sprawdzenie unikalności NIE blokuje kreatora (fail-open) (4.9s)
+  ✓  20 [chromium-en] › tests/e2e/register-therapist.spec.ts:247:7 › Therapist Registration › udane sprawdzenie z exists=true nadal blokuje (fail-open ≠ brak kontroli) (2.7s)
+  1 failed
+  23 passed (1.1m)
+[ELIFECYCLE] Command failed with exit code 1.
+
+   Jedyne padniecie: zastany test 'Firebase rejects email-already-in-use' tylko w pl,
+   timeout locator.waitFor 30 s — nie dotyka zmienionych blokow catch (sondy zamockowane exists:false).
+
+2) TEN SAM TEST x3 na lokalizacje, w izolacji (klasyfikacja flaka vs regresja):
+  ✓  1 [chromium-pl] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (9.0s)
+  ✓  2 [chromium-pl] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (9.0s)
+  ✓  4 [chromium-pl] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (5.2s)
+  ✓  3 [chromium-en] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (5.2s)
+  ✓  5 [chromium-en] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (5.2s)
+  ✓  6 [chromium-en] › tests/e2e/register-therapist.spec.ts:168:7 › Therapist Registration › shows server error when Firebase rejects email-already-in-use (5.2s)
+  6 passed (25.5s)
+
+3) MUTACJA — stary catch (setServerError + brak przejscia), tylko testy -g fail-open:
+  ✓  1 [chromium-pl] › tests/e2e/register-therapist.spec.ts:247:7 › Therapist Registration › udane sprawdzenie z exists=true nadal blokuje (fail-open ≠ brak kontroli) (5.7s)
+  ✘  2 [chromium-pl] › tests/e2e/register-therapist.spec.ts:222:7 › Therapist Registration › padnięte sprawdzenie unikalności NIE blokuje kreatora (fail-open) (30.0s)
+  ✓  4 [chromium-en] › tests/e2e/register-therapist.spec.ts:247:7 › Therapist Registration › udane sprawdzenie z exists=true nadal blokuje (fail-open ≠ brak kontroli) (2.6s)
+  ✘  3 [chromium-en] › tests/e2e/register-therapist.spec.ts:222:7 › Therapist Registration › padnięte sprawdzenie unikalności NIE blokuje kreatora (fail-open) (30.0s)
+  2 failed
+  2 passed (42.2s)
+[ELIFECYCLE] Command failed with exit code 1.
+
+   Wniosek: nowy test 'NIE blokuje' oblewa bez poprawki (pl i en), a 'exists=true nadal blokuje'
+   przechodzi z poprawka i bez — pilnuje inwariantu, nie implementacji.
+
+4) PELNA SUITA E2E (pnpm test:e2e, czysty .next, --workers=2):
+  2 failed
+  14 skipped
+  264 passed (3.7m)
+   14 skipped = przypadki bramkowane lokalnym billing-svc (fixtures/billing-svc.ts), swiadomy skip.
+   2 failed, oba tylko pl: admin-analytics 'AI Quality tab', account-settings 'biography field is absent'.
+
+5) TE DWA x2 na lokalizacje, w izolacji:
+  8 passed (30.1s)
+   Wniosek: flaki pod obciazeniem (account-settings jest wymieniony w AGENTS.md), zadna nie dotyka rejestracji.
+
+6) Jednostkowe (pnpm test / vitest): 14 plikow, 137 testow, wszystkie przeszly. Typecheck (tsc --noEmit): czysty.

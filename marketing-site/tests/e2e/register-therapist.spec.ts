@@ -17,6 +17,8 @@ import {
   mockListModalities,
   mockCheckEmailExists,
   mockCheckPhoneNumberExists,
+  abortCheckEmailExists,
+  abortCheckPhoneNumberExists,
 } from "./fixtures/connect-rpc";
 import { RegisterTherapistPage } from "./pages/register.page";
 
@@ -215,6 +217,56 @@ test.describe("Therapist Registration", () => {
     // Should stay on page and show network error.
     await reg.expectStillOnRegisterPage(prefix);
     await expect(page.locator("p[role='alert']").first()).toBeVisible();
+  });
+
+  test("padnięte sprawdzenie unikalności NIE blokuje kreatora (fail-open)", async ({
+    page,
+  }) => {
+    // Sondy CheckEmailExists / CheckPhoneNumberExists to wygoda (wcześniejszy
+    // komunikat), nie bramka — tą jest CreateUser na końcu. Gdy sonda pada,
+    // użytkownik ma przejść dalej, a nie utknąć na kroku 3 albo 4 z
+    // „błąd sieci" i bez drogi naprzód. Przed poprawką ten test wisiał na
+    // kroku 3.
+    const prefix = urlPrefix();
+    const reg = new RegisterTherapistPage(page);
+    const createUser = await mockCreateUser(page);
+    await mockUpdateProfile(page);
+    await abortCheckEmailExists(page);
+    await abortCheckPhoneNumberExists(page);
+
+    await reg.goto(prefix);
+    await reg.fillRequiredFields();
+    await reg.submit();
+
+    // Kreator doszedł do końca i CreateUser poleciał — serwer rozstrzyga
+    // unikalność.
+    await reg.expectRedirectToVerifyEmail(prefix, "e2e@example.com");
+    expect(createUser.getCaptured()?.email).toBe("e2e@example.com");
+  });
+
+  test("udane sprawdzenie z exists=true nadal blokuje (fail-open ≠ brak kontroli)", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    const reg = new RegisterTherapistPage(page);
+    const createUser = await mockCreateUser(page);
+    await mockCheckEmailExists(page, true);
+
+    // Krok 3 prowadzony ręcznie: fillRequiredFields() zakłada przejście
+    // do kroku 4, a tu chodzi o to, że do niego NIE dochodzi.
+    await reg.goto(prefix);
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
+    await reg.emailInput.fill("e2e@example.com");
+    await reg.passwordInput.fill("Sup3rwizor!");
+    await reg.tosCheckbox.check();
+    await reg.nextStepButton.click();
+
+    await expect(page.locator("p[role='alert']").first()).toBeVisible();
+    await expect(reg.emailInput).toBeVisible(); // nadal krok 3
+    await expect(reg.firstNameInput).toBeHidden(); // krok 4 nie wszedł
+    await reg.expectStillOnRegisterPage(prefix);
+    expect(createUser.getCaptured()).toBeNull();
   });
 });
 
