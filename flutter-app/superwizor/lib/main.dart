@@ -27,18 +27,18 @@ import 'client/app_version.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'client/client_home_screen.dart';
-import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
 import 'providers/billing_surface_provider.dart';
 import 'providers/email_verification_provider.dart';
 import 'providers/onboarding_paywall_provider.dart';
+import 'providers/retry_policy.dart';
 import 'providers/signup_draft_provider.dart';
 import 'screens/account_not_found_screen.dart';
 import 'screens/deactivated_account_screen.dart';
 import 'screens/plan_picker_screen.dart';
 import 'screens/profile_setup_screen.dart';
 import 'screens/verify_email_screen.dart';
-import 'utils/account_status.dart';
 import 'utils/auth_gate.dart';
+import 'utils/auth_gate_facts.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
@@ -170,7 +170,9 @@ void main() async {
   // A single root container shared by the widget tree AND the
   // background FCM handlers, so a push can invalidate providers even
   // though it fires outside any widget's `ref` (docs/39 PR11).
-  final container = ProviderContainer();
+  // `retry`: rozstrzygajace odpowiedzi o koncie (brak wiersza `users`,
+  // dezaktywacja, usuniecie) NIE sa ponawiane — patrz retry_policy.dart.
+  final container = ProviderContainer(retry: superwizorRetry);
 
   // Foreground push. docs/39 PR11: a client_note_received push refreshes
   // the therapist's cached notes for that kartoteka so a sent note shows
@@ -361,60 +363,22 @@ class _AuthGate extends ConsumerWidget {
       }
     });
 
-    // Deactivation gate (docs/38 §4): a reversibly-deactivated account
-    // (users.is_active = false, toggled by the org's manager) gets a
-    // full-screen block instead of the app. Detected from the resolved
-    // User row; every backend RPC would fail with PermissionDenied
-    // "ACCOUNT_DEACTIVATED" anyway — this makes the state legible.
-    final deactivated = ref.watch(currentUserProvider).maybeWhen(
-          data: (u) => u != null && !u.isActive,
-          // Mid-session deactivation: the cached profile predates the
-          // toggle, but any refetch (or any gated RPC) now fails with
-          // the ACCOUNT_DEACTIVATED marker — treat that the same.
-          // ACCOUNT_DELETED (admin removed the users row) gets the
-          // same full-screen block instead of a raw gRPC dump.
-          error: (e, _) => isAccountBlockedError(e),
-          orElse: () => false,
-        );
-    // Deleted-vs-deactivated only differ in the block screen's copy.
-    final deleted = ref.watch(currentUserProvider).maybeWhen(
-          error: (e, _) => isAccountDeletedError(e),
-          orElse: () => false,
-        );
-
-    // Firebase session without an identity row (never registered, or
-    // hard-deleted by an admin): explicit dead-end screen — the app
-    // must NOT mint an account (the removed auto-register used to
-    // create ghost THERAPIST rows for any unknown Google sign-in).
-    final notRegistered = ref.watch(currentUserProvider).maybeWhen(
-          error: (e, _) => e is AccountNotRegisteredException,
-          orElse: () => false,
-        );
-
-    // Client panel routing (docs/39): PATIENT accounts get the
-    // client-only surface — no recording, kartoteki, or billing.
-    final isClient = ref.watch(currentUserProvider).whenOrNull(
-              data: (u) =>
-                  u != null &&
-                  u.role == identity_enum.UserRole.USER_ROLE_PATIENT,
-            ) ??
-        false;
-
-    // Czy w ogóle WIEMY, kim jest ten użytkownik po naszej stronie.
+    // Fakty o koncie liczone w JEDNYM miejscu, z zachowanego blędu, nie
+    // przez `maybeWhen` — uzasadnienie w utils/auth_gate_facts.dart.
     //
-    // `currentUserProvider` przechodzi przez trzy stany, a bramka do
-    // 04.09.2026 rozróżniała tylko dwa. Na zimnym starcie `authStateChanges`
-    // emituje najpierw `null` (sesja jeszcze się nie odtworzyła), więc
-    // provider kończy jako `AsyncData(null)` i dopiero potem rusza z
-    // zapytaniem o prawdziwego użytkownika. W tym oknie `notRegistered`,
-    // `deactivated` i `isClient` są fałszem — czyli bramka wpuszczała na
-    // ekran główny KOGOŚ, o kim nie wiedziała jeszcze nic. Świeżo
-    // zarejestrowany terapeuta widział wtedy „Witaj, z kim dzisiaj
-    // pracujemy?" z kręcącym się kółkiem przez kilkanaście sekund, zanim
-    // pojawił się ekran uzupełnienia profilu (zgłoszone z produkcji na
-    // buildzie 1.0.9+59).
-    final userAsync = ref.watch(currentUserProvider);
-    final accountUnresolved = userAsync.value == null && !userAsync.hasError;
+    // Historia tego bloku (04.09.2026, trzy zgloszenia tego samego objawu):
+    // cztery osobne `maybeWhen(error: …)` odpowiadaly „nie" przez caly czas,
+    // gdy Riverpod 3 ponawial `AccountNotRegisteredException` (13+ s), a
+    // `hasError` bylo w tym samym czasie prawda — wiec bramka uznawala konto
+    // za rozstrzygniete i w porzadku, i pokazywala ekran glowny osobie, ktora
+    // konta nie ma. Zadna z dwoch wczesniejszych poprawek tego nie ruszala,
+    // bo obie zakladaly, ze blad jest stanem koncowym. W Riverpod 3 nie jest.
+    final facts = accountFactsFrom(ref.watch(currentUserProvider));
+    final accountUnresolved = facts.unresolved;
+    final notRegistered = facts.notRegistered;
+    final deactivated = facts.deactivated;
+    final deleted = facts.deleted;
+    final isClient = facts.isClient;
 
     // Furtka offline (poprawka z 2026-07-23): kto zalogował się kiedyś na
     // tym urządzeniu, ma zapisane mapowanie firebaseUid → users.id i wchodzi

@@ -749,6 +749,15 @@ konfiguracji będzie to „Zakupy w aplikacji są chwilowo wyłączone", bo
 `IAP_ENABLED_IOS` = `false` i produkty w App Store Connect nie istnieją —
 runbook 11.3 nadal obowiązuje w całości.
 
+**Dopisek po trzecim zgłoszeniu tego samego dnia (build 61).** Punkt 1
+powyżej opisywał objaw, nie przyczynę. Przyczyną było automatyczne
+ponawianie providerów w Riverpod 3: wyjątek „brak konta" był ponawiany do
+dziesięciu razy z rosnącym odstępem (≈13 s), a w oknie ponowienia bramka nie
+umiała odczytać zachowanego błędu i traktowała konto jako rozstrzygnięte.
+Naprawa: polityka `retry` kontenera (rozstrzygające odpowiedzi o koncie bez
+ponowień) i fakty o koncie liczone z `AsyncValue.error` zamiast `maybeWhen`.
+Szczegóły i sonda: `PROGRESS.md`, „Runda 3".
+
 ### 11.4 Weryfikacja po wdrożeniu
 
 | Co | Jak |

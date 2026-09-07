@@ -247,6 +247,37 @@ aplikacji, w menu na dole ("Superwizor AI v1.0.9+61", tapniecie kopiuje).
 Pytaj o niego ZANIM zaczniesz szukac bledu — zrzut z rundy 2 pokazywal
 zachowanie sprzed poprawki, ktora byla juz wydana.
 
+**Runda 3 — build 61, ten sam objaw. PRAWDZIWA przyczyna: Riverpod 3.**
+Obie wczesniejsze diagnozy byly bledne, bo obie zakladaly, ze blad providera
+jest stanem koncowym. `flutter_riverpod` jest w wersji 3.3.1, a Riverpod 3
+PONAWIA kazdy provider, ktory rzucil wyjatek: 200 ms, 400, 800, 1600, 3200,
+6400… do 10 razy (`ProviderContainer.defaultRetry`). Sonda na riverpod
+3.2.1 (atrapa 50 ms, bez sieci): 7 wywolan w 13 s, przez caly czas stan
+„ladowanie z zachowanym bledem" (`isReloading == true`). W tym stanie:
+  - `hasError == true`  -> moje `accountUnresolved` = falsz („rozstrzygniete"),
+  - `maybeWhen(error: …)` z domyslnym `skipLoadingOnReload: false` idzie do
+    `loading` -> `notRegistered` = falsz („nie brak konta").
+Bramka nie widziala ani „nie wiem", ani „nie ma konta" -> ekran glowny na
+13+ s, na 59/60/61 identycznie. Sieci w tym nie bylo wcale — identity-svc
+odpowiadal w 0,3 s, tylko 7 razy.
+
+Naprawa (commit ponizej):
+  1. `ProviderContainer(retry: superwizorRetry)` — rozstrzygajace odpowiedzi
+     o koncie (AccountNotRegistered, ACCOUNT_DEACTIVATED, ACCOUNT_DELETED)
+     bez ponowien; awarie sieci ponawiane jak dotad. `lib/providers/retry_policy.dart`.
+  2. Fakty o koncie liczone z `AsyncValue.error` (getter zwraca ZACHOWANY
+     blad takze podczas ladowania), nie z `maybeWhen`.
+     `lib/utils/auth_gate_facts.dart`; `unresolved` = brak wartosci i brak
+     ROZSTRZYGAJACEGO bledu (timeout to „nie wiem", nie „w porzadku").
+Testy na PRAWDZIWYCH stanach z kontenera (`test/utils/auth_gate_facts_test.dart`),
+w tym na oknie ponowienia; mutacja do starej logiki = czerwone.
+
+**Lekcja, ktora kosztowala trzy buildy:** w Riverpod 3 `when`/`maybeWhen`
+NIE pokazuje bledu w oknie ponowienia. Kazde miejsce w aplikacji, ktore
+klasyfikuje blad providera przez `maybeWhen(error:)`, ma ten sam problem —
+przejrzane: poza bramka tylko home_screen.dart:205 (`patientsAsync.when` z
+galezia `error`, tam skutek to chwilowy spinner, nie zly ekran).
+
 
 ### Platnosci in-app + kody rabatowe (docs/70) — KOD GOTOWY, CZEKA NA SKLEPY — 2026-09-03
 
