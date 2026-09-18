@@ -51,6 +51,7 @@ import 'package:flutter/foundation.dart';
 
 import 'pending_upload.dart';
 import 'background_upload_channel.dart';
+import 'stall_guard.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
 
@@ -78,12 +79,19 @@ class UploadWorker {
     int? maxAttemptsForTerminalClassError,
     Duration? putRetryCap,
     BackgroundUploadChannel? background,
+    ForegroundClock Function()? foregroundClock,
+    Duration? encryptStallWindow,
+    Duration? encryptBudget,
   })  : _io = io,
         _background = background,
         _clock = clock ?? (() => DateTime.now().toUtc()),
         _backoff = backoff ?? defaultBackoff,
         _terminalRetryCap = maxAttemptsForTerminalClassError ?? 1,
-        _putRetryCap = putRetryCap ?? const Duration(seconds: 90);
+        _putRetryCap = putRetryCap ?? const Duration(seconds: 90),
+        _foregroundClock =
+            foregroundClock ?? AppLifecycleForegroundClock.create,
+        _encryptStallWindow = encryptStallWindow ?? const Duration(minutes: 2),
+        _encryptBudget = encryptBudget ?? const Duration(minutes: 100);
 
   final UploadIo _io;
   /// Kanał do warstwy natywnej (docs/58). Null = brak oddawania
@@ -105,6 +113,18 @@ class UploadWorker {
   /// retry nearly free. Without the cap a 127 MB transfer over flaky
   /// cellular escalates toward 8–30 min of idle per blip.
   final Duration _putRetryCap;
+
+  /// Fabryka zegarów, które stoją, gdy aplikacja jest w tle.
+  final ForegroundClock Function() _foregroundClock;
+
+  /// Ile wolno NIE zapisać ani jednego chunka, zanim uznamy szyfrowanie
+  /// za zawieszone. Chunk to 1 MB — normalnie ułamek sekundy.
+  final Duration _encryptStallWindow;
+
+  /// Całkowity budżet czasu na pierwszym planie dla jednej próby
+  /// szyfrowania. Liczony zegarem stojącym w tle, więc to naprawdę
+  /// 100 minut pracy, a nie 100 minut kalendarza.
+  final Duration _encryptBudget;
 
   /// Advances [u] by one phase. Always returns a new PendingUpload
   /// reflecting the outcome; never throws.
@@ -179,14 +199,29 @@ class UploadWorker {
   /// re-runs on the next tick. Transient I/O / key errors classify as
   /// retryable and keep the row in `encrypting`.
   Future<PendingUpload> _doEncrypt(PendingUpload u) async {
+    // Limit czasu liczymy zegarem, który STOI, gdy aplikacja jest w
+    // tle, i mierzymy BRAK POSTĘPU zamiast łącznego czasu.
+    //
+    // Poprzednia wersja miała `.timeout(Duration(minutes: 10))` zegara
+    // ściennego. iOS zawiesza proces po zejściu w tło, więc limit
+    // wypalał na robocie, która nigdy nie dostała 10 minut CPU, a
+    // każda kolejna próba szyfrowała od zera — nagranie z 15.09.2026
+    // (46 min, 76,8 MB) nie dotarło przez to nawet do
+    // CreateAudioUpload i nie zostawiło żadnego śladu na serwerze.
+    final zegarBezczynnosci = _foregroundClock();
+    final zegarBudzetu = _foregroundClock();
+    final guard = StallGuard(
+      window: _encryptStallWindow,
+      clock: zegarBezczynnosci,
+      budget: _encryptBudget,
+      budgetClock: zegarBudzetu,
+    );
     try {
-      // No network involved — a streaming AES pass over even a 160 MB
-      // FLAC is minutes, not tens of minutes. A hang here (sesja
-      // a5ce601f suspect) must surface as a retryable TimeoutException,
-      // not wedge the tick until the runner's 30-min breaker.
-      final r = await _io.encryptSource(u).timeout(
-            const Duration(minutes: 10),
-          );
+      final r = await guard.run(
+        // Każdy zapisany chunk zeruje okno bezczynności.
+        _io.encryptSource(u, onProgress: (_) => guard.beat()),
+        label: 'Szyfrowanie nagrania',
+      );
       return u.copyWith(
         phase: UploadPhase.pending,
         sizeBytes: r.sizeBytes,
@@ -197,6 +232,9 @@ class UploadWorker {
       );
     } catch (e) {
       return _classify(u, e);
+    } finally {
+      zegarBezczynnosci.dispose();
+      zegarBudzetu.dispose();
     }
   }
 

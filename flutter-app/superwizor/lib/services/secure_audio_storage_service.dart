@@ -118,13 +118,54 @@ class SecureAudioStorageService {
   /// On success the source file is securely deleted (zero-overwrite
   /// followed by unlink). Returns metadata about all written chunks.
   ///
-  /// **Atomicity guard**: if a previous encryption attempt for the same
-  /// [sessionId] left partial chunks on disk (crash, out-of-space),
-  /// they are wiped before starting so the caller always gets a
-  /// consistent set.
+  /// **Wznawianie przyrostowe** (2026-09-18): chunki z poprzedniej,
+  /// przerwanej próby NIE są kasowane. Zachowujemy najdłuższy prefiks
+  /// chunków pełnej długości i dopisujemy dalszy ciąg od pierwszego
+  /// brakującego numeru. Wcześniej każde wejście czyściło katalog, więc
+  /// próba przerwana limitem czasu zaczynała od zera — przy nagraniu,
+  /// które raz nie zmieściło się w oknie, dawało to żywy zakleszczenie
+  /// (sesja z 15.09.2026: 46 min / 76,8 MB, zero śladu na serwerze).
+  ///
+  /// [onProgress] dostaje ułamek 0..1 po każdym zapisanym chunku —
+  /// to jest sygnał „jest postęp" dla `StallGuard` w UploadWorker.
+  ///
+  /// Wielokrotne wywołania dla tego samego [sessionId] są scalane:
+  /// druga próba dopina się do trwającej, zamiast ścigać się z nią o
+  /// ten sam katalog. Bez tego porzucony (a wciąż pracujący) izolat
+  /// pisałby chunki pod nogami kolejnej próbie.
   Future<List<EncryptedChunk>> encryptRecording({
     required String rawPath,
     required String sessionId,
+    void Function(double)? onProgress,
+  }) {
+    final trwajace = _inFlight[sessionId];
+    if (trwajace != null) {
+      debugPrint('[secure-audio] encryptRecording sessionId=$sessionId '
+          'już trwa — dopinam się do niej zamiast startować drugą');
+      return trwajace;
+    }
+    final future = _encryptRecordingOnce(
+      rawPath: rawPath,
+      sessionId: sessionId,
+      onProgress: onProgress,
+    );
+    _inFlight[sessionId] = future;
+    return future.whenComplete(() => _inFlight.remove(sessionId));
+  }
+
+  /// Trwające szyfrowania, po `sessionId`. Statyczne, bo warstwa
+  /// uploadu tworzy własne instancje serwisu.
+  static final Map<String, Future<List<EncryptedChunk>>> _inFlight = {};
+
+  /// Rozmiar pliku chunka niosącego PEŁNY megabajt jawnego tekstu.
+  /// Cokolwiek krótszego to albo ogon nagrania, albo urwany zapis —
+  /// w obu przypadkach nie nadaje się do wznowienia.
+  static const _fullChunkFileSize = _headerLen + _chunkSize + _gcmTagLen;
+
+  Future<List<EncryptedChunk>> _encryptRecordingOnce({
+    required String rawPath,
+    required String sessionId,
+    void Function(double)? onProgress,
   }) async {
     final raw = File(rawPath);
     if (!await raw.exists()) {
@@ -136,17 +177,32 @@ class SecureAudioStorageService {
     final keyVersion = keyInfo.version;
 
     final dir = await _sessionDir(sessionId);
-    // Atomic guard: wipe stale chunks from a previous failed attempt
-    // so we don't end up with a mix of old + new chunks.
-    if (await dir.exists()) {
-      await for (final entry in dir.list()) {
-        if (entry is File && entry.path.endsWith('.enc')) {
-          try { await entry.delete(); } catch (_) {}
-        }
-      }
-    } else {
-      await dir.create(recursive: true);
+    if (!await dir.exists()) await dir.create(recursive: true);
+
+    // Najdłuższy ciągły prefiks chunków pełnej długości = robota,
+    // której nie trzeba powtarzać. Reszta (dziury, ogon, urwany zapis)
+    // leci do kosza, żeby wynik był spójnym zestawem.
+    final doWznowienia = await _reusableChunkPrefix(dir);
+    await _dropChunksFrom(dir, doWznowienia.length);
+
+    final totalBytes = await raw.length();
+    final totalChunks = (totalBytes / _chunkSize).ceil();
+    if (doWznowienia.isNotEmpty) {
+      debugPrint('[secure-audio] wznawiam sessionId=$sessionId od chunka '
+          '${doWznowienia.length}/$totalChunks — '
+          '${doWznowienia.length} MB już zaszyfrowane');
     }
+
+    // Postęp z izolatu wraca portem: każdy zapisany chunk to jeden
+    // komunikat. Mieszanie tego z wynikiem nie wchodzi w grę —
+    // Isolate.run oddaje wynik dopiero na końcu, a strażnik postępu
+    // musi widzieć ruch W TRAKCIE.
+    final progressPort = ReceivePort();
+    final progressSub = progressPort.listen((msg) {
+      if (msg is int && totalChunks > 0) {
+        onProgress?.call(((msg + 1) / totalChunks).clamp(0.0, 1.0));
+      }
+    });
 
     // Run the CPU-heavy AES-GCM loop in a BACKGROUND ISOLATE so it never
     // starves the main isolate's UI event loop. Encrypting a 60-90 min
@@ -158,17 +214,66 @@ class SecureAudioStorageService {
     // dart:io, no plugins). See also Option D: this only runs when the
     // upload is deferred offline; an online recording uploads its raw
     // FLAC directly and never reaches here.
-    final chunks = await Isolate.run(
-      () => _encryptChunksIsolate(_EncryptRequest(
-        rawPath: rawPath,
-        dirPath: dir.path,
-        keyBytes: key.bytes,
-        keyVersion: keyVersion,
-      )),
-    );
+    final List<EncryptedChunk> nowe;
+    try {
+      final sendPort = progressPort.sendPort;
+      final startSeq = doWznowienia.length;
+      final startOffset = startSeq * _chunkSize;
+      nowe = await Isolate.run(
+        () => _encryptChunksIsolate(_EncryptRequest(
+          rawPath: rawPath,
+          dirPath: dir.path,
+          keyBytes: key.bytes,
+          keyVersion: keyVersion,
+          startSeq: startSeq,
+          startOffset: startOffset,
+          progress: sendPort,
+        )),
+      );
+    } finally {
+      await progressSub.cancel();
+      progressPort.close();
+    }
 
     await _secureDelete(raw);
-    return chunks;
+    return [...doWznowienia, ...nowe];
+  }
+
+  /// Najdłuższy ciągły prefiks `chunk_00000..` o pełnej długości.
+  /// Przerywa na pierwszej dziurze albo pierwszym krótszym pliku.
+  Future<List<EncryptedChunk>> _reusableChunkPrefix(Directory dir) async {
+    final wgNazwy = <String, File>{};
+    await for (final e in dir.list()) {
+      if (e is File &&
+          p.basename(e.path).startsWith('chunk_') &&
+          e.path.endsWith('.enc')) {
+        wgNazwy[p.basename(e.path)] = e;
+      }
+    }
+    final out = <EncryptedChunk>[];
+    for (var seq = 0;; seq++) {
+      final f = wgNazwy['chunk_${seq.toString().padLeft(5, '0')}.enc'];
+      if (f == null) break;
+      final len = await f.length();
+      if (len != _fullChunkFileSize) break;
+      out.add(EncryptedChunk(seq: seq, path: f.path, sizeBytes: len));
+    }
+    return out;
+  }
+
+  /// Kasuje chunki o numerze >= [fromSeq] oraz wszystko, co nie pasuje
+  /// do schematu nazw — żeby po wznowieniu katalog był spójny.
+  Future<void> _dropChunksFrom(Directory dir, int fromSeq) async {
+    await for (final e in dir.list()) {
+      if (e is! File || !e.path.endsWith('.enc')) continue;
+      final nazwa = p.basename(e.path);
+      final seq = int.tryParse(
+          nazwa.replaceFirst('chunk_', '').replaceFirst('.enc', ''));
+      if (seq != null && seq < fromSeq) continue;
+      try {
+        await e.delete();
+      } catch (_) {}
+    }
   }
 
   /// Inwentarz chunków sesji, w kolejności sekwencji. Pusta lista, gdy
@@ -369,11 +474,25 @@ class _EncryptRequest {
   final String dirPath;
   final Uint8List keyBytes;
   final int keyVersion;
+
+  /// Numer pierwszego chunka do zapisania i odpowiadające mu
+  /// przesunięcie w pliku źródłowym. Niezerowe przy wznowieniu
+  /// przerwanej próby — chunki 0..startSeq-1 już leżą na dysku.
+  final int startSeq;
+  final int startOffset;
+
+  /// Port, na który idzie numer każdego zapisanego chunka. Karmi
+  /// strażnika postępu na głównym izolacie.
+  final SendPort? progress;
+
   const _EncryptRequest({
     required this.rawPath,
     required this.dirPath,
     required this.keyBytes,
     required this.keyVersion,
+    this.startSeq = 0,
+    this.startOffset = 0,
+    this.progress,
   });
 }
 
@@ -385,7 +504,7 @@ Future<List<EncryptedChunk>> _encryptChunksIsolate(_EncryptRequest req) async {
       enc.AES(enc.Key(req.keyBytes), mode: enc.AESMode.gcm));
   final out = <EncryptedChunk>[];
   final buffer = BytesBuilder(copy: false);
-  int seq = 0;
+  int seq = req.startSeq;
 
   Future<void> flushChunk(Uint8List data) async {
     final iv = enc.IV.fromSecureRandom(SecureAudioStorageService._ivLen);
@@ -409,10 +528,11 @@ Future<List<EncryptedChunk>> _encryptChunksIsolate(_EncryptRequest req) async {
       path: outFile.path,
       sizeBytes: await outFile.length(),
     ));
+    req.progress?.send(seq);
     seq++;
   }
 
-  await for (final piece in File(req.rawPath).openRead()) {
+  await for (final piece in File(req.rawPath).openRead(req.startOffset)) {
     buffer.add(piece);
     while (buffer.length >= SecureAudioStorageService._chunkSize) {
       final all = buffer.toBytes();

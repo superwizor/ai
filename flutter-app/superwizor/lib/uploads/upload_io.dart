@@ -96,9 +96,15 @@ abstract class UploadIo {
   /// encrypt the raw FLAC at `<u.sourcePath>/raw.flac` into AES-256-GCM
   /// `chunk_*.enc` files in the same session dir and securely delete the
   /// raw file. Returns the chunk count + plaintext size so the worker can
-  /// stamp the row before advancing to phase=pending. Idempotent enough
-  /// to retry: re-encrypting after a partial run overwrites the chunks.
+  /// stamp the row before advancing to phase=pending. Bezpieczne do
+  /// ponowienia i WZNAWIALNE: próba przerwana w połowie zostawia
+  /// gotowe chunki, a kolejna dopisuje dalszy ciąg od pierwszego
+  /// brakującego numeru, zamiast szyfrować wszystko od nowa.
   /// Throws on key/IO errors → worker classifies as retryable.
+  ///
+  /// [onProgress] jest wołane po każdym zapisanym chunku. Worker
+  /// traktuje je jako sygnał życia — brak postępu przez okno
+  /// [StallGuard] kończy próbę, sam czas trwania nie.
   Future<EncryptResult> encryptSource(
     PendingUpload u, {
     void Function(double progressFraction)? onProgress,
