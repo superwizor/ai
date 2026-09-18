@@ -18,6 +18,30 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+/// Przekroczenie limitu pracy LOKALNEJ (szyfrowanie, transkodowanie).
+///
+/// Implementuje [TimeoutException], żeby kod łapiący timeouty działał
+/// jak dotąd, ale klasyfikator błędów rozpoznaje ją osobno. Powód jest
+/// praktyczny: `TimeoutException` wpadał do kubełka sieciowego, więc
+/// zawieszone szyfrowanie meldowało się użytkownikowi jako
+/// „network: TimeoutException…" — błąd bez najmniejszego udziału
+/// sieci. Kosztowało to jedną zmyloną diagnozę (15.09.2026).
+///
+/// [toString] celowo zwraca samą treść, bez powtarzania nazwy klasy —
+/// UI pokazuje ten tekst wprost.
+class StallTimeoutException implements TimeoutException {
+  StallTimeoutException(this.message, this.duration);
+
+  @override
+  final String? message;
+
+  @override
+  final Duration? duration;
+
+  @override
+  String toString() => message ?? 'praca lokalna przekroczyła limit czasu';
+}
+
 /// Zegar mierzący czas spędzony NA PIERWSZYM PLANIE.
 abstract class ForegroundClock {
   /// Czas na pierwszym planie od ostatniego [reset].
@@ -165,7 +189,7 @@ class StallGuard {
       if (_clock.elapsed >= _window) {
         t.cancel();
         done.completeError(
-          TimeoutException(
+          StallTimeoutException(
             '$label nie zrobiła postępu przez '
             '${_window.inMinutes} min na pierwszym planie',
             _window,
@@ -178,7 +202,7 @@ class StallGuard {
           budgetClock.elapsed >= budget) {
         t.cancel();
         done.completeError(
-          TimeoutException(
+          StallTimeoutException(
             '$label przekroczyła budżet ${budget.inMinutes} min '
             'na pierwszym planie',
             budget,
