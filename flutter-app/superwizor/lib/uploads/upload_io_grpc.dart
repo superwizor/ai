@@ -142,6 +142,10 @@ class GrpcUploadIo implements UploadIo {
     final chunks = await _secureStorage.encryptRecording(
       rawPath: rawPath,
       sessionId: sessionId,
+      // Postęp jest tu sygnałem życia dla StallGuard w UploadWorker,
+      // nie tylko paskiem w UI — bez niego długie nagranie wygląda
+      // jak zawieszone.
+      onProgress: onProgress,
     );
     debugPrint('[upload-io] encrypted recording localId=${u.localId} '
         'chunks=${chunks.length}');

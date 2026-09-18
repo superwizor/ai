@@ -20,6 +20,8 @@ import 'dart:io';
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:http/http.dart' as http;
 
+import 'stall_guard.dart';
+
 enum UploadErrorClass {
   retryable,
   signedUrlExpired,
@@ -159,6 +161,17 @@ ClassifiedError classifyUploadError(Object error) {
       UploadErrorClass.terminal,
       'source_file_missing: ${error.path ?? error.message}',
     );
+  }
+
+  // ── Zawieszona praca LOKALNA ────────────────────────────────
+  // MUSI być sprawdzone przed kubełkiem sieciowym: StallTimeoutException
+  // implementuje TimeoutException, więc inaczej wpadłoby niżej i
+  // zameldowało się jako „network:" — przy szyfrowaniu, które sieci nie
+  // dotyka. Dokładnie ten mylący opis zaciemnił diagnozę sesji z
+  // 15.09.2026. Klasa błędu bez zmian (retryable): wznawianie
+  // przyrostowe sprawia, że kolejna próba dopisuje dalszy ciąg.
+  if (error is StallTimeoutException) {
+    return ClassifiedError(UploadErrorClass.retryable, 'local_stall: $error');
   }
 
   // ── Network plumbing ────────────────────────────────────────

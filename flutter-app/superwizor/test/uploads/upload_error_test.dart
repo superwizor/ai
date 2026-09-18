@@ -3,10 +3,12 @@
 // upload that got stuck because the classifier mapped 400 → terminal
 // without inspecting the body).
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart' as grpc;
+import 'package:superwizor/uploads/stall_guard.dart';
 import 'package:superwizor/uploads/upload_error.dart';
 
 void main() {
@@ -122,4 +124,37 @@ void main() {
     });
   });
 
+
+  group('classifyUploadError — zawieszona praca lokalna', () {
+    // Regresja z 15.09.2026: szyfrowanie zawieszone w fazie `encrypting`
+    // meldowało się użytkownikowi jako „network: TimeoutException…",
+    // choć sieci nie dotykało. Etykieta skierowała diagnozę w złą
+    // stronę — na łącze zamiast na pracę lokalną.
+    test('StallTimeoutException → retryable, etykieta local_stall', () {
+      final r = classifyUploadError(StallTimeoutException(
+        'Szyfrowanie nagrania nie zrobiło postępu przez 2 min '
+        'na pierwszym planie',
+        const Duration(minutes: 2),
+      ));
+
+      expect(r.kind, UploadErrorClass.retryable,
+          reason: 'wznawianie przyrostowe dopisze dalszy ciąg');
+      expect(r.message, startsWith('local_stall:'));
+      expect(r.message, isNot(contains('network')),
+          reason: 'lokalne zawieszenie nie ma nic wspólnego z siecią');
+      expect(r.message, contains('Szyfrowanie nagrania'),
+          reason: 'treść ma mówić, co konkretnie stanęło');
+      expect(r.message, isNot(contains('StallTimeoutException')),
+          reason: 'bez powtarzania nazwy klasy — UI pokazuje to wprost');
+    });
+
+    test('zwykły TimeoutException nadal ląduje w kubełku sieciowym', () {
+      final r = classifyUploadError(
+          TimeoutException('PUT nie odpowiedział', const Duration(minutes: 4)));
+
+      expect(r.kind, UploadErrorClass.retryable);
+      expect(r.message, startsWith('network:'),
+          reason: 'timeout transferu to nadal problem sieciowy');
+    });
+  });
 }
