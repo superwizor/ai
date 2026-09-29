@@ -108,10 +108,23 @@ pkg/ontology i clinical-svc zielone):
   treści `ontology_versions` (migracja 000107). Migracja musi wejść PRZED
   wdrożeniem llm-workera (terragrunt osobno od CI).
 
+- `34bae33c` ontology-lint: ostrzeżenie, gdy definicja konstruktu bez
+  values przywołuje label_pl konstruktu z katalogiem (na seedach: tylko
+  ppt 0.1.x current_conflict).
+- `2df82515` szkic PPT 0.2.0: current_conflict = sama sytuacja, nowy
+  `violated_capacity` (13 wtórnych, enum, requires current_conflict,
+  forced theoretical_hypothesis, pomyłki z kanarka). Baza = treść 0.1.1 Z
+  BAZY (spans 1 + multi_label ze Studio). ZAIMPORTOWANY 2026-09-29 jako
+  draft (ontology-seed, aktor dpiotrak2+onto@, md5 05ead115…) — dual-run
+  bierze go od razu jako najnowszą wersję PPT. Otwarte DECYZJE EKSPERCKIE
+  są w pliku.
+
 Zostało (wymaga decyzji albo ekspertów):
-- `current_conflict`: definicja każe podać „naruszone potencjalności
-  wtórne", a konstrukt nie ma katalogu — zmiana ontologii (approved_by)
-  albo renderowanie katalogu powiązanego w prompcie S2 (benchmark).
+- Sesja ekspercka nad 0.2.0 (pierwotne w katalogu violated_capacity?,
+  status, próg, basic_conflict z tym samym układem) + porównanie na
+  kilku RÓŻNYCH sesjach PPT (0.1.1 vs 0.2.0, ten sam transkrypt).
+- 13 ostrzeżeń G7 w 0.2.0 (ten sam katalog w dwóch rolach) — G7 nie
+  odróżnia kopii katalogu od homonimu; rozważyć `values_from`.
 - S1 wydziela monologi (1283 i 1015 znaków przy limicie 600) z flagą
   przeszłości na całości — odrzucać czy dzielić? Decyzja + benchmark.
 - Sesja #3 tej kartoteki to ponownie nagrany scenariusz sesji #1: metryki
