@@ -121,9 +121,28 @@ type PastContext struct {
 	Stats         PastStats
 }
 
-// SpanAddr sklada adres miedzysesyjny spanu.
-func SpanAddr(sessionDate time.Time, spanRef string) string {
-	return fmt.Sprintf("s%02d%02d:%s", sessionDate.Month(), sessionDate.Day(), spanRef)
+// SessionAddr sklada prefiks adresu jednej sesji.
+//
+// Zwykle wystarcza data (`s0821`). Dwie sesje kartoteki TEGO SAMEGO dnia
+// dostaja dodatkowo numer sesji (`s0825n2`): sama data dawala im wspolny
+// adres, a loader po cichu zostawial jeden z dwoch spanow o tym samym
+// `span_ref` (kanarek PPT 2026-09-28: 69 spanow historycznych zwinelo sie
+// do 54 adresow, a twierdzenia wskazywaly cytat z niewlasciwej sesji).
+//
+// sameDay musi wynikac z KARTOTEKI, nie ze skladu okna: okno i kanal
+// semantyczny laduja spany niezaleznie, wiec prefiks zalezny od tego, co
+// akurat trafilo do okna, rozjechalby sie miedzy kanalami.
+func SessionAddr(sessionDate time.Time, sessionNumber int, sameDay bool) string {
+	if sameDay {
+		return fmt.Sprintf("s%02d%02dn%d", sessionDate.Month(), sessionDate.Day(), sessionNumber)
+	}
+	return fmt.Sprintf("s%02d%02d", sessionDate.Month(), sessionDate.Day())
+}
+
+// SpanAddr sklada adres miedzysesyjny spanu z prefiksu sesji
+// (SessionAddr) i lokalnego `span_ref`.
+func SpanAddr(sessionAddr, spanRef string) string {
+	return sessionAddr + ":" + spanRef
 }
 
 // SpanByAddr znajduje span po adresie. Uzywane przez walidacje

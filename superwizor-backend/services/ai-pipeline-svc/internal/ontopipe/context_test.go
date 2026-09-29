@@ -16,8 +16,8 @@ func data(d int) time.Time {
 // Adres miedzysesyjny musi rozrozniac spany o tym samym `span_ref`
 // z roznych sesji — lokalny ref jest unikalny tylko w transkrypcji.
 func TestAdresSpanuNiesieDate(t *testing.T) {
-	a := SpanAddr(data(21), "s07")
-	b := SpanAddr(data(5), "s07")
+	a := SpanAddr(SessionAddr(data(21), 4, false), "s07")
+	b := SpanAddr(SessionAddr(data(5), 1, false), "s07")
 	if a != "s0821:s07" {
 		t.Fatalf("adres = %q, chcemy s0821:s07", a)
 	}
@@ -26,6 +26,19 @@ func TestAdresSpanuNiesieDate(t *testing.T) {
 	}
 	if b != "s0805:s07" {
 		t.Fatalf("dzien jednocyfrowy bez zera wiodacego: %q", b)
+	}
+}
+
+// Dwie sesje tego samego dnia: sama data dawala wspolny adres i loader
+// gubil jeden z dwoch spanow o tym samym `span_ref`.
+func TestAdresSpanuRozrozniaSesjeTegoSamegoDnia(t *testing.T) {
+	a := SpanAddr(SessionAddr(data(25), 1, true), "s07")
+	b := SpanAddr(SessionAddr(data(25), 2, true), "s07")
+	if a == b {
+		t.Fatalf("dwie sesje z 25.08 dostaly ten sam adres %q", a)
+	}
+	if a != "s0825n1:s07" || b != "s0825n2:s07" {
+		t.Fatalf("adresy = %q, %q; chcemy s0825n1:s07 i s0825n2:s07", a, b)
 	}
 }
 

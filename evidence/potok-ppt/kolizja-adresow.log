@@ -1,0 +1,14 @@
+KOLIZJA ADRESOW SPANOW HISTORYCZNYCH — dowod na danych produkcyjnych, 2026-09-29
+Raport eksperymentalny PPT 6f6d2d52 (sesja #3); okno: raporty 41e67fa9 (sesja #1)
+i 3cab94e9 (sesja #2), obie sesje z 25.08.2026.
+
+Zapytanie loadera (wczytajSpanyDowodowe) po zmianie, tylko SELECT, liczone w SQL:
+
+ spanow | adresow_stary_format | adresow_nowy_format
+--------+----------------------+---------------------
+     69 |                   54 |                  69
+
+Stary format s{MMDD}:{ref} — 15 kolizji; loader zostawial pierwszy span pod
+adresem i po cichu gubil drugi (twierdzenia sesji, ktorej span odpadl,
+wskazywaly cytat z innej sesji).
+Nowy format — sesje tego samego dnia dostaja numer: s0825n1:s03, s0825n2:s03.

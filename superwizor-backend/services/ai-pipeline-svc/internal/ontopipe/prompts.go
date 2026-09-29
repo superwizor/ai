@@ -339,7 +339,8 @@ func appendPastFindings(b *strings.Builder, past *PastContext, constructID strin
 	}
 	b.WriteString(
 		"Te ustalenia sa TLEM, nie trescia do przepisania. Wolno powolac sie na " +
-			"cytat historyczny (adres `sMMDD:sNN`) razem z cytatem z DZISIEJSZEJ " +
+			"cytat historyczny (adres DOKLADNIE jak na liscie, np. `s0821:s07`) " +
+			"razem z cytatem z DZISIEJSZEJ " +
 			"sesji, gdy watek faktycznie wraca — wtedy twierdzenie ma pokrycie w " +
 			"dwoch sesjach.\n" +
 			"KAZDE twierdzenie musi miec co najmniej jeden cytat z dzisiejszej " +

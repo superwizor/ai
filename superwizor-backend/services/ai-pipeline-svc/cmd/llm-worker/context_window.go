@@ -353,12 +353,21 @@ func wczytajSpanyDowodowe(ctx context.Context, claims []ontopipe.PastClaim,
 		idClaims = append(idClaims, c.ID)
 	}
 
+	// wspolny_dzien: czy kartoteka ma INNA sesje z ta sama data. Liczone
+	// z kartoteki, nie z okna — kanal semantyczny laduje spany osobno i
+	// adres tej samej sesji musi byc w obu kanalach identyczny.
 	rows, err := dbPool.Query(ctx, `
 		SELECT e.claim_id, sp.session_id, sp.span_ref, sp.quote_ciphertext,
 		       sp.quote_encrypted_dek, COALESCE(sp.speaker,''), sp.kind,
-		       sp.observed_by, sp.about_past, sp.topics
+		       sp.observed_by, sp.about_past, sp.topics, s.session_number,
+		       EXISTS (SELECT 1 FROM sessions o
+		                WHERE o.patient_file_id = s.patient_file_id
+		                  AND o.session_date = s.session_date
+		                  AND o.id <> s.id
+		                  AND o.deleted_at IS NULL) AS wspolny_dzien
 		  FROM report_claim_evidence e
 		  JOIN report_spans sp ON sp.id = e.span_id
+		  JOIN sessions s ON s.id = sp.session_id
 		 WHERE e.claim_id = ANY($1)
 		   AND e.role = 'support'
 		   AND sp.risk_content = FALSE`, idClaims)
@@ -368,24 +377,34 @@ func wczytajSpanyDowodowe(ctx context.Context, claims []ontopipe.PastClaim,
 	defer rows.Close()
 
 	poClaimach := map[uuid.UUID][]string{}
-	widziane := map[string]bool{}
+	// widziane: adres -> sesja. Ten sam adres z INNEJ sesji to kolizja,
+	// ktorej SessionAddr ma zapobiegac — gdyby jednak wystapila, ma byc
+	// widoczna w logu, a nie po cichu podmieniac cytat.
+	widziane := map[string]uuid.UUID{}
 	var spany []ontopipe.PastSpan
 	for rows.Next() {
 		var claimID, sesja uuid.UUID
 		var ref, mowca, kind, observedBy string
 		var ct, dek []byte
-		var aboutPast bool
+		var aboutPast, wspolnyDzien bool
 		var tematy []string
+		var numer int
 		if err := rows.Scan(&claimID, &sesja, &ref, &ct, &dek, &mowca,
-			&kind, &observedBy, &aboutPast, &tematy); err != nil {
+			&kind, &observedBy, &aboutPast, &tematy, &numer, &wspolnyDzien); err != nil {
 			return nil, nil, err
 		}
-		addr := ontopipe.SpanAddr(dataSesji[sesja], ref)
-		poClaimach[claimID] = append(poClaimach[claimID], addr)
-		if widziane[addr] {
+		addr := ontopipe.SpanAddr(ontopipe.SessionAddr(dataSesji[sesja], numer, wspolnyDzien), ref)
+		if inna, ok := widziane[addr]; ok {
+			if inna != sesja {
+				slog.WarnContext(ctx, "S0: kolizja adresu spanu historycznego",
+					"addr", addr, "sesja", sesja, "zajeta_przez", inna)
+				continue
+			}
+			poClaimach[claimID] = append(poClaimach[claimID], addr)
 			continue
 		}
-		widziane[addr] = true
+		poClaimach[claimID] = append(poClaimach[claimID], addr)
+		widziane[addr] = sesja
 
 		plain, derr := crypto.Decrypt(ctx, ct, dek)
 		if derr != nil {
