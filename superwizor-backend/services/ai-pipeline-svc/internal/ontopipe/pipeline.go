@@ -34,7 +34,7 @@ const (
 	PromptVersionS2  = "s2/1.4.0" // dopisek homonimow miedzykonstruktowych "(tu: ...)" (nota E7); 1.3.0: glosy; 1.2.0: blok ustalen F7a-3
 	PromptVersionS4  = "s4/1.7.0" // +6a; confidence; ton M5; sekcje generacyjne ukladu
 	PromptVersionS2K = "s2k/1.0.0" // relacje ciaglosci + rozliczenie pracy domowej (T42b, docs/67 par. 4)
-	ValidatorVersion = "r1-r10/1.0.0"
+	ValidatorVersion = "r1-r10/1.1.0" // znaczniki R5/R10/V2-V7 jako ciagla fraza; R10 w obrebie zdania
 	// PipelineVersion trafia do reports.pipeline_version.
 	PipelineVersion = "ontology_s1s5"
 )

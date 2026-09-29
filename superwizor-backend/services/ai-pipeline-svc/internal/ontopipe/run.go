@@ -329,9 +329,15 @@ func classifyClaim(cl *ontology.Claim, spans map[string]ontology.Span) {
 	if firstTermPresent(cl.Reasoning, etiologyMarkers) != "" {
 		cl.Etiological = true
 	}
-	if firstTermPresent(cl.Reasoning, terapeutaMarkers) != "" &&
-		firstTermPresent(cl.Reasoning, stanWewnetrznyMarkers) != "" {
-		cl.SubjectIsTherapist = true
+	// Terapeuta i stan wewnetrzny w TYM SAMYM zdaniu. W calym uzasadnieniu
+	// oba znaczniki wspolwystepuja zwyczajnie — "klientka czuje… terapeutka
+	// proponuje…" — i R10 odrzucal wtedy twierdzenie o kliencie.
+	for _, zdanie := range zdania(cl.Reasoning) {
+		if firstTermPresent(zdanie, terapeutaMarkers) != "" &&
+			firstTermPresent(zdanie, stanWewnetrznyMarkers) != "" {
+			cl.SubjectIsTherapist = true
+			break
+		}
 	}
 
 	// Liczby z uzasadnienia dostaja span, w ktorym faktycznie padly.
@@ -356,7 +362,16 @@ func classifyClaim(cl *ontology.Claim, spans map[string]ontology.Span) {
 	}
 }
 
-var terapeutaMarkers = []string{"terapeut", "superwizor", "prowadzac", "prowadząc"}
+// "prowadząc*" z jawnym prefiksem: obciety rdzen "prowadz" lapal
+// "prowadzi do…", czyli niemal kazde uzasadnienie przyczynowe.
+var terapeutaMarkers = []string{"terapeut", "superwizor", "prowadząc*"}
+
+// zdania dzieli tekst na zdania po znakach konca zdania i nowej linii.
+func zdania(s string) []string {
+	return strings.FieldsFunc(s, func(r rune) bool {
+		return r == '.' || r == '!' || r == '?' || r == ';' || r == '\n'
+	})
+}
 
 var stanWewnetrznyMarkers = []string{
 	"czuje", "odczuwa", "przezywa", "przeżywa", "jego lek", "jej lek",

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/superwizor-ai/backend/pkg/ontology"
 )
@@ -604,10 +605,16 @@ func stripNonDigits(s string) string {
 // V wypycha raport do regeneracji, a po dwoch probach do trybu
 // ekstraktywnego — czyli falszywy alarm psuje POPRAWNY raport, podczas
 // gdy przeoczenie zostawia zdanie, ktore i tak zobaczy terapeuta.
+//
+// Termin wielowyrazowy pasuje WYLACZNIE jako ciag kolejnych slow tekstu.
+// Do 2026-09-28 kazde slowo szukane bylo osobno, w dowolnym miejscu, a
+// krotkie slowa jako podciag: "od dziecka" znajdowalo sie w kazdym
+// zdaniu z "odpoczynkiem" i "dziecmi", R10 odrzucal twierdzenia o
+// kliencie, a R5 pilnowal etiologii tam, gdzie jej nie bylo.
 func firstTermPresent(text string, terms []string) string {
-	hay := foldPolish(strings.ToLower(text))
+	tokens := wordTokens(text)
 	for _, t := range terms {
-		if termPresent(hay, foldPolish(strings.ToLower(t))) {
+		if termPresent(tokens, t) {
 			return t
 		}
 	}
@@ -630,50 +637,59 @@ var polskieZnaki = strings.NewReplacer(
 
 func foldPolish(s string) string { return polskieZnaki.Replace(s) }
 
-func termPresent(hayLower, term string) bool {
-	words := strings.Fields(term)
-	if len(words) == 0 {
+// wordTokens dzieli tekst na slowa: male litery, bez diakrytykow.
+func wordTokens(s string) []string {
+	return strings.FieldsFunc(foldPolish(strings.ToLower(s)), func(r rune) bool {
+		return !isWordRune(r)
+	})
+}
+
+// termPresent sprawdza, czy termin wystepuje w tokenach jako CIAGLA fraza.
+//
+// Slowo terminu dopasowuje sie do slowa tekstu na trzy sposoby:
+//   - krotkie (< 5 znakow) — wylacznie w calosci: "od" nie jest
+//     poczatkiem "odpoczynku", "czas" nie jest "czasami";
+//   - zakonczone "*" — prefiks podany wprost, bez obcinania: dla slow,
+//     ktorych rdzen po obcieciu pasowalby do czegos innego
+//     ("prowadzac*" nie moze zlapac "prowadzi");
+//   - pozostale — rdzen (slowo bez dwoch ostatnich znakow) na poczatku
+//     slowa, co pokrywa polska odmiane.
+func termPresent(tokens []string, term string) bool {
+	words := strings.Fields(foldPolish(strings.ToLower(term)))
+	if len(words) == 0 || len(words) > len(tokens) {
 		return false
 	}
-	for _, w := range words {
-		if len([]rune(w)) < 5 {
-			// Krotkie slowo dopasowujemy doslownie — obcinanie rdzenia
-			// zamienilo by je w losowy prefiks.
-			if !strings.Contains(hayLower, w) {
-				return false
+	for i := 0; i+len(words) <= len(tokens); i++ {
+		pasuje := true
+		for j, w := range words {
+			if !wordMatches(tokens[i+j], w) {
+				pasuje = false
+				break
 			}
-			continue
 		}
-		if !stemPresent(hayLower, w) {
-			return false
-		}
-	}
-	return true
-}
-
-func stemPresent(hayLower, word string) bool {
-	r := []rune(word)
-	stem := string(r[:len(r)-2])
-	idx := 0
-	for {
-		j := strings.Index(hayLower[idx:], stem)
-		if j < 0 {
-			return false
-		}
-		abs := idx + j
-		if abs == 0 || !isWordRune(rune(hayLower[abs-1])) {
+		if pasuje {
 			return true
 		}
-		idx = abs + 1
-		if idx >= len(hayLower) {
-			return false
-		}
 	}
+	return false
 }
 
+func wordMatches(token, word string) bool {
+	if p, ok := strings.CutSuffix(word, "*"); ok {
+		return strings.HasPrefix(token, p)
+	}
+	r := []rune(word)
+	if len(r) < 5 {
+		return token == word
+	}
+	return strings.HasPrefix(token, string(r[:len(r)-2]))
+}
+
+// isWordRune mowi, czy znak nalezy do slowa. Litery i cyfry z calego
+// Unicode — cudzyslow drukarski albo myslnik typograficzny sa
+// separatorem, nie czescia slowa.
 func isWordRune(r rune) bool {
-	return r == '-' || r == '_' || (r >= 'a' && r <= 'z') ||
-		(r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r > 127
+	return r == '-' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 func trunc(s string, n int) string {
