@@ -89,6 +89,37 @@ Gotchas:
 
 ## In progress
 
+### Potok S1-S5: audyt raportu eksperymentalnego PPT 6f6d2d52 — 2026-09-29
+
+Gałąź `fix/potok-ppt-dopasowanie` (worktree `ai-worktrees/potok-ppt`),
+NIE zmergowana. Punkt wyjścia: H3 podawała potrzeby jako „naruszone
+potencjalności". W bazie: 15/15 twierdzeń `current_conflict` w tej kartotece
+ma wolny tekst z potencjalnościami spoza katalogu (jedyna trafiona: „zaufanie").
+
+Zrobione (każde z testem regresyjnym, pełne testy ai-pipeline-svc,
+pkg/ontology i clinical-svc zielone):
+- `bbf0af32` znaczniki R5/R10/V2-V7 jako ciągła fraza, krótkie słowa
+  w całości, `prowadząc*` jako jawny prefiks, R10 w obrębie zdania
+  (ValidatorVersion r1-r10/1.1.0). Na uzasadnieniach z raportu: etiologia
+  7→3, R10 2→0.
+- `51261c85` adres spanu historycznego `s{MMDD}n{nr}:{ref}`, gdy kartoteka ma
+  dwie sesje jednego dnia (było: 69 spanów → 54 adresy); s2/1.4.1.
+- `84bf1731` `reports.ontology_content_sha256` + trigger audytu zmian
+  treści `ontology_versions` (migracja 000107). Migracja musi wejść PRZED
+  wdrożeniem llm-workera (terragrunt osobno od CI).
+
+Zostało (wymaga decyzji albo ekspertów):
+- `current_conflict`: definicja każe podać „naruszone potencjalności
+  wtórne", a konstrukt nie ma katalogu — zmiana ontologii (approved_by)
+  albo renderowanie katalogu powiązanego w prompcie S2 (benchmark).
+- S1 wydziela monologi (1283 i 1015 znaków przy limicie 600) z flagą
+  przeszłości na całości — odrzucać czy dzielić? Decyzja + benchmark.
+- Sesja #3 tej kartoteki to ponownie nagrany scenariusz sesji #1: metryki
+  ciągłości (39/39 „wzmacnia") i „kopiowanie" kategorii są na niej
+  niemiarodajne — test pętli kopiowania wymaga innego materiału.
+- Stopka raportu ontologicznego zawsze pisze `ontology_s1s5_experimental`
+  (ontology_path.go), także dla ścieżki aktywnej wersji.
+
 ### Rejestracja in-app: incydent builda 58 + blokujaca weryfikacja — 2026-09-03
 
 Darek przetestowal rejestracje e-mailem na TestFlight 1.0.9+58
