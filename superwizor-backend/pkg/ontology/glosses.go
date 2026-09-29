@@ -198,7 +198,7 @@ func (o *Ontology) CrossConstructHomonyms() map[string][]string {
 // zablokowaloby build na regule, ktora z definicji dopuszcza wyjatki
 // (G5: alias moze byc uzasadniony — rozstrzyga ekspert, nie linter).
 func (o *Ontology) Warnings() []string {
-	var w []string
+	w := o.catalogReferenceWarnings()
 	// G6 w wersji ostrzegawczej: para podlancuchowa w konstrukcie, ktory
 	// glos jeszcze nie uzywa. Sygnal dla autora, ze katalog zawiera
 	// dwuznacznosc, ktora czeka na objasnienia — bez wywracania seedow
