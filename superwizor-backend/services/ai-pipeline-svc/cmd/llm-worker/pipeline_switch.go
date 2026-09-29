@@ -43,6 +43,10 @@ type pipelineDecision struct {
 	// raport. Trafia na raport (kolumna ontology_version z migracji
 	// 000089) — bez niej nie da sie odtworzyc, czym raport powstal.
 	OntologyVersion string
+	// OntologyContentSHA256 identyfikuje TRESC tej wersji (skrot z
+	// ontology.Parse). Etykieta wersji nie wystarcza: szkic nadpisany w
+	// miejscu zachowuje etykiete (migracja 000107).
+	OntologyContentSHA256 string
 }
 
 // Powody spadku na legacy. Rozdzielone, bo prowadza do roznych dzialan:

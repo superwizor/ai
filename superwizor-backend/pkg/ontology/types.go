@@ -87,6 +87,12 @@ type Ontology struct {
 	TherapistBoundary string         `yaml:"therapist_boundary"`
 	RelationTypes     []RelationType `yaml:"relation_types"`
 	ReportProfile     *ReportProfile `yaml:"report_profile,omitempty"`
+
+	// ContentSHA256 to skrot (hex) bajtow, z ktorych sparsowano ontologie.
+	// Etykieta Version nie identyfikuje tresci: szkic mozna nadpisac w
+	// miejscu, zostawiajac te sama wersje. Skrot trafia na raport i jest
+	// porownywalny z audytem zmian tresci (migracja 000107).
+	ContentSHA256 string `yaml:"-"`
 }
 
 // Construct to jedna kategoria/kompozyt taksonomii.

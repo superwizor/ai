@@ -1,6 +1,8 @@
 package ontology
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 
@@ -22,6 +24,8 @@ func Parse(data []byte) (*Ontology, error) {
 		return nil, fmt.Errorf("ontology: parse yaml: %w", err)
 	}
 	o.applyDefaults()
+	suma := sha256.Sum256(data)
+	o.ContentSHA256 = hex.EncodeToString(suma[:])
 	return &o, nil
 }
 

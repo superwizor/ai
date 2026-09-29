@@ -1,0 +1,14 @@
+MIGRACJA 000107 (proweniencja tresci ontologii) — test na tymczasowym Postgres 17, 2026-09-29
+Schemat minimalny: audit_events (DDL z 000005), ontology_versions, reports.
+
+Scenariusz: INSERT wersji 0.1.1 (spans: 2) -> UPDATE samej notatki -> UPDATE tresci (spans: 1).
+
+audit_events:
+          action          |  resource_type   | wersja | status |    przed     |      po      | notatka_przed |        notatka_po
+ ontology.content_changed | ontology_version | 0.1.1  | draft  | 8a8542882922 | 71c1b56ed248 | tylko notatka | wystarczy jeden fragment
+(1 row)   <- sama zmiana notatki NIE tworzy wpisu; zmiana tresci tak, z obiema notatkami
+
+sha256 po stronie bazy:  71c1b56ed2483240e3c378a985e85eb0194713245414cefda606e5b59610abf8
+sha256 po stronie Go:    71c1b56ed2483240e3c378a985e85eb0194713245414cefda606e5b59610abf8  (identyczne)
+
+Po migracji w dol: kolumna reports.ontology_content_sha256 = 0, trigger = 0.

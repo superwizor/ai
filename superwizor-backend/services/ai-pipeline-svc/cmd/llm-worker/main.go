@@ -454,7 +454,8 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 				"modality_code", kod)
 			return nil // terminalne z tego samego powodu
 		}
-		pipeline = pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: ver}
+		pipeline = pipelineDecision{Pipeline: appconfig.PipelineOntology, OntologyVersion: ver,
+			OntologyContentSHA256: o.ContentSHA256}
 		ontoActive = o
 		// Przebieg eksperymentalny widzi wylacznie kontekst
 		// eksperymentalny — twierdzenia niosa slownictwo swojej
@@ -489,6 +490,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 				FallbackReason: fallbackOntologyUnusable}
 		} else {
 			pipeline.OntologyVersion = ver
+			pipeline.OntologyContentSHA256 = o.ContentSHA256
 			ontoActive = o
 			pastContext = loadPastContext(ctx, logger, session, false)
 			pastContext = dolaczSemantyczne(ctx, logger, session, pastContext,
@@ -2789,10 +2791,11 @@ func transcriptHeadTail(chunks []transcriptfmt.Chunk, n int) string {
 // nie da sie odtworzyc, czym powstal raport sprzed miesiaca — a to jest
 // wymog audytu i warunek sensownego benchmarku.
 type provenance struct {
-	Pipeline        string
-	OntologyVersion string
-	PromptVersions  map[string]string
-	Validator       string
+	Pipeline              string
+	OntologyVersion       string
+	OntologyContentSHA256 string
+	PromptVersions        map[string]string
+	Validator             string
 }
 
 // modelDoWyceny wskazuje model, po ktorego stawkach liczymy koszt
@@ -2835,6 +2838,7 @@ func pipelineProvenance(d pipelineDecision) provenance {
 		return p
 	}
 	p.OntologyVersion = d.OntologyVersion
+	p.OntologyContentSHA256 = d.OntologyContentSHA256
 	p.PromptVersions = map[string]string{
 		"s1":  ontopipe.PromptVersionS1,
 		"s2":  ontopipe.PromptVersionS2,
@@ -2902,9 +2906,10 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			sentiment_label, risk_level, speaker_role_inference,
 			llm_model, llm_input_tokens,
 			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd,
-			pipeline_version, ontology_version, prompt_versions, validator_version)
+			pipeline_version, ontology_version, prompt_versions, validator_version,
+			ontology_content_sha256)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-		        $18, $19, $20)`,
+		        $18, $19, $20, $21)`,
 		reportID, session.ID, transID, session.ModalityID,
 		ciphertext, encDEK, report.Title, report.SummaryShort,
 		nil, nil, roleInferenceJSON,
@@ -2912,7 +2917,7 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), nullableCost(costUSD, costErr),
 		prov.Pipeline, nullableText(prov.OntologyVersion), promptVersionsJSON(prov.PromptVersions),
-		nullableText(prov.Validator))
+		nullableText(prov.Validator), nullableText(prov.OntologyContentSHA256))
 	if err != nil {
 		return "", err
 	}

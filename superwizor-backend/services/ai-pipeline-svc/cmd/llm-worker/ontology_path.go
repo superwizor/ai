@@ -230,9 +230,11 @@ func runOntologyPipeline(
 		// historycznego i odnosnik zniknalby z raportu po cichu.
 		Past:        past,
 		GeneratedAt: time.Now().In(warszawa),
-		Provenance: fmt.Sprintf("%s · ontologia %s · %s %s %s",
-			PipelineExperimental, o.Version, ontopipe.PromptVersionS1,
-			ontopipe.PromptVersionS2, ontopipe.PromptVersionS2K),
+		// Skrot tresci obok etykiety: "0.1.1" nie mowi, KTORA tresc szkicu
+		// 0.1.1 obsluzyla raport (szkic bywa nadpisywany w miejscu).
+		Provenance: fmt.Sprintf("%s · ontologia %s (%s) · %s %s %s",
+			PipelineExperimental, o.Version, krotkiSkrot(o.ContentSHA256),
+			ontopipe.PromptVersionS1, ontopipe.PromptVersionS2, ontopipe.PromptVersionS2K),
 		// Audyt WYLACZNIE na powierzchni eksperymentalnej — raport
 		// produkcyjny (legacy) nie przechodzi przez ta sciezke.
 		AuditEnabled: pipelineConfig != nil &&
@@ -248,4 +250,12 @@ func ontologyReportJSON(payload ReportPayload) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// krotkiSkrot skraca skrot tresci do postaci czytelnej w stopce raportu.
+func krotkiSkrot(sha string) string {
+	if len(sha) > 8 {
+		return sha[:8]
+	}
+	return sha
 }
