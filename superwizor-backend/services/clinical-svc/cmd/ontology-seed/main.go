@@ -21,7 +21,7 @@
 //
 // Uzycie:
 //
-//	ontology-seed -dsn "$DSN" -actor osoba@firma.pl [-dir ../../ontology] [-dry-run]
+//	ontology-seed -dsn "$DSN" -actor osoba@firma.pl [-dir ../../ontology] [-note "..."] [-dry-run]
 package main
 
 import (
@@ -46,6 +46,9 @@ func main() {
 		actor  = flag.String("actor", "", "e-mail osoby importujacej (wymagane)")
 		dir    = flag.String("dir", "ontology", "katalog z seedami")
 		dryRun = flag.Bool("dry-run", false, "pokaz, co zostaloby zrobione, bez zapisu")
+		// Notatka zmiany widoczna w Studio. Domyslna opisuje pierwszy
+		// import szkieletu — przy kolejnej wersji mowi ekspertom niewiele.
+		note = flag.String("note", "", "notatka zmiany (domyslnie: opis importu szkieletu)")
 	)
 	flag.Parse()
 
@@ -83,7 +86,7 @@ func main() {
 
 	var imported, skipped, failed int
 	for _, f := range files {
-		status, err := importSeed(ctx, pool, f, actorID, *dryRun)
+		status, err := importSeed(ctx, pool, f, actorID, *note, *dryRun)
 		switch {
 		case err != nil:
 			fmt.Printf("BLAD    %-34s %v\n", filepath.Base(filepath.Dir(f))+"/"+filepath.Base(f), err)
@@ -114,7 +117,7 @@ const (
 	statusSkipped
 )
 
-func importSeed(ctx context.Context, pool *pgxpool.Pool, path string, actorID uuid.UUID, dryRun bool) (seedStatus, error) {
+func importSeed(ctx context.Context, pool *pgxpool.Pool, path string, actorID uuid.UUID, notatka string, dryRun bool) (seedStatus, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return statusImported, err
@@ -156,6 +159,9 @@ func importSeed(ctx context.Context, pool *pgxpool.Pool, path string, actorID uu
 
 	note := fmt.Sprintf("Import seeda z repozytorium (%s). Szkielet do autoryzacji eksperckiej — "+
 		"wszystkie katalogi wartosci i progi min_evidence sa placeholderami.", filepath.Base(path))
+	if strings.TrimSpace(notatka) != "" {
+		note = fmt.Sprintf("Import seeda z repozytorium (%s). %s", filepath.Base(path), strings.TrimSpace(notatka))
+	}
 	_, err = pool.Exec(ctx, `
 		INSERT INTO ontology_versions
 		    (modality_id, version, content, status, created_by, change_note, construct_count)
