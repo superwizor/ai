@@ -292,27 +292,17 @@ resource "google_pubsub_topic_iam_member" "notification_firestore_dlq_publisher"
 }
 
 # ============================================
-# SUBSCRIPTIONS — Eventarc/CloudFunctions używają własnych
-# (te są dla manual debugging i other consumers)
+# SUBSCRIPTIONS — Eventarc/CloudFunctions używają własnych.
+#
+# Subskrypcja debugowa audio.uploaded.debug zostala usunieta z kodu
+# 2026-09-29: w GCP juz jej nie bylo (ktos ja skasowal), a deklaracja w
+# kodzie sprawiala, ze KAZDY apply — takze zawezony -target do jednej
+# funkcji — probowal ja odtworzyc. Przez module-level depends_on
+# cloud_functions -> pubsub odtwarzanie przesuwalo odczyt konta GCS na
+# czas apply i wymuszalo podmiane (destroy+create) dwoch uprawnien IAM
+# tego konta (KMS transkrypcji, publisher Eventarc). Do debugowania
+# tworz subskrypcje doraznie (gcloud) i kasuj po uzyciu.
 # ============================================
-resource "google_pubsub_subscription" "audio_uploaded_debug" {
-  name    = "audio.uploaded.debug"
-  project = var.project_id
-  topic   = google_pubsub_topic.audio_uploaded.id
-
-  ack_deadline_seconds       = 60
-  message_retention_duration = "604800s" # 7 days
-
-  retry_policy {
-    minimum_backoff = "10s"
-    maximum_backoff = "600s"
-  }
-
-  dead_letter_policy {
-    dead_letter_topic     = google_pubsub_topic.audio_uploaded_dlq.id
-    max_delivery_attempts = 5
-  }
-}
 
 # IAM: ingestion-svc może publishować
 resource "google_pubsub_topic_iam_member" "ingestion_publisher" {
