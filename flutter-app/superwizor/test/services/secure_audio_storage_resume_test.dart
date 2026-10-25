@@ -21,6 +21,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:superwizor/services/secure_audio_storage_service.dart';
+import 'package:superwizor/uploads/stall_guard.dart';
 
 class _FakePathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -193,6 +194,63 @@ void main() {
     expect(wyniki[1].length, 3);
     expect(wyniki[0].map((c) => c.path), equals(wyniki[1].map((c) => c.path)),
         reason: 'oba wywołania muszą zobaczyć ten sam zestaw plików');
+
+    final temp = await svc.decryptToTempFile(sessionId: sessionId);
+    expect(await temp.readAsBytes(), equals(dane));
+  });
+
+  // Regresja z 23.10.2026 (Altea Leszczynska, build 1.0.9+64): KAŻDE
+  // nagranie na żywo stawało w `encrypting` z błędem
+  //   "Illegal argument in isolate message: object is unsendable -
+  //    Library:'dart:async'".
+  // Domknięcie dla Isolate.run przechwytywało wspólny kontekst funkcji,
+  // a w nim `onProgress`. W produkcji onProgress to `(_) => guard.beat()`
+  // z UploadWorkera — ciągnie StallGuard, zegary i Timer, których nie da
+  // się przesłać do izolatu. Testy z 18.09 tego nie złapały, bo podawały
+  // `postep.add` — tear-off zwykłej listy, który akurat JEST przesyłalny.
+  // Ten test używa dokładnie produkcyjnego kształtu: StallGuard.run
+  // owija encryptRecording, a onProgress bije w guard.
+  test('callback postępu z nieprzesyłalnym stanem nie wywraca izolatu',
+      () async {
+    final svc = SecureAudioStorageService();
+    const sessionId = 'sess-unsendable-1';
+    final dane = zrobDane();
+    final rawPath = await zapiszRaw(sessionId, dane);
+
+    // Produkcyjny zegar, nie MonotonicForegroundClock: UploadWorker
+    // domyślnie bierze AppLifecycleForegroundClock, który trzyma
+    // WidgetsBinding — i to on jest nieprzesyłalny. Pierwsza wersja
+    // tego testu użyła zegara monotonicznego i PRZECHODZIŁA na wadliwym
+    // kodzie, czyli powtarzała dokładnie ślepą plamkę testów z 18.09.
+    final zegarBezczynnosci = AppLifecycleForegroundClock.create();
+    final zegarBudzetu = AppLifecycleForegroundClock.create();
+    addTearDown(zegarBezczynnosci.dispose);
+    addTearDown(zegarBudzetu.dispose);
+    expect(zegarBezczynnosci, isA<AppLifecycleForegroundClock>(),
+        reason: 'test ma sens tylko z zegarem trzymającym WidgetsBinding');
+
+    final guard = StallGuard(
+      window: const Duration(minutes: 2),
+      clock: zegarBezczynnosci,
+      budget: const Duration(minutes: 100),
+      budgetClock: zegarBudzetu,
+    );
+    var bicia = 0;
+
+    final chunks = await guard.run(
+      svc.encryptRecording(
+        rawPath: rawPath,
+        sessionId: sessionId,
+        onProgress: (_) {
+          bicia++;
+          guard.beat();
+        },
+      ),
+      label: 'Szyfrowanie nagrania',
+    );
+
+    expect(chunks.length, 3);
+    expect(bicia, 3, reason: 'jedno bicie na każdy zapisany chunk');
 
     final temp = await svc.decryptToTempFile(sessionId: sessionId);
     expect(await temp.readAsBytes(), equals(dane));

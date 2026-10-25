@@ -216,20 +216,16 @@ class SecureAudioStorageService {
     // FLAC directly and never reaches here.
     final List<EncryptedChunk> nowe;
     try {
-      final sendPort = progressPort.sendPort;
       final startSeq = doWznowienia.length;
-      final startOffset = startSeq * _chunkSize;
-      nowe = await Isolate.run(
-        () => _encryptChunksIsolate(_EncryptRequest(
-          rawPath: rawPath,
-          dirPath: dir.path,
-          keyBytes: key.bytes,
-          keyVersion: keyVersion,
-          startSeq: startSeq,
-          startOffset: startOffset,
-          progress: sendPort,
-        )),
-      );
+      nowe = await _runEncryptIsolate(_EncryptRequest(
+        rawPath: rawPath,
+        dirPath: dir.path,
+        keyBytes: key.bytes,
+        keyVersion: keyVersion,
+        startSeq: startSeq,
+        startOffset: startSeq * _chunkSize,
+        progress: progressPort.sendPort,
+      ));
     } finally {
       await progressSub.cancel();
       progressPort.close();
@@ -238,6 +234,22 @@ class SecureAudioStorageService {
     await _secureDelete(raw);
     return [...doWznowienia, ...nowe];
   }
+
+  /// Odpala szyfrowanie w izolacie. Wydzielone do osobnej funkcji
+  /// CELOWO — nie wolno tego wciągnąć z powrotem do miejsca wywołania.
+  ///
+  /// Domknięcie przekazane do `Isolate.run` jest przesyłane do nowego
+  /// izolatu RAZEM z kontekstem zakresu, w którym powstało, a w Darcie
+  /// wszystkie przechwycone zmienne jednego zakresu dzielą jeden
+  /// kontekst. W `_encryptRecordingOnce` siedzi w nim `onProgress`, a w
+  /// produkcji to `(_) => guard.beat()` z UploadWorkera — ciągnie za
+  /// sobą StallGuard, AppLifecycleForegroundClock i WidgetsBinding. Tego
+  /// nie da się przesłać i Isolate.run rzucał „object is unsendable -
+  /// Library:'dart:async'" PRZED startem szyfrowania, za każdym razem.
+  /// Każde nagranie na żywo stawało w `encrypting` (23.10.2026, build
+  /// 1.0.9+64). Tutaj jedyną przechwyconą zmienną jest [req].
+  static Future<List<EncryptedChunk>> _runEncryptIsolate(_EncryptRequest req) =>
+      Isolate.run(() => _encryptChunksIsolate(req));
 
   /// Najdłuższy ciągły prefiks `chunk_00000..` o pełnej długości.
   /// Przerywa na pierwszej dziurze albo pierwszym krótszym pliku.
